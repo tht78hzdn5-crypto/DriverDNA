@@ -37,8 +37,9 @@ from the real fixtures and reviewed.
 ## Current status
 
 - **M-setup: done** (scaffold, amended spec, tooling).
-- **M0a: blocked** — waiting on the two fixture CSVs in `tests/fixtures/`
-  (owner to supply; see tests/fixtures/README.md).
+- **M0a: done** — schema-lock + absence tests green on both fixtures;
+  `docs/schema-report.md` generated (`driverdna schema-report`).
+- **M1: in progress.**
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
