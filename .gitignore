@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.pytest_cache/
+
+# DriverDNA local state and generated output (reports are regenerated, not committed)
+*.db
+*.sqlite3
+reports/
+out/
+
+# OS noise
+.DS_Store
