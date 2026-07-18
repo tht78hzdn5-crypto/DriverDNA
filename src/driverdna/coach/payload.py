@@ -24,8 +24,15 @@ def build_coach_payload(
 
 
 def evidence_universe(report: dict[str, Any]) -> tuple[set[str], set[str]]:
-    """(shown finding IDs, all citable evidence IDs) for validation."""
-    shown_findings = {f["finding_id"] for f in report["findings"] if f["shown"]}
+    """(priority-eligible finding IDs, all citable evidence IDs).
+
+    Annotated findings (driver said acknowledged/intentional) are excluded
+    from priorities like suppressed ones — but remain citable evidence.
+    """
+    shown_findings = {
+        f["finding_id"] for f in report["findings"]
+        if f["shown"] and not f.get("annotation")
+    }
     evidence: set[str] = set()
     for f in report["findings"]:
         evidence.add(f["finding_id"])

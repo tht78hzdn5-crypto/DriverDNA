@@ -68,8 +68,19 @@ from the real fixtures and reviewed.
   suppressed finding IDs, unknown evidence IDs, missing hypothesis
   confidence, and numbers-with-units absent from the payload all reject),
   accepted outputs persisted. `driverdna report / coach / history`.
-- **M5: in progress.**
-- **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
+- **M5: done** — grounded chat: deterministic context bundle; read-only tool
+  surface returning live DB values; annotations (acknowledged/intentional)
+  that suppress priority framing while keeping the measurement;
+  propose_config_change stages only — applying requires the driver's
+  explicit `/confirm` through ConfigStore (versioned, reversible, audited);
+  mechanical grounding enforcement (unknown-ID rejection, numeric claims
+  validated against bundle + tool results, one regeneration then a surfaced
+  error); transcripts persisted with bundle version, evidence, effects.
+  ConfigStore write path complete (propose/apply/revert + config_history).
+- **Determinism verified mechanically**: two independent imports produce
+  byte-identical Markdown/JSON/HTML reports.
+- **M0b: blocked** — waiting on `GARAGE61_TOKEN`. `sync` remains unbuilt by
+  design until the API probe documents real behavior.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
 - Spa blind acceptance test blocked on the owner's GR86/Spa lap set (≥ 2 sessions).

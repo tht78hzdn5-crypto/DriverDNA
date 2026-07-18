@@ -309,8 +309,113 @@ def load_config(path: Path | None = None) -> DriverDNAConfig:
     Unknown keys anywhere in the file raise — a misspelled threshold must
     fail loudly, never silently fall back to a default.
     """
-    if path is None:
+    if path is None or not Path(path).exists():
         return DriverDNAConfig()
     with open(path, "rb") as f:
         data = tomllib.load(f)
     return DriverDNAConfig.model_validate(data)
+
+
+def config_snapshot(config: DriverDNAConfig) -> dict[str, object]:
+    """Flat {dotted key: value} view of every threshold in force."""
+    snapshot: dict[str, object] = {}
+    for section, model in config:
+        for key, value in model:
+            snapshot[f"{section}.{key}"] = value
+    return snapshot
+
+
+def describe_key(key: str) -> str | None:
+    """The documented description of a dotted config key, if it exists."""
+    section, _, field_name = key.partition(".")
+    section_field = DriverDNAConfig.model_fields.get(section)
+    if section_field is None or not field_name:
+        return None
+    section_cls = section_field.annotation
+    field = section_cls.model_fields.get(field_name) if section_cls else None
+    return None if field is None else field.description
+
+
+class ConfigStore:
+    """The single write path for parameter changes — CLI or a confirmed chat
+    proposal. Every change is validated against the typed schema, written to
+    the TOML file, and recorded in config_history: versioned and reversible.
+    Nothing retunes a threshold silently."""
+
+    def __init__(self, path: Path, db):
+        self.path = Path(path)
+        self.db = db
+
+    def current(self) -> DriverDNAConfig:
+        return load_config(self.path)
+
+    def get(self, key: str):
+        snapshot = config_snapshot(self.current())
+        if key not in snapshot:
+            raise KeyError(f"unknown config key: {key}")
+        return snapshot[key]
+
+    def propose(self, key: str, new_value) -> dict:
+        """Validate and stage a change WITHOUT applying it."""
+        old_value = self.get(key)  # raises on unknown key
+        self._validated_data(key, new_value)  # raises on type-invalid value
+        return {"key": key, "old_value": old_value, "new_value": new_value,
+                "description": describe_key(key)}
+
+    def apply(self, proposal: dict, *, source: str, note: str | None = None) -> int:
+        """Write a staged proposal through: TOML + history row."""
+        data = self._validated_data(proposal["key"], proposal["new_value"])
+        self._write_toml(data)
+        return self.db.record_config_change(
+            key=proposal["key"],
+            old_value=str(proposal["old_value"]),
+            new_value=str(proposal["new_value"]),
+            source=source,
+            note=note,
+        )
+
+    def revert(self, change_pk: int, *, note: str | None = None) -> int:
+        """Apply a recorded change's old value back (as a new change)."""
+        row = self.db.conn.execute(
+            "SELECT * FROM config_history WHERE change_pk=?", (change_pk,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"no config change #{change_pk}")
+        current = self.get(row["key"])
+        old_typed = self._coerce_like(row["key"], row["old_value"])
+        proposal = {"key": row["key"], "old_value": current, "new_value": old_typed}
+        return self.apply(
+            proposal, source=row["source"],
+            note=note or f"revert of change #{change_pk}",
+        )
+
+    def _coerce_like(self, key: str, text: str):
+        current = self.get(key)
+        if isinstance(current, bool):
+            return text == "True"
+        return type(current)(text)
+
+    def _validated_data(self, key: str, new_value) -> dict:
+        section, _, field_name = key.partition(".")
+        config = self.current()
+        data = config.model_dump()
+        if section not in data or field_name not in data[section]:
+            raise KeyError(f"unknown config key: {key}")
+        data[section][field_name] = new_value
+        DriverDNAConfig.model_validate(data)  # type/shape check, loud
+        return data
+
+    def _write_toml(self, data: dict) -> None:
+        lines = []
+        for section in sorted(data):
+            lines.append(f"[{section}]")
+            for field_name, value in sorted(data[section].items()):
+                if isinstance(value, bool):
+                    rendered = "true" if value else "false"
+                elif isinstance(value, str):
+                    rendered = f'"{value}"'
+                else:
+                    rendered = repr(value)
+                lines.append(f"{field_name} = {rendered}")
+            lines.append("")
+        self.path.write_text("\n".join(lines))

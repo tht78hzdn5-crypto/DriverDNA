@@ -108,7 +108,8 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
         "## Findings",
         "",
     ]
-    shown = [f for f in payload["findings"] if f["shown"]]
+    shown = [f for f in payload["findings"] if f["shown"] and not f.get("annotation")]
+    annotated = [f for f in payload["findings"] if f["shown"] and f.get("annotation")]
     suppressed = [f for f in payload["findings"] if not f["shown"]]
     if shown:
         lines += _findings_rows_md(shown)
@@ -117,6 +118,12 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
             "No findings pass the confidence gates yet — insufficient data "
             "is the honest state, not a failure. Import more laps."
         )
+    if annotated:
+        lines += ["", "### Acknowledged / intentional (by you — measurement kept)", ""]
+        for f in annotated:
+            a = f["annotation"]
+            note = f" — {a['note']}" if a.get("note") else ""
+            lines.append(f"- {f['description']} ({a['status']}{note})")
     lines += ["", f"Suppressed findings: {len(suppressed)} (each with its "
               "stated reason — see the JSON report for the full list).", ""]
 

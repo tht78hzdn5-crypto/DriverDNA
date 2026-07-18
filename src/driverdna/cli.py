@@ -179,6 +179,86 @@ def coach(
 
 
 @app.command()
+def chat(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    cohort: str = typer.Option(
+        None, help="Cohort as 'car:track' (defaults to the only cohort)."
+    ),
+    driver: str = typer.Option("owner", help="Driver label."),
+    config_path: Path = typer.Option(
+        Path("driverdna.toml"), "--config", help="TOML config file (ConfigStore target)."
+    ),
+) -> None:
+    """Interactive grounded coaching chat (requires ANTHROPIC_API_KEY)."""
+    import uuid
+
+    from driverdna.chat.session import ChatSession, ClaudeChatProvider
+    from driverdna.config import ConfigStore, load_config
+    from driverdna.db import Database
+    from driverdna.report.payload import list_cohorts
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    config = load_config(config_path)
+    with Database.open(db_path) as db:
+        cohorts = list_cohorts(db)
+        if cohort:
+            car, _, track = cohort.partition(":")
+            cohorts = [c for c in cohorts if c["car"] == car and c["track"] == track]
+        if len(cohorts) != 1:
+            available = ", ".join(f"{c['car']}:{c['track']}" for c in cohorts) or "none"
+            typer.echo(
+                f"error: specify one cohort with --cohort 'car:track' (available: {available})"
+            )
+            raise typer.Exit(code=2)
+        try:
+            provider = ClaudeChatProvider(config.coach.model, config.coach.max_tokens)
+        except RuntimeError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+        session = ChatSession(
+            db=db, store=ConfigStore(config_path, db), provider=provider,
+            **cohorts[0], config=config, session_id=uuid.uuid4().hex[:12],
+        )
+        typer.echo(
+            "DriverDNA chat — grounded in your deterministic findings. "
+            "/confirm N applies a staged config change; /quit exits."
+        )
+        while True:
+            try:
+                text = input("you> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+            if not text:
+                continue
+            if text in ("/quit", "/exit"):
+                break
+            if text.startswith("/confirm"):
+                try:
+                    index = int(text.split()[1])
+                    effects = session.confirm(index)
+                    applied = effects["config_applied"]
+                    typer.echo(
+                        f"applied: {applied['key']} {applied['old']} -> "
+                        f"{applied['new']} (change #{applied['change_pk']}, reversible)"
+                    )
+                except (IndexError, ValueError) as e:
+                    typer.echo(f"error: {e}")
+                continue
+            result = session.ask(text)
+            if "error" in result:
+                typer.echo(f"[rejected] {result['error']}")
+            else:
+                typer.echo(result["text"])
+                if result["staged"]:
+                    typer.echo(
+                        f"(staged config proposals awaiting /confirm: "
+                        f"{', '.join(p['key'] for p in result['staged'])})"
+                    )
+
+
+@app.command()
 def history(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
 ) -> None:

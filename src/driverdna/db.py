@@ -146,6 +146,22 @@ MIGRATIONS: tuple[str, ...] = (
         output_json TEXT NOT NULL,
         created_at TEXT
     );
+    CREATE TABLE finding_annotations (
+        annotation_pk INTEGER PRIMARY KEY,
+        finding_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL CHECK (status IN ('acknowledged', 'intentional')),
+        note TEXT,
+        created_at TEXT
+    );
+    CREATE TABLE chat_transcripts (
+        turn_pk INTEGER PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        bundle_version INTEGER NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('driver', 'assistant', 'system-event')),
+        content TEXT NOT NULL,
+        evidence_cited TEXT,
+        effects TEXT
+    );
     """,
 )
 
@@ -656,6 +672,62 @@ class Database:
                 "plan_titles": [p.get("title") for p in output.get("coaching_plan", [])],
             })
         return history
+
+    # --- annotations and chat transcripts -----------------------------------
+
+    def annotate_finding(
+        self, *, finding_id: str, status: str, note: str | None = None,
+        created_at: str | None = None,
+    ) -> int:
+        """Record driver intent about a finding. Suppresses it from priority
+        framing; the underlying measurement is never deleted."""
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT OR REPLACE INTO finding_annotations
+                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)""",
+                (finding_id, status, note, created_at),
+            )
+        return int(cur.lastrowid)
+
+    def annotations(self) -> dict[str, dict[str, Any]]:
+        return {
+            r["finding_id"]: {"status": r["status"], "note": r["note"]}
+            for r in self.conn.execute(
+                "SELECT * FROM finding_annotations ORDER BY finding_id"
+            )
+        }
+
+    def add_chat_turn(
+        self, *, session_id: str, bundle_version: int, role: str, content: str,
+        evidence_cited: list[str] | None = None,
+        effects: dict[str, Any] | None = None,
+    ) -> int:
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT INTO chat_transcripts
+                   (session_id, bundle_version, role, content, evidence_cited, effects)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    session_id, bundle_version, role, content,
+                    json.dumps(evidence_cited or [], sort_keys=True),
+                    json.dumps(effects or {}, sort_keys=True),
+                ),
+            )
+        return int(cur.lastrowid)
+
+    def chat_session_turns(self, session_id: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "role": r["role"], "content": r["content"],
+                "bundle_version": int(r["bundle_version"]),
+                "evidence_cited": json.loads(r["evidence_cited"] or "[]"),
+                "effects": json.loads(r["effects"] or "{}"),
+            }
+            for r in self.conn.execute(
+                "SELECT * FROM chat_transcripts WHERE session_id=? ORDER BY turn_pk",
+                (session_id,),
+            )
+        ]
 
     # --- config history -----------------------------------------------------
 

@@ -98,6 +98,12 @@ def build_cohort_payload(
         + vs_reference_findings(db, driver=driver, car=car, track=track,
                                 windows_by_corner=windows_by_corner, config=config)
     )
+    # Driver annotations suppress priority framing but never delete the
+    # measurement — the finding stays, carrying its annotation.
+    annotations = db.annotations()
+    finding_dicts = [
+        asdict(f) | {"annotation": annotations.get(f.finding_id)} for f in findings
+    ]
 
     caveats = [
         "lap validity has no source channel: statistical outlier screening "
@@ -137,7 +143,7 @@ def build_cohort_payload(
             windows_by_corner=windows_by_corner, config=config,
         ) if windows_by_corner else {"per_corner": {}, "by_phase": {},
                                      "by_class": {}, "outliers_screened": {}},
-        "findings": [asdict(f) for f in findings],
+        "findings": finding_dicts,
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
         "caveats": caveats,
     }
