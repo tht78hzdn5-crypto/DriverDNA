@@ -60,7 +60,15 @@ from the real fixtures and reviewed.
   `docs/attribution-report.md` generated (`driverdna attribution`). Trust
   gates verified in tests: stint-only variation → zero shown findings;
   reference import perturbs gap sections only.
-- **M4: in progress.**
+- **M4: done** — deterministic report payload (the JSON report IS the
+  payload); Markdown + self-contained HTML (inline CSS/SVG, no external
+  refs, tested); driver rollup with gated cross-track aggregation; one-shot
+  coach: provider interface (Claude impl, env-only key, lazy SDK import),
+  versioned payload + focus history, strict local validation (unknown or
+  suppressed finding IDs, unknown evidence IDs, missing hypothesis
+  confidence, and numbers-with-units absent from the payload all reject),
+  accepted outputs persisted. `driverdna report / coach / history`.
+- **M5: in progress.**
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.

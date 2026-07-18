@@ -106,6 +106,118 @@ def metrics(
 
 
 @app.command()
+def coach(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    cohort: str = typer.Option(
+        None, help="Cohort as 'car:track' (defaults to the only cohort)."
+    ),
+    driver: str = typer.Option("owner", help="Driver label."),
+    out_dir: Path = typer.Option(Path("reports"), help="Where the plan is written."),
+) -> None:
+    """Generate a one-shot coaching plan (requires ANTHROPIC_API_KEY)."""
+    import re
+
+    from driverdna.coach.payload import build_coach_payload
+    from driverdna.coach.provider import (
+        PROMPT_VERSION,
+        SYSTEM_PROMPT,
+        ClaudeCoachProvider,
+    )
+    from driverdna.coach.validate import (
+        CoachValidationError,
+        render_plan_markdown,
+        validate_coach_output,
+    )
+    from driverdna.config import load_config
+    from driverdna.db import Database
+    from driverdna.report.payload import list_cohorts, to_normalized_json
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+
+    config = load_config()
+    with Database.open(db_path) as db:
+        cohorts = list_cohorts(db)
+        if cohort:
+            car, _, track = cohort.partition(":")
+            cohorts = [c for c in cohorts if c["car"] == car and c["track"] == track]
+        if len(cohorts) != 1:
+            available = ", ".join(f"{c['car']}:{c['track']}" for c in cohorts) or "none"
+            typer.echo(
+                "error: specify one cohort with --cohort 'car:track' "
+                f"(available: {available})"
+            )
+            raise typer.Exit(code=2)
+        c = cohorts[0] | {"driver": driver}
+        payload = build_coach_payload(db, **c, config=config)
+        try:
+            provider = ClaudeCoachProvider(config.coach.model, config.coach.max_tokens)
+        except RuntimeError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+        raw = provider.complete(SYSTEM_PROMPT, to_normalized_json(payload))
+        try:
+            output = validate_coach_output(raw, payload["report"])
+        except CoachValidationError as e:
+            typer.echo("coach output REJECTED by local validation:")
+            for v in e.violations:
+                typer.echo(f"  - {v}")
+            raise typer.Exit(code=1) from None
+        import json as _json
+
+        db.store_coach_output(
+            **c, payload_version=payload["report"]["payload_version"],
+            prompt_version=PROMPT_VERSION, model=config.coach.model,
+            output_json=_json.dumps(output, sort_keys=True),
+        )
+        out_dir.mkdir(parents=True, exist_ok=True)
+        slug = re.sub(r"[^A-Za-z0-9]+", "-", f"{c['car']}-{c['track']}").strip("-").lower()
+        out = out_dir / f"coach-{slug}.md"
+        out.write_text(render_plan_markdown(output, payload["report"]["cohort"]))
+        typer.echo(f"wrote {out}")
+
+
+@app.command()
+def history(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+) -> None:
+    """Show cohorts, coach runs, and config changes on record."""
+    from driverdna.db import Database
+    from driverdna.report.payload import list_cohorts
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    with Database.open(db_path) as db:
+        for c in list_cohorts(db):
+            n = db.conn.execute(
+                """SELECT COUNT(*) n FROM laps WHERE role='self'
+                   AND driver=? AND car=? AND track=?""",
+                (c["driver"], c["car"], c["track"]),
+            ).fetchone()["n"]
+            n_ref = db.conn.execute(
+                "SELECT COUNT(*) n FROM laps WHERE role='reference' AND car=? AND track=?",
+                (c["car"], c["track"]),
+            ).fetchone()["n"]
+            typer.echo(
+                f"{c['driver']} / {c['car']} @ {c['track']}: {n} self laps, "
+                f"{n_ref} reference laps"
+            )
+            for h in db.coach_history(**c):
+                titles = ", ".join(t for t in h["plan_titles"] if t) or "(untitled)"
+                typer.echo(f"  coach #{h['output_pk']}: {titles}")
+        changes = db.conn.execute(
+            "SELECT * FROM config_history ORDER BY change_pk"
+        ).fetchall()
+        for ch in changes:
+            typer.echo(
+                f"config: {ch['key']} {ch['old_value']} -> {ch['new_value']} "
+                f"({ch['source']})"
+            )
+
+
+@app.command()
 def report(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
     out_dir: Path = typer.Option(Path("reports"), help="Output directory."),

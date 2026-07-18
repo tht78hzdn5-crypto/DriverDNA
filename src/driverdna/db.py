@@ -135,6 +135,17 @@ MIGRATIONS: tuple[str, ...] = (
         source TEXT NOT NULL,
         note TEXT
     );
+    CREATE TABLE coach_outputs (
+        output_pk INTEGER PRIMARY KEY,
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        payload_version INTEGER NOT NULL,
+        prompt_version TEXT NOT NULL,
+        model TEXT NOT NULL,
+        output_json TEXT NOT NULL,
+        created_at TEXT
+    );
     """,
 )
 
@@ -612,6 +623,39 @@ class Database:
                 )
                 admitted.append(corner_id)
         return admitted
+
+    # --- coach outputs ------------------------------------------------------
+
+    def store_coach_output(
+        self, *, driver: str, car: str, track: str, payload_version: int,
+        prompt_version: str, model: str, output_json: str,
+        created_at: str | None = None,
+    ) -> int:
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT INTO coach_outputs
+                   (driver, car, track, payload_version, prompt_version, model,
+                    output_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (driver, car, track, payload_version, prompt_version, model,
+                 output_json, created_at),
+            )
+        return int(cur.lastrowid)
+
+    def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT output_pk, output_json FROM coach_outputs
+               WHERE driver=? AND car=? AND track=? ORDER BY output_pk""",
+            (driver, car, track),
+        ).fetchall()
+        history = []
+        for r in rows:
+            output = json.loads(r["output_json"])
+            history.append({
+                "output_pk": int(r["output_pk"]),
+                "plan_titles": [p.get("title") for p in output.get("coaching_plan", [])],
+            })
+        return history
 
     # --- config history -----------------------------------------------------
 

@@ -260,6 +260,23 @@ class GatesConfig(_Section):
     )
 
 
+class CoachConfig(_Section):
+    """AI coaching layer (M4 coach, M5 chat). On-demand only; env-only key."""
+
+    model: str = Field(
+        default="claude-sonnet-5",
+        description="Claude model used for coach and chat runs.",
+    )
+    max_tokens: int = Field(
+        default=4000, description="Response token budget per provider call."
+    )
+    include_raw_traces: bool = Field(
+        default=False,
+        description="Include raw channel arrays in AI payloads. Default off; "
+        "the deterministic findings are the ground truth the AI works from.",
+    )
+
+
 class RetentionConfig(_Section):
     """Raw-sample retention (M2). Compact summaries are permanent."""
 
@@ -282,6 +299,7 @@ class DriverDNAConfig(_Section):
     detectors: DetectorsConfig = Field(default_factory=DetectorsConfig)
     attribution: AttributionConfig = Field(default_factory=AttributionConfig)
     gates: GatesConfig = Field(default_factory=GatesConfig)
+    coach: CoachConfig = Field(default_factory=CoachConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
 
 
