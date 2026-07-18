@@ -1,0 +1,42 @@
+# Verified identities and locked facts for the real Garage61 fixture exports.
+#
+# Garage61 download filenames carry a lap ID only (Garage_61_<LAPID>.csv) — no
+# driver/car/track/lap-time — so this manifest is the anchor for everything the
+# filename cannot provide. Identities were verified from the data itself
+# (GPS coordinates + rows/60 vs the known lap times, both matching < 5 ms).
+# The dirty-data counts are regression locks: the M0a schema-lock tests assert
+# observed == these values exactly, so any change in a future export of these
+# laps fails loudly.
+#
+# Car/track strings are cohort labels for tests, not authoritative iRacing
+# names (those come from Garage61 API metadata once sync exists, M0b+).
+
+[[fixtures]]
+file = "Garage_61_RH11X7.csv"
+lap_id = "RH11X7"
+role = "self"
+car = "Mustang"
+track = "Laguna Seca"
+lap_time_s = 97.268
+expected_lat = 36.58
+expected_lon = -121.75
+throttle_over = 3   # samples > 1
+throttle_under = 10 # samples < 0
+brake_over = 0
+brake_under = 0
+gear0_samples = 53
+
+[[fixtures]]
+file = "Garage_61_HKWPXX.csv"
+lap_id = "HKWPXX"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+lap_time_s = 171.250
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 3
+throttle_under = 14
+brake_over = 1
+brake_under = 143
+gear0_samples = 155

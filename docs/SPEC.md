@@ -90,7 +90,7 @@ SteeringWheelAngle, Gear, Clutch, ABSActive, DRSActive, LatAccel, LongAccel,
 VertAccel, Yaw, YawRate, PositionType`.
 
 - **60 Hz, no time column.** `elapsed_time_s = sample_index / 60`. Verified exact:
-  rows÷60 matched the filename lap time to 1.3 ms (Mustang) and 0.0 ms (Spa).
+  rows÷60 matched the known lap time to 1.3 ms (Mustang) and 0.0 ms (Spa).
   50 Hz is ruled out.
 - **One lap per file, single `LapDistPct` wrap** (0→1, one wrap). Do not assume
   multi-lap files; assert single-wrap and quality-flag any violation.
@@ -103,8 +103,12 @@ VertAccel, Yaw, YawRate, PositionType`.
   as the **primary corner-identity key**, `LapDistPct` as fallback — GPS anchoring
   matches corners across laps more robustly than distance-percent alone. (Simulator
   GPS is clean and consistent — no real-world noise — so clustering is low-risk.)
-- **Filename** carries driver / car / track / lap-time / lap-id; parse best-effort,
-  never fail on absence.
+- **Filename is `Garage_61_<LAPID>.csv` and nothing more** (verified on the real
+  downloads — an earlier draft wrongly claimed driver/car/track/lap-time were
+  embedded). Parse the lap ID best-effort, never fail on absence. Cohort metadata
+  (driver / car / track / configuration) comes from API metadata on the `sync`
+  path and from user-supplied flags or a manifest on the `import` path. The
+  fixtures' verified identities live in `tests/fixtures/manifest.toml`.
 
 Absent — confirmed not present, design accordingly:
 
@@ -112,9 +116,10 @@ Absent — confirmed not present, design accordingly:
   This is a hard constraint. Stint-position control cannot use fuel; it must derive
   run grouping from sync/session metadata (one file = one lap, so runs are
   reconstructed at ingest, not read from a column). On the manual-import path, runs
-  are reconstructed from filename metadata and file-timestamp clustering; where
-  reconstruction is impossible, stint-dependent findings degrade gracefully with a
-  stated caveat rather than silently proceeding. Lap validity has no channel —
+  are reconstructed from file timestamps and user-supplied session metadata
+  (filenames carry no timestamps); where reconstruction is impossible,
+  stint-dependent findings degrade gracefully with a stated caveat rather than
+  silently proceeding. Lap validity has no channel —
   outlier flagging only, with a stated caveat.
 - **`Clutch` is pinned at 1.0** in both fixtures — treat as uninformative; build
   nothing on it unless a future file shows variation.
@@ -202,7 +207,7 @@ locks.
 
 - Copy the two telemetry CSVs into `tests/fixtures/`.
 - Schema-lock test: load both fixtures and assert the exact header order; 60 Hz
-  reconstruction to < 5 ms of filename lap time; single `LapDistPct` wrap; m/s
+  reconstruction to < 5 ms of the manifest lap time; single `LapDistPct` wrap; m/s
   speed range sanity; radian→degree steering; string-boolean ABS/DRS parsing; GPS
   present and plausible; and the dirty-data counts (throttle >1 / <0, Spa's 143
   negative brakes and one >1 brake, gear-0 spans). Emit `docs/schema-report.md`
@@ -533,3 +538,7 @@ Accepted at owner plan review; rationale recorded in the review:
 - Stack decision recorded (decision 10); session/run reconstruction rule for the
   manual-import path defined; determinism normalization specified; Spa blind-test
   caveat recorded.
+- **A11** (2026-07-18, fixtures in hand): filename contract corrected — real
+  downloads are `Garage_61_<LAPID>.csv`, lap ID only. Lap-time anchoring moved to
+  `tests/fixtures/manifest.toml`; import-path cohort metadata is user-supplied;
+  fixture identities verified from data (GPS + duration).

@@ -1,18 +1,19 @@
 # Telemetry fixtures
 
-This directory must contain the two real Garage61 exports the source contract
-was verified against (docs/SPEC.md, "Source contract"):
+The two real Garage61 exports the source contract (docs/SPEC.md) was verified
+against, under their original download names:
 
-1. **Ford Mustang @ Laguna Seca** — lap time 1:37.268
-2. **Toyota GR86 @ Spa-Francorchamps** — lap time 2:51.250
+| File | Identity | Lap time |
+|---|---|---|
+| `Garage_61_RH11X7.csv` | Mustang @ Laguna Seca | 1:37.268 |
+| `Garage_61_HKWPXX.csv` | GR86 @ Spa-Francorchamps | 2:51.250 |
 
-Keep the filenames exactly as downloaded from Garage61 — the parser reads
-driver/car/track/lap-time/lap-id metadata from the filename (best-effort).
+Garage61 filenames carry only a lap ID — no driver/car/track/lap-time — so
+`manifest.toml` records each fixture's verified identity plus the locked
+dirty-data counts. The M0a schema-lock tests (`tests/test_schema_lock.py`)
+assert the exact header order, 60 Hz timing against the manifest lap times,
+single LapDistPct wrap, unit sanity, and the manifest's dirty-data counts.
+These fixtures are the regression anchor for the entire pipeline.
 
-These fixtures are the regression anchor for the entire pipeline: the M0a
-schema-lock tests assert the exact header order, 60 Hz timing, single
-LapDistPct wrap, unit ranges, and the known dirty-data counts on these files.
-M0a cannot run until they are present.
-
-Synthetic traces (landmark shapes, double-apex cases, detector edge cases)
-are added alongside from M1 onward, in `tests/fixtures/synthetic/`.
+Synthetic traces (landmark shapes, double-apex cases, detector edge cases) are
+added from M1 onward, in `tests/fixtures/synthetic/`.
