@@ -39,7 +39,11 @@ from the real fixtures and reviewed.
 - **M-setup: done** (scaffold, amended spec, tooling).
 - **M0a: done** — schema-lock + absence tests green on both fixtures;
   `docs/schema-report.md` generated (`driverdna schema-report`).
-- **M1: in progress.**
+- **M1: done** — parser with quality flags; segmentation with nine landmarks
+  (multi-apex handled); frozen corner map with build→freeze→match identity;
+  speed-band classes with hysteresis; `docs/corners-report.md` generated
+  (`driverdna corners`).
+- **M2: in progress.**
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.

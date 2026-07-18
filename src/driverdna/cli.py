@@ -28,6 +28,23 @@ def version() -> None:
     typer.echo(__version__)
 
 
+@app.command()
+def corners(
+    fixtures_dir: Path = typer.Option(
+        Path("tests/fixtures"), help="Directory holding the fixture CSVs and manifest.toml."
+    ),
+    out: Path = typer.Option(
+        Path("docs/corners-report.md"), help="Where to write the report."
+    ),
+) -> None:
+    """M1 debug artifact: corner map, classes, and per-lap landmarks."""
+    from driverdna.config import load_config
+    from driverdna.corners.report import build_corners_report
+
+    out.write_text(build_corners_report(fixtures_dir, load_config()))
+    typer.echo(f"wrote {out}")
+
+
 @app.command("schema-report")
 def schema_report(
     fixtures_dir: Path = typer.Option(

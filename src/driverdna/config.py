@@ -109,11 +109,56 @@ class SegmentationConfig(_Section):
     )
 
 
+class IdentityConfig(_Section):
+    """Corner-identity matching against the frozen per-cohort corner map (M1)."""
+
+    match_radius_m: float = Field(
+        default=75.0,
+        description="An observed corner matches a frozen identity when any "
+        "of its apexes lies within this many meters of the identity's GPS "
+        "center (GPS is the primary key).",
+    )
+    dist_pct_fallback_radius: float = Field(
+        default=0.01,
+        description="When GPS is degraded, fall back to matching on lap "
+        "distance: apex within this fraction of a lap (circular) of the "
+        "identity's center.",
+    )
+    min_laps_for_admission: int = Field(
+        default=3,
+        description="A consistently unmatched corner must appear on at least "
+        "this many laps before it is admitted to the frozen map (admission "
+        "is explicit and surfaced, never silent).",
+    )
+
+
+class ClassificationConfig(_Section):
+    """Speed-band corner classes per corner identity (M1)."""
+
+    slow_max_kmh: float = Field(
+        default=90.0,
+        description="Corners with median minimum speed below this are slow.",
+    )
+    fast_min_kmh: float = Field(
+        default=150.0,
+        description="Corners with median minimum speed at or above this are "
+        "fast; between the bands is medium.",
+    )
+    hysteresis_margin_kmh: float = Field(
+        default=5.0,
+        description="An already-classified corner changes class only when "
+        "its median moves this far past the band edge; every change is a "
+        "reported event, never silent.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
     smoothing: SmoothingConfig = Field(default_factory=SmoothingConfig)
     segmentation: SegmentationConfig = Field(default_factory=SegmentationConfig)
+    identity: IdentityConfig = Field(default_factory=IdentityConfig)
+    classification: ClassificationConfig = Field(default_factory=ClassificationConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:

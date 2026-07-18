@@ -25,6 +25,8 @@ def make_lap(
     throttle: np.ndarray | None = None,
     steering_deg: np.ndarray | None = None,
     gear: np.ndarray | None = None,
+    lat: np.ndarray | None = None,
+    lon: np.ndarray | None = None,
 ) -> TelemetryLap:
     zeros = np.zeros(n)
     return TelemetryLap(
@@ -36,8 +38,8 @@ def make_lap(
         lap_dist=np.linspace(0.0, 1.0, n),
         lap_dist_pct_raw=np.linspace(0.0, 1.0, n),
         speed=speed if speed is not None else np.full(n, 50.0),
-        lat=np.full(n, 36.58),
-        lon=np.full(n, -121.75),
+        lat=lat if lat is not None else np.full(n, 36.58),
+        lon=lon if lon is not None else np.full(n, -121.75),
         brake=brake if brake is not None else zeros.copy(),
         throttle=throttle if throttle is not None else np.ones(n),
         rpm=np.full(n, 5000.0),
