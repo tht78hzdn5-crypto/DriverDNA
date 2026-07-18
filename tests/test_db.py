@@ -7,8 +7,7 @@ import pytest
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import MIGRATIONS, Database
-from driverdna.pipeline import import_lap_file
-from synth import CORNER_WINDOWS, one_corner_lap, track_lap
+from synth import CORNER_WINDOWS, one_corner_lap, run_synthetic_lap, track_lap
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CONFIG = DriverDNAConfig()
@@ -71,23 +70,7 @@ def test_retention_evicts_blobs_only_and_preserves_history(db):
 
 
 def _run_pipeline(db, lap, *, driver="owner", role="self"):
-    """Run the pipeline on an in-memory synthetic lap via a shim parse."""
-    import driverdna.pipeline as pipeline
-
-    original = pipeline.parse_lap
-    pipeline.parse_lap = lambda path: lap
-    try:
-        return import_lap_file(
-            db,
-            lap.source_path,
-            driver=driver,
-            car=COHORT["car"],
-            track=COHORT["track"],
-            role=role,
-            config=CONFIG,
-        )
-    finally:
-        pipeline.parse_lap = original
+    return run_synthetic_lap(db, lap, driver=driver, role=role, config=CONFIG)
 
 
 def test_reference_lap_never_enters_self_history(db):

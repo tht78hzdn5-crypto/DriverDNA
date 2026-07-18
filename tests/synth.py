@@ -92,6 +92,46 @@ def track_lap(
     )
 
 
+def warp_time(lap: TelemetryLap, window: tuple[float, float], extra_s: float) -> TelemetryLap:
+    """Make the lap spend `extra_s` more (or less) time crossing the given
+    lap-dist window, by warping elapsed_s — the physically meaningful lever
+    for attribution tests. Lap duration changes by the same amount."""
+    mask = (lap.lap_dist >= window[0]) & (lap.lap_dist < window[1])
+    dt = np.full(lap.n_samples, 1.0 / 60.0)
+    dt[mask] += extra_s / max(1, int(mask.sum()))
+    lap.elapsed_s = np.cumsum(dt) - dt[0]
+    lap.duration_s = float(lap.duration_s + extra_s)
+    return lap
+
+
+def run_synthetic_lap(
+    db,
+    lap: TelemetryLap,
+    *,
+    driver: str = "owner",
+    car: str = "TestCar",
+    track: str = "SynthRing",
+    role: str = "self",
+    session_key: str | None = None,
+    config=None,
+):
+    """Run the full import pipeline on an in-memory synthetic lap by shimming
+    the parser (the pipeline otherwise reads from disk)."""
+    import driverdna.pipeline as pipeline
+    from driverdna.config import DriverDNAConfig
+    from driverdna.pipeline import import_lap_file
+
+    original = pipeline.parse_lap
+    pipeline.parse_lap = lambda path: lap
+    try:
+        return import_lap_file(
+            db, lap.source_path, driver=driver, car=car, track=track, role=role,
+            session_key=session_key, config=config or DriverDNAConfig(),
+        )
+    finally:
+        pipeline.parse_lap = original
+
+
 def one_corner_lap(n: int = 1800) -> TelemetryLap:
     """A single canonical corner with every landmark present.
 

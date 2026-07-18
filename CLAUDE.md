@@ -51,7 +51,16 @@ from the real fixtures and reviewed.
   import perturbs gap sections only" re-verifies fully at M3 when gap
   sections exist; at M2 the tested guarantee is reference never enters self
   history/classes.
-- **M3: in progress.**
+- **M3: done** — canonical per-corner phase windows frozen with the map
+  (never per-lap landmarks); outlier-screened robust baselines
+  (median-of-top-3, single best labeled); phase times stored compactly at
+  import (survive blob eviction); vs-self tercile ranker with within-session
+  repeatability; vs-principle pattern findings; vs-reference gaps; cumulative
+  loss by phase/class; confidence gates that suppress with stated reasons;
+  `docs/attribution-report.md` generated (`driverdna attribution`). Trust
+  gates verified in tests: stint-only variation → zero shown findings;
+  reference import perturbs gap sections only.
+- **M4: in progress.**
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.

@@ -91,11 +91,25 @@ MIGRATIONS: tuple[str, ...] = (
         span_start INTEGER NOT NULL,
         span_end INTEGER NOT NULL,
         landmarks TEXT NOT NULL,
+        landmark_positions TEXT NOT NULL,
         apex_lat REAL NOT NULL,
         apex_lon REAL NOT NULL,
         apex_lap_dist REAL NOT NULL,
         min_speed_ms REAL NOT NULL,
         UNIQUE (lap_pk, span_start)
+    );
+    CREATE TABLE corner_windows (
+        corner_pk INTEGER PRIMARY KEY REFERENCES corners(corner_pk) ON DELETE CASCADE,
+        entry_start REAL,
+        turn_in REAL,
+        apex REAL NOT NULL,
+        exit_end REAL
+    );
+    CREATE TABLE phase_times (
+        obs_pk INTEGER NOT NULL REFERENCES corner_observations(obs_pk) ON DELETE CASCADE,
+        phase TEXT NOT NULL CHECK (phase IN ('entry', 'mid', 'exit')),
+        time_s REAL NOT NULL,
+        PRIMARY KEY (obs_pk, phase)
     );
     CREATE TABLE metric_values (
         obs_pk INTEGER NOT NULL REFERENCES corner_observations(obs_pk) ON DELETE CASCADE,
@@ -133,6 +147,18 @@ def _lap_blob(lap: TelemetryLap) -> bytes:
 
 def _landmarks_json(landmarks: Landmarks) -> str:
     return json.dumps(asdict(landmarks), sort_keys=True)
+
+
+def landmark_positions(lap: TelemetryLap, landmarks: Landmarks) -> dict[str, Any]:
+    """Landmark lap-distance positions (mod 1) — the compact record canonical
+    phase windows are derived from; must survive raw-blob eviction."""
+
+    def pos(idx: int | None) -> float | None:
+        return None if idx is None else float(lap.lap_dist[idx]) % 1.0
+
+    data = {k: pos(v) for k, v in asdict(landmarks).items() if k != "apexes"}
+    data["apexes"] = [pos(a) for a in landmarks.apexes]
+    return data
 
 
 def landmarks_from_json(text: str) -> Landmarks:
@@ -332,11 +358,13 @@ class Database:
             cur = self.conn.execute(
                 """INSERT INTO corner_observations
                    (lap_pk, corner_pk, span_start, span_end, landmarks,
-                    apex_lat, apex_lon, apex_lap_dist, min_speed_ms)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    landmark_positions, apex_lat, apex_lon, apex_lap_dist,
+                    min_speed_ms)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     lap_pk, corner_pk, span.start, span.end,
                     _landmarks_json(span.landmarks),
+                    json.dumps(landmark_positions(lap, span.landmarks), sort_keys=True),
                     float(lap.lat[apex]), float(lap.lon[apex]),
                     float(lap.lap_dist[apex]) % 1.0, span.min_speed(lap),
                 ),
@@ -378,6 +406,79 @@ class Database:
             (driver, car, track, corner_id, metric),
         ).fetchall()
         return [float(r["value"]) for r in rows]
+
+    # --- canonical windows and phase times ----------------------------------
+
+    def store_corner_windows(
+        self, corner_pk: int, *, entry_start: float | None, turn_in: float | None,
+        apex: float, exit_end: float | None,
+    ) -> None:
+        with self.conn:
+            self.conn.execute(
+                """INSERT OR REPLACE INTO corner_windows
+                   (corner_pk, entry_start, turn_in, apex, exit_end)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (corner_pk, entry_start, turn_in, apex, exit_end),
+            )
+
+    def load_corner_windows(self, map_pk: int) -> dict[str, dict[str, float | None]]:
+        rows = self.conn.execute(
+            """SELECT c.corner_id, w.entry_start, w.turn_in, w.apex, w.exit_end
+               FROM corner_windows w JOIN corners c ON c.corner_pk = w.corner_pk
+               WHERE c.map_pk = ? ORDER BY c.corner_id""",
+            (map_pk,),
+        ).fetchall()
+        return {
+            r["corner_id"]: {
+                "entry_start": r["entry_start"], "turn_in": r["turn_in"],
+                "apex": r["apex"], "exit_end": r["exit_end"],
+            }
+            for r in rows
+        }
+
+    def store_phase_times(self, obs_pk: int, times: dict[str, float]) -> None:
+        with self.conn:
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO phase_times (obs_pk, phase, time_s) VALUES (?, ?, ?)",
+                [(obs_pk, phase, t) for phase, t in sorted(times.items())],
+            )
+
+    def phase_history(
+        self, *, car: str, track: str, corner_id: str, phase: str, role: str,
+        driver: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Per-lap phase times for one corner, filtered by role.
+
+        role='self' additionally requires driver (self history is one
+        driver's); role='reference' aggregates all reference drivers.
+        """
+        if role == "self" and driver is None:
+            raise ValueError("self phase history requires a driver")
+        clause = "AND l.driver = ?" if driver is not None else ""
+        params = [car, track, corner_id, phase, role] + ([driver] if driver else [])
+        rows = self.conn.execute(
+            f"""SELECT p.time_s, l.lap_pk, l.session_key, o.obs_pk
+                FROM phase_times p
+                JOIN corner_observations o ON o.obs_pk = p.obs_pk
+                JOIN corners c ON c.corner_pk = o.corner_pk
+                JOIN laps l ON l.lap_pk = o.lap_pk
+                WHERE l.car=? AND l.track=? AND c.corner_id=? AND p.phase=?
+                  AND l.role=? {clause}
+                ORDER BY l.lap_pk, o.span_start""",
+            params,
+        ).fetchall()
+        return [
+            {"time_s": float(r["time_s"]), "lap_pk": int(r["lap_pk"]),
+             "session_key": r["session_key"], "obs_pk": int(r["obs_pk"])}
+            for r in rows
+        ]
+
+    def observation_positions(self, corner_pk: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT landmark_positions FROM corner_observations WHERE corner_pk=? ORDER BY obs_pk",
+            (corner_pk,),
+        ).fetchall()
+        return [json.loads(r["landmark_positions"]) for r in rows]
 
     def self_metric_table(
         self, *, driver: str, car: str, track: str

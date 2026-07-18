@@ -106,6 +106,26 @@ def metrics(
 
 
 @app.command()
+def attribution(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    out: Path = typer.Option(
+        Path("docs/attribution-report.md"), help="Where to write the report."
+    ),
+) -> None:
+    """M3 debug artifact: canonical windows, baselines, losses, findings."""
+    from driverdna.attribution.report import build_attribution_report
+    from driverdna.config import load_config
+    from driverdna.db import Database
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    with Database.open(db_path) as db:
+        out.write_text(build_attribution_report(db, load_config()))
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
 def corners(
     fixtures_dir: Path = typer.Option(
         Path("tests/fixtures"), help="Directory holding the fixture CSVs and manifest.toml."

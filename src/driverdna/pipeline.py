@@ -15,6 +15,8 @@ from pathlib import Path
 
 import numpy as np
 
+from driverdna.attribution.engine import PhaseWindows, derive_windows
+from driverdna.attribution.engine import phase_times as compute_phase_times
 from driverdna.config import DriverDNAConfig
 from driverdna.corners.classify import (
     MS_TO_KMH,
@@ -23,10 +25,19 @@ from driverdna.corners.classify import (
 )
 from driverdna.corners.identity import build_corner_map
 from driverdna.corners.segmenter import segment_lap
-from driverdna.db import Database
+from driverdna.db import Database, landmark_positions
 from driverdna.ingest.parser import parse_lap
 from driverdna.metrics.detectors import run_detectors
 from driverdna.metrics.technique import compute_corner_metrics
+
+
+def phase_windows_from_stored(stored: dict) -> PhaseWindows:
+    return PhaseWindows(
+        entry_start=stored["entry_start"],
+        turn_in=stored["turn_in"],
+        apex=stored["apex"],
+        exit_end=stored["exit_end"],
+    )
 
 
 @dataclass
@@ -66,14 +77,29 @@ def import_lap_file(
         map_pk = db.store_corner_map(
             corner_map, car=car, track=track, built_from_n_laps=1
         )
+        # Freeze canonical phase windows alongside the map (F1): every later
+        # lap is measured over these identical spans, never its own landmarks.
+        for span, corner_id in zip(
+            spans, corner_map.match_lap(lap, spans, config.identity)
+        ):
+            if corner_id is None:
+                continue
+            windows = derive_windows([landmark_positions(lap, span.landmarks)])
+            if windows is not None:
+                db.store_corner_windows(
+                    db.corner_pk(map_pk, corner_id),
+                    entry_start=windows.entry_start, turn_in=windows.turn_in,
+                    apex=windows.apex, exit_end=windows.exit_end,
+                )
     else:
         map_pk, corner_map = loaded
 
+    stored_windows = db.load_corner_windows(map_pk)
     assigned = corner_map.match_lap(lap, spans, config.identity)
     for span, corner_id in zip(spans, assigned):
         metrics = compute_corner_metrics(lap, span, config)
         results = run_detectors(lap, span, metrics, config)
-        db.store_observation(
+        obs_pk = db.store_observation(
             lap=lap,
             lap_pk=lap_pk,
             span=span,
@@ -81,8 +107,17 @@ def import_lap_file(
             metrics=metrics,
             detector_results=results,
         )
+        if corner_id and corner_id in stored_windows:
+            times = compute_phase_times(
+                lap.lap_dist, lap.elapsed_s,
+                phase_windows_from_stored(stored_windows[corner_id]),
+            )
+            if times:
+                db.store_phase_times(obs_pk, times)
 
     admitted = db.admit_pending_candidates(car=car, track=track, cfg=config.identity)
+    for corner_id in admitted:
+        _freeze_windows_for_admitted(db, map_pk, corner_id)
     class_changes = _reclassify(db, driver=driver, car=car, track=track, config=config)
     return ImportResult(
         lap_pk=lap_pk,
@@ -91,6 +126,32 @@ def import_lap_file(
         admitted=admitted,
         class_changes=class_changes,
     )
+
+
+def _freeze_windows_for_admitted(db: Database, map_pk: int, corner_id: str) -> None:
+    """An admitted corner gets its windows from its candidate observations'
+    median landmark positions, then backfilled phase times from whatever raw
+    blobs are still within retention (missing blobs are skipped — landmark
+    positions are compact, but time interpolation needs the raw arrays)."""
+    corner_pk = db.corner_pk(map_pk, corner_id)
+    windows = derive_windows(db.observation_positions(corner_pk))
+    if windows is None:
+        return
+    db.store_corner_windows(
+        corner_pk, entry_start=windows.entry_start, turn_in=windows.turn_in,
+        apex=windows.apex, exit_end=windows.exit_end,
+    )
+    rows = db.conn.execute(
+        "SELECT obs_pk, lap_pk FROM corner_observations WHERE corner_pk=?",
+        (corner_pk,),
+    ).fetchall()
+    for row in rows:
+        arrays = db.load_lap_arrays(int(row["lap_pk"]))
+        if arrays is None:
+            continue
+        times = compute_phase_times(arrays["lap_dist"], arrays["elapsed_s"], windows)
+        if times:
+            db.store_phase_times(int(row["obs_pk"]), times)
 
 
 def _reclassify(

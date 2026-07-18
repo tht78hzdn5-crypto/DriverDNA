@@ -210,6 +210,54 @@ class DetectorsConfig(_Section):
         description="Coasting (no brake, no throttle) between brake release "
         "and throttle pickup beyond this flags the coast detector.",
     )
+    min_trigger_rate: float = Field(
+        default=0.5,
+        description="A principle detector becomes a finding only when it "
+        "triggers on at least this share of a corner's laps — one bad lap is "
+        "an event, not a pattern.",
+    )
+
+
+class AttributionConfig(_Section):
+    """Time-at-distance attribution (M3)."""
+
+    outlier_mad_k: float = Field(
+        default=3.5,
+        description="Phase times beyond median ± k·MAD are screened as "
+        "outliers before baseline selection (no lap-validity channel exists; "
+        "one invalid lap must never become the yardstick). Screened values "
+        "are counted and caveated, never silently dropped from history.",
+    )
+    baseline_top_k: int = Field(
+        default=3,
+        description="The robust baseline is the median of the k fastest "
+        "screened executions of a corner phase; the single fastest is still "
+        "shown, labeled. ",
+    )
+    min_effect_s: float = Field(
+        default=0.05,
+        description="vs-self opportunities smaller than this are noise, not "
+        "findings.",
+    )
+
+
+class GatesConfig(_Section):
+    """Confidence gates (M3): a finding below its gate is suppressed, and
+    the suppression is stated — never silent."""
+
+    min_phase_samples: int = Field(
+        default=10,
+        description="Minimum corner-phase samples before a finding is shown.",
+    )
+    min_sessions: int = Field(
+        default=2,
+        description="Minimum distinct sessions before a finding is shown.",
+    )
+    min_tracks_for_rollup: int = Field(
+        default=2,
+        description="Cross-track rollups (within car, within class) require "
+        "at least this many tracks.",
+    )
 
 
 class RetentionConfig(_Section):
@@ -232,6 +280,8 @@ class DriverDNAConfig(_Section):
     classification: ClassificationConfig = Field(default_factory=ClassificationConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     detectors: DetectorsConfig = Field(default_factory=DetectorsConfig)
+    attribution: AttributionConfig = Field(default_factory=AttributionConfig)
+    gates: GatesConfig = Field(default_factory=GatesConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
 
 
