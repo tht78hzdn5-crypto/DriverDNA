@@ -106,6 +106,63 @@ def metrics(
 
 
 @app.command()
+def report(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    out_dir: Path = typer.Option(Path("reports"), help="Output directory."),
+    cohort: str = typer.Option(
+        None, help="Restrict to one cohort as 'car:track' (default: all)."
+    ),
+) -> None:
+    """Generate Markdown + JSON + self-contained HTML reports."""
+    import re
+
+    from driverdna.config import load_config
+    from driverdna.db import Database
+    from driverdna.report.builder import (
+        render_cohort_html,
+        render_cohort_markdown,
+        render_driver_html,
+        render_driver_markdown,
+    )
+    from driverdna.report.payload import (
+        build_cohort_payload,
+        build_driver_payload,
+        list_cohorts,
+        to_normalized_json,
+    )
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+
+    def slug(text: str) -> str:
+        return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-").lower()
+
+    config = load_config()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with Database.open(db_path) as db:
+        cohorts = list_cohorts(db)
+        if cohort:
+            car, _, track = cohort.partition(":")
+            cohorts = [c for c in cohorts if c["car"] == car and c["track"] == track]
+            if not cohorts:
+                typer.echo(f"error: no cohort matching {cohort!r}")
+                raise typer.Exit(code=2)
+        for c in cohorts:
+            payload = build_cohort_payload(db, **c, config=config)
+            base = out_dir / f"{slug(c['car'])}-{slug(c['track'])}"
+            base.with_suffix(".md").write_text(render_cohort_markdown(payload))
+            base.with_suffix(".json").write_text(to_normalized_json(payload))
+            base.with_suffix(".html").write_text(render_cohort_html(payload))
+            typer.echo(f"wrote {base}.{{md,json,html}}")
+        driver_payload = build_driver_payload(db, config)
+        (out_dir / "driver.md").write_text(render_driver_markdown(driver_payload))
+        (out_dir / "driver.json").write_text(to_normalized_json(driver_payload))
+        (out_dir / "driver.html").write_text(render_driver_html(driver_payload))
+        typer.echo(f"wrote {out_dir}/driver.{{md,json,html}}")
+
+
+@app.command()
 def attribution(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
     out: Path = typer.Option(
