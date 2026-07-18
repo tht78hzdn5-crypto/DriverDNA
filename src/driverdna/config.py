@@ -152,6 +152,66 @@ class ClassificationConfig(_Section):
     )
 
 
+class MetricsConfig(_Section):
+    """Deterministic technique-metric parameters (M2)."""
+
+    correction_floor_dps: float = Field(
+        default=15.0,
+        description="Steering-rate magnitude (deg/s) below which a derivative "
+        "sign reversal is jitter, not a correction.",
+    )
+    modulation_min_drop: float = Field(
+        default=0.05,
+        description="A throttle drop between pickup and full throttle must "
+        "exceed this fraction to count as a lift/stab.",
+    )
+    overlap_floor: float = Field(
+        default=0.05,
+        description="Throttle and brake must each exceed this fraction for a "
+        "sample to count as throttle-brake overlap.",
+    )
+    release_from_peak_fraction: float = Field(
+        default=0.95,
+        description="Brake-release duration is measured from the last sample "
+        "at or above this fraction of peak brake (so a held plateau doesn't "
+        "count as 'releasing') to fully released.",
+    )
+
+
+class DetectorsConfig(_Section):
+    """Principle-detector thresholds (M2); every finding is vs-principle."""
+
+    release_gap_max_s: float = Field(
+        default=0.3,
+        description="Brake release completed more than this long before "
+        "turn-in flags the no-taper detector.",
+    )
+    overlap_max_s: float = Field(
+        default=0.75,
+        description="Total throttle-brake overlap in a corner beyond this "
+        "flags the overlap detector. Heel-toe downshift blips are legitimate "
+        "overlap (~0.1-0.2 s per downshift; observed 0.2-0.9 s per corner in "
+        "the manual-gearbox fixture), and v1 cannot separate blips from "
+        "dragging without RPM correlation — the default accommodates typical "
+        "heel-toe; retune per car.",
+    )
+    max_corrections: int = Field(
+        default=1,
+        description="Steering corrections entry->apex beyond this flag the "
+        "one-input detector.",
+    )
+    max_modulations: int = Field(
+        default=0,
+        description="Throttle lifts/stabs between pickup and full throttle "
+        "beyond this flag the monotonic-throttle detector.",
+    )
+    coast_max_s: float = Field(
+        default=0.5,
+        description="Coasting (no brake, no throttle) between brake release "
+        "and throttle pickup beyond this flags the coast detector.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -159,6 +219,8 @@ class DriverDNAConfig(_Section):
     segmentation: SegmentationConfig = Field(default_factory=SegmentationConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     classification: ClassificationConfig = Field(default_factory=ClassificationConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    detectors: DetectorsConfig = Field(default_factory=DetectorsConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:
