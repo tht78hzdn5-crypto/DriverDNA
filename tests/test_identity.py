@@ -9,35 +9,18 @@ from driverdna.config import DriverDNAConfig
 from driverdna.corners.identity import build_corner_map
 from driverdna.corners.segmenter import segment_lap
 from driverdna.ingest.parser import parse_lap
-from synth import make_lap, ramp
+from synth import (
+    CORNER_WINDOWS,
+    TRACK_LAT,
+    TRACK_LON,
+    TRACK_N as N,
+    make_lap,
+    ramp,
+    track_lap,
+)
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CONFIG = DriverDNAConfig()
-
-# GPS along a synthetic "track": ~1113 m of latitude over one lap, so corners
-# separated by 0.1 of a lap are ~111 m apart — well beyond the 75 m radius.
-N = 3600
-TRACK_LAT = 36.5 + 0.01 * np.linspace(0.0, 1.0, N)
-TRACK_LON = np.full(N, -121.75)
-
-CORNER_WINDOWS = [(700, 850), (1700, 1850), (2900, 3050)]
-
-
-def track_lap(windows=CORNER_WINDOWS, lat=None, lon=None):
-    steering = np.zeros(N)
-    speed = np.full(N, 50.0)
-    for start, end in windows:
-        steering[start:end] = 20.0
-        mid = (start + end) // 2
-        ramp(speed, start, mid, 50.0, 30.0)
-        ramp(speed, mid, end, 30.0, 50.0)
-    return make_lap(
-        N,
-        speed=speed,
-        steering_deg=steering,
-        lat=lat if lat is not None else TRACK_LAT.copy(),
-        lon=lon if lon is not None else TRACK_LON.copy(),
-    )
 
 
 def build_map_from(*laps):

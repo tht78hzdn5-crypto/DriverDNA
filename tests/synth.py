@@ -27,10 +27,11 @@ def make_lap(
     gear: np.ndarray | None = None,
     lat: np.ndarray | None = None,
     lon: np.ndarray | None = None,
+    src: str = "synthetic.csv",
 ) -> TelemetryLap:
     zeros = np.zeros(n)
     return TelemetryLap(
-        source_path=Path("synthetic.csv"),
+        source_path=Path(src),
         lap_id=None,
         n_samples=n,
         duration_s=n / 60,
@@ -55,6 +56,39 @@ def make_lap(
         yaw_rate=zeros.copy(),
         position_type=np.full(n, 3, dtype=np.int64),
         quality_flags=[],
+    )
+
+
+# A synthetic "track" for identity/pipeline tests: ~1113 m of latitude over
+# one lap, so corners 0.1 of a lap apart sit ~111 m apart — well beyond the
+# default 75 m match radius.
+TRACK_N = 3600
+TRACK_LAT = 36.5 + 0.01 * np.linspace(0.0, 1.0, TRACK_N)
+TRACK_LON = np.full(TRACK_N, -121.75)
+CORNER_WINDOWS = [(700, 850), (1700, 1850), (2900, 3050)]
+
+
+def track_lap(
+    windows=CORNER_WINDOWS,
+    lat: np.ndarray | None = None,
+    lon: np.ndarray | None = None,
+    src: str = "synthetic.csv",
+) -> TelemetryLap:
+    """A lap of the synthetic track: steering-only corners at `windows`."""
+    steering = np.zeros(TRACK_N)
+    speed = np.full(TRACK_N, 50.0)
+    for start, end in windows:
+        steering[start:end] = 20.0
+        mid = (start + end) // 2
+        ramp(speed, start, mid, 50.0, 30.0)
+        ramp(speed, mid, end, 30.0, 50.0)
+    return make_lap(
+        TRACK_N,
+        speed=speed,
+        steering_deg=steering,
+        lat=lat if lat is not None else TRACK_LAT.copy(),
+        lon=lon if lon is not None else TRACK_LON.copy(),
+        src=src,
     )
 
 

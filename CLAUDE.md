@@ -43,7 +43,15 @@ from the real fixtures and reviewed.
   (multi-apex handled); frozen corner map with build→freeze→match identity;
   speed-band classes with hysteresis; `docs/corners-report.md` generated
   (`driverdna corners`).
-- **M2: in progress.**
+- **M2: done** — 18 deterministic metrics + 5 principle detectors; SQLite
+  persistence (blob laps, compact rows, migrations), newest-N retention that
+  can never touch summaries, reference-role isolation enforced at the query
+  surface, candidate admission surfaced; `driverdna import` pipeline;
+  `docs/metrics-report.md` generated (`driverdna metrics`). Note: "reference
+  import perturbs gap sections only" re-verifies fully at M3 when gap
+  sections exist; at M2 the tested guarantee is reference never enters self
+  history/classes.
+- **M3: in progress.**
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.

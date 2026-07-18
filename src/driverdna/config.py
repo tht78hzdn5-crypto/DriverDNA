@@ -212,6 +212,17 @@ class DetectorsConfig(_Section):
     )
 
 
+class RetentionConfig(_Section):
+    """Raw-sample retention (M2). Compact summaries are permanent."""
+
+    raw_laps_per_cohort: int = Field(
+        default=100,
+        description="Newest N raw lap blobs kept per driver/car/track cohort; "
+        "eviction deletes blobs only and can never touch summaries, trends, "
+        "or findings.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -221,6 +232,7 @@ class DriverDNAConfig(_Section):
     classification: ClassificationConfig = Field(default_factory=ClassificationConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     detectors: DetectorsConfig = Field(default_factory=DetectorsConfig)
+    retention: RetentionConfig = Field(default_factory=RetentionConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:
