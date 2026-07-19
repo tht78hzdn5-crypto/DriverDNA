@@ -1,16 +1,21 @@
 # DriverDNA — build rules
 
-Personal racing-telemetry instrument for one driver. The authoritative
-specification is **docs/SPEC.md** — read it before changing anything. Its
-Philosophy section (nine principles, owner-confirmed) is binding on every design
-decision; when in doubt, the philosophy wins over convenience.
+Personal racing-telemetry instrument for one driver. The constitution (the *why*)
+is **docs/ARCHITECTURE_VISION.md**: DriverDNA measures the driver, not the lap —
+the persistent Driver Model is the product. The engine spec (the *how*) is
+**docs/SPEC.md** — read both before changing anything. The philosophy (nine
+principles, owner-confirmed, refined by A14) is binding; when in doubt, the
+constitution wins over convenience.
 
 ## Non-negotiables
 
-- The deterministic engine is the only source of numbers. AI (coach/chat) explains
-  and prioritizes; it never invents a measurement.
-- Sources are never blended: `vs-principle` / `vs-self` / `vs-reference` stay
-  separate. No overall score.
+- The deterministic engine is the only source of numbers, **including scores**.
+  AI (coach/chat) explains scores and prioritizes practice; it never produces or
+  adjusts a number.
+- Sources stay separately inspectable. Composite **scores are allowed but only
+  deterministic, versioned, and confidence-qualified** — Score + Confidence +
+  Evidence Count, always decomposable to the sources; never opaque, never
+  AI-generated (A14 / ARCHITECTURE_VISION.md).
 - "Insufficient data" over guessing, always. Every finding carries N, spread,
   source tag, and evidence IDs.
 - Reference laps never enter self history, trends, or consistency statistics.
@@ -25,7 +30,8 @@ decision; when in doubt, the philosophy wins over convenience.
 
 M0a (contract lock) → M1 (parse/segment/identify/classify) → M2
 (metrics/detectors/persistence) → M3 (attribution/ranking) → M4 (reports +
-one-shot coach) → M5 (interactive chat).
+one-shot coach) → M5 (interactive chat) → M6 (Driver Model — deterministic,
+versioned scoring; the constitution's center of gravity, additive over M1–M5).
 
 M0b (Garage61 API probe) floats: it requires `GARAGE61_TOKEN` and gates only the
 `sync` feature — but no code may assume API behavior before M0b documents it.
@@ -77,6 +83,13 @@ from the real fixtures and reviewed.
   validated against bundle + tool results, one regeneration then a surfaced
   error); transcripts persisted with bundle version, evidence, effects.
   ConfigStore write path complete (propose/apply/revert + config_history).
+- **UI: U0 (API) + U1 (read views + render-parity crawler) + U2 (annotations
+  and config panel through audited paths) done. U3 (chat view) next on the
+  U-track.**
+- **Constitution adopted (2026-07-19)**: `docs/ARCHITECTURE_VISION.md` — the
+  Driver Model is the product; scores are deterministic/versioned/
+  confidence-qualified (A14). **M6 (Driver Model) scoped and is the declared
+  next engine milestone.**
 - **Determinism verified mechanically**: two independent imports produce
   byte-identical Markdown/JSON/HTML reports.
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`. `sync` remains unbuilt by

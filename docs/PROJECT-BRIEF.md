@@ -24,8 +24,10 @@ SDK. Local CLI only — no server, no hosted anything.
    labels anything beyond the measurements as hypothesis.
 3. "Insufficient data" over guessing, always; every claim carries N, spread,
    source tag, evidence IDs.
-4. Three sources — `vs-principle`, `vs-self`, `vs-reference` — never blended;
-   no overall score.
+4. Three sources — `vs-principle`, `vs-self`, `vs-reference` — stay separately
+   inspectable; any composite score is deterministic, versioned, and
+   confidence-qualified (A14 / ARCHITECTURE_VISION.md), never opaque or
+   AI-generated.
 5. Reference laps are context ("gap"), never "recoverable time", and never
    enter self history.
 6. Longitudinal by design: persistence is the point.

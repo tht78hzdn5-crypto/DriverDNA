@@ -1,9 +1,11 @@
 # DriverDNA v1 — Build Specification
 
 Amended 2026-07-18 after owner review; supersedes the uploaded draft and all prior
-plans. This document is self-contained and authoritative. Amendments relative to
-the reviewed draft are listed at the end ("Amendment log"). Throughout, "the tool"
-and "DriverDNA" refer to this application.
+plans. This document is self-contained and authoritative for the engine (the
+*how*); **docs/ARCHITECTURE_VISION.md** is the constitution (the *why*) and, per
+amendment A14, governs the scoring contract. Amendments relative to the reviewed
+draft are listed at the end ("Amendment log"). Throughout, "the tool" and
+"DriverDNA" refer to this application.
 
 ## Product intent
 
@@ -33,8 +35,13 @@ These nine principles are binding on every design decision below.
 3. **Honesty beats helpfulness.** "Insufficient data" is a first-class answer.
    Every claim carries sample size and spread. Three trustworthy findings beat ten
    plausible ones.
-4. **Provenance is never blended.** `vs-principle`, `vs-self`, and `vs-reference`
-   mean different things and are reported separately. No overall score.
+4. **Provenance stays inspectable; scores are deterministic.** `vs-principle`,
+   `vs-self`, and `vs-reference` mean different things and always remain
+   separately inspectable. Composite scores (the Driver Model, M6) are
+   permitted and are a core output, but only as **deterministic, versioned,
+   confidence-qualified** figures that decompose to those sources — never an
+   opaque blended number, and never AI-generated. See A14 and
+   docs/ARCHITECTURE_VISION.md.
 5. **The driver's own data is the primary signal.** Reference laps give context
    ("gap"), never promises ("recoverable time").
 6. **The tool compounds.** Value is longitudinal; persistence is core, not optional.
@@ -452,6 +459,53 @@ is enforced by tests (a response citing an unknown evidence ID or an unretrievab
 metric is rejected; an out-of-gate question yields "insufficient data"); annotation
 suppression and confirmation-gated config changes are tested end to end.
 
+## Milestone 6 — Driver Model (deterministic scoring)
+
+The center of gravity the constitution (docs/ARCHITECTURE_VISION.md) names: a
+persistent, versioned belief store about the *driver*, fed by everything M1–M5
+already persist. Additive — it reads the permanent compact rows across all of a
+driver's cohorts; nothing in M0–M5 is rewritten.
+
+- **Taxonomy (versioned data).** A static `observable → technique → fundamental`
+  map — the pyramid, made explicit. Every metric maps to exactly one place.
+  Fundamentals with no observable (eye-line) and no proxy are marked
+  unmeasurable; ones with a weak proxy (commitment ← entry-speed retention) are
+  marked low-signal.
+- **Scoring model (`dm-v1`, versioned).** A deterministic function from a
+  driver's accumulated evidence per fundamental to **(score 0–100, confidence
+  0–1, evidence_count, trend)**. Score is an explicit weighted aggregation of
+  principle-adherence rate, normalized vs-self opportunity, and consistency;
+  weights live in `ConfigStore` (documented, versioned, reversible). Confidence
+  is a deterministic function of evidence volume *and breadth* (events,
+  sessions, tracks, cars, spread) — pinned near zero where a fundamental is
+  unmeasurable. No AI produces any of these numbers.
+- **Reproducibility.** Belief recomputation is a pure function of the evidence
+  set + `scoring_model_version` (order-independent, or explicitly ordered by lap
+  timestamp) — the same evidence and version always yield the same beliefs. A
+  version bump leaves past beliefs recomputable.
+- **Persistence.** A `driver_beliefs` table stores per (driver, fundamental) the
+  current score/confidence/evidence_count/trend + model version + timestamp,
+  recomputed at import.
+- **Gated longitudinal outputs.** Archetype (a deterministic pattern over the
+  fundamentals) and any universal-pace-gain estimate stay "insufficient data"
+  until enough breadth exists (≥ 2 tracks / ≥ 2 cars, as the existing gates
+  require). **Trend needs real lap dates** — a dependency on sync metadata or a
+  user-supplied date on import (flagged; degrades to "trend unavailable").
+- **AI role (unchanged contract).** Coach/chat gain the beliefs in their
+  payload/bundle and may *explain* a score and *recommend the highest-impact
+  practice priority*; they never produce or adjust a score (enforced by the
+  existing numeric-grounding validator — a belief is just another payload
+  number). Every score is presented with its confidence, evidence count, and a
+  plain "this is a model estimate; here's how to sharpen it."
+- **Artifact:** `driverdna model` — the per-fundamental score / confidence /
+  evidence table, deterministic. A DriverModel UI view follows on the U-track.
+
+Done when: the scoring model is deterministic and versioned (two runs →
+identical beliefs); every score carries confidence + evidence count;
+unmeasurable fundamentals read as "no signal / 0%", not fabricated; gated
+outputs suppress with reasons until breadth exists; the AI surface explains but
+never emits a score (tested against the mocked provider).
+
 ## Acceptance — trust gates
 
 1. Spa blind test: run on the owner's GR86/Spa laps (≥ 2 sessions; to be supplied)
@@ -493,11 +547,14 @@ versioned and reversible.
 
 ## Out of scope for v1
 
-Hosted sync, blended overall score, cross-car claims in reports, slip/vision
-inference, automatic AI refresh, non-Garage61 sources. The local UI layer is
-specified separately in **docs/UI-SPEC.md** (owner-adopted 2026-07-19), which
-amends this document; this spec remains authoritative for the engine, and the
-UI renders what the engine computed — it never computes a measurement.
+Hosted sync, **AI-generated or unconfidenced scores** (deterministic
+confidence-qualified scores are in scope via M6), slip/vision inference,
+automatic AI refresh, non-Garage61 sources. Cross-car claims remain computed
+but unreported until sample size justifies them. The local UI layer is
+specified separately in **docs/UI-SPEC.md** (owner-adopted 2026-07-19); the
+Driver Model (M6) is governed by **docs/ARCHITECTURE_VISION.md**. This spec
+remains authoritative for the engine, and every surface renders what the engine
+computed — it never computes a measurement.
 
 ## Setup and build order
 
@@ -506,7 +563,8 @@ UI renders what the engine computed — it never computes a measurement.
 - Fixtures: the two telemetry CSVs belong in `tests/fixtures/` (owner-supplied);
   M0a cannot run without them.
 - Build order is strict within the dependency chain: **M0a → M1 → M2 → M3 → M4 →
-  M5**; do not begin a milestone until the prior milestone's done-criteria pass.
+  M5 → M6**; do not begin a milestone until the prior milestone's done-criteria
+  pass. M6 (Driver Model) reads M1–M5's persisted rows and is additive.
   **M0b floats**: it requires `GARAGE61_TOKEN`, gates only the `sync` feature, and
   must complete before any code assumes API behavior. The Spa blind test (gate 1)
   runs when the owner's Spa lap set is supplied; it is the final trust gate, not a
@@ -562,3 +620,12 @@ Accepted at owner plan review; rationale recorded in the review:
   integer enum, not a fixed value. Separately, import now rejects **content
   duplicates** (a lap re-downloaded under a different filename fingerprints
   identically and is skipped, never double-counted) — surfaced, not silent.
+- **A14** (2026-07-19, owner decision): scores are adopted as a core output.
+  Philosophy #4's "no overall score" is refined to "no *opaque* blended score":
+  the Driver Model (M6) produces **deterministic, versioned, reproducible**
+  scores that always ship **Score + Confidence + Evidence Count** and decompose
+  to the separated sources. No score is AI-generated; AI explains scores and
+  recommends practice priorities only. The scoring model may evolve through
+  research but stays versioned and reproducible. Governing document:
+  **docs/ARCHITECTURE_VISION.md** (the project constitution / the *why*), which
+  this spec now serves as the *how*.
