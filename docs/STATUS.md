@@ -51,6 +51,15 @@ laps and two API keys, not on code.
 
 Immediate, no blockers, recommended order:
 
+0. **M6 — the Driver Model (the newly-declared heart of the product).** A
+   deterministic, versioned scoring layer over everything M1–M5 persist:
+   per-fundamental Score + Confidence + Evidence Count + trend, additive, no
+   rewrite. No API key needed. Governed by `docs/ARCHITECTURE_VISION.md`; scoped
+   in `docs/SPEC.md`. Recommended next — it's what makes DriverDNA *DriverDNA*.
+   Honest caveat: its longitudinal outputs (trend, archetype, universal pace
+   gain) stay gated until there are lap dates and multi-track/car breadth, which
+   we don't have yet — the per-fundamental scores work now; the "knows the
+   driver not the track" headline earns out with data.
 1. **U3 — the chat view.** Wire `ChatSession` into the UI: SSE progress states,
    validated-only rendering, the read-only tool-call audit, and the
    staged/confirm flow. Fully built and mock-tested underneath; only *runs
