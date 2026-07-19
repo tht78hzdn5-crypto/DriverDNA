@@ -1,19 +1,41 @@
-import React from "react";
-import { get } from "../api.js";
+import React, { useState } from "react";
+import { get, send } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
 
-// Finding detail (UI-SPEC view 4): the evidence view. Annotate actions are
-// U2 — this view states what they will do, and shows any existing
-// annotation with the measurement intact.
+// Finding detail (UI-SPEC view 4): the evidence view, with the annotate
+// actions (acknowledged / intentional) whose effect is stated before use.
+// Annotation suppresses priority framing; it never deletes the measurement,
+// and it is itself reversible (driver sovereignty, #7).
 export default function FindingDetail({ slug, findingId }) {
-  const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug]);
+  const [reload, setReload] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug, reload]);
   if (!payload.data) return <Loading error={payload.error} />;
 
   const finding = payload.data.findings.find((f) => f.finding_id === findingId);
   if (!finding) return <div className="error">Unknown finding: {findingId}</div>;
-
   const d = finding.details || {};
+  const encoded = encodeURIComponent(findingId);
+
+  async function act(fn) {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      setReload((n) => n + 1);
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const annotate = (status) =>
+    act(() => send("POST", `/api/findings/${encoded}/annotate`, { status }));
+  const clear = () => act(() => send("DELETE", `/api/findings/${encoded}/annotate`));
+
   return (
     <div className="grid">
       <section className="panel">
@@ -74,15 +96,31 @@ export default function FindingDetail({ slug, findingId }) {
           <div>
             <span className="chip">{finding.annotation.status}</span>
             {finding.annotation.note && <span className="dim"> — {finding.annotation.note}</span>}
-            <div className="sub">Suppressed from priority framing; the measurement above is kept.</div>
+            <div className="sub">
+              Suppressed from priority framing; the measurement above is kept.
+            </div>
+            <div className="actions">
+              <button className="btn" disabled={busy} onClick={clear}>
+                Clear annotation
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="dim" style={{ fontSize: "0.82rem" }}>
-            None. Marking a finding acknowledged or intentional (arrives with U2,
-            or via chat today) removes it from priority framing without deleting
-            the measurement.
+          <div>
+            <div className="sub" style={{ marginTop: 0 }}>
+              This stays measured but stops being framed as a priority. Reversible.
+            </div>
+            <div className="actions">
+              <button className="btn" disabled={busy} onClick={() => annotate("acknowledged")}>
+                Acknowledged — I've seen it
+              </button>
+              <button className="btn" disabled={busy} onClick={() => annotate("intentional")}>
+                Intentional — I do this on purpose
+              </button>
+            </div>
           </div>
         )}
+        {error && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
       </section>
     </div>
   );

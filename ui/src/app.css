@@ -95,3 +95,35 @@ td.right, th.right { text-align: right; }
 .cardlist { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
 .card { border: 1px solid var(--line); background: var(--raised); border-radius: 2px; padding: 0.6rem 0.7rem; }
 .error { border-left: 3px solid var(--bad); padding-left: 0.8rem; color: var(--dim); font-size: 0.85rem; }
+
+/* Writes (U2): controls look interactive; confirm is distinct; staged =
+   amber (attention), never a data color. */
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.btn {
+  font: inherit; font-size: 0.82rem; color: var(--text); background: var(--raised);
+  border: 1px solid var(--line); border-radius: 2px; padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small { padding: 0.15rem 0.5rem; font-size: 0.74rem; }
+.btn.confirm { border-color: var(--ok); color: var(--ok); }
+.btn.confirm:hover:not(:disabled) { background: rgba(62, 207, 142, 0.1); }
+
+.staged { border-left: 3px solid var(--warn); }
+.staged-row { display: flex; justify-content: space-between; gap: 1rem;
+              align-items: baseline; flex-wrap: wrap; font-size: 0.92rem; }
+
+.cfg { border-top: 1px solid var(--line); padding: 0.55rem 0.1rem; }
+.cfg:first-of-type { border-top: 0; }
+.cfg-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.8rem; }
+.cfg-name { font-size: 0.86rem; }
+.cfg-val { font-size: 0.9rem; }
+.cfg-doc { color: var(--dim); font-size: 0.75rem; margin: 0.2rem 0 0.4rem; }
+.cfg-edit { display: flex; gap: 0.5rem; }
+.in {
+  font: inherit; font-family: var(--mono); font-size: 0.82rem; color: var(--text);
+  background: var(--base); border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.3rem 0.5rem; width: 8rem;
+}
+.in:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

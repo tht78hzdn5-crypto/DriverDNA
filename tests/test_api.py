@@ -116,6 +116,25 @@ def test_annotate_effect_identical_to_db_path(env):
     assert r.status_code == 404
 
 
+def test_clear_annotation_is_reversible(env):
+    payload = env["client"].get(f"/api/cohorts/{SPA_SLUG}/payload").json()
+    # Use a different finding than the annotate test to avoid shared-state order
+    # dependence in this module-scoped env.
+    finding_id = payload["findings"][3]["finding_id"]
+    env["client"].post(
+        f"/api/findings/{finding_id}/annotate", json={"status": "intentional"}
+    )
+    with Database.open(env["db_path"]) as db:
+        assert finding_id in db.annotations()
+    r = env["client"].request("DELETE", f"/api/findings/{finding_id}/annotate")
+    assert r.status_code == 200 and r.json()["cleared"] == finding_id
+    with Database.open(env["db_path"]) as db:
+        assert finding_id not in db.annotations()
+    # Clearing a finding that isn't annotated is a 404, not a silent no-op.
+    r = env["client"].request("DELETE", f"/api/findings/{finding_id}/annotate")
+    assert r.status_code == 404
+
+
 def test_config_propose_stages_nothing_apply_writes(env):
     r = env["client"].post(
         "/api/config/propose",
@@ -132,6 +151,25 @@ def test_config_propose_stages_nothing_apply_writes(env):
     assert load_config(env["config_path"]).detectors.max_corrections == 3
     history = env["client"].get("/api/config/history").json()
     assert any(h["change_pk"] == change["change_pk"] for h in history)
+
+
+def test_config_apply_then_revert_from_ui(env):
+    # A distinct key so this doesn't collide with the propose/apply test.
+    original = load_config(env["config_path"]).gates.min_sessions
+    proposal = env["client"].post(
+        "/api/config/propose", json={"key": "gates.min_sessions", "new_value": original + 2}
+    ).json()
+    change = env["client"].post("/api/config/apply", json={"proposal": proposal}).json()
+    assert load_config(env["config_path"]).gates.min_sessions == original + 2
+
+    r = env["client"].post(f"/api/config/revert/{change['change_pk']}")
+    assert r.status_code == 200
+    assert load_config(env["config_path"]).gates.min_sessions == original
+    # The revert is itself an audited change, not an erasure.
+    history = env["client"].get("/api/config/history").json()
+    assert sum(1 for h in history if h["key"] == "gates.min_sessions") == 2
+
+    assert env["client"].post("/api/config/revert/99999").status_code == 404
 
     r = env["client"].post(
         "/api/config/propose", json={"key": "detectors.nope", "new_value": 1}

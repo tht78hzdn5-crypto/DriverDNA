@@ -8,3 +8,18 @@ export async function get(path) {
   }
   return response.json();
 }
+
+// Writes only ever wrap the engine's audited paths (UI-SPEC decision 3): the
+// API layer holds no logic, so the UI is just forwarding intent.
+export async function send(method, path, body) {
+  const response = await fetch(path, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `${response.status} on ${path}`);
+  }
+  return response.json();
+}

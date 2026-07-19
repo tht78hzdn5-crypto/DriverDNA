@@ -733,6 +733,13 @@ class Database:
             )
         }
 
+    def clear_annotation(self, finding_id: str) -> None:
+        """Remove a finding's annotation (never touches the measurement)."""
+        with self.conn:
+            self.conn.execute(
+                "DELETE FROM finding_annotations WHERE finding_id = ?", (finding_id,)
+            )
+
     def add_chat_turn(
         self, *, session_id: str, bundle_version: int, role: str, content: str,
         evidence_cited: list[str] | None = None,

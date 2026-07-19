@@ -149,6 +149,7 @@ def test_every_fractional_figure_traces_to_the_payload(server):
         f"/#/corner/{slug}/C01",
         f"/#/finding/{slug}/{quote(finding_id, safe='')}",
         f"/#/laps/{slug}",
+        "/#/config",  # U2: config values must trace to /api/config too
     ]
 
     violations: list[str] = []

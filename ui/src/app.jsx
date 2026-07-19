@@ -4,6 +4,7 @@ import Cohort from "./views/cohort.jsx";
 import CornerDrill from "./views/corner.jsx";
 import FindingDetail from "./views/finding.jsx";
 import Laps from "./views/laps.jsx";
+import Config from "./views/config.jsx";
 
 // Tiny hash router: #/ · #/cohort/:slug · #/corner/:slug/:cid ·
 // #/finding/:slug/:fid · #/laps/:slug
@@ -26,13 +27,14 @@ export default function App() {
       <header className="topbar">
         <a href="#/" className="brand">DriverDNA</a>
         <nav>
-          {args[0] && view !== "home" && (
+          {args[0] && view !== "home" && view !== "config" && (
             <>
               <a href={`#/cohort/${args[0]}`}>cohort</a>
               <a href={`#/laps/${args[0]}`}>laps</a>
             </>
           )}
           <a href="#/">driver</a>
+          <a href="#/config">config</a>
         </nav>
       </header>
       {view === "home" && <DriverHome />}
@@ -40,6 +42,7 @@ export default function App() {
       {view === "corner" && <CornerDrill slug={args[0]} cornerId={args[1]} />}
       {view === "finding" && <FindingDetail slug={args[0]} findingId={args[1]} />}
       {view === "laps" && <Laps slug={args[0]} />}
+      {view === "config" && <Config />}
     </>
   );
 }

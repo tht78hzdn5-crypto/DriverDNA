@@ -33,8 +33,8 @@ laps and two API keys, not on code.
 | U0 | FastAPI layer: pass-through reads, audited writes, `driverdna ui` | done |
 | U1 | React SPA read views on the timing-screen design language | done |
 | U1 gate 1 | Render-parity crawler (Chromium): no invented on-screen number | done |
-| U2 | Writes — annotations + config panel through audited paths | **next** |
-| U3 | Chat view (SSE, validated-only display, staged/confirm) | pending |
+| U2 | Writes — annotations + config panel through audited paths | done |
+| U3 | Chat view (SSE, validated-only display, staged/confirm) | **next** |
 | U4 | Packaging (`driverdna ui` ships built assets), token unification | pending |
 
 ### Data on record
@@ -51,16 +51,21 @@ laps and two API keys, not on code.
 
 Immediate, no blockers, recommended order:
 
-1. **U2 — make findings actionable.** Annotate a finding (acknowledged /
-   intentional) so it drops out of priority framing while the measurement
-   stays; a config panel to retune thresholds through `ConfigStore`
-   (propose/apply/revert, with `config_history` as an audit view). Backend
-   already built and tested. Extends the parity crawler to the new figures.
-2. **U3 — the chat view.** Wire `ChatSession` into the UI. Fully built and
-   mock-tested underneath; only *runs live* with an Anthropic key.
-3. **U4 — packaging & polish.** `driverdna ui` one-command launch, static HTML
+1. **U3 — the chat view.** Wire `ChatSession` into the UI: SSE progress states,
+   validated-only rendering, the read-only tool-call audit, and the
+   staged/confirm flow. Fully built and mock-tested underneath; only *runs
+   live* with an Anthropic key, so it can be built and tested now but not
+   enjoyed until the key exists.
+2. **U4 — packaging & polish.** `driverdna ui` one-command launch, static HTML
    report templates migrated onto `ui/tokens.json` so both surfaces share one
    look (report determinism tests stay green through the restyle).
+
+Done since the last snapshot: **U2 — findings are now actionable.** Annotate a
+finding (acknowledged / intentional) so it drops out of priority framing while
+the measurement stays, reversible; a config panel retunes thresholds through
+`ConfigStore` (propose → confirm → apply, with `config_history` as an audit
+view and revert). All writes wrap the audited paths; the parity crawler now
+covers the config view too.
 
 Floating / key-gated:
 

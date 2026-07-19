@@ -218,6 +218,16 @@ def create_app(db_path: Path, config_path: Path) -> FastAPI:
                           "measurement itself is kept",
             }
 
+    @app.delete("/api/findings/{finding_id}/annotate")
+    def clear_annotation(finding_id: str) -> dict[str, Any]:
+        """Undo an annotation — driver sovereignty cuts both ways. The finding
+        returns to normal framing; no measurement was ever touched."""
+        with open_db() as db:
+            if finding_id not in db.annotations():
+                raise HTTPException(404, detail=f"no annotation on {finding_id}")
+            db.clear_annotation(finding_id)
+            return {"cleared": finding_id}
+
     @app.post("/api/config/propose")
     def config_propose(body: ProposeBody) -> dict[str, Any]:
         with open_db() as db:
@@ -240,6 +250,20 @@ def create_app(db_path: Path, config_path: Path) -> FastAPI:
                 raise HTTPException(422, detail=str(e)) from None
             row = db.conn.execute(
                 "SELECT * FROM config_history WHERE change_pk=?", (change_pk,)
+            ).fetchone()
+            return dict(row)
+
+    @app.post("/api/config/revert/{change_pk}")
+    def config_revert(change_pk: int) -> dict[str, Any]:
+        """Revert a recorded change (applies its old value back as a new,
+        audited change) — the reversibility the philosophy requires."""
+        with open_db() as db:
+            try:
+                new_pk = ConfigStore(config_path, db).revert(change_pk)
+            except KeyError as e:
+                raise HTTPException(404, detail=str(e)) from None
+            row = db.conn.execute(
+                "SELECT * FROM config_history WHERE change_pk=?", (new_pk,)
             ).fetchone()
             return dict(row)
 
