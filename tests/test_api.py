@@ -63,8 +63,10 @@ def test_track_trace_downsampled(env):
 
 def test_laps_listing(env):
     laps = env["client"].get(f"/api/laps?cohort={SPA_SLUG}").json()
-    assert len(laps) == 4
-    assert all(lap["session_key"] == "gr86-spa-race-1" for lap in laps)
+    assert len(laps) == 8
+    assert {lap["session_key"] for lap in laps} == {
+        "gr86-spa-race-1", "gr86-spa-session-2"
+    }
     assert all(lap["raw_retained"] for lap in laps)
     assert any(f["code"] == "clipped_pedal" for f in laps[0]["quality_flags"])
 
@@ -75,7 +77,7 @@ def test_metric_distribution_mirrors_db(env):
     )
     assert r.status_code == 200
     body = r.json()
-    assert body["n"] == 4 and len(body["values"]) == 4
+    assert body["n"] == len(body["values"]) >= 8
     with Database.open(env["db_path"]) as db:
         assert body["values"] == db.self_metric_history(
             driver="owner", car="GR86", track="Spa-Francorchamps",

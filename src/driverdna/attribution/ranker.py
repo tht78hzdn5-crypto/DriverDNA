@@ -330,6 +330,9 @@ def cumulative_loss(
             by_class[cls] = by_class.get(cls, 0.0) + loss
     return {
         "per_corner": per_corner,
+        "per_corner_total": {
+            cid: float(sum(phases.values())) for cid, phases in per_corner.items()
+        },
         "by_phase": by_phase,
         "by_class": by_class,
         "outliers_screened": outlier_counts,

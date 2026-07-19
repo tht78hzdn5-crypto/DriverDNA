@@ -94,3 +94,70 @@ throttle_under = 12
 brake_over = 0
 brake_under = 305
 gear0_samples = 137
+
+# Session 2 (owner-confirmed: a different session from the race). Same
+# derivation rules as above: lap_time_s = rows/60, dirty counts locked.
+
+[[fixtures]]
+file = "Garage_61_WC6PRT.csv"
+lap_id = "WC6PRT"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-2"
+lap_time_s = 178.1167
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 3
+throttle_under = 14
+brake_over = 1
+brake_under = 323
+gear0_samples = 129
+
+[[fixtures]]
+file = "Garage_61_WN30FK.csv"
+lap_id = "WN30FK"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-2"
+lap_time_s = 176.1500
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 4
+throttle_under = 16
+brake_over = 0
+brake_under = 397
+gear0_samples = 141
+
+[[fixtures]]
+file = "Garage_61_5HAH7B.csv"
+lap_id = "5HAH7B"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-2"
+lap_time_s = 174.3333
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 5
+throttle_under = 11
+brake_over = 0
+brake_under = 446
+gear0_samples = 122
+
+[[fixtures]]
+file = "Garage_61_ZE3WQQ.csv"
+lap_id = "ZE3WQQ"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-2"
+lap_time_s = 176.2000
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 5
+throttle_under = 18
+brake_over = 1
+brake_under = 377
+gear0_samples = 97

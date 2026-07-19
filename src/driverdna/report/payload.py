@@ -128,6 +128,12 @@ def build_cohort_payload(
             "driver": driver, "car": car, "track": track,
             "n_laps": len(laps), "n_sessions": len(sessions),
             "lap_durations_s": [round(float(r["duration_s"]), 4) for r in laps],
+            # Deltas computed here, not in any renderer: the UI renders what
+            # the engine computed, it never derives a new number.
+            "lap_delta_s": [
+                round(float(r["duration_s"]) - min(float(x["duration_s"]) for x in laps), 4)
+                for r in laps
+            ] if laps else [],
         },
         "quality": {"flag_counts": flag_counts, "n_laps_flagged": sum(
             1 for r in laps if json.loads(r["quality_flags"])
