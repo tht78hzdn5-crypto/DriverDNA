@@ -489,8 +489,11 @@ versioned and reversible.
 
 ## Out of scope for v1
 
-Hosted sync, interactive UI or server, blended overall score, cross-car claims in
-reports, slip/vision inference, automatic AI refresh, non-Garage61 sources.
+Hosted sync, blended overall score, cross-car claims in reports, slip/vision
+inference, automatic AI refresh, non-Garage61 sources. The local UI layer is
+specified separately in **docs/UI-SPEC.md** (owner-adopted 2026-07-19), which
+amends this document; this spec remains authoritative for the engine, and the
+UI renders what the engine computed — it never computes a measurement.
 
 ## Setup and build order
 

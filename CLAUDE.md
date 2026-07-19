@@ -87,6 +87,18 @@ from the real fixtures and reviewed.
 
 Update this section as milestones complete.
 
+## UI layer (docs/UI-SPEC.md)
+
+- The UI spec (owner-adopted) governs the FastAPI + React SPA served by
+  `driverdna ui`. Binding rule: the UI renders what the engine computed and
+  never computes a measurement — every on-screen number must exist in the
+  JSON payload or a DB read endpoint (render-parity test, kept green).
+- Milestone order U0 (API) → U1 (read views) → U2 (writes) → U3 (chat) →
+  U4 (packaging/tokens); per the UI spec, the build starts only after the
+  engine's blind acceptance test has run (owner may amend this gate).
+- Node is a build-time dependency only; the built SPA ships in the package
+  static dir; API tests never require node. Localhost only; fully offline.
+
 ## Commands
 
 - Install: `python3 -m pip install -e ".[dev]"`
