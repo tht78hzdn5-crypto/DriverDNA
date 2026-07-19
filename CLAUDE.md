@@ -31,7 +31,9 @@ constitution wins over convenience.
 M0a (contract lock) → M1 (parse/segment/identify/classify) → M2
 (metrics/detectors/persistence) → M3 (attribution/ranking) → M4 (reports +
 one-shot coach) → M5 (interactive chat) → M6 (Driver Model — deterministic,
-versioned scoring; the constitution's center of gravity, additive over M1–M5).
+versioned scoring; the constitution's center of gravity, additive over M1–M5)
+→ M7 (Coaching Intelligence — grounded coaching ontology; docs/COACHING.md,
+design stage).
 
 M0b (Garage61 API probe) floats: it requires `GARAGE61_TOKEN` and gates only the
 `sync` feature — but no code may assume API behavior before M0b documents it.

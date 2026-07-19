@@ -60,7 +60,13 @@ Immediate, no blockers, recommended order:
    gain) stay gated until there are lap dates and multi-track/car breadth, which
    we don't have yet — the per-fundamental scores work now; the "knows the
    driver not the track" headline earns out with data.
-1. **U3 — the chat view.** Wire `ChatSession` into the UI: SSE progress states,
+1. **M7 — Coaching Intelligence (design stage, `docs/COACHING.md`).** A grounded
+   coaching ontology layered over the Driver Model: `technique → driving
+   principle → coaching principle`, with deterministic eligibility + ranking so
+   the AI *selects and phrases* coaching within a fixed vocabulary instead of
+   improvising it. Sequenced after M6; a detector-level subset is groundable on
+   today's engine. Spec is written and awaiting owner reaction — not yet built.
+2. **U3 — the chat view.** Wire `ChatSession` into the UI: SSE progress states,
    validated-only rendering, the read-only tool-call audit, and the
    staged/confirm flow. Fully built and mock-tested underneath; only *runs
    live* with an Anthropic key, so it can be built and tested now but not

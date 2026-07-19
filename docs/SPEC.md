@@ -563,8 +563,11 @@ computed — it never computes a measurement.
 - Fixtures: the two telemetry CSVs belong in `tests/fixtures/` (owner-supplied);
   M0a cannot run without them.
 - Build order is strict within the dependency chain: **M0a → M1 → M2 → M3 → M4 →
-  M5 → M6**; do not begin a milestone until the prior milestone's done-criteria
-  pass. M6 (Driver Model) reads M1–M5's persisted rows and is additive.
+  M5 → M6 → M7**; do not begin a milestone until the prior milestone's
+  done-criteria pass. M6 (Driver Model) reads M1–M5's persisted rows and is
+  additive. M7 (Coaching Intelligence — grounded coaching ontology over the
+  Driver Model) is specified in **docs/COACHING.md**; it is design-for-review,
+  not yet built.
   **M0b floats**: it requires `GARAGE61_TOKEN`, gates only the `sync` feature, and
   must complete before any code assumes API behavior. The Spa blind test (gate 1)
   runs when the owner's Spa lap set is supplied; it is the final trust gate, not a
