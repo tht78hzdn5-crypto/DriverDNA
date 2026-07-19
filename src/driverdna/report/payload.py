@@ -37,6 +37,13 @@ UNAVAILABLE_FUNDAMENTALS = (
 )
 
 
+def cohort_slug(car: str, track: str) -> str:
+    """URL/file-safe cohort identifier, shared by report filenames and the API."""
+    import re
+
+    return re.sub(r"[^A-Za-z0-9]+", "-", f"{car}-{track}").strip("-").lower()
+
+
 def list_cohorts(db: Database) -> list[dict[str, str]]:
     rows = db.conn.execute(
         """SELECT DISTINCT driver, car, track FROM laps WHERE role='self'

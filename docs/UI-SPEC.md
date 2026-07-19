@@ -82,3 +82,8 @@ Authentication and multi-user, hosted deployment, mobile app, editing measuremen
 ## Setup notes
 
 Lives at `docs/UI-SPEC.md`; add the amendment reference in `docs/SPEC.md` and a UI section to `CLAUDE.md` build rules (node at build time only; `npm run build` emits into the package static dir; API tests never require node). Build order U0 → U4 after the engine's blind acceptance test has been run — rendering an unvalidated instrument beautifully is polish in the wrong place.
+
+**Owner amendment (2026-07-19):** U0 and U1 proceed ahead of the blind
+acceptance test, accepting the risk stated above (owner's explicit call, for
+momentum). U2–U4 keep the original gate: revisit when reached — either the
+blind test has run by then, or the owner decides again, recorded here.

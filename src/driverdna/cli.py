@@ -180,6 +180,37 @@ def coach(
 
 
 @app.command()
+def ui(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    config_path: Path = typer.Option(
+        Path("driverdna.toml"), "--config", help="TOML config file."
+    ),
+    port: int = typer.Option(8710, help="Port on 127.0.0.1."),
+) -> None:
+    """Serve the local cockpit (API + built SPA) on 127.0.0.1."""
+    try:
+        import uvicorn
+        from fastapi.staticfiles import StaticFiles
+
+        from driverdna.ui.api import create_app
+    except ModuleNotFoundError:
+        typer.echo(
+            "error: the UI extra is not installed — run "
+            "`python3 -m pip install -e '.[ui]'`"
+        )
+        raise typer.Exit(code=2) from None
+
+    application = create_app(db_path, config_path)
+    static_dir = Path(__file__).parent / "ui" / "static"
+    if static_dir.exists():
+        application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
+    else:
+        typer.echo("note: no built SPA found (ui/static missing) — serving API only")
+    typer.echo(f"DriverDNA cockpit: http://127.0.0.1:{port}")
+    uvicorn.run(application, host="127.0.0.1", port=port, log_level="warning")
+
+
+@app.command()
 def chat(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
     cohort: str = typer.Option(
