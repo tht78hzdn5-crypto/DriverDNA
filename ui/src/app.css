@@ -1,0 +1,97 @@
+/* Styles derive from tokens.json via CSS custom properties (main.jsx).
+   Dark timing-screen world, committed (UI-SPEC design language). */
+
+* { box-sizing: border-box; }
+html { background: var(--base); }
+body {
+  margin: 0; background: var(--base); color: var(--text);
+  font-family: var(--sans); line-height: 1.45; font-size: 15px;
+}
+#root { max-width: 64rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+.eyebrow {
+  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--dim); margin: 0 0 0.55rem;
+}
+
+.topbar {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 1rem; padding: 0.4rem 0 1rem; flex-wrap: wrap;
+}
+.topbar .brand { font-weight: 600; letter-spacing: 0.02em; color: var(--text); }
+.topbar nav { display: flex; gap: 0.9rem; font-size: 0.82rem; }
+
+.grid { display: flex; flex-direction: column; gap: 1.1rem; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 3px; padding: 0.9rem 1rem 1rem;
+}
+h1 { font-size: 1.05rem; margin: 0 0 0.2rem; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 0.92rem; margin: 0 0 0.5rem; font-weight: 600; }
+.sub { color: var(--dim); font-size: 0.8rem; }
+
+.chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.chip {
+  font-size: 0.68rem; color: var(--dim); border: 1px solid var(--line);
+  border-radius: 2px; padding: 0.12rem 0.45rem; background: var(--raised);
+}
+
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+.scroll-x { overflow-x: auto; }
+th, td { border-top: 1px solid var(--line); padding: 0.4rem 0.5rem; text-align: left; }
+th {
+  border-top: 0; color: var(--dim); font-weight: 500; font-size: 0.68rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+td.right, th.right { text-align: right; }
+
+/* Source sections: identity is structural, never a verdict color (rule 2). */
+.source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
+.source-section.vs-self { border-left-style: solid; }
+.source-section.vs-principle { border-left-style: dashed; }
+.source-section.vs-reference { border-left-style: dotted; }
+.src-tag {
+  font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.05rem 0.35rem; margin-right: 0.5rem;
+}
+
+.finding { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem 0.55rem; }
+.finding:first-of-type { border-top: 0; }
+.finding .head { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
+.finding .desc { font-size: 0.86rem; }
+.finding .val { font-size: 0.95rem; white-space: nowrap; }
+.finding .meta { color: var(--dim); font-size: 0.74rem; margin-top: 0.15rem; }
+.finding.suppressed .desc, .finding.suppressed .val { color: var(--dim); }
+.reason { color: var(--dim); font-size: 0.74rem; }
+.reason::before { content: "▸ "; color: var(--warn); }
+
+.gauge .lbl { display: flex; justify-content: space-between; color: var(--dim); font-size: 0.68rem; margin-bottom: 0.2rem; }
+.track { height: 4px; background: var(--raised); border-radius: 2px; overflow: hidden; }
+.fill { height: 100%; background: var(--warn); }
+
+.lossrow { display: grid; grid-template-columns: 6rem 1fr 3.8rem; gap: 0.7rem; align-items: center; padding: 0.22rem 0; }
+.lossrow .bar { height: 8px; background: var(--raised); border-radius: 2px; overflow: hidden; }
+.lossrow .bar i { display: block; height: 100%; background: #46566B; }
+.lossrow.max .bar i { background: var(--warn); }
+.lossrow .k { font-size: 0.8rem; color: var(--dim); }
+.lossrow .v { text-align: right; font-size: 0.8rem; }
+
+.lap-best { color: var(--best); }
+.flag { color: var(--bad); }
+
+.trackmap { width: 100%; height: auto; }
+.trackmap .outline { fill: none; stroke: var(--line); stroke-width: 1.6; stroke-linejoin: round; }
+.trackmap .marker { fill: var(--raised); stroke: var(--dim); stroke-width: 0.5; }
+.trackmap .marker.hot { fill: var(--warn); stroke: var(--warn); }
+.trackmap text { fill: var(--dim); font-family: var(--mono); font-size: 3.2px; }
+
+.cardlist { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.card { border: 1px solid var(--line); background: var(--raised); border-radius: 2px; padding: 0.6rem 0.7rem; }
+.error { border-left: 3px solid var(--bad); padding-left: 0.8rem; color: var(--dim); font-size: 0.85rem; }
