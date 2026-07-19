@@ -72,8 +72,15 @@ def import_cmd(
         for job in jobs:
             path = job.pop("path")
             result = import_lap_file(db, path, config=config, **job)
-            if not result.was_new:
+            if result.status == "exists":
                 typer.echo(f"{path.name}: already imported, skipped")
+                continue
+            if result.status == "duplicate":
+                typer.echo(
+                    f"{path.name}: DUPLICATE of already-imported lap "
+                    f"{result.lap_pk} (identical telemetry) — skipped, not "
+                    "double-counted"
+                )
                 continue
             matched = sum(1 for a in result.assigned if a)
             line = f"{path.name}: lap {result.lap_pk}, corners {matched}/{len(result.assigned)} matched"

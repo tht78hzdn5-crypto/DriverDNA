@@ -4,11 +4,20 @@ Builds laps directly as arrays (bypassing the CSV parser, which has its own
 tests) so segmentation tests can shape exact speed/brake/steering profiles.
 """
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
 
 from driverdna.ingest.parser import TelemetryLap
+
+
+def _content_marker(src: str) -> float:
+    """A deterministic, imperceptible per-lap value so two synthetic laps with
+    different source names are never byte-identical — mirroring real 60 Hz
+    laps (which never are) so content-dedup doesn't collapse distinct test
+    laps. Written into vert_accel, which no metric/detector/attribution reads."""
+    return int(hashlib.md5(src.encode()).hexdigest(), 16) % 100_000 * 1e-9
 
 
 def ramp(a: np.ndarray, i0: int, i1: int, v0: float, v1: float) -> None:
@@ -51,7 +60,7 @@ def make_lap(
         drs_active=np.zeros(n, dtype=np.bool_),
         lat_accel=zeros.copy(),
         long_accel=zeros.copy(),
-        vert_accel=np.full(n, 9.8),
+        vert_accel=np.full(n, 9.8 + _content_marker(src)),
         yaw=zeros.copy(),
         yaw_rate=zeros.copy(),
         position_type=np.full(n, 3, dtype=np.int64),

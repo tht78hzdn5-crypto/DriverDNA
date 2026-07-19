@@ -11,7 +11,7 @@ Confirmed absent (locked): fuel, weather, lap-validity, and stint/run channels.
 
 - Role: `self` · lap ID `RH11X7` (filename carries the lap ID only; identity is manifest-anchored)
 - Rows: 5836 → 97.2667 s at 60 Hz vs known lap time 97.268 s (Δ 1.3 ms)
-- `LapDistPct` wraps: 1 (single-lap file)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
 - Speed: 17.46–57.71 m/s (peak 207.8 km/h)
 - GPS mean: 36.584, -121.754 (expected ≈ 36.58, -121.75)
 - Steering |max|: 2.345 rad (radians confirmed)
@@ -25,7 +25,7 @@ Confirmed absent (locked): fuel, weather, lap-validity, and stint/run channels.
 
 - Role: `self` · lap ID `HKWPXX` (filename carries the lap ID only; identity is manifest-anchored)
 - Rows: 10275 → 171.2500 s at 60 Hz vs known lap time 171.250 s (Δ 0.0 ms)
-- `LapDistPct` wraps: 1 (single-lap file)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
 - Speed: 14.40–54.88 m/s (peak 197.6 km/h)
 - GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
 - Steering |max|: 2.622 rad (radians confirmed)
@@ -34,3 +34,143 @@ Confirmed absent (locked): fuel, weather, lap-validity, and stint/run channels.
 - Clutch distinct values: ['1'] (uninformative, build nothing on it)
 - ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
 - PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_W5JRZB.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `W5JRZB` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10357 → 172.6167 s at 60 Hz vs known lap time 172.617 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 15.17–53.36 m/s (peak 192.1 km/h)
+- GPS mean: 50.436, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 3.014 rad (radians confirmed)
+- Pedal excursions — throttle >1: 5, <0: 13; brake >1: 1, <0: 99 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 139 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_K56YRV.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `K56YRV` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10479 → 174.6500 s at 60 Hz vs known lap time 174.650 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 12.87–53.79 m/s (peak 193.6 km/h)
+- GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.788 rad (radians confirmed)
+- Pedal excursions — throttle >1: 6, <0: 17; brake >1: 2, <0: 182 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 131 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_VHC6M4.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `VHC6M4` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10492 → 174.8667 s at 60 Hz vs known lap time 174.867 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 15.34–53.59 m/s (peak 192.9 km/h)
+- GPS mean: 50.436, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.804 rad (radians confirmed)
+- Pedal excursions — throttle >1: 3, <0: 12; brake >1: 0, <0: 305 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 137 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_WC6PRT.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `WC6PRT` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10687 → 178.1167 s at 60 Hz vs known lap time 178.117 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 14.59–53.12 m/s (peak 191.2 km/h)
+- GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.822 rad (radians confirmed)
+- Pedal excursions — throttle >1: 3, <0: 14; brake >1: 1, <0: 323 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 129 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_WN30FK.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `WN30FK` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10569 → 176.1500 s at 60 Hz vs known lap time 176.150 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 14.49–53.69 m/s (peak 193.3 km/h)
+- GPS mean: 50.436, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.848 rad (radians confirmed)
+- Pedal excursions — throttle >1: 4, <0: 16; brake >1: 0, <0: 397 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 141 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_5HAH7B.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `5HAH7B` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10460 → 174.3333 s at 60 Hz vs known lap time 174.333 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 17.48–54.06 m/s (peak 194.6 km/h)
+- GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.525 rad (radians confirmed)
+- Pedal excursions — throttle >1: 5, <0: 11; brake >1: 0, <0: 446 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 122 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_ZE3WQQ.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `ZE3WQQ` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10572 → 176.2000 s at 60 Hz vs known lap time 176.200 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 12.83–53.58 m/s (peak 192.9 km/h)
+- GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.738 rad (radians confirmed)
+- Pedal excursions — throttle >1: 5, <0: 18; brake >1: 1, <0: 377 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 97 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_B3M5ZW.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `B3M5ZW` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 11202 → 186.7000 s at 60 Hz vs known lap time 186.700 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 0, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 12.60–51.37 m/s (peak 184.9 km/h)
+- GPS mean: 50.436, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 4.414 rad (radians confirmed)
+- Pedal excursions — throttle >1: 4, <0: 10; brake >1: 0, <0: 32 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 115 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_59384F.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `59384F` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10841 → 180.6833 s at 60 Hz vs known lap time 180.683 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 0, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 5.89–54.02 m/s (peak 194.5 km/h)
+- GPS mean: 50.435, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 7.468 rad (radians confirmed)
+- Pedal excursions — throttle >1: 6, <0: 9; brake >1: 1, <0: 239 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 77 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3'] (constant; stored, not depended on)
+
+## Garage_61_5ZBWTZ.csv — GR86 @ Spa-Francorchamps
+
+- Role: `self` · lap ID `5ZBWTZ` (filename carries the lap ID only; identity is manifest-anchored)
+- Rows: 10529 → 175.4833 s at 60 Hz vs known lap time 175.483 s (Δ 0.0 ms)
+- `LapDistPct` wraps: 1, coverage 1.000 (single complete lap: 0 or 1 wrap, full coverage)
+- Speed: 13.39–54.38 m/s (peak 195.8 km/h)
+- GPS mean: 50.436, 5.969 (expected ≈ 50.44, 5.97)
+- Steering |max|: 2.757 rad (radians confirmed)
+- Pedal excursions — throttle >1: 3, <0: 13; brake >1: 0, <0: 94 (parser clips to [0,1], quality-flagged)
+- Gear-0 samples: 143 (excluded from corner detection)
+- Clutch distinct values: ['1'] (uninformative, build nothing on it)
+- ABSActive values: ['false', 'true'] · DRSActive values: ['false'] (string booleans)
+- PositionType values: ['3', '4'] (constant; stored, not depended on)

@@ -49,7 +49,9 @@ def test_cohorts_and_corners(env):
     cohorts = env["client"].get("/api/cohorts").json()
     assert {c["slug"] for c in cohorts} == {SPA_SLUG, "mustang-laguna-seca"}
     corners = env["client"].get(f"/api/cohorts/{SPA_SLUG}/corners").json()
-    assert len(corners) == 14
+    # 14 frozen from the first lap + corners admitted from later laps'
+    # consistently-unmatched observations (surfaced, never silent).
+    assert len(corners) >= 14
     assert corners[0]["corner_id"] == "C01" and corners[0]["class"] == "slow"
     assert all("lat" in c and "windows" in c for c in corners)
 
@@ -63,9 +65,9 @@ def test_track_trace_downsampled(env):
 
 def test_laps_listing(env):
     laps = env["client"].get(f"/api/laps?cohort={SPA_SLUG}").json()
-    assert len(laps) == 8
+    assert len(laps) == 11
     assert {lap["session_key"] for lap in laps} == {
-        "gr86-spa-race-1", "gr86-spa-session-2"
+        "gr86-spa-race-1", "gr86-spa-session-2", "gr86-spa-session-3"
     }
     assert all(lap["raw_retained"] for lap in laps)
     assert any(f["code"] == "clipped_pedal" for f in laps[0]["quality_flags"])

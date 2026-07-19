@@ -27,8 +27,8 @@ def test_migrations_apply_fully(db):
 
 def test_lap_blob_round_trip(db):
     lap = one_corner_lap()
-    lap_pk, was_new = db.import_lap(lap, **COHORT)
-    assert was_new
+    lap_pk, status = db.import_lap(lap, **COHORT)
+    assert status == "imported"
     arrays = db.load_lap_arrays(lap_pk)
     assert np.array_equal(arrays["speed"], lap.speed)
     assert np.array_equal(arrays["gear"], lap.gear)
@@ -38,10 +38,25 @@ def test_lap_blob_round_trip(db):
 
 def test_reimport_same_source_is_noop(db):
     lap = one_corner_lap()
-    pk1, new1 = db.import_lap(lap, **COHORT)
-    pk2, new2 = db.import_lap(lap, **COHORT)
-    assert (pk1, new1, pk2, new2) == (pk1, True, pk1, False)
+    pk1, s1 = db.import_lap(lap, **COHORT)
+    pk2, s2 = db.import_lap(lap, **COHORT)
+    assert (pk1, s1, pk2, s2) == (pk1, "imported", pk1, "exists")
     assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
+
+
+def test_content_duplicate_under_different_filename_is_rejected(db):
+    # A re-download (identical telemetry, different filename, even a different
+    # claimed session) must not be stored — it would double-count in history.
+    original = track_lap(src="lap_A.csv")
+    pk1, s1 = db.import_lap(original, **COHORT, session_key="s1")
+    redownload = track_lap(src="lap_A.csv")  # identical content...
+    redownload.source_path = Path("lap_A_2.csv")  # ...under a re-download name
+    pk2, s2 = db.import_lap(redownload, **COHORT, session_key="s2")
+    assert s1 == "imported" and s2 == "duplicate" and pk2 == pk1
+    assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
+    # A genuinely different lap is still admitted.
+    _, s3 = db.import_lap(track_lap(windows=[(700, 900)], src="lap_B.csv"), **COHORT)
+    assert s3 == "imported"
 
 
 def test_retention_evicts_blobs_only_and_preserves_history(db):

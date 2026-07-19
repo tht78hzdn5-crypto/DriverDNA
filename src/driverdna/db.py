@@ -21,6 +21,7 @@ so the caller surfaces the map change. Nothing changes the map silently.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import math
@@ -163,7 +164,26 @@ MIGRATIONS: tuple[str, ...] = (
         effects TEXT
     );
     """,
+    # 002 — content fingerprint so a re-download under a different filename
+    # can't silently double-count a lap in self history.
+    """
+    ALTER TABLE laps ADD COLUMN content_hash TEXT;
+    CREATE INDEX idx_laps_content_hash ON laps(content_hash);
+    """,
 )
+
+
+def _content_hash(lap: TelemetryLap) -> str:
+    """Deterministic fingerprint of a lap's telemetry content.
+
+    Hashes the normalized sample channels (not the file bytes), so the same
+    lap re-exported or re-downloaded — different filename, whitespace, or BOM
+    — fingerprints identically, while a genuinely different lap does not.
+    """
+    h = hashlib.sha1()
+    for channel in _BLOB_CHANNELS:
+        h.update(np.ascontiguousarray(getattr(lap, channel)).tobytes())
+    return h.hexdigest()
 
 
 def _lap_blob(lap: TelemetryLap) -> bytes:
@@ -244,17 +264,32 @@ class Database:
         role: str = "self",
         session_key: str | None = None,
         imported_at: str | None = None,
-    ) -> tuple[int, bool]:
-        """Store lap row + raw blob. Returns (lap_pk, was_new).
+    ) -> tuple[int, str]:
+        """Store lap row + raw blob. Returns (lap_pk, status).
 
-        Re-importing the same source file is a no-op returning the existing
-        row — nothing is silently overwritten.
+        status is one of:
+          "imported"  — a new lap was stored.
+          "exists"    — this exact source file was already imported (no-op).
+          "duplicate" — the telemetry is byte-identical to an already-stored
+                        lap under a different filename (e.g. a re-download);
+                        NOT stored, so it can't double-count in self history.
+
+        Nothing is silently overwritten or silently merged; the caller
+        surfaces "exists"/"duplicate" to the driver.
         """
         existing = self.conn.execute(
             "SELECT lap_pk FROM laps WHERE source_file = ?", (str(lap.source_path),)
         ).fetchone()
         if existing:
-            return int(existing["lap_pk"]), False
+            return int(existing["lap_pk"]), "exists"
+
+        content_hash = _content_hash(lap)
+        dup = self.conn.execute(
+            "SELECT lap_pk FROM laps WHERE content_hash = ?", (content_hash,)
+        ).fetchone()
+        if dup:
+            return int(dup["lap_pk"]), "duplicate"
+
         flags = json.dumps(
             [{"code": str(f.code), "detail": f.detail} for f in lap.quality_flags],
             sort_keys=True,
@@ -263,11 +298,12 @@ class Database:
             cur = self.conn.execute(
                 """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
                                      session_key, n_samples, duration_s, imported_at,
-                                     quality_flags)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                     quality_flags, content_hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     lap.lap_id, str(lap.source_path), driver, car, track, role,
                     session_key, lap.n_samples, lap.duration_s, imported_at, flags,
+                    content_hash,
                 ),
             )
             lap_pk = int(cur.lastrowid)
@@ -275,7 +311,7 @@ class Database:
                 "INSERT INTO lap_samples (lap_pk, fmt, data) VALUES (?, 'npz-v1', ?)",
                 (lap_pk, _lap_blob(lap)),
             )
-        return lap_pk, True
+        return lap_pk, "imported"
 
     def load_lap_arrays(self, lap_pk: int) -> dict[str, np.ndarray] | None:
         row = self.conn.execute(

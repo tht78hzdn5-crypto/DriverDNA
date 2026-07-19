@@ -92,8 +92,12 @@ VertAccel, Yaw, YawRate, PositionType`.
 - **60 Hz, no time column.** `elapsed_time_s = sample_index / 60`. Verified exact:
   rows÷60 matched the known lap time to 1.3 ms (Mustang) and 0.0 ms (Spa).
   50 Hz is ruled out.
-- **One lap per file, single `LapDistPct` wrap** (0→1, one wrap). Do not assume
-  multi-lap files; assert single-wrap and quality-flag any violation.
+- **One lap per file.** `LapDistPct` runs 0→1 across a single lap; it wraps at
+  the start/finish line **0 or 1 times** depending on where the file boundary
+  falls (a line-to-line sample never wraps; one starting just past the line
+  wraps once — see amendment A12). Two or more wraps means a multi-lap file
+  (`unexpected_wrap_count`); coverage well short of a full lap means a partial
+  lap (`incomplete_lap`). Both are quality-flagged, not silently used.
 - **Units:** Speed m/s (peaks ~208 / ~198 km/h; ×3.6 for km/h).
   `SteeringWheelAngle` radians → convert to degrees. Accelerations m/s². `YawRate`
   rad/s.
@@ -135,8 +139,8 @@ directly downstream):
 - **`Gear == 0`** appears (53 Mustang / 155 Spa samples), i.e. neutral/standing-
   start stretches. The segmenter ignores gear-0 spans rather than treating them as
   corner data.
-- **`PositionType`** is a constant (3) in both fixtures; store it, don't depend on
-  it.
+- **`PositionType`** is a small integer enum (3 in most laps; a later Spa lap also
+  shows 4 — see A13). Store it, don't depend on it.
 
 ## Architecture
 
@@ -545,3 +549,16 @@ Accepted at owner plan review; rationale recorded in the review:
   downloads are `Garage_61_<LAPID>.csv`, lap ID only. Lap-time anchoring moved to
   `tests/fixtures/manifest.toml`; import-path cohort metadata is user-supplied;
   fixture identities verified from data (GPS + duration).
+- **A12** (2026-07-19, more laps supplied): the "single wrap" rule was too narrow.
+  A single complete lap wraps **0 or 1 times** — a file sampled exactly
+  start/finish-line to line runs 0.000→1.000 monotonically and never wraps. The
+  real invariants are *single lap* (≤1 wrap; 2+ → `unexpected_wrap_count`) and
+  *complete* (unwrapped coverage ≳ 0.97; less → `incomplete_lap`). Both new
+  guards are quality-flagged, nothing silently repaired. Also widened: steering
+  is radians but can exceed 2π at slow hairpins (road-car wheel past a full
+  turn), so the "is radians" bound is ~2 turns, not < 2π.
+- **A13** (2026-07-19): `PositionType` is not constant — a later Spa lap shows 4
+  alongside the usual 3. It remains store-don't-depend; the lock is now a small
+  integer enum, not a fixed value. Separately, import now rejects **content
+  duplicates** (a lap re-downloaded under a different filename fingerprints
+  identically and is skipped, never double-counted) — surfaced, not silent.

@@ -36,7 +36,8 @@ class FlagCode(StrEnum):
     MISSING_CHANNEL = "missing_channel"
     MALFORMED_VALUES = "malformed_values"
     CLIPPED_PEDAL = "clipped_pedal"
-    UNEXPECTED_WRAP_COUNT = "unexpected_wrap_count"
+    UNEXPECTED_WRAP_COUNT = "unexpected_wrap_count"  # 2+ wraps: a multi-lap file
+    INCOMPLETE_LAP = "incomplete_lap"  # single lap, but covers < a full lap
     METADATA_FAILURE = "metadata_failure"
     INFERRED_UNITS = "inferred_units"
 
@@ -53,9 +54,16 @@ class ParseError(ValueError):
 
 _FILENAME_RE = re.compile(r"Garage_61_([A-Za-z0-9]+)\.csv$")
 
-# A LapDistPct drop larger than this between consecutive samples is the
-# start/finish wrap; a well-formed single-lap export has exactly one.
+# A LapDistPct drop larger than this between consecutive samples is a
+# start/finish crossing. A single lap has 0 or 1 crossings depending on where
+# the file boundary falls relative to the line (a line-to-line sample wraps
+# zero times; a sample starting just past the line wraps once); 2+ means a
+# multi-lap file.
 _WRAP_DROP = 0.5
+
+# A complete lap's unwrapped distance spans very nearly the whole [0, 1]. Less
+# coverage than this means a partial lap, flagged rather than silently used.
+_MIN_LAP_COVERAGE = 0.97
 
 
 @dataclass
@@ -197,9 +205,14 @@ def parse_lap(path: Path) -> TelemetryLap:
         flags.append(QualityFlag(FlagCode.MALFORMED_VALUES, {"counts": malformed}))
 
     lap_dist, wrap_count = _unwrap(lap_dist_pct)
-    if wrap_count != 1:
+    if wrap_count >= 2:
         flags.append(
             QualityFlag(FlagCode.UNEXPECTED_WRAP_COUNT, {"observed": wrap_count})
+        )
+    coverage = float(np.nanmax(lap_dist) - np.nanmin(lap_dist)) if n else 0.0
+    if coverage < _MIN_LAP_COVERAGE:
+        flags.append(
+            QualityFlag(FlagCode.INCOMPLETE_LAP, {"coverage": round(coverage, 4)})
         )
 
     clip_counts = {

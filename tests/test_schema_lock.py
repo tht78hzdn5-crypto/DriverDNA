@@ -56,8 +56,13 @@ def test_60hz_duration_matches_manifest_lap_time(entry):
 
 
 @parametrized
-def test_single_lapdistpct_wrap(entry):
-    assert facts_for(entry["file"]).wrap_count == 1
+def test_single_complete_lap(entry):
+    # A single lap wraps 0 or 1 times (depending where the file boundary
+    # falls relative to the start/finish line) and covers a full lap; 2+
+    # wraps would mean a multi-lap file.
+    facts = facts_for(entry["file"])
+    assert facts.wrap_count in (0, 1), f"{facts.wrap_count} wraps — multi-lap file?"
+    assert facts.lap_coverage > 0.97, f"coverage {facts.lap_coverage:.3f} — partial lap?"
 
 
 @parametrized
@@ -78,8 +83,11 @@ def test_gps_matches_known_track(entry):
 
 @parametrized
 def test_steering_is_radians(entry):
-    # A degrees channel would exceed 2π by an order of magnitude at full lock.
-    assert facts_for(entry["file"]).steering_abs_max < 2 * math.pi
+    # Road-car wheels turn past a full rotation at slow hairpins (the GR86
+    # reaches ~7.5 rad ≈ 428° at Spa), so radians can exceed 2π; the bound is
+    # ~2 turns of wheel angle. A degrees channel would read in the hundreds —
+    # an order of magnitude above this, so the check still catches a unit slip.
+    assert facts_for(entry["file"]).steering_abs_max < 4 * math.pi
 
 
 @parametrized
@@ -109,5 +117,9 @@ def test_clutch_pinned_uninformative(entry):
 
 
 @parametrized
-def test_position_type_constant(entry):
-    assert facts_for(entry["file"]).position_type_values == ("3",)
+def test_position_type_small_enum(entry):
+    # PositionType is a small integer enum we store but never depend on
+    # (docs/SPEC.md). Mostly 3; 5ZBWTZ also shows 4. Lock it as a small enum
+    # so corruption or a unit change still fails, without pinning a constant.
+    values = facts_for(entry["file"]).position_type_values
+    assert all(v.isdigit() and 0 <= int(v) <= 7 for v in values), values

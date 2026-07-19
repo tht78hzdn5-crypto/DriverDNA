@@ -83,6 +83,7 @@ class LapFileFacts:
     n_rows: int
     duration_s: float
     wrap_count: int
+    lap_coverage: float  # unwrapped distance span; ~1.0 for a complete lap
     speed_min: float
     speed_max: float
     lat_mean: float
@@ -134,12 +135,21 @@ def collect_facts(path: Path) -> LapFileFacts:
     brake = floats("Brake")
     gear_i = idx["Gear"]
 
+    # Unwrap start/finish crossings into a continuous coordinate to measure
+    # how much of a full lap the file actually covers.
+    unwrapped, shift = [], 0.0
+    for i, v in enumerate(ldp):
+        if i and ldp[i] < ldp[i - 1] - _WRAP_DROP:
+            shift += 1.0
+        unwrapped.append(v + shift)
+
     return LapFileFacts(
         path=path,
         header=header,
         n_rows=n,
         duration_s=n / SAMPLE_RATE_HZ,
         wrap_count=sum(1 for i in range(1, n) if ldp[i] < ldp[i - 1] - _WRAP_DROP),
+        lap_coverage=max(unwrapped) - min(unwrapped),
         speed_min=min(speed),
         speed_max=max(speed),
         lat_mean=sum(lat) / n,
@@ -194,7 +204,9 @@ def build_schema_report(fixtures_dir: Path) -> str:
             f"- Rows: {facts.n_rows} → {facts.duration_s:.4f} s at "
             f"{SAMPLE_RATE_HZ} Hz vs known lap time {entry['lap_time_s']:.3f} s "
             f"(Δ {dur_err_ms:.1f} ms)",
-            f"- `LapDistPct` wraps: {facts.wrap_count} (single-lap file)",
+            f"- `LapDistPct` wraps: {facts.wrap_count}, coverage "
+            f"{facts.lap_coverage:.3f} (single complete lap: 0 or 1 wrap, "
+            "full coverage)",
             f"- Speed: {facts.speed_min:.2f}–{facts.speed_max:.2f} m/s "
             f"(peak {facts.speed_max * 3.6:.1f} km/h)",
             f"- GPS mean: {facts.lat_mean:.3f}, {facts.lon_mean:.3f} "

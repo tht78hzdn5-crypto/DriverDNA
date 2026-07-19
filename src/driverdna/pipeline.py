@@ -43,11 +43,15 @@ def phase_windows_from_stored(stored: dict) -> PhaseWindows:
 @dataclass
 class ImportResult:
     lap_pk: int
-    was_new: bool
+    status: str  # "imported" | "exists" | "duplicate"
     assigned: list[str | None] = field(default_factory=list)
     admitted: list[str] = field(default_factory=list)  # corners added to the map
     class_changes: list[tuple[str, str, str]] = field(default_factory=list)
     # ^ (corner_id, old_class, new_class) — surfaced, never silent
+
+    @property
+    def was_new(self) -> bool:
+        return self.status == "imported"
 
 
 def import_lap_file(
@@ -63,12 +67,12 @@ def import_lap_file(
     config: DriverDNAConfig,
 ) -> ImportResult:
     lap = parse_lap(path)
-    lap_pk, was_new = db.import_lap(
+    lap_pk, status = db.import_lap(
         lap, driver=driver, car=car, track=track, role=role,
         session_key=session_key, imported_at=imported_at,
     )
-    if not was_new:
-        return ImportResult(lap_pk=lap_pk, was_new=False)
+    if status != "imported":
+        return ImportResult(lap_pk=lap_pk, status=status)
 
     spans = segment_lap(lap, config)
     loaded = db.load_corner_map(car=car, track=track)
@@ -121,7 +125,7 @@ def import_lap_file(
     class_changes = _reclassify(db, driver=driver, car=car, track=track, config=config)
     return ImportResult(
         lap_pk=lap_pk,
-        was_new=True,
+        status="imported",
         assigned=assigned,
         admitted=admitted,
         class_changes=class_changes,

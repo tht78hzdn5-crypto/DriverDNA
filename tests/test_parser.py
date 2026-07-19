@@ -82,12 +82,14 @@ def test_fixture_pedals_clipped_and_flagged(entry):
 @parametrized
 def test_fixture_units_and_types(entry):
     lap = parse_lap(FIXTURES_DIR / entry["file"])
-    # Steering converted to degrees: fixture peaks are ~134deg / ~150deg.
-    assert 90 < float(np.abs(lap.steering_deg).max()) < 200
+    # Steering converted to degrees: peaks range from ~150° up to ~430° at
+    # slow hairpins (road-car wheel past a full turn). If radians hadn't been
+    # converted the max would be single digits, failing the lower bound.
+    assert 90 < float(np.abs(lap.steering_deg).max()) < 720
     assert lap.abs_active.dtype == np.bool_ and lap.drs_active.dtype == np.bool_
     assert not lap.drs_active.any()
     assert lap.gear.dtype == np.int64
-    assert set(np.unique(lap.position_type)) == {3}
+    assert set(np.unique(lap.position_type)) <= {1, 2, 3, 4, 5}
 
 
 @parametrized
@@ -138,14 +140,31 @@ def test_missing_channel_flagged_not_fatal(tmp_path):
     assert lap.flag(FlagCode.MALFORMED_VALUES) is None
 
 
-def test_zero_wraps_flagged(tmp_path):
+def test_line_to_line_lap_is_clean(tmp_path):
+    # A complete lap sampled exactly start/finish-line to line: 0 wraps, full
+    # coverage. This is not a defect — it must parse clean (no wrap/coverage
+    # flag), only the clip flag the synthetic pedals earn.
     def mutate(cols):
         n = len(cols["LapDistPct"])
-        cols["LapDistPct"] = [f"{v:.6f}" for v in np.linspace(0.0, 0.98, n)]
+        cols["LapDistPct"] = [f"{v:.6f}" for v in np.linspace(0.0, 1.0, n)]
 
-    lap = parse_lap(write_csv(tmp_path / "Garage_61_NOWRAP.csv", mutate=mutate))
-    flag = lap.flag(FlagCode.UNEXPECTED_WRAP_COUNT)
-    assert flag is not None and flag.detail["observed"] == 0
+    lap = parse_lap(write_csv(tmp_path / "Garage_61_LINE2LINE.csv", mutate=mutate))
+    assert lap.flag(FlagCode.UNEXPECTED_WRAP_COUNT) is None
+    assert lap.flag(FlagCode.INCOMPLETE_LAP) is None
+    assert float(lap.lap_dist[0]) == 0.0 and float(lap.lap_dist[-1]) == 1.0
+
+
+def test_partial_lap_flagged_incomplete(tmp_path):
+    # A file covering only part of a lap (0 wraps but short span) must be
+    # flagged, not silently accepted as complete.
+    def mutate(cols):
+        n = len(cols["LapDistPct"])
+        cols["LapDistPct"] = [f"{v:.6f}" for v in np.linspace(0.25, 0.72, n)]
+
+    lap = parse_lap(write_csv(tmp_path / "Garage_61_PARTIAL.csv", mutate=mutate))
+    flag = lap.flag(FlagCode.INCOMPLETE_LAP)
+    assert flag is not None and flag.detail["coverage"] < 0.5
+    assert lap.flag(FlagCode.UNEXPECTED_WRAP_COUNT) is None
 
 
 def test_multi_wrap_flagged_and_unwrapped(tmp_path):

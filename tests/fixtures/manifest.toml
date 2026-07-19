@@ -161,3 +161,62 @@ throttle_under = 18
 brake_over = 1
 brake_under = 377
 gear0_samples = 97
+
+# "Not fresh" laps (owner's words) — a distinct, slower capture, sampled
+# exactly start/finish-line to line so LapDistPct runs 0.000->1.000 with ZERO
+# wraps (the earlier fixtures start just past the line and wrap once). Both
+# forms are a single complete lap; contract amended A12. Own session key.
+
+[[fixtures]]
+file = "Garage_61_B3M5ZW.csv"
+lap_id = "B3M5ZW"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-3"
+lap_time_s = 186.7000
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 4
+throttle_under = 10
+brake_over = 0
+brake_under = 32
+gear0_samples = 115
+
+[[fixtures]]
+file = "Garage_61_59384F.csv"
+lap_id = "59384F"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-3"
+lap_time_s = 180.6833
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 6
+throttle_under = 9
+brake_over = 1
+brake_under = 239
+gear0_samples = 77
+
+# Another genuine Spa lap (verified distinct from every existing fixture by
+# telemetry content, not just filename). Grouped with session-3 as a
+# best-effort reconstruction — filenames carry no session; correct here if
+# known. NB: a re-download of VHC6M4 arrived alongside this and was rejected
+# by content-dedup, never added.
+
+[[fixtures]]
+file = "Garage_61_5ZBWTZ.csv"
+lap_id = "5ZBWTZ"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-session-3"
+lap_time_s = 175.4833
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 3
+throttle_under = 13
+brake_over = 0
+brake_under = 94
+gear0_samples = 143
