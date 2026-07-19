@@ -62,7 +62,10 @@ def build_corners_report(fixtures_dir: Path, config: DriverDNAConfig) -> str:
         laps_with_spans: list[tuple[TelemetryLap, list[CornerSpan]]] = [
             (lap, segment_lap(lap, config)) for lap in cohort.laps
         ]
-        corner_map = build_corner_map(laps_with_spans, config.identity)
+        # Mirror the pipeline: the map freezes from the FIRST lap; every lap
+        # (including the first) is then matched against it. Unmatched
+        # observations are candidates and are counted below, never hidden.
+        corner_map = build_corner_map(laps_with_spans[:1], config.identity)
 
         min_speeds: dict[str, list[float]] = {c.corner_id: [] for c in corner_map.corners}
         apex_counts: dict[str, int] = {c.corner_id: 0 for c in corner_map.corners}

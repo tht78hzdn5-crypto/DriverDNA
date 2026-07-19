@@ -14,10 +14,11 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 def test_report_contains_both_cohorts_and_ids():
     text = build_corners_report(FIXTURES_DIR, DriverDNAConfig())
     assert "Mustang @ Laguna Seca" in text
-    assert "GR86 @ Spa-Francorchamps" in text
+    assert "GR86 @ Spa-Francorchamps — 4 laps" in text
     assert "C01" in text and "C10" in text and "C14" in text
-    # Complete self-match: no unmatched observations, no unknown rows.
-    assert "Unmatched" not in text and "??" not in text
+    # The map freezes from the first lap; messier race laps legitimately
+    # produce unmatched candidate observations, which are surfaced.
+    assert "Unmatched corner observations:" in text
 
 
 def test_report_is_deterministic():

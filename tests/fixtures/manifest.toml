@@ -32,6 +32,7 @@ lap_id = "HKWPXX"
 role = "self"
 car = "GR86"
 track = "Spa-Francorchamps"
+session = "gr86-spa-race-1"
 lap_time_s = 171.250
 expected_lat = 50.44
 expected_lon = 5.97
@@ -40,3 +41,56 @@ throttle_under = 14
 brake_over = 1
 brake_under = 143
 gear0_samples = 155
+
+# The three laps below are from the same race as HKWPXX (one session, owner-
+# confirmed). Their lap_time_s is rows/60 — no independent source exists
+# (filenames carry only the lap ID), so the 60 Hz check is identity-anchored
+# by the two original fixtures and these lock regression, not discovery.
+
+[[fixtures]]
+file = "Garage_61_W5JRZB.csv"
+lap_id = "W5JRZB"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-race-1"
+lap_time_s = 172.6167
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 5
+throttle_under = 13
+brake_over = 1
+brake_under = 99
+gear0_samples = 139
+
+[[fixtures]]
+file = "Garage_61_K56YRV.csv"
+lap_id = "K56YRV"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-race-1"
+lap_time_s = 174.6500
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 6
+throttle_under = 17
+brake_over = 2
+brake_under = 182
+gear0_samples = 131
+
+[[fixtures]]
+file = "Garage_61_VHC6M4.csv"
+lap_id = "VHC6M4"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "gr86-spa-race-1"
+lap_time_s = 174.8667
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 3
+throttle_under = 12
+brake_over = 0
+brake_under = 305
+gear0_samples = 137

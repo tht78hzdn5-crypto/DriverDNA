@@ -22,10 +22,12 @@ def test_import_fixtures_and_render_metrics(tmp_path):
     assert "10/10 matched" in result.output  # Laguna
     assert "14/14 matched" in result.output  # Spa
 
-    # Re-import is a no-op, loudly.
+    # Re-import is a no-op, loudly — one skip line per manifest fixture.
+    from driverdna.ingest.contract import load_fixture_manifest
+
     result = runner.invoke(app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
     assert result.exit_code == 0
-    assert result.output.count("skipped") == 2
+    assert result.output.count("skipped") == len(load_fixture_manifest(FIXTURES_DIR))
 
     out = tmp_path / "metrics.md"
     result = runner.invoke(

@@ -55,6 +55,7 @@ def import_cmd(
                 "car": e["car"],
                 "track": e["track"],
                 "role": e["role"],
+                "session_key": e.get("session"),
             }
             for e in load_fixture_manifest(directory)
         ]

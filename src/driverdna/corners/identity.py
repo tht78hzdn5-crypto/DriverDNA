@@ -59,10 +59,9 @@ class CornerMap:
 
     corners: tuple[CornerIdentity, ...]
 
-    def match_span(
+    def _match_scored(
         self, lap: TelemetryLap, span: CornerSpan, cfg: IdentityConfig
-    ) -> str | None:
-        """Best identity for one observed corner, or None if nothing is near."""
+    ) -> tuple[str | None, float]:
         best_id: str | None = None
         best_score = math.inf
         for identity in self.corners:
@@ -77,12 +76,35 @@ class CornerMap:
                     within, score = d <= cfg.dist_pct_fallback_radius, d * 1e6
                 if within and score < best_score:
                     best_id, best_score = identity.corner_id, score
-        return best_id
+        return best_id, best_score
+
+    def match_span(
+        self, lap: TelemetryLap, span: CornerSpan, cfg: IdentityConfig
+    ) -> str | None:
+        """Best identity for one observed corner, or None if nothing is near."""
+        return self._match_scored(lap, span, cfg)[0]
 
     def match_lap(
         self, lap: TelemetryLap, spans: list[CornerSpan], cfg: IdentityConfig
     ) -> list[str | None]:
-        return [self.match_span(lap, span, cfg) for span in spans]
+        """Match every span, resolving duplicates within the lap.
+
+        On messy laps a long complex can segment into two spans whose apexes
+        both sit near one identity; only the nearest keeps the ID — the other
+        becomes unmatched (a candidate), never a double-counted observation
+        of the same corner.
+        """
+        scored = [self._match_scored(lap, span, cfg) for span in spans]
+        best_for: dict[str, float] = {}
+        for corner_id, score in scored:
+            if corner_id is not None and score < best_for.get(corner_id, math.inf):
+                best_for[corner_id] = score
+        return [
+            corner_id
+            if corner_id is not None and score == best_for[corner_id]
+            else None
+            for corner_id, score in scored
+        ]
 
 
 def build_corner_map(

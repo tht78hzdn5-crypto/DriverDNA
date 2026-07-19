@@ -109,3 +109,24 @@ def test_fixture_self_match_is_complete_and_ordered(filename, n_corners):
     assert len(corner_map.corners) == n_corners
     ids = corner_map.match_lap(lap, spans, CONFIG.identity)
     assert ids == [f"C{i + 1:02d}" for i in range(n_corners)]
+
+
+def test_real_race_laps_match_the_frozen_map():
+    """Cross-lap identity on real data: the map frozen from the best lap
+    must match the messier race laps well, never assign one identity twice
+    in a lap, and leave genuine drift unmatched rather than forcing it."""
+    best = parse_lap(FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    corner_map = build_corner_map(
+        [(best, segment_lap(best, CONFIG))], CONFIG.identity
+    )
+    for filename in ("Garage_61_W5JRZB.csv", "Garage_61_K56YRV.csv",
+                     "Garage_61_VHC6M4.csv"):
+        lap = parse_lap(FIXTURES_DIR / filename)
+        spans = segment_lap(lap, CONFIG)
+        ids = corner_map.match_lap(lap, spans, CONFIG.identity)
+        matched = [i for i in ids if i is not None]
+        assert len(matched) >= 11, f"{filename}: only {len(matched)} matched"
+        assert len(matched) == len(set(matched)), (
+            f"{filename}: an identity was assigned to two spans"
+        )
+        assert matched == sorted(matched), f"{filename}: IDs out of track order"
