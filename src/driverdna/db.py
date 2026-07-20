@@ -170,6 +170,30 @@ MIGRATIONS: tuple[str, ...] = (
     ALTER TABLE laps ADD COLUMN content_hash TEXT;
     CREATE INDEX idx_laps_content_hash ON laps(content_hash);
     """,
+    # 003 — Driver Model (M6): the belief store, plus a real lap_date column
+    # distinct from imported_at (bookkeeping: when WE stored it) for trend,
+    # which needs when the lap was actually DRIVEN. lap_date is unpopulated
+    # until sync or a user-supplied import date exists (SPEC.md M6); trend
+    # reads "unavailable" until then — the column exists now so nothing needs
+    # a rewrite when that ingestion path lands.
+    """
+    ALTER TABLE laps ADD COLUMN lap_date TEXT;
+    CREATE TABLE driver_beliefs (
+        belief_pk INTEGER PRIMARY KEY,
+        driver TEXT NOT NULL,
+        fundamental TEXT NOT NULL,
+        signal_status TEXT NOT NULL CHECK (signal_status IN ('measured','proxy','no_signal')),
+        score REAL,
+        confidence REAL NOT NULL,
+        evidence_count INTEGER NOT NULL,
+        trend TEXT NOT NULL CHECK (trend IN ('improving','stable','declining','unavailable')),
+        insufficient_reason TEXT,
+        scoring_model_version TEXT NOT NULL,
+        taxonomy_version TEXT NOT NULL,
+        computed_at TEXT,
+        UNIQUE (driver, fundamental, scoring_model_version)
+    );
+    """,
 )
 
 
@@ -785,3 +809,111 @@ class Database:
                 (key, old_value, new_value, source, note),
             )
         return int(cur.lastrowid)
+
+    # --- driver model (M6) ---------------------------------------------------
+
+    def store_belief(
+        self, *, driver: str, fundamental: str, signal_status: str,
+        score: float | None, confidence: float, evidence_count: int, trend: str,
+        insufficient_reason: str | None, scoring_model_version: str,
+        taxonomy_version: str, computed_at: str | None = None,
+    ) -> int:
+        """Upsert the current belief for (driver, fundamental, model version).
+
+        Recomputation always replaces the prior row for the same model
+        version — beliefs are a live, recomputed-at-import projection of the
+        evidence, not an append-only history. A version bump leaves the OLD
+        version's row alone (still queryable) and creates a new one.
+        """
+        with self.conn:
+            cur = self.conn.execute(
+                """INSERT INTO driver_beliefs
+                   (driver, fundamental, signal_status, score, confidence,
+                    evidence_count, trend, insufficient_reason,
+                    scoring_model_version, taxonomy_version, computed_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (driver, fundamental, scoring_model_version)
+                   DO UPDATE SET
+                       signal_status=excluded.signal_status,
+                       score=excluded.score,
+                       confidence=excluded.confidence,
+                       evidence_count=excluded.evidence_count,
+                       trend=excluded.trend,
+                       insufficient_reason=excluded.insufficient_reason,
+                       taxonomy_version=excluded.taxonomy_version,
+                       computed_at=excluded.computed_at""",
+                (driver, fundamental, signal_status, score, confidence,
+                 evidence_count, trend, insufficient_reason,
+                 scoring_model_version, taxonomy_version, computed_at),
+            )
+        row = self.conn.execute(
+            """SELECT belief_pk FROM driver_beliefs
+               WHERE driver=? AND fundamental=? AND scoring_model_version=?""",
+            (driver, fundamental, scoring_model_version),
+        ).fetchone()
+        return int(row["belief_pk"])
+
+    def load_beliefs(
+        self, *, driver: str, scoring_model_version: str
+    ) -> dict[str, dict[str, Any]]:
+        """{fundamental: belief dict} for one driver at one model version."""
+        rows = self.conn.execute(
+            """SELECT * FROM driver_beliefs
+               WHERE driver=? AND scoring_model_version=?
+               ORDER BY fundamental""",
+            (driver, scoring_model_version),
+        ).fetchall()
+        return {r["fundamental"]: dict(r) for r in rows}
+
+    def driver_session_count(self, driver: str) -> int:
+        row = self.conn.execute(
+            """SELECT COUNT(DISTINCT session_key) n FROM laps
+               WHERE role='self' AND driver=? AND session_key IS NOT NULL""",
+            (driver,),
+        ).fetchone()
+        return int(row["n"])
+
+    def fundamental_evidence_lap_count(
+        self, *, driver: str, metric_names: tuple[str, ...],
+        detector_names: tuple[str, ...],
+    ) -> int:
+        """Distinct self-role laps that contributed >=1 metric value or
+        detector result relevant to a fundamental's mapped techniques — the
+        driver-facing "how many of your laps taught me something" count.
+        Empty metric/detector sets (e.g. vision) return 0, honestly.
+        """
+        if not metric_names and not detector_names:
+            return 0
+        clauses, params = [], []
+        if metric_names:
+            placeholders = ",".join("?" * len(metric_names))
+            clauses.append(
+                f"""o.obs_pk IN (SELECT obs_pk FROM metric_values
+                     WHERE name IN ({placeholders}) AND value IS NOT NULL)"""
+            )
+            params.extend(metric_names)
+        if detector_names:
+            placeholders = ",".join("?" * len(detector_names))
+            clauses.append(
+                f"""o.obs_pk IN (SELECT obs_pk FROM detector_results
+                     WHERE detector IN ({placeholders}))"""
+            )
+            params.extend(detector_names)
+        row = self.conn.execute(
+            f"""SELECT COUNT(DISTINCT o.lap_pk) n FROM corner_observations o
+                JOIN laps l ON l.lap_pk = o.lap_pk
+                WHERE l.role='self' AND l.driver=? AND ({' OR '.join(clauses)})""",
+            [driver, *params],
+        ).fetchone()
+        return int(row["n"])
+
+    def driver_dated_lap_count(self, driver: str) -> int:
+        """Self-role laps with a real lap_date — the trend-availability
+        check. Always 0 today (no ingestion path sets lap_date yet); exists
+        so trend activates automatically once one does, per SPEC.md M6."""
+        row = self.conn.execute(
+            """SELECT COUNT(*) n FROM laps
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL""",
+            (driver,),
+        ).fetchone()
+        return int(row["n"])

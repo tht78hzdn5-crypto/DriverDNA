@@ -15,7 +15,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _Section(BaseModel):
@@ -288,6 +288,94 @@ class RetentionConfig(_Section):
     )
 
 
+class ModelConfig(_Section):
+    """Driver Model deterministic scoring (M6, model `dm-v1`).
+
+    A fundamental's score is a weighted aggregation of principle-adherence
+    rate, normalized vs-self opportunity, and consistency
+    (ARCHITECTURE_VISION.md's Scoring Contract; SPEC.md Milestone 6). When a
+    fundamental has no evidence for one of the three components (e.g.
+    vehicle_management has no detector, so it has no adherence component),
+    that component's weight redistributes across the components that do have
+    evidence — never a fabricated neutral value.
+    """
+
+    weight_adherence: float = Field(
+        default=0.40,
+        description="Score weight for principle-adherence rate (1 - detector "
+        "trigger rate) among the fundamental's mapped detectors.",
+    )
+    weight_opportunity: float = Field(
+        default=0.35,
+        description="Score weight for normalized vs-self opportunity (seconds "
+        "lost, from cumulative_loss, in the fundamental's mapped phases).",
+    )
+    weight_consistency: float = Field(
+        default=0.25,
+        description="Score weight for consistency (coefficient of variation "
+        "of the fundamental's metrics across laps).",
+    )
+    opportunity_ceiling_s: float = Field(
+        default=1.0,
+        description="Cumulative per-lap loss (seconds) in a fundamental's "
+        "mapped phases considered maximal (scores 0); scaled linearly from 0 "
+        "loss (scores 100) to this ceiling.",
+    )
+    consistency_cv_ceiling: float = Field(
+        default=0.5,
+        description="Coefficient of variation (std/|mean|, unitless — keeps "
+        "the consistency component comparable across metrics in different "
+        "units) considered maximally inconsistent (scores 0); scaled "
+        "linearly from CV 0 (scores 100) to this ceiling.",
+    )
+    min_evidence_for_score: int = Field(
+        default=5,
+        description="A measured/proxy fundamental needs at least this many "
+        "distinct contributing laps before it emits a numeric score; below "
+        "it, insufficient data — never a noisy score from a handful of laps.",
+    )
+    proxy_confidence_cap: float = Field(
+        default=0.5,
+        description="A proxy fundamental's confidence is capped here even "
+        "with abundant evidence — a weak, indirect signal stays labeled "
+        "low-confidence by construction, not just by data volume "
+        "(ARCHITECTURE_VISION.md: 'a weak proxy gets a low-confidence score "
+        "that says so').",
+    )
+    confidence_evidence_floor: int = Field(
+        default=50,
+        description="Distinct contributing laps at which the volume half of "
+        "confidence saturates (reaches 1.0).",
+    )
+    confidence_session_floor: int = Field(
+        default=6,
+        description="Distinct sessions at which the session-breadth third of "
+        "confidence's breadth half saturates.",
+    )
+    confidence_track_floor: int = Field(
+        default=3,
+        description="Distinct tracks at which the track-breadth third of "
+        "confidence's breadth half saturates.",
+    )
+    confidence_car_floor: int = Field(
+        default=2,
+        description="Distinct cars at which the car-breadth third of "
+        "confidence's breadth half saturates.",
+    )
+
+    @model_validator(mode="after")
+    def _weights_sum_to_one(self) -> "ModelConfig":
+        total = self.weight_adherence + self.weight_opportunity + self.weight_consistency
+        if abs(total - 1.0) > 1e-9:
+            raise ValueError(
+                f"model weights must sum to 1.0, got {total} "
+                f"(adherence={self.weight_adherence}, "
+                f"opportunity={self.weight_opportunity}, "
+                f"consistency={self.weight_consistency})"
+            )
+        return self
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -301,6 +389,7 @@ class DriverDNAConfig(_Section):
     gates: GatesConfig = Field(default_factory=GatesConfig)
     coach: CoachConfig = Field(default_factory=CoachConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
+    model: ModelConfig = Field(default_factory=ModelConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:

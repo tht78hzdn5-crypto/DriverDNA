@@ -71,7 +71,15 @@ These nine principles are binding on every design decision below.
    aggregation. Nothing aggregates across tracks except within a class, within a
    car.
 6. Cross-car technique claims are computed and stored but not reported in v1;
-   per-car reporting only, until sample size justifies more.
+   per-car reporting only, until sample size justifies more. (Clarified 2026-07-20:
+   this restricts the *finding* layer — a comparative claim like "your throttle
+   technique is better in car A than car B." It does not block M6's Driver Model,
+   which pools a driver's evidence across cohorts into one belief per fundamental
+   ("how good is this driver at braking, overall") — a generalization about the
+   driver, not a car-vs-car comparison. Breadth still gates confidence exactly as
+   this decision intends: a belief resting on one car reads with the confidence
+   that implies, never asserted as if it generalized further than the evidence
+   does.)
 7. AI coaching is on-demand only (`coach` for a generated plan, `chat` for
    interactive follow-up), provider-abstracted, Claude implementation. No automatic
    refresh (silent spend).
@@ -464,7 +472,10 @@ suppression and confirmation-gated config changes are tested end to end.
 The center of gravity the constitution (docs/ARCHITECTURE_VISION.md) names: a
 persistent, versioned belief store about the *driver*, fed by everything M1–M5
 already persist. Additive — it reads the permanent compact rows across all of a
-driver's cohorts; nothing in M0–M5 is rewritten.
+driver's cohorts; nothing in M0–M5 is rewritten. Pooling evidence across a
+driver's cohorts is the intentional generalization this milestone exists for —
+distinct from decision-of-record #6's restriction on car-vs-car comparative
+findings; see the clarification there.
 
 - **Taxonomy (versioned data).** A static `observable → technique → fundamental`
   map — the pyramid, made explicit. Every metric maps to exactly one place.
