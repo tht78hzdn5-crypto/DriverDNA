@@ -145,7 +145,10 @@ from the real fixtures and reviewed.
   laps are visible in listings but return `403 forbidden_lap` on
   detail/CSV — reference laps stay on the manual `import` path
   (SPEC.md decision-of-record #2, clarified).
-- **`sync` built (2026-07-20)** — `Garage61Client` (stdlib `urllib`, no new
+- **`sync` built and live-verified (2026-07-20)** — a real run against the
+  owner's account pulled 25 laps/25 cohorts with real metadata; two reruns
+  were fully idempotent (0 new); reference isolation held live
+  (every synced lap `role='self'`). `Garage61Client` (stdlib `urllib`, no new
   dependency) + `sync_driver` + `driverdna sync`. Cohort discovery via
   `/me/statistics`; every lap is self-filtered on `driver.id` before fetch,
   so reference laps structurally cannot enter through this path. Real API

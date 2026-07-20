@@ -12,11 +12,14 @@ UI through writes (U0–U2 + render-parity gate) is done, with U3 (chat view) th
 declared next UI-track milestone. M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
-documents observed behavior. **`sync` (self-lap ingest) is now built** on
-that observed behavior — `driverdna sync` — tested against a mocked
-transport only; not yet run against a live account. Reference laps stay on
-the manual `import` path per M0b's finding (other-drivers' laps return `403
-forbidden_lap`).
+documents observed behavior. **`sync` (self-lap ingest) is built and
+verified live (2026-07-20)**: a real `driverdna sync` run against the
+owner's account pulled 25 laps across 25 car/track cohorts, `lap_date` and
+`run_index` populated from real API metadata on every row, re-running
+sync twice more was fully idempotent (0 new laps, 25 total unchanged), and
+`driverdna report` ran clean on the API-sourced laps. Reference laps stay
+on the manual `import` path per M0b's finding (other-drivers' laps return
+`403 forbidden_lap`) — confirmed again live: every synced lap is `role='self'`.
 
 ## Verified counts (2026-07-20)
 
@@ -207,7 +210,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 
 | # | Decision | Why it matters | Current default |
 |---|---|---|---|
-| 1 | Run `driverdna sync` against the live account for the first time | `sync` is built (2026-07-20) and unit-tested against a mocked transport, but has not yet ingested a real lap — worth a first live run before relying on it. Reference-lap ingest stays manual regardless (M0b: `403 forbidden_lap` on other-drivers' laps) | Not yet run live |
+| 1 | Adopt `sync` as the primary ingest path going forward? | `sync` is built and live-verified (2026-07-20): 25 laps pulled, idempotent on rerun, real session/run/date metadata, reference isolation held. Manual `import` remains the fallback for reference laps regardless | Live-verified; not yet the default in any automation (still explicit `driverdna sync`) |
 | 2 | Provide `ANTHROPIC_API_KEY`? | Turns coach + chat from mock-tested to actually usable | Deferred; all tests mock it |
 | 3 | When to run the blind test? | It's only meaningful on data whose answer I don't already know | Deferred until independent data |
 | 4 | Session labels for manual imports | Filenames carry no session; grouping affects repeatability | Best-effort by upload batch, editable in the manifest |

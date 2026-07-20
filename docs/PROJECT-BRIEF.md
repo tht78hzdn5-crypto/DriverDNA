@@ -144,13 +144,14 @@ doc, not this one, as the number of record.
    never launders an unmeasured inference (no-signal fundamentals get a
    self-check, never a score). Sequenced after M6; a detector-level subset is
    groundable on today's engine.
-3. **`sync`: built (2026-07-20).** Self-lap ingest from the Garage61 API —
-   `Garage61Client` + `sync_driver` + `driverdna sync` — ends the
-   manual-upload loop for self laps. Reference laps stay manual-import
-   regardless (M0b found other-drivers' lap fetch returns `403
-   forbidden_lap`). Not yet exercised against a live account in this
-   session (no `GARAGE61_TOKEN` in the environment when it was built) — a
-   first real `driverdna sync` run is worth doing before relying on it.
+3. **`sync`: built and live-verified (2026-07-20).** Self-lap ingest from
+   the Garage61 API — `Garage61Client` + `sync_driver` + `driverdna sync` —
+   ends the manual-upload loop for self laps. A real run against the
+   owner's account pulled 25 laps across 25 cohorts with real session/run/
+   date metadata; a second and third run were fully idempotent (0 new,
+   25 total unchanged); every synced lap was `role='self'`, confirming
+   M0b's reference-lap finding live. Reference laps stay manual-import
+   regardless (M0b: other-drivers' lap fetch returns `403 forbidden_lap`).
 4. **`ANTHROPIC_API_KEY`** → first live coach/chat runs (all logic is
    mock-tested; live runs will shake out prompt/formatting realities).
 5. **The owner's independent Spa lap set** → the blind acceptance test. Note:
