@@ -60,7 +60,13 @@ These nine principles are binding on every design decision below.
    parser.
 2. Reference laps are in scope. Lap role is `self` or `reference`. Reference laps
    feed per-corner reference envelopes and gap analysis only — never the driver's
-   technique history, trends, or consistency statistics.
+   technique history, trends, or consistency statistics. Clarified 2026-07-20
+   (M0b observed behavior, `docs/garage61-api.md`): with the probed token/plan,
+   `sync` cannot fetch a lap it doesn't own (`403 forbidden_lap`), even though
+   such laps appear in unscoped `/laps` listings — so reference laps arrive via
+   the manual `import` path only, tagged `role=reference`, exactly as this
+   milestone's fallback already specified. `sync` for the driver's own laps is
+   unaffected.
 3. Every finding carries a source tag: `vs-principle` (canonical technique checks —
    catches uniform weaknesses), `vs-self` (faster-vs-slower × stability), or
    `vs-reference` (gap to faster drivers). Reported separately; never blended into
@@ -255,6 +261,17 @@ before any code is built on assumed API behavior.
 
 Done when the doc exists and API capabilities are enumerated from observed
 behavior.
+
+**M0b: done (2026-07-20).** Probed live against `https://garage61.net/api/v1`
+with a real token; observed evidence in `docs/garage61-api.md`. Auth, own-lap
+listing (track/car-scoped, `driver.id` self-filter), pagination, and single-lap
+CSV fetch all work, and the API CSV format matches the M0a-locked manual-export
+contract exactly (header, column order, units, dirty-data character). The one
+genuine unknown is resolved: other-drivers' laps are visible in listings but
+`403 forbidden_lap` on detail/CSV — reference laps stay on the `import` path
+(see decision-of-record #2's 2026-07-20 clarification above). Also discovered:
+the manual-download filename's `LAPID` is not the API's lap `id` (different ID
+schemes), so `sync` must never try to resolve one from the other.
 
 ## Milestone 1 — Parse, segment, identify, classify
 
@@ -741,3 +758,10 @@ Accepted at owner plan review; rationale recorded in the review:
   `signal_status` are independent axes (volume vs. conviction). See "Milestone
   7" above for the full build summary, including the flagged v1 CV-pooling
   limitation in `same_lap_twice`.
+- **A16** (2026-07-20, M0b run with a real `GARAGE61_TOKEN`): the reference-lap
+  fetch question is resolved from observed behavior, not assumption — other
+  drivers' laps are visible in `/laps` listings but return `403 forbidden_lap`
+  on detail/CSV fetch; own-account laps and the API's CSV format (byte-for-byte
+  contract match) work fully. Reference laps therefore use the manual `import`
+  path only (decision-of-record #2, clarified above); `sync` for self laps is
+  unblocked. Full evidence: `docs/garage61-api.md`.

@@ -144,9 +144,11 @@ doc, not this one, as the number of record.
    never launders an unmeasured inference (no-signal fundamentals get a
    self-check, never a score). Sequenced after M6; a detector-level subset is
    groundable on today's engine.
-3. **`GARAGE61_TOKEN`** → run M0b (API probe) then build `sync` from *observed*
-   behavior (`docs/garage61-api.md`). Nothing may assume API behavior before it.
-   Also ends the manual-upload loop — the biggest phone-first win.
+3. **`sync`** — M0b (API probe) is done (`docs/garage61-api.md`, 2026-07-20);
+   build `sync` for self-lap ingest from the observed behavior now that
+   nothing needs to be assumed. Ends the manual-upload loop for self laps —
+   the biggest phone-first win. Reference laps stay manual-import regardless
+   (M0b found other-drivers' lap fetch returns `403 forbidden_lap`).
 4. **`ANTHROPIC_API_KEY`** → first live coach/chat runs (all logic is
    mock-tested; live runs will shake out prompt/formatting realities).
 5. **The owner's independent Spa lap set** → the blind acceptance test. Note:
@@ -203,6 +205,30 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — M0b (Garage61 API probe) run and resolved; the reference-lap
+  fetch question answered.** With a real `GARAGE61_TOKEN`, `/laps` proved not
+  owner-scoped by default (a plain track/car query returns laps from many
+  drivers), but `/laps/{id}` and `/laps/{id}/csv` for a lap this token doesn't
+  own return `403 forbidden_lap`; own-account laps return `200` with a CSV
+  whose header/columns/units match the M0a-locked manual-download contract
+  exactly. Resolution, exactly as SPEC.md's Milestone 0b already anticipated
+  as the fallback: **reference laps stay on the manual `import` path,
+  `role=reference`; `sync` will not be able to pull other-drivers' laps with
+  this token/plan.** This refines decision-of-record #2 (reference laps in
+  scope, fed by `sync` or `import`) — the "fed by sync" half is now known
+  unavailable for the reference role specifically; self-lap `sync` is
+  unaffected. Not a nine-philosophy-point or out-of-scope-list change: #2 is a
+  decision of record, not a philosophy point, and the spec's own text already
+  named this exact contingency before probing — this entry confirms which
+  branch of that contingency is real, it doesn't introduce a new one. Also
+  discovered: the `Garage_61_<LAPID>.csv` filename code is a different ID
+  space from the API's lap `id` (a ULID) — no fixture lap id resolves via the
+  API, so the parity check verified CSV structure/units against a freshly
+  API-fetched own-account lap instead of a byte-exact fixture match. Full
+  observed evidence: `docs/garage61-api.md`. Network note: this session
+  reached `garage61.net` successfully — an earlier snapshot's belief that
+  network policy blocked it (see `docs/STATUS.md`, corrected in the same
+  edit as this entry) no longer holds, at least for this session.
 - **2026-07-20 — COACHING.md flipped to adopted; two load-bearing rules added.**
   (1) *Conviction where measured, silence/self-check where not*: a confidence
   value never launders an unmeasured inference — "Vision, 30% confident" is

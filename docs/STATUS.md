@@ -9,9 +9,11 @@ and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 
 **One line:** the deterministic engine (M0a–M7) is complete and verified; the
 UI through writes (U0–U2 + render-parity gate) is done, with U3 (chat view) the
-declared next UI-track milestone. `GARAGE61_TOKEN` is now in hand but this
-session's network policy blocks reaching `garage61.net`, so M0b (API probe,
-gates only `sync`) is blocked on network access, not on the token.
+declared next UI-track milestone. M0b (API probe) is now **done** — a later
+session's network policy did reach `garage61.net` successfully (an earlier
+snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
+documents observed behavior. `sync` for self laps is unblocked but not yet
+built; reference laps stay on the manual `import` path per M0b's finding.
 
 ## Verified counts (2026-07-20)
 
@@ -202,7 +204,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 
 | # | Decision | Why it matters | Current default |
 |---|---|---|---|
-| 1 | Provide `GARAGE61_TOKEN`? | Unblocks `sync` — automatic lap ingest, no manual uploads | Deferred; manual import works |
+| 1 | Build `sync` (M0b done, token provided 2026-07-20)? | Unblocks automatic self-lap ingest, no manual uploads. Reference-lap ingest stays manual regardless (M0b: `403 forbidden_lap` on other-drivers' laps) | Not yet built; manual import still the only ingest path |
 | 2 | Provide `ANTHROPIC_API_KEY`? | Turns coach + chat from mock-tested to actually usable | Deferred; all tests mock it |
 | 3 | When to run the blind test? | It's only meaningful on data whose answer I don't already know | Deferred until independent data |
 | 4 | Session labels for manual imports | Filenames carry no session; grouping affects repeatability | Best-effort by upload batch, editable in the manifest |

@@ -138,8 +138,14 @@ from the real fixtures and reviewed.
   required M6 outputs, always present (never dropped for convenience).
 - **Determinism verified mechanically**: two independent imports produce
   byte-identical Markdown/JSON/HTML reports.
-- **M0b: blocked** — waiting on `GARAGE61_TOKEN`. `sync` remains unbuilt by
-  design until the API probe documents real behavior.
+- **M0b: done (2026-07-20)** — probed the live API with a real
+  `GARAGE61_TOKEN`; `docs/garage61-api.md` generated from observed evidence.
+  Auth, own-lap listing/pagination, and CSV fetch work and match the M0a
+  contract exactly. The one genuine unknown is resolved: other-drivers'
+  laps are visible in listings but return `403 forbidden_lap` on
+  detail/CSV — reference laps stay on the manual `import` path
+  (SPEC.md decision-of-record #2, clarified). `sync` itself (self-lap
+  ingest) is unblocked but not yet built.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
 - Spa blind acceptance test blocked on the owner's GR86/Spa lap set (≥ 2 sessions).
