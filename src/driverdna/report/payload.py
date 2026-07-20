@@ -25,9 +25,11 @@ from driverdna.attribution.ranker import (
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.metrics.technique import METRIC_DEFS, summarize
+from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
+from driverdna.model.taxonomy import TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 1
+PAYLOAD_VERSION = 2  # +driver_model (M6)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -50,6 +52,41 @@ def list_cohorts(db: Database) -> list[dict[str, str]]:
            ORDER BY driver, car, track"""
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) -> dict[str, Any]:
+    """Per-fundamental beliefs (M6, dm-v1) — driver-level, pooled across ALL
+    of the driver's cohorts, so it is identical across every cohort payload
+    for the same driver (computed once here, reused by build_driver_payload
+    rather than recomputed per cohort).
+
+    Coach/chat get this "for free": it's just another dict of numbers in the
+    payload they already consume, checked by the same numeric-grounding
+    validator as findings (docs/SPEC.md, M6 "AI role" bullet — no new
+    validator code needed). AI may explain a score; it never adjusts one.
+    """
+    beliefs = compute_all_beliefs(db, driver=driver, config=config)
+    return {
+        "driver": driver,
+        "scoring_model_version": SCORING_MODEL_VERSION,
+        "taxonomy_version": TAXONOMY_VERSION,
+        "note": (
+            "model estimate, not a measurement of truth — confidence and "
+            "evidence count say how much to trust it; more laps (more "
+            "sessions, tracks, cars) sharpen it"
+        ),
+        "beliefs": {
+            fid: {
+                "signal_status": b.signal_status.value,
+                "score": b.score,
+                "confidence": b.confidence,
+                "evidence_count": b.evidence_count,
+                "trend": b.trend,
+                "insufficient_reason": b.insufficient_reason,
+            }
+            for fid, b in beliefs.items()
+        },
+    }
 
 
 def build_cohort_payload(
@@ -158,6 +195,7 @@ def build_cohort_payload(
                                      "by_class": {}, "outliers_screened": {}},
         "findings": finding_dicts,
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
+        "driver_model": driver_model_section(db, driver=driver, config=config),
         "caveats": caveats,
     }
 
@@ -201,6 +239,9 @@ def build_driver_payload(db: Database, config: DriverDNAConfig) -> dict[str, Any
         "payload_version": PAYLOAD_VERSION,
         "cohorts": [p["cohort"] for p in payloads],
         "cross_track_rollups": rollups,
+        # Driver-level, so identical across every cohort payload for the
+        # same driver — take it from the first rather than recompute.
+        "driver_model": payloads[0]["driver_model"] if payloads else None,
         "note": "cross-car claims are computed but never reported in v1",
     }
 

@@ -77,6 +77,28 @@ def test_driver_rollup_gates_single_track():
     assert page.startswith("<!DOCTYPE html>")
 
 
+def test_cohort_payload_carries_driver_model_beliefs():
+    from driverdna.model.taxonomy import FUNDAMENTALS, SignalStatus
+
+    with _build_db() as db:
+        payload = build_cohort_payload(db, **COHORT, config=CONFIG)
+    dm = payload["driver_model"]
+    assert dm["driver"] == "owner"
+    assert set(dm["beliefs"]) == set(FUNDAMENTALS)
+    vision = dm["beliefs"]["vision"]
+    assert vision["signal_status"] == SignalStatus.NO_SIGNAL.value
+    assert vision["score"] is None and "no telemetry channel" in vision["insufficient_reason"]
+    rotation = dm["beliefs"]["rotation"]
+    assert rotation["score"] is None or 0.0 <= rotation["score"] <= 100.0
+
+
+def test_driver_payload_reuses_cohort_driver_model_without_recomputing():
+    with _build_db() as db:
+        cohort_payload = build_cohort_payload(db, **COHORT, config=CONFIG)
+        driver_payload = build_driver_payload(db, CONFIG)
+    assert driver_payload["driver_model"] == cohort_payload["driver_model"]
+
+
 def test_report_cli_writes_all_formats(tmp_path):
     db_path = tmp_path / "r.db"
     runner = CliRunner()

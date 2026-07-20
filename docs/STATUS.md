@@ -7,11 +7,11 @@ amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
 and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
 
-**One line:** the deterministic engine (M0a–M5) and the UI through writes (U0–U2
-+ render-parity gate) are complete and verified; the Driver Model (M6) and
-Coaching Intelligence (M7) are the declared next milestones (M6 to build, M7
-design **adopted** 2026-07-20 but not yet built). Waiting on laps and two API
-keys, not on code.
+**One line:** the deterministic engine (M0a–M6) and the UI through writes (U0–U2
++ render-parity gate) are complete and verified; Coaching Intelligence (M7,
+design **adopted** 2026-07-20) is the declared next engine milestone to build,
+alongside U3 (chat view) on the UI track. Waiting on laps and two API keys, not
+on code.
 
 ## Verified counts (2026-07-20)
 
@@ -19,8 +19,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **357** (21 test files) | `python3 -m pytest` |
-| Commits on branch | **29** | `git rev-list --count HEAD` |
+| Tests passing | **365** (22 test files) | `python3 -m pytest` |
+| Commits on branch | **31** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **17 shown · 89 suppressed** (all suppressions state a reason) | same payload |
@@ -41,7 +41,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M3 | Attribution over canonical windows, robust baselines, ranker, gates | done |
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
-| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **in progress — M6a + M6b done** (taxonomy, belief store, `dm-v1` scoring model; payload/artifact/AI+UI surface M6c next) |
+| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **done** — taxonomy, belief store, `dm-v1` scoring, `driverdna model` artifact, wired into report/coach/chat payload |
 | M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **design adopted 2026-07-20**, not built |
 | M0b | Garage61 API probe + `sync` | **blocked on `GARAGE61_TOKEN`** |
 

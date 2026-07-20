@@ -2,7 +2,7 @@
 
 Commands arrive with their milestones (docs/SPEC.md):
   sync (M0b+) - import (M1) - corners (M1) - metrics (M2) - report (M4)
-  coach (M4) - chat (M5) - history (M4)
+  coach (M4) - chat (M5) - history (M4) - model (M6)
 """
 
 from pathlib import Path
@@ -110,6 +110,27 @@ def metrics(
         raise typer.Exit(code=2)
     with Database.open(db_path) as db:
         out.write_text(build_metrics_report(db))
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
+def model(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    out: Path = typer.Option(
+        Path("docs/driver-model-report.md"), help="Where to write the report."
+    ),
+) -> None:
+    """M6 debug artifact: recompute + persist beliefs, per-fundamental score table."""
+    from driverdna.config import load_config
+    from driverdna.db import Database
+    from driverdna.model.report import build_model_report
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    config = load_config()
+    with Database.open(db_path) as db:
+        out.write_text(build_model_report(db, config))
     typer.echo(f"wrote {out}")
 
 

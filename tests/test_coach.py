@@ -80,6 +80,23 @@ def test_payload_carries_report_and_history(db, payload):
     assert shown and evidence
 
 
+def test_driver_model_beliefs_are_citable_numbers_no_new_validator_needed(payload):
+    # SPEC.md M6: beliefs are grounded "by the existing numeric-grounding
+    # validator — a belief is just another payload number." Prove it: a
+    # belief's own score/confidence values must already be in the pool the
+    # unsupported-claims check validates prose against.
+    dm = payload["report"]["driver_model"]
+    scored = next(
+        b for b in dm["beliefs"].values() if b["score"] is not None
+    )
+    pool = number_pool(payload["report"])
+    assert scored["score"] in pool
+    assert scored["confidence"] in pool
+    # And an invented number that matches nothing (not even a belief) is
+    # still rejected, same as any other unsupported claim.
+    assert unsupported_claims("Vision is 42.7% confident.", pool)
+
+
 def test_valid_output_accepted_and_rendered(payload):
     output = validate_coach_output(json.dumps(_valid_output(payload)), payload["report"])
     md = render_plan_markdown(output, payload["report"]["cohort"])

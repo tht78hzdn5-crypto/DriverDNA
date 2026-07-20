@@ -105,8 +105,17 @@ from the real fixtures and reviewed.
   U-track.**
 - **Constitution adopted (2026-07-19)**: `docs/ARCHITECTURE_VISION.md` — the
   Driver Model is the product; scores are deterministic/versioned/
-  confidence-qualified (A14). **M6 (Driver Model) scoped and is the declared
-  next engine milestone.**
+  confidence-qualified (A14).
+- **M6 (Driver Model): built (2026-07-20)** — taxonomy (7 fundamentals, 17
+  techniques, measured/proxy/no_signal), `driver_beliefs` store, the `dm-v1`
+  scoring model (adherence/opportunity/consistency, weight-redistributed,
+  proxy-capped confidence), `driverdna model` artifact, and beliefs wired
+  into the report/coach/chat payload (`driver_model` section — cited through
+  the existing numeric-grounding validator, no new validator code). `trend`
+  is honestly "unavailable" today (no ingestion path sets `lap_date` yet).
+  Flagged, not silently accepted: `consistency`'s CV pools raw metric scale
+  across a driver's different cars/tracks with no per-cohort normalization —
+  see SPEC.md's M6 section, "Known v1 limitation."
 - **Coaching Intelligence (M7) design adopted (2026-07-20)**:
   `docs/COACHING.md` — grounded coaching ontology (technique → driving
   principle → coaching principle), deterministic eligibility/ranking/gap-band

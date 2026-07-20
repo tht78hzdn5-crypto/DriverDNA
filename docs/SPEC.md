@@ -495,8 +495,29 @@ findings; see the clarification there.
   timestamp) — the same evidence and version always yield the same beliefs. A
   version bump leaves past beliefs recomputable.
 - **Persistence.** A `driver_beliefs` table stores per (driver, fundamental) the
-  current score/confidence/evidence_count/trend + model version + timestamp,
-  recomputed at import.
+  current score/confidence/evidence_count/trend + model version + timestamp.
+  Implementation note (2026-07-20): belief computation is a pure read+compute
+  (`compute_all_beliefs`) that runs live wherever a payload is built (report,
+  coach, chat, the `/api/driver` and `/api/cohorts/{slug}/payload` endpoints) —
+  so numbers shown are always current, never stale, without depending on the
+  DB row being fresh. The `driver_beliefs` table is written explicitly (by
+  `driverdna model`, or a future API refresh action), not on every lap
+  import — recomputing after each import was considered and deliberately
+  deferred (it would add cost to every import for a value already computed
+  live on read); this can be revisited if a persisted history-over-time view
+  is wanted later.
+- **Known v1 limitation, flagged not silently accepted (2026-07-20).** The
+  `consistency` fundamental's coefficient of variation pools each metric's
+  *raw* magnitude across every one of a driver's cohorts (car × track), with
+  no per-cohort normalization first. Two cars with very different natural
+  scales for the same metric (e.g. corner speed) will inflate the pooled CV
+  beyond what either car alone would show — the score can read lower than a
+  single-car view would justify. Confidence is unaffected (it counts evidence
+  breadth honestly) but the score itself carries this caveat until a future
+  version normalizes per-cohort before pooling. Observed on the real fixtures
+  (GR86/Spa + Mustang/Laguna): `consistency` scored notably lower than
+  `braking`/`rotation`/`corner_exit`, which are single-phase and less exposed
+  to this effect.
 - **Gated longitudinal outputs.** Archetype (a deterministic pattern over the
   fundamentals) and any universal-pace-gain estimate stay "insufficient data"
   until enough breadth exists (≥ 2 tracks / ≥ 2 cars, as the existing gates
