@@ -22,6 +22,7 @@ from driverdna.attribution.ranker import (
     vs_reference_findings,
     vs_self_findings,
 )
+from driverdna.coaching.payload import coaching_section
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.metrics.technique import METRIC_DEFS, summarize
@@ -29,7 +30,7 @@ from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
 from driverdna.model.taxonomy import TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 2  # +driver_model (M6)
+PAYLOAD_VERSION = 3  # +coaching (M7)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -196,6 +197,7 @@ def build_cohort_payload(
         "findings": finding_dicts,
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
         "driver_model": driver_model_section(db, driver=driver, config=config),
+        "coaching": coaching_section(db, driver=driver, car=car, track=track, config=config),
         "caveats": caveats,
     }
 

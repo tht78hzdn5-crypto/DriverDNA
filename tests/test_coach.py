@@ -53,6 +53,17 @@ def _valid_output(payload):
                        "spread supports focusing on it first.",
             }
         ],
+        "coaching_priorities": [
+            {
+                "coaching_principle_id": "cp.eye_line.look_further",
+                "corner_id": None,
+                "expression": "Say out loud where you're looking the "
+                              "instant you turn in.",
+                "why": "coaching hypothesis, not a measurement — we can't "
+                       "see your eyes.",
+                "evidence_ids": [],
+            }
+        ],
         "coaching_plan": [
             {
                 "title": "Commit to one entry",
@@ -73,7 +84,7 @@ def _valid_output(payload):
 
 
 def test_payload_carries_report_and_history(db, payload):
-    assert payload["prompt_version"] == "coach-v1"
+    assert payload["prompt_version"] == "coach-v2"
     assert payload["report"]["cohort"]["n_laps"] == 12
     assert payload["focus_history"] == []
     shown, evidence = evidence_universe(payload["report"])
@@ -137,6 +148,43 @@ def test_hypothesis_without_confidence_rejected(payload):
     del output["hypotheses"][0]["confidence"]
     with pytest.raises(CoachValidationError, match="confidence"):
         validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_unknown_coaching_principle_rejected(payload):
+    output = _valid_output(payload)
+    output["coaching_priorities"][0]["coaching_principle_id"] = "cp.invented.not_real"
+    with pytest.raises(CoachValidationError, match="not eligible"):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_ineligible_coaching_principle_rejected(payload):
+    # A real ontology id that simply isn't in this cohort's eligible set
+    # (no detector/finding/CV cleared its gate here) must reject too - not
+    # just outright-invented ids.
+    output = _valid_output(payload)
+    output["coaching_priorities"][0]["coaching_principle_id"] = (
+        "cp.throttle_pickup.roll_it_on"
+    )
+    with pytest.raises(CoachValidationError, match="not eligible"):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_no_signal_confidence_language_rejected(payload):
+    # docs/COACHING.md: "a confidence value never launders an unmeasured
+    # inference" — a % anywhere near the no_signal self-check is a
+    # mechanical rejection, identical machinery to an unknown evidence ID.
+    output = _valid_output(payload)
+    output["coaching_priorities"][0]["why"] = "I'm about 30% confident here."
+    with pytest.raises(CoachValidationError, match="no_signal principle"):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_no_signal_principle_without_percentage_is_accepted(payload):
+    output = _valid_output(payload)
+    result = validate_coach_output(json.dumps(output), payload["report"])
+    assert result["coaching_priorities"][0]["coaching_principle_id"] == (
+        "cp.eye_line.look_further"
+    )
 
 
 def test_malformed_json_rejected(payload):

@@ -1,10 +1,17 @@
 # DriverDNA — Coaching Intelligence (COACHING.md) · M7 design
 
-Status: **design ADOPTED (owner decision, 2026-07-20) — not yet built.** This
-remains the M7 spec Claude Code implements against; no coaching code exists
-yet (M7 is sequenced after M6). This is both the coaching constitution (the
-voice and its rules) and the M7 milestone spec (the ontology, the grounding
-mechanism, the seed principle set). It sits under
+Status: **design ADOPTED (owner decision, 2026-07-20) — built (2026-07-20).**
+This is the M7 spec Claude Code implemented against — see docs/SPEC.md's
+"Milestone 7" section for the build summary, including two ambiguities in
+this document that were resolved (and flagged, not picked silently) during
+implementation: headline eligibility requires the notable/major gap band
+specifically (this doc's "moderate...never headline" vs. "insufficient data
+if nothing clears moderate" read as slightly inconsistent — the more specific,
+more repeated rule won), and gap band (volume) and `signal_status`
+(conviction) turned out to need to be independent axes, not one field
+governing both. This is both the coaching constitution (the voice and its
+rules) and the M7 milestone spec (the ontology, the grounding mechanism, the
+seed principle set). It sits under
 `docs/ARCHITECTURE_VISION.md` (the *why*) and beside `docs/SPEC.md` (the engine
 *how*). Where they meet: the engine measures, the Driver Model (M6) scores, and
 **Coaching Intelligence (M7) turns scores into what a good instructor would
@@ -406,20 +413,25 @@ in any test.
 2. **Conviction/silence and self-checks** — **adopted, this edit** (the two
    sections above): loud on measured ground, self-check (never a laundered
    confidence) on no-signal ground.
-3. **Gap-band eligibility** — **adopted, formalized this edit**; flagged above
-   as a formalization of prior intent — correct it if the shape differs from
-   what was scoped in an earlier conversation this document doesn't have a
-   record of.
+3. **Gap-band eligibility** — **adopted, formalized this edit, built
+   2026-07-20**. During implementation, two sentences in this section read as
+   mutually inconsistent ("moderate...never headline" vs. "insufficient data
+   if nothing clears moderate") — resolved in favor of the more specific,
+   more repeated rule (headline requires notable/major); flag if the intended
+   reading was actually the looser one.
 4. **The seed set** — nine principles now (the vision/commitment split fixes a
-   defect the new rules exist to catch). Still open: does the rest of the set
-   match your read of coaching priorities? Anything to cut or add?
+   defect the new rules exist to catch). **Built as specified**, unchanged.
+   Still open: does the rest of the set match your read of coaching
+   priorities? Anything to cut or add?
 5. **The voice** — "calm engineer who watched you for six weekends" stands
-   unless corrected.
-6. **Sequencing** — M7 after M6 stands as written; the detector-level subset
-   (principles 1–5, 8) remains groundable earlier if you want to pull it
-   forward.
+   unless corrected. Encoded in the coach/chat system prompts as of the M7
+   build; not yet exercised against a live provider (mocked-provider tests
+   only, same as M4/M5).
+6. **Sequencing** — M7 after M6 stands as written; built after M6 as
+   specified.
 7. **The library horizon** — starting with this seed set and growing
    organically stands unless corrected.
 
 Items 4–7 default to what's written above per no correction received; flag any
-of them and they change before build.
+of them and they change in a future revision — the ontology is versioned data
+specifically so that's cheap.

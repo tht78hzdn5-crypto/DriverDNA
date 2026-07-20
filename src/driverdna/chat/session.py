@@ -18,12 +18,14 @@ import re
 from typing import Any, Protocol
 
 from driverdna.chat.tools import TOOL_DEFS, execute_tool
-from driverdna.coach.grounding import number_pool, unsupported_claims
+from driverdna.coach.grounding import number_pool, numeric_claims, unsupported_claims
+from driverdna.coaching.ontology import PRINCIPLES
 from driverdna.config import ConfigStore, DriverDNAConfig, config_snapshot
 from driverdna.db import Database
+from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v1"
+CHAT_PROMPT_VERSION = "chat-v2"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -37,6 +39,12 @@ Hard rules:
 - Anything beyond the measurements is a hypothesis: label it as your
   interpretation with its basis. Racing canon may explain a finding but is
   never a measurement of this driver.
+- Coaching: cite coaching_principle_id values (cp.<technique>.<name>) only
+  from bundle.report.coaching (headline, secondary, self_checks) — never
+  invent one, never promote one that isn't listed there. Commit to phrasing
+  on measured ground; stay tentative on proxy ground; on a no_signal
+  principle (self_check present), offer it as a labeled hypothesis and
+  NEVER attach a confidence value or percentage to it, at any level.
 - You may annotate a finding (acknowledged/intentional) only when the
   driver clearly asks; annotation suppresses framing, never deletes data.
 - Config changes are only ever STAGED via propose_config_change; the driver
@@ -48,7 +56,10 @@ Hard rules:
   annotate/retune paths — don't simply concede or insist.
 """
 
-_ID_TOKEN = re.compile(r"\b(?:obs:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+)")
+_ID_TOKEN = re.compile(
+    r"\b(?:obs:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
+    r"|cp\.[A-Za-z_]+\.[A-Za-z_]+)"
+)
 
 
 class ChatProvider(Protocol):
@@ -136,6 +147,14 @@ class ChatSession:
         self._known_ids = {f["finding_id"] for f in self.bundle["report"]["findings"]}
         for f in self.bundle["report"]["findings"]:
             self._known_ids.update(f["evidence_ids"])
+        coaching = self.bundle["report"]["coaching"]
+        self._coaching_candidates = (
+            ([coaching["headline"]] if coaching["headline"] else [])
+            + coaching["secondary"] + coaching["self_checks"]
+        )
+        for c in self._coaching_candidates:
+            self._known_ids.add(c["coaching_principle_id"])
+            self._known_ids.update(c["evidence_ids"])
 
     # -- one driver turn ----------------------------------------------------
 
@@ -222,14 +241,26 @@ class ChatSession:
 
     def _validate(self, text: str, tool_pool: set[float]) -> list[str]:
         violations = []
+        cited_no_signal = False
         for token in _ID_TOKEN.findall(text):
             if token not in self._known_ids:
                 violations.append(f"unknown evidence ID cited: {token}")
+            principle = PRINCIPLES.get(token)
+            if principle is not None and principle.signal_status is SignalStatus.NO_SIGNAL:
+                cited_no_signal = True
         pool = number_pool(self.bundle) | tool_pool
         for claim in unsupported_claims(text, pool):
             violations.append(
                 f"number not present in bundle or tool results: {claim}"
             )
+        if cited_no_signal:
+            percent_claims = [c for c in numeric_claims(text) if c[1] == "%"]
+            if percent_claims:
+                violations.append(
+                    f"confidence/percentage language on a no_signal "
+                    f"principle: {percent_claims!r} — a confidence value "
+                    "never launders an unmeasured inference"
+                )
         return violations
 
     # -- explicit driver actions --------------------------------------------

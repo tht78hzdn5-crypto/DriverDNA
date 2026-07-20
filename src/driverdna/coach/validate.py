@@ -1,10 +1,14 @@
-"""Local validation of coach output — the model is never trusted (M4).
+"""Local validation of coach output — the model is never trusted (M4, M7).
 
 Rejects: malformed JSON, missing sections, priorities citing suppressed or
 unknown findings, unknown evidence IDs, hypotheses without a labeled
 confidence, and any number-with-unit not present in the payload (the
-numeric-claim validator in coach/grounding.py). A rejected output is never
-persisted and never shown as a plan.
+numeric-claim validator in coach/grounding.py). M7 adds: coaching_priorities
+citing an unknown or ineligible coaching_principle_id, and any
+confidence/percentage language attached to a no_signal principle
+(docs/COACHING.md: "a confidence value never launders an unmeasured
+inference") — both mechanical rejections, same mechanism as an unknown
+evidence ID. A rejected output is never persisted and never shown as a plan.
 """
 
 from __future__ import annotations
@@ -13,8 +17,10 @@ import json
 import re
 from typing import Any
 
-from driverdna.coach.grounding import number_pool, unsupported_claims
+from driverdna.coach.grounding import number_pool, numeric_claims, unsupported_claims
 from driverdna.coach.payload import evidence_universe
+from driverdna.coaching.ontology import PRINCIPLES
+from driverdna.model.taxonomy import SignalStatus
 
 _CONFIDENCES = {"low", "medium", "high"}
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
@@ -33,7 +39,7 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
     except json.JSONDecodeError as e:
         raise CoachValidationError([f"output is not valid JSON: {e}"]) from None
 
-    for key in ("measured_priorities", "coaching_plan", "hypotheses"):
+    for key in ("measured_priorities", "coaching_priorities", "coaching_plan", "hypotheses"):
         if not isinstance(output.get(key), list):
             violations.append(f"missing or non-list section: {key}")
     if violations:
@@ -41,6 +47,15 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
 
     shown_findings, evidence = evidence_universe(report)
     pool = number_pool(report)
+    coaching = report.get("coaching", {})
+    coaching_candidates = (
+        ([coaching["headline"]] if coaching.get("headline") else [])
+        + coaching.get("secondary", [])
+        + coaching.get("self_checks", [])
+    )
+    eligible_principles = {c["coaching_principle_id"] for c in coaching_candidates}
+    for c in coaching_candidates:
+        evidence.update(c["evidence_ids"])
 
     def check_numbers(text: str, where: str) -> None:
         for claim in unsupported_claims(text, pool):
@@ -63,6 +78,30 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
             if e not in evidence:
                 violations.append(f"{where}: unknown evidence ID {e!r}")
         check_numbers(str(p.get("why", "")), where)
+
+    for i, cp in enumerate(output["coaching_priorities"]):
+        where = f"coaching_priorities[{i}]"
+        principle_id = cp.get("coaching_principle_id")
+        if principle_id not in eligible_principles:
+            violations.append(
+                f"{where}: coaching principle {principle_id!r} is not "
+                "eligible (unknown or not currently triggered)"
+            )
+        for e in cp.get("evidence_ids") or []:
+            if e not in evidence:
+                violations.append(f"{where}: unknown evidence ID {e!r}")
+        text = f"{cp.get('expression', '')} {cp.get('why', '')}"
+        check_numbers(text, where)
+        principle = PRINCIPLES.get(principle_id)
+        if principle is not None and principle.signal_status is SignalStatus.NO_SIGNAL:
+            percent_claims = [c for c in numeric_claims(text) if c[1] == "%"]
+            if percent_claims:
+                violations.append(
+                    f"{where}: no_signal principle {principle_id!r} carries "
+                    f"confidence/percentage language {percent_claims!r} — "
+                    "forbidden, a confidence value never launders an "
+                    "unmeasured inference"
+                )
 
     for i, step in enumerate(output["coaching_plan"]):
         where = f"coaching_plan[{i}]"
@@ -101,6 +140,13 @@ def render_plan_markdown(output: dict[str, Any], cohort: dict[str, Any]) -> str:
     for p in output["measured_priorities"]:
         lines += [f"- **{p['finding_id']}** — {p.get('why', '')} "
                   f"(evidence: {', '.join(p['evidence_ids'])})"]
+    lines += ["", "## Coaching", ""]
+    for cp in output.get("coaching_priorities", []):
+        lines += [
+            f"- **{cp['coaching_principle_id']}** — {cp.get('expression', '')} "
+            f"{cp.get('why', '')} "
+            f"(evidence: {', '.join(cp.get('evidence_ids') or []) or 'none — self-check'})"
+        ]
     lines += ["", "## Plan", ""]
     for step in output["coaching_plan"]:
         lines += [f"### {step['title']}", "", step.get("focus", ""), ""]

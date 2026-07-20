@@ -437,7 +437,14 @@ class CoachingConfig(_Section):
         default=0.15,
         description="same_lap_twice's trigger: a corner's own measured "
         "metrics' pooled coefficient of variation must reach this floor "
-        "before the principle is eligible.",
+        "before the principle is eligible. Known v1 limitation, flagged not "
+        "silently accepted: the pool mixes metrics of very different "
+        "natural scale/type (continuous percentages, rates, small integer "
+        "counts) with no per-metric normalization beyond CV itself — a "
+        "low-mean count metric (e.g. throttle_modulation_count, often 0) "
+        "can produce an outsized CV that dominates the unweighted average, "
+        "same underlying issue as ModelConfig's cross-cohort pooling "
+        "caveat, one level down (per-corner instead of per-driver).",
     )
     thin_evidence_floor_n: int = Field(
         default=8,

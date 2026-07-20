@@ -199,6 +199,47 @@ def test_bundle_is_deterministic_and_carries_state(db, tmp_path):
     assert a["report"]["findings"]
 
 
+def test_bundle_carries_coaching_section(db, tmp_path):
+    bundle = build_chat_bundle(db, **COHORT, config=CONFIG)
+    coaching = bundle["report"]["coaching"]
+    assert coaching["self_checks"]
+    assert coaching["self_checks"][0]["coaching_principle_id"] == (
+        "cp.eye_line.look_further"
+    )
+
+
+def test_unknown_coaching_principle_rejected_then_regenerated(db, tmp_path):
+    session = make_session(db, tmp_path, [
+        {"text": "Work on cp.invented.not_real this session."},
+        {"text": "Say out loud where you're looking at turn-in "
+                  "[cp.eye_line.look_further]."},
+    ])
+    result = session.ask("what should I work on?")
+    assert "error" not in result
+    assert "cp.eye_line.look_further" in result["evidence"]
+
+
+def test_no_signal_principle_with_percentage_rejected(db, tmp_path):
+    session = make_session(db, tmp_path, [
+        {"text": "I'm 30% confident about your vision "
+                  "[cp.eye_line.look_further]."},
+        {"text": "Say out loud where you're looking at turn-in "
+                  "[cp.eye_line.look_further]."},
+    ])
+    result = session.ask("how's my vision?")
+    assert "error" not in result
+    assert "%" not in result["text"]
+
+
+def test_no_signal_principle_double_violation_surfaces_error(db, tmp_path):
+    session = make_session(db, tmp_path, [
+        {"text": "I'm 30% confident [cp.eye_line.look_further]."},
+        {"text": "Still 40% confident [cp.eye_line.look_further]."},
+    ])
+    result = session.ask("how's my vision?")
+    assert "confidence" in result["error"] or "percentage" in result["error"]
+
+
 def test_transcript_records_bundle_version_evidence_effects(db, tmp_path):
     good_id = shown_finding_id(db)
     session = make_session(db, tmp_path, [

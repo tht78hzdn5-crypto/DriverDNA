@@ -542,6 +542,67 @@ unmeasurable fundamentals read as "no signal / 0%", not fabricated; gated
 outputs suppress with reasons until breadth exists; the AI surface explains but
 never emits a score (tested against the mocked provider).
 
+## Milestone 7 — Coaching Intelligence (built 2026-07-20)
+
+Full design in `docs/COACHING.md` (design adopted, then built, same day); this
+is the milestone-tracking summary. Additive over M1–M6; reads detector trigger
+rates (M2), `cumulative_loss` and vs-self findings (M3), and per-corner metric
+values (M2) — nothing upstream is rewritten.
+
+- **Ontology (versioned data, `coach-onto-v1`).** Nine seed `CoachingPrinciple`s
+  (`src/driverdna/coaching/ontology.py`), each mapped to exactly one M6
+  taxonomy technique/fundamental so `signal_status` is never asserted
+  independently of M6's own tri-state rule. Gates are declarative data
+  (`DetectorGate` / `MetricCVGate` / `FindingGate` / `AlwaysEligible`), not
+  bespoke per-principle functions — adding a coaching concept stays a data
+  change, per the design's own intent.
+- **Eligibility + ranking + gap bands (deterministic engine, no AI).**
+  `coaching/engine.py`'s `eligible_principles()` is a pure function of DB state
+  + config; `select_coaching()` groups the result into headline (the single
+  largest seconds-banded notable/major item) / secondary (moderate, and
+  notable/major not chosen as headline) / silent_count / self_checks
+  (`no_signal`, always present, never headline-eligible). Gap-band and CV-band
+  thresholds are versioned in `ConfigStore` (`CoachingConfig`).
+  Two ambiguities in the original design doc, resolved and flagged rather than
+  picked silently (see `coaching/engine.py`'s module docstring for the full
+  reasoning): (1) headline requires notable/major, not moderate — the more
+  specific, more repeated rule wins over a looser phrase elsewhere in the same
+  doc; (2) gap band (volume) and `signal_status` (conviction) are independent —
+  a `proxy` principle can still win the headline slot on magnitude but must
+  stay phrased tentatively regardless of band.
+- **AI role (unchanged contract, extended schema).** Coach/chat payload gains a
+  `coaching` section (headline/secondary/self_checks, each with evidence IDs);
+  the AI selects and phrases only, never invents or promotes an ineligible
+  principle. The grounding validator is extended (`coach/validate.py`,
+  `chat/session.py`): a `coaching_principle_id` outside the eligible set is a
+  mechanical rejection, identical machinery to an unknown evidence ID; a
+  `no_signal` principle carrying any confidence/percentage language is a
+  separate mechanical rejection (`docs/COACHING.md`: "a confidence value never
+  launders an unmeasured inference"). Coach's structured schema bumped
+  `coach-v1` → `coach-v2` (adds `coaching_priorities`); chat's bundle bumped
+  `chat-v1` → `chat-v2` (same rule, prose-scoped). `PAYLOAD_VERSION` 2 → 3.
+- **Known v1 limitation, flagged not silently accepted.** `same_lap_twice`
+  (the one principle with no phase to band on — consistency is cross-cutting)
+  pools coefficient of variation across every measured metric on a corner,
+  unweighted, mixing metrics of very different scale/type (percentages, rates,
+  small integer counts). A low-mean count metric can produce an outsized CV
+  that dominates the average — the same underlying issue as M6's cross-cohort
+  `consistency` caveat, one level down (per-corner instead of per-driver). See
+  `CoachingConfig.consistency_cv_floor`'s docstring.
+- **Artifact:** `driverdna coaching` — per-cohort headline/secondary/silent/
+  self-checks with triggers and gap bands shown, deterministic ("why this
+  advice, and why this loud"). A coaching UI view follows on the U-track.
+
+Done when: eligibility, ranking, and gap-band assignment are deterministic and
+versioned (tested); a mocked-provider coach/chat response invoking an
+ineligible or invented principle is rejected, not shown (tested); a response
+putting a confidence value on a `no_signal` principle is rejected, not shown
+(tested); "nothing clears notable" yields insufficient-data coaching for the
+headline slot, not a manufactured priority (tested); every surfaced piece of
+advice cites a principle that cites evidence, or for `no_signal` is clearly
+labeled a self-check (tested); no `no_signal` principle ever renders with a
+score or confidence, at any level, in any test.
+
 ## Acceptance — trust gates
 
 1. Spa blind test: run on the owner's GR86/Spa laps (≥ 2 sessions; to be supplied)
@@ -602,8 +663,8 @@ computed — it never computes a measurement.
   M5 → M6 → M7**; do not begin a milestone until the prior milestone's
   done-criteria pass. M6 (Driver Model) reads M1–M5's persisted rows and is
   additive. M7 (Coaching Intelligence — grounded coaching ontology over the
-  Driver Model) is specified in **docs/COACHING.md**; its design is **adopted
-  (2026-07-20)** but **not yet built.**
+  Driver Model) is specified in **docs/COACHING.md**; design **adopted
+  (2026-07-20)**, **built (2026-07-20)** — see "Milestone 7" below.
   **M0b floats**: it requires `GARAGE61_TOKEN`, gates only the `sync` feature, and
   must complete before any code assumes API behavior. The Spa blind test (gate 1)
   runs when the owner's Spa lap set is supplied; it is the final trust gate, not a
@@ -668,3 +729,15 @@ Accepted at owner plan review; rationale recorded in the review:
   research but stays versioned and reproducible. Governing document:
   **docs/ARCHITECTURE_VISION.md** (the project constitution / the *why*), which
   this spec now serves as the *how*.
+- **A15** (2026-07-20, owner decision): M7 (Coaching Intelligence) built per
+  `docs/COACHING.md`. Philosophy #2 (measurement/interpretation strictly
+  separated) is refined the same way A14 refined #4: coaching *language* is a
+  constrained selection from a versioned, evidence-triggered ontology, never
+  free LLM prose — the AI phrases within the ontology, it does not decide
+  *whether* a coaching concept applies. Two ambiguities in the adopted design
+  doc were resolved during implementation rather than picked silently (full
+  reasoning in `coaching/engine.py`'s module docstring): headline eligibility
+  requires the notable/major gap band, not moderate; gap band and
+  `signal_status` are independent axes (volume vs. conviction). See "Milestone
+  7" above for the full build summary, including the flagged v1 CV-pooling
+  limitation in `same_lap_twice`.

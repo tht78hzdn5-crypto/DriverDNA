@@ -116,15 +116,26 @@ from the real fixtures and reviewed.
   Flagged, not silently accepted: `consistency`'s CV pools raw metric scale
   across a driver's different cars/tracks with no per-cohort normalization —
   see SPEC.md's M6 section, "Known v1 limitation."
-- **Coaching Intelligence (M7) design adopted (2026-07-20)**:
+- **Coaching Intelligence (M7): design adopted, then built (2026-07-20)**:
   `docs/COACHING.md` — grounded coaching ontology (technique → driving
-  principle → coaching principle), deterministic eligibility/ranking/gap-band
-  tone, AI selects and phrases only. Binding rule: a confidence value never
-  launders an unmeasured inference — no-signal fundamentals get a
-  driver-runnable self-check, never a score or confidence at any level.
-  Sequenced after M6; **not yet built.** Constitution condition 5 added the
-  same day: `trend` and `evidence_count` are required M6 outputs, always
-  present (never dropped for convenience).
+  principle → coaching principle), nine seed `CoachingPrinciple`s
+  (`coaching/ontology.py`), a deterministic eligibility/ranking/gap-band
+  engine (`coaching/engine.py`) reading M2/M3 rows through M6's own taxonomy,
+  `driverdna coaching` artifact, and a `coaching` payload section wired into
+  report/coach/chat (coach schema `coach-v1`→`coach-v2`, chat bundle
+  `chat-v1`→`chat-v2`, `PAYLOAD_VERSION` 2→3). Binding rule enforced
+  mechanically now, not just documented: a confidence value never launders an
+  unmeasured inference — a `no_signal` principle carrying any
+  confidence/percentage language is rejected by the grounding validator, same
+  machinery as an unknown evidence ID; no-signal principles get a
+  driver-runnable self-check, never a score or confidence at any level. Two
+  design-doc ambiguities resolved and flagged during implementation, not
+  picked silently — see SPEC.md's "Milestone 7" / A15. Flagged, not silently
+  accepted: `same_lap_twice`'s pooled per-corner CV mixes metrics of very
+  different scale with no normalization — same underlying issue as M6's
+  cross-cohort `consistency` caveat, one level down.
+  Constitution condition 5 (2026-07-19): `trend` and `evidence_count` are
+  required M6 outputs, always present (never dropped for convenience).
 - **Determinism verified mechanically**: two independent imports produce
   byte-identical Markdown/JSON/HTML reports.
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`. `sync` remains unbuilt by

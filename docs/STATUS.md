@@ -7,11 +7,11 @@ amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
 and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
 
-**One line:** the deterministic engine (M0a–M6) and the UI through writes (U0–U2
-+ render-parity gate) are complete and verified; Coaching Intelligence (M7,
-design **adopted** 2026-07-20) is the declared next engine milestone to build,
-alongside U3 (chat view) on the UI track. Waiting on laps and two API keys, not
-on code.
+**One line:** the deterministic engine (M0a–M7) is complete and verified; the
+UI through writes (U0–U2 + render-parity gate) is done, with U3 (chat view) the
+declared next UI-track milestone. `GARAGE61_TOKEN` is now in hand but this
+session's network policy blocks reaching `garage61.net`, so M0b (API probe,
+gates only `sync`) is blocked on network access, not on the token.
 
 ## Verified counts (2026-07-20)
 
@@ -19,8 +19,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **365** (22 test files) | `python3 -m pytest` |
-| Commits on branch | **31** | `git rev-list --count HEAD` |
+| Tests passing | **404** (25 test files) | `python3 -m pytest` |
+| Commits on branch | **35** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **17 shown · 89 suppressed** (all suppressions state a reason) | same payload |
@@ -31,7 +31,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 ## Where we are
 
-### Engine — complete (M0a–M5)
+### Engine — complete (M0a–M7)
 
 | Milestone | What it does | State |
 |---|---|---|
@@ -42,8 +42,8 @@ Regenerated from the repo this date, not asserted from memory:
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
 | M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **done** — taxonomy, belief store, `dm-v1` scoring, `driverdna model` artifact, wired into report/coach/chat payload |
-| M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **design adopted 2026-07-20**, not built |
-| M0b | Garage61 API probe + `sync` | **blocked on `GARAGE61_TOKEN`** |
+| M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **done** — ontology, eligibility/ranking/gap-band engine, `driverdna coaching` artifact, wired into report/coach/chat payload, grounding validator extended |
+| M0b | Garage61 API probe + `sync` | `GARAGE61_TOKEN` in hand; **blocked on this session's network policy** (see below) |
 
 ### UI — through writes (U0–U2)
 
@@ -108,9 +108,15 @@ covers the config view too.
 
 Floating / key-gated:
 
-- **M0b + `sync`** the moment a `GARAGE61_TOKEN` exists — ends manual CSV
-  uploads (the biggest phone-first win). Nothing is built assuming API behavior
-  until the probe documents it.
+- **M0b + `sync`** — `GARAGE61_TOKEN` is now in hand (2026-07-20; stored in a
+  local, gitignored `.env`, never committed). The probe is still blocked: this
+  session's outbound network policy is an allowlist (npm/pypi/github/anthropic
+  etc.) that doesn't include `garage61.net`, and the agent-proxy runbook is
+  explicit that a policy 403 is reported, not routed around. Next step is
+  either widening this environment's network policy, or running the probe
+  script from a machine that can reach the API and feeding the observed
+  behavior back for `docs/garage61-api.md`. Nothing is built assuming API
+  behavior until the probe documents it.
 - **Blind acceptance test** when enough independent Spa data exists that the
   expected answer isn't one I've been told (see Risks).
 
