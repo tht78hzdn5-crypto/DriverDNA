@@ -1,14 +1,30 @@
 # DriverDNA — Status & Decision Log
 
-Point-in-time snapshot, 2026-07-19. Branch `claude/plan-review-philosophy-hl3cdg`
-(20 commits). Authoritative spec: `docs/SPEC.md`; UI spec: `docs/UI-SPEC.md`.
-This document is a snapshot — the spec and its amendment log remain the binding
-record.
+**Snapshot date: 2026-07-20.** Branch `claude/plan-review-philosophy-hl3cdg`.
+This is the single dated status doc; the verified counts below can be checked
+for consistency over time. Binding records remain `docs/SPEC.md` (engine +
+amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
+and `docs/COACHING.md` (M7 design). Orientation + full decision log:
+`docs/PROJECT-BRIEF.md`.
 
-**One line:** the deterministic engine (M0a–M5) and the UI foundation (U0 API,
-U1 read views + render-parity gate) are complete and verified; 313 tests green;
-11 real Spa laps now produce 17 live, gated findings. The build is waiting on
-laps and two API keys, not on code.
+**One line:** the deterministic engine (M0a–M5) and the UI through writes (U0–U2
++ render-parity gate) are complete and verified; the Driver Model (M6) and
+Coaching Intelligence (M7) are the declared next milestones (M6 to build, M7
+design-for-review). Waiting on laps and two API keys, not on code.
+
+## Verified counts (2026-07-20)
+
+Regenerated from the repo this date, not asserted from memory:
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests passing | **315** (17 test files) | `python3 -m pytest` |
+| Commits on branch | **25** | `git rev-list --count HEAD` |
+| Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
+| Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
+| Spa findings | **17 shown · 89 suppressed** (all suppressions state a reason) | same payload |
+| Laguna cohort | 1 lap · 0 sessions · 0 shown · 71 suppressed | insufficient data by design |
+| Determinism | byte-identical reports across two independent imports | `driverdna report` ×2, `diff` |
 
 ---
 
@@ -24,9 +40,11 @@ laps and two API keys, not on code.
 | M3 | Attribution over canonical windows, robust baselines, ranker, gates | done |
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
+| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **next to build** |
+| M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | design-for-review |
 | M0b | Garage61 API probe + `sync` | **blocked on `GARAGE61_TOKEN`** |
 
-### UI — foundation complete (U0–U1)
+### UI — through writes (U0–U2)
 
 | Milestone | What it does | State |
 |---|---|---|
@@ -118,11 +136,27 @@ defined explicitly, F10 blob lap storage.
 - A13 — `PositionType` is a small enum, not a constant; **content-dedup** added
   so a re-download can't double-count.
 
+**Constitution-level forks Claude Code raised, and how they resolved** (each is
+also recorded in the durable docs, per the Decision-discipline rule):
+- **Scores adopted (2026-07-19).** Fork: no-scores (keep philosophy #4 as-is) vs.
+  scores. Options offered: deterministic+AI-explains / deterministic+AI-proposes-
+  weights / AI-generates-each-run. **Owner pick: deterministic, versioned,
+  reproducible; every score ships Score + Confidence + Evidence Count; AI
+  explains and prioritizes only.** Reason: scores are the product's headline
+  value and AI's judgement should articulate, not compute. **This refines
+  philosophy #4** ("no overall score" → "no *opaque* blended score") — flagged
+  in-doc as SPEC amendment A14 and `docs/ARCHITECTURE_VISION.md`.
+- **Coaching Intelligence adopted as M7 (2026-07-19, design stage).** A grounded
+  coaching ontology where the AI selects/phrases within a fixed, evidence-
+  triggered vocabulary. Checked against the philosophy: **consistent** with #2
+  (AI never computes) and the out-of-scope list; no contradiction. Spec:
+  `docs/COACHING.md`, awaiting owner reaction before build.
+
 **UI**
 - The normalized JSON payload is the rendering contract; the UI never computes a
   measurement (mechanically enforced by the render-parity crawler).
-- Owner amendment: U0/U1 built ahead of the blind acceptance test for momentum;
-  U2–U4 keep the original gate (revisit when reached).
+- Owner amendment: U0/U1/U2 built ahead of the blind acceptance test for
+  momentum; U3–U4 keep the original gate (revisit when reached).
 
 **Working practice**
 - Secrets are env-only, never committed. Every threshold lives in config with a
@@ -170,7 +204,7 @@ defined explicitly, F10 blob lap storage.
 
 ```
 python3 -m pip install -e ".[dev]"      # engine + UI + test deps
-python3 -m pytest                        # 313 tests
+python3 -m pytest                        # 315 tests (2026-07-20)
 driverdna import tests/fixtures          # build the local DB from the fixtures
 driverdna report                         # Markdown + JSON + self-contained HTML
 driverdna corners | metrics | attribution   # per-milestone inspectable artifacts

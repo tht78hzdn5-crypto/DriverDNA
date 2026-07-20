@@ -26,6 +26,21 @@ constitution wins over convenience.
 - Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
   quality-flagged with counts.
 
+## Decision discipline (standing rule)
+
+When a decision is made — especially one Claude Code surfaced as a fork (scoring
+approach, M7 adoption, a threshold default) — the pick **and its reason** are
+recorded in the durable docs at decision time, never left only in chat:
+
+- The resolution goes in `docs/SPEC.md` (amendment log) and/or
+  `docs/PROJECT-BRIEF.md` (Decision log), dated.
+- If the decision touches the **nine philosophy points** or the **out-of-scope
+  list**, the record must *name the principle or item it refines and why*, in
+  the same edit — flagged at decision time, not left to be caught later. A14
+  (scores refine philosophy #4) is the model.
+- `docs/STATUS.md` is the single dated snapshot; verified counts (tests, laps,
+  sessions, findings, commits) live there so they can be checked over time.
+
 ## Build order (strict)
 
 M0a (contract lock) → M1 (parse/segment/identify/classify) → M2

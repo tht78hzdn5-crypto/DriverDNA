@@ -1,21 +1,33 @@
 # DriverDNA — Project Brief
 
-Snapshot 2026-07-19 · branch `claude/plan-review-philosophy-hl3cdg` · all v1
-milestones (M0a–M5) built and tested; externally-blocked items listed under
-"What's needed next". Authoritative spec: `docs/SPEC.md`. Build rules:
-`CLAUDE.md`. This brief is the orientation document for anyone (human or AI)
-picking the project up.
+Updated 2026-07-20 · branch `claude/plan-review-philosophy-hl3cdg`. Orientation
+document for anyone (human or AI) picking the project up. **Verified counts and
+the current milestone table live in `docs/STATUS.md`** (dated, reproducible) —
+this brief is the durable "what/why/how" and the decision log.
+
+Document set: `docs/ARCHITECTURE_VISION.md` (the constitution — the *why*),
+`docs/SPEC.md` (the engine — the *how*, with the amendment log), `CLAUDE.md`
+(build rules), `docs/UI-SPEC.md` (the interface), `docs/COACHING.md` (M7 design),
+`docs/STATUS.md` (dated status). This brief.
+
+State in one line: engine **M0a–M5 done**; UI **U0–U2 done** (+ render-parity
+gate); **M6 (Driver Model) is next to build**, **M7 (Coaching Intelligence) is
+design-for-review**; waiting on laps and two API keys, not on code.
 
 ## What it is
 
 A personal racing-telemetry instrument for one driver (iRacing via Garage61
-CSV exports). It parses laps, finds corners, measures driving technique
-deterministically, attributes time lost per corner phase, and reports
-transferable findings denominated in cumulative seconds — sharpening as laps
-accumulate. An AI layer (one-shot coaching plan + interactive chat) explains
-and prioritizes the deterministic findings; it can never invent a
-measurement. Python 3.11+, numpy/scipy, pydantic, typer, SQLite, anthropic
-SDK. Local CLI only — no server, no hosted anything.
+CSV exports). **It measures the driver, not the lap** — the persistent Driver
+Model is the product (constitution, `docs/ARCHITECTURE_VISION.md`). It parses
+laps, finds corners, measures technique deterministically, attributes time lost
+per corner phase, and — as the Driver Model (M6) lands — accumulates that
+evidence into per-fundamental **Score + Confidence + Evidence Count** beliefs
+that sharpen as laps pile up. An AI layer (one-shot coaching plan + interactive
+chat, and eventually the M7 coaching ontology) explains and prioritizes the
+deterministic results; it never invents or computes a number, **including
+scores**. Python 3.11+, numpy/scipy, pydantic, typer, SQLite, anthropic SDK;
+FastAPI + a built React SPA for the local cockpit. Localhost only — no hosted
+anything.
 
 ## Philosophy (binding on every change)
 
@@ -95,8 +107,15 @@ src/driverdna/
   report/         payload (the contract), builder (md/json/html)
   coach/          provider (Claude, env-only key), payload, validate, grounding
   chat/           tools (read-only surface), session (grounded loop)
-tests/            144 tests; fixtures = 2 real laps + synthetic factories
+  ui/api.py       FastAPI: pass-through reads + audited writes (no logic here)
+ui/               React (Vite) SPA source + tokens.json; built into ui/static
+docs/             SPEC, ARCHITECTURE_VISION (constitution), UI-SPEC, COACHING,
+                  PROJECT-BRIEF, STATUS, generated reports
+tests/            315 tests (17 files); fixtures = 12 real laps + synthetic
+                  factories + a Chromium render-parity crawler
 ```
+Exact counts are in `docs/STATUS.md` and reproducible from the repo; treat that
+doc, not this one, as the number of record.
 
 ## Guarantees currently verified by tests
 
@@ -114,25 +133,27 @@ tests/            144 tests; fixtures = 2 real laps + synthetic factories
 
 ## What's needed next (in order of value)
 
-1. **`GARAGE61_TOKEN`** → run M0b (API probe): auth, listing, fetch,
-   pagination, rate limits, other-driver lap access, and an API-vs-manual
-   parity diff of the same lap. Then build `Garage61Client` + `sync` from
-   *observed* behavior (`docs/garage61-api.md`). Nothing may assume API
-   behavior before this.
-2. **Session metadata for manual imports.** Fixture/manual imports currently
-   have `session_key = NULL`, so the ≥2-sessions gate suppresses everything
-   regardless of lap count. Sync metadata will provide sessions; until then
-   the import CLI needs `--session` (or file-timestamp clustering per the
-   spec) to make manually-imported history rankable.
-3. **`ANTHROPIC_API_KEY`** → first live coach/chat runs (all logic is
-   mock-tested; live runs will shake out prompt/formatting issues).
-4. **The owner's GR86/Spa lap set (≥2 sessions)** → the blind acceptance
-   test (expected: high-speed-entry commitment + entry-phase inconsistency).
-5. **Map/window refreeze as an explicit operation.** Canonical windows and
-   corner maps freeze from the first lap(s) by design (comparability over
-   optimality). Once tens of laps exist, add a deliberate, versioned
-   `rebuild-map` command (old maps kept; change surfaced) — never automatic.
-6. More laps, of anything — gates clear at ≥10 phase samples + ≥2 sessions.
+1. **M6 — the Driver Model.** Deterministic, versioned per-fundamental scoring
+   (Score + Confidence + Evidence Count + trend) over the rows M1–M5 already
+   persist. Additive, no key needed; the declared next build. Governed by the
+   constitution; scoped in `docs/SPEC.md` (Milestone 6).
+2. **M7 — Coaching Intelligence (design-for-review, `docs/COACHING.md`).** A
+   grounded coaching ontology so the AI *selects and phrases* within a fixed,
+   evidence-triggered vocabulary. Awaiting owner reaction before build; a
+   detector-level subset is groundable on today's engine.
+3. **`GARAGE61_TOKEN`** → run M0b (API probe) then build `sync` from *observed*
+   behavior (`docs/garage61-api.md`). Nothing may assume API behavior before it.
+   Also ends the manual-upload loop — the biggest phone-first win.
+4. **`ANTHROPIC_API_KEY`** → first live coach/chat runs (all logic is
+   mock-tested; live runs will shake out prompt/formatting realities).
+5. **The owner's independent Spa lap set** → the blind acceptance test. Note:
+   session labelling for manual imports is now carried in the fixture manifest;
+   a general `import --session` flag (or file-timestamp clustering) is still
+   wanted so any manually-imported history is rankable without a manifest.
+6. **U3/U4** on the UI track (chat view; packaging + shared tokens), and a
+   deliberate, versioned map/window `rebuild` command once tens of laps exist
+   (freezing early trades optimality for comparability, by design).
+7. More laps, of anything — gates clear at ≥10 phase samples + ≥2 sessions.
 
 ## Scaling
 
@@ -150,35 +171,54 @@ tests/            144 tests; fixtures = 2 real laps + synthetic factories
   trust-gate tests, and the amendment discipline in SPEC.md as the suite any
   refactor must pass.
 
-## Building a UI
+## The UI (U0–U2 built; U3–U4 remain)
 
-**The contract already exists**: the normalized JSON report payload
-(per-cohort + driver rollup) contains every number, finding, gate reason,
-annotation, and caveat — `driverdna report` writes it; `report/payload.py`
-builds it. A UI must render what the engine computed and never compute a new
-measurement (philosophy #2). The self-contained HTML reports are the
-zero-infrastructure baseline UI today.
+Governed by `docs/UI-SPEC.md`. Built and verified: **U0** the FastAPI layer
+(`src/driverdna/ui/api.py`) — pass-through reads (payload endpoints return the
+*byte-identical* report JSON) and writes that only wrap the audited engine paths;
+**U1** the React SPA (driver home, cohort view with a track outline drawn from
+the driver's own GPS, corner drill, finding detail, laps) on the timing-screen
+tokens in `ui/tokens.json`, served by `driverdna ui`; **U1 gate 1** a
+Playwright/Chromium **render-parity crawler** that asserts every fractional
+figure on screen traces to a payload number (136 checked, kept green forever);
+**U2** annotations and a config panel through the audited propose/confirm/revert
+paths. Node is a build-time dependency only; the built SPA ships in the package.
 
-To build an interactive local UI, add:
+Remaining: **U3** the chat view (SSE progress, validated-only display,
+staged/confirm — `ChatSession` is already a clean object with `ask()` / `staged`
+/ `confirm(n)`); **U4** packaging + migrating the static report templates onto
+`ui/tokens.json` for one shared look. A DriverModel view follows M6.
 
-1. **A thin local read API** (FastAPI, ~200 lines): endpoints wrapping
-   `build_cohort_payload` / `build_driver_payload`, the corners/metrics
-   artifacts, and lap lists. Read-only; the DB stays the single source.
-2. **Chat wiring**: `ChatSession` is already a clean programmatic object
-   (`ask()`, `staged`, `confirm(n)`); expose it over SSE/websocket. The UI
-   must render the staged-proposal state and make /confirm an explicit,
-   separate user action (never a default button on the message).
-3. **Annotation UX**: buttons on findings → `db.annotate_finding`; show
-   annotated findings in their own group, measurement visible.
-4. **Charts**: all series come from the payload (cumulative loss, per-class,
-   lap trend, metric distributions via the chat tool query or a mirror
-   endpoint). Any charting lib is fine in an interactive UI — the
-   no-external-assets rule binds only the static report files.
-5. **Config panel**: list `config_snapshot()` with `describe_key()` docs;
-   edits go through `ConfigStore.propose/apply` so history and revert keep
-   working; show `config_history` as an audit view.
-6. **Packaging**: plain `uvicorn` + browser is enough for a personal tool;
-   Tauri/Electron only if a desktop app feel is wanted.
+The binding rule throughout: the UI renders what the engine computed and never
+computes a measurement (mechanically enforced). What does NOT belong in a UI:
+re-ranking that ignores gates, editing measurements, or any number computed
+client-side. Scores are welcome — but they come from the engine's deterministic
+model (M6), carry confidence + evidence count, and are rendered, never computed.
 
-What does NOT belong in a UI: blended scores, re-ranking that ignores gates,
-editing measurements, or any number computed client-side.
+## Decision log (append-only)
+
+Durable record of forks and their resolutions (per the Decision-discipline rule
+in `CLAUDE.md`). Newest first.
+
+- **2026-07-19 — Coaching Intelligence adopted as M7 (design stage).** A grounded
+  coaching ontology (`technique → driving principle → coaching principle`) where
+  the AI selects/phrases within a fixed, evidence-triggered vocabulary. Checked
+  against the philosophy: consistent with #2 and the out-of-scope list; no
+  contradiction. Spec `docs/COACHING.md`; awaiting owner reaction before build.
+- **2026-07-19 — Scores adopted; philosophy #4 refined (A14).** Owner chose
+  *deterministic, versioned, reproducible* scores that always ship **Score +
+  Confidence + Evidence Count** and decompose to their sources; AI explains and
+  prioritizes, never computes. Reason: scores are the product's headline value;
+  AI's role is to articulate, not invent. **Refines philosophy #4** ("no overall
+  score" → "no *opaque* blended score"); recorded in `ARCHITECTURE_VISION.md`
+  and SPEC A14. Constitution `docs/ARCHITECTURE_VISION.md` adopted the same day.
+- **2026-07-19 — Content-dedup + contract widenings (A12–A13).** Real laps forced
+  three fixes: 0-or-1-wrap laps are valid (+ partial-lap guard); steering can
+  exceed 2π at hairpins; `PositionType` is an enum not a constant; and a
+  re-downloaded lap is rejected by content fingerprint, never double-counted.
+- **2026-07-18/19 — UI adopted (UI-SPEC); U0/U1/U2 built ahead of the blind
+  test** for momentum (owner call); U3–U4 keep the original gate.
+- **2026-07-18 — Filename contract corrected (A11).** Garage61 filenames carry a
+  lap ID only; identities/lap-times moved to `tests/fixtures/manifest.toml`.
+- **2026-07-18 — Ten review findings (F1–F10) folded in before building**;
+  Python chosen (owner had no preference). Constitution philosophy confirmed.
