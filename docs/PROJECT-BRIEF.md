@@ -11,8 +11,9 @@ Document set: `docs/ARCHITECTURE_VISION.md` (the constitution — the *why*),
 `docs/STATUS.md` (dated status). This brief.
 
 State in one line: engine **M0a–M5 done**; UI **U0–U2 done** (+ render-parity
-gate); **M6 (Driver Model) is next to build**, **M7 (Coaching Intelligence) is
-design-for-review**; waiting on laps and two API keys, not on code.
+gate); **M6 (Driver Model) is next to build**, **M7 (Coaching Intelligence)
+design is ADOPTED** (not yet built); waiting on laps and two API keys, not on
+code.
 
 ## What it is
 
@@ -137,10 +138,12 @@ doc, not this one, as the number of record.
    (Score + Confidence + Evidence Count + trend) over the rows M1–M5 already
    persist. Additive, no key needed; the declared next build. Governed by the
    constitution; scoped in `docs/SPEC.md` (Milestone 6).
-2. **M7 — Coaching Intelligence (design-for-review, `docs/COACHING.md`).** A
-   grounded coaching ontology so the AI *selects and phrases* within a fixed,
-   evidence-triggered vocabulary. Awaiting owner reaction before build; a
-   detector-level subset is groundable on today's engine.
+2. **M7 — Coaching Intelligence (design ADOPTED 2026-07-20, `docs/COACHING.md`;
+   not yet built).** A grounded coaching ontology so the AI *selects and
+   phrases* within a fixed, evidence-triggered vocabulary; a confidence value
+   never launders an unmeasured inference (no-signal fundamentals get a
+   self-check, never a score). Sequenced after M6; a detector-level subset is
+   groundable on today's engine.
 3. **`GARAGE61_TOKEN`** → run M0b (API probe) then build `sync` from *observed*
    behavior (`docs/garage61-api.md`). Nothing may assume API behavior before it.
    Also ends the manual-upload loop — the biggest phone-first win.
@@ -200,6 +203,41 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — COACHING.md flipped to adopted; two load-bearing rules added.**
+  (1) *Conviction where measured, silence/self-check where not*: a confidence
+  value never launders an unmeasured inference — "Vision, 30% confident" is
+  forbidden; no-signal fundamentals never emit a score or confidence at any
+  level, full stop. On measured ground the coach commits with no hedging,
+  fixing "too hedged to be useful" without loosening grounding. (2)
+  *Self-checks* replace scores for no-signal fundamentals — a driver-runnable
+  in-car exercise, labeled a coaching hypothesis, in the schema slot where a
+  score would otherwise go. Checked against the philosophy in the same edit:
+  consistent with #2 (a self-check is interpretation, not a computed number)
+  and #3 (it's what "insufficient data" *does* here, not a dead end); does not
+  contradict `ARCHITECTURE_VISION.md`'s "— · 0% · no telemetry signal" score
+  convention (M6's score table and M7's coaching layer enforce the same rule
+  at two different layers — a fixed "0%" flag is not a graduated confidence
+  value). Also formalized **gap-band eligibility** (coarse, absolute,
+  versioned loss/trigger-rate bands controlling loud/quiet/silent delivery
+  tone, looser-gated than the full M3/M6 statistical finding gates so there's
+  usually something real to say even at a handful of laps — flagged as a
+  formalization of prior intent, correct if it diverges) and fixed a defect in
+  the seed set the new rules exist to catch: the original `be_patient`
+  conflated a measurable-but-weak fundamental (commitment) with a truly
+  unmeasurable one (vision/eye-line) under one id and description; split into
+  `trust_the_proxy` (proxy, tentative) and `look_further` (no_signal,
+  self-check, nine principles now). Record: `docs/COACHING.md`.
+- **2026-07-20 — Trend and evidence_count made required M6 outputs (constitution
+  condition 5).** Every Driver Model belief carries `trend` and
+  `evidence_count` as first-class fields, always — never dropped for
+  convenience when data is thin; they hold an explicit "unavailable" value
+  instead of being omitted from the schema. This is the longitudinal guarantee
+  the mission promises and it doesn't get to quietly disappear under
+  implementation pressure. Recorded in `ARCHITECTURE_VISION.md` (Scoring
+  Contract, condition 5) and mirrored in SPEC.md's M6 section; not a new
+  lettered SPEC amendment (A-series is reserved for changes to SPEC.md's own
+  engine content or the nine philosophy points — this clarifies an M6 output
+  contract rather than refining either).
 - **2026-07-19 — Coaching Intelligence adopted as M7 (design stage).** A grounded
   coaching ontology (`technique → driving principle → coaching principle`) where
   the AI selects/phrases within a fixed, evidence-triggered vocabulary. Checked

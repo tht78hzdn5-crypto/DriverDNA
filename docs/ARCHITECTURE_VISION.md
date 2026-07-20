@@ -62,7 +62,7 @@ score.** A belief that merely sharpens as laps accumulate is the point.
 DriverDNA **does** assign scores — this is a deliberate, recorded amendment to
 the earlier "no overall score" rule. Scores are the product's headline value.
 They are honest *guesses*: opinionated aggregations of real evidence. The
-integrity comes from four unbreakable conditions:
+integrity comes from five unbreakable conditions:
 
 1. **Deterministic.** Scores are computed by the engine from measured
    observables via an explicit formula. The same evidence always produces the
@@ -78,6 +78,15 @@ integrity comes from four unbreakable conditions:
    evidence beneath it, and the three sources (`vs-principle` / `vs-self` /
    `vs-reference`) remain inspectable underneath. What we still refuse is the
    *opaque* blended number that can't be taken apart.
+5. **Trend and evidence count are required outputs, not optional ones**
+   (owner decision, 2026-07-20). Every belief the Driver Model emits carries
+   **trend** and **evidence_count** as first-class fields — never dropped
+   because they're inconvenient to compute, or because current data can't yet
+   support them. Where breadth or lap-date metadata is missing, the field is
+   still present and reads **"unavailable — [reason]"**; it is never silently
+   omitted from the schema. This is the longitudinal guarantee the mission
+   promises: the model always shows its work on *how much it knows* and
+   *whether it's improving*, even when the honest answer is "not yet."
 
 **Honesty of the guess (required presentation).** Every score is shown as a
 model estimate, with its confidence, its evidence count, and a plain statement

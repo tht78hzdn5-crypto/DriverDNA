@@ -490,7 +490,11 @@ driver's cohorts; nothing in M0–M5 is rewritten.
   fundamentals) and any universal-pace-gain estimate stay "insufficient data"
   until enough breadth exists (≥ 2 tracks / ≥ 2 cars, as the existing gates
   require). **Trend needs real lap dates** — a dependency on sync metadata or a
-  user-supplied date on import (flagged; degrades to "trend unavailable").
+  user-supplied date on import (flagged; degrades to "trend unavailable"). Per
+  `ARCHITECTURE_VISION.md`'s Scoring Contract condition 5: `trend` and
+  `evidence_count` are **required fields on every belief row, always** — when
+  ungated data isn't available they hold an explicit "unavailable" value, they
+  are never dropped from the schema for convenience.
 - **AI role (unchanged contract).** Coach/chat gain the beliefs in their
   payload/bundle and may *explain* a score and *recommend the highest-impact
   practice priority*; they never produce or adjust a score (enforced by the
@@ -566,8 +570,8 @@ computed — it never computes a measurement.
   M5 → M6 → M7**; do not begin a milestone until the prior milestone's
   done-criteria pass. M6 (Driver Model) reads M1–M5's persisted rows and is
   additive. M7 (Coaching Intelligence — grounded coaching ontology over the
-  Driver Model) is specified in **docs/COACHING.md**; it is design-for-review,
-  not yet built.
+  Driver Model) is specified in **docs/COACHING.md**; its design is **adopted
+  (2026-07-20)** but **not yet built.**
   **M0b floats**: it requires `GARAGE61_TOKEN`, gates only the `sync` feature, and
   must complete before any code assumes API behavior. The Spa blind test (gate 1)
   runs when the owner's Spa lap set is supplied; it is the final trust gate, not a

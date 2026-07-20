@@ -10,7 +10,8 @@ and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 **One line:** the deterministic engine (M0a–M5) and the UI through writes (U0–U2
 + render-parity gate) are complete and verified; the Driver Model (M6) and
 Coaching Intelligence (M7) are the declared next milestones (M6 to build, M7
-design-for-review). Waiting on laps and two API keys, not on code.
+design **adopted** 2026-07-20 but not yet built). Waiting on laps and two API
+keys, not on code.
 
 ## Verified counts (2026-07-20)
 
@@ -41,7 +42,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
 | M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **next to build** |
-| M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | design-for-review |
+| M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **design adopted 2026-07-20**, not built |
 | M0b | Garage61 API probe + `sync` | **blocked on `GARAGE61_TOKEN`** |
 
 ### UI — through writes (U0–U2)
@@ -78,12 +79,17 @@ Immediate, no blockers, recommended order:
    gain) stay gated until there are lap dates and multi-track/car breadth, which
    we don't have yet — the per-fundamental scores work now; the "knows the
    driver not the track" headline earns out with data.
-1. **M7 — Coaching Intelligence (design stage, `docs/COACHING.md`).** A grounded
-   coaching ontology layered over the Driver Model: `technique → driving
-   principle → coaching principle`, with deterministic eligibility + ranking so
-   the AI *selects and phrases* coaching within a fixed vocabulary instead of
-   improvising it. Sequenced after M6; a detector-level subset is groundable on
-   today's engine. Spec is written and awaiting owner reaction — not yet built.
+1. **M7 — Coaching Intelligence (design ADOPTED 2026-07-20, `docs/COACHING.md`;
+   not yet built).** A grounded coaching ontology layered over the Driver
+   Model: `technique → driving principle → coaching principle`, with
+   deterministic eligibility + ranking + gap-band tone so the AI *selects and
+   phrases* coaching within a fixed vocabulary instead of improvising it.
+   Governing rule adopted this pass: **a confidence value never launders an
+   unmeasured inference** — measured ground gets committed, hedge-free
+   coaching; no-signal fundamentals (vision/eye-line) get a driver-runnable
+   **self-check** labeled as a hypothesis, never a score or confidence at any
+   level. Sequenced after M6; a detector-level subset (7 of 9 seed principles)
+   is groundable on today's engine.
 2. **U3 — the chat view.** Wire `ChatSession` into the UI: SSE progress states,
    validated-only rendering, the read-only tool-call audit, and the
    staged/confirm flow. Fully built and mock-tested underneath; only *runs
@@ -150,7 +156,28 @@ also recorded in the durable docs, per the Decision-discipline rule):
   coaching ontology where the AI selects/phrases within a fixed, evidence-
   triggered vocabulary. Checked against the philosophy: **consistent** with #2
   (AI never computes) and the out-of-scope list; no contradiction. Spec:
-  `docs/COACHING.md`, awaiting owner reaction before build.
+  `docs/COACHING.md`.
+- **COACHING.md flipped to adopted; two honesty rules added (2026-07-20).**
+  *A confidence value never launders an unmeasured inference* — no-signal
+  fundamentals (vision/eye-line) never get a score or confidence, at any
+  level ("Vision, 30% confident" explicitly forbidden); measured ground gets
+  full conviction, no hedging. No-signal fundamentals get a driver-runnable
+  **self-check** (a hypothesis + in-car exercise) in place of a score.
+  Checked against the philosophy in the same edit: consistent with #2 (a
+  self-check is interpretation, not a computed number) and #3 (this is what
+  "insufficient data" *does*, not a dead end); reconciled against
+  `ARCHITECTURE_VISION.md`'s "— · 0% · no telemetry signal" score convention
+  (two layers, same rule — M6's "0%" is a fixed flag, never a graduated
+  confidence). Also formalized **gap-band eligibility** (coarse, versioned
+  loss/trigger-rate bands controlling loud/quiet/silent tone — flagged as a
+  formalization of prior intent) and fixed a seed-set defect the new rules
+  exist to catch (the old `be_patient` conflated a weak-proxy fundamental with
+  a truly unmeasurable one; split into `trust_the_proxy` / `look_further`).
+- **Trend + evidence_count made required M6 outputs (2026-07-20).** Every
+  belief carries `trend` and `evidence_count` always, holding "unavailable"
+  rather than being dropped when data is thin — the longitudinal guarantee,
+  made non-optional. `ARCHITECTURE_VISION.md` Scoring Contract condition 5;
+  mirrored in SPEC.md's M6 section.
 
 **UI**
 - The normalized JSON payload is the rendering contract; the UI never computes a

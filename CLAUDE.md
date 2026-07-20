@@ -107,6 +107,15 @@ from the real fixtures and reviewed.
   Driver Model is the product; scores are deterministic/versioned/
   confidence-qualified (A14). **M6 (Driver Model) scoped and is the declared
   next engine milestone.**
+- **Coaching Intelligence (M7) design adopted (2026-07-20)**:
+  `docs/COACHING.md` — grounded coaching ontology (technique → driving
+  principle → coaching principle), deterministic eligibility/ranking/gap-band
+  tone, AI selects and phrases only. Binding rule: a confidence value never
+  launders an unmeasured inference — no-signal fundamentals get a
+  driver-runnable self-check, never a score or confidence at any level.
+  Sequenced after M6; **not yet built.** Constitution condition 5 added the
+  same day: `trend` and `evidence_count` are required M6 outputs, always
+  present (never dropped for convenience).
 - **Determinism verified mechanically**: two independent imports produce
   byte-identical Markdown/JSON/HTML reports.
 - **M0b: blocked** — waiting on `GARAGE61_TOKEN`. `sync` remains unbuilt by
