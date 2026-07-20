@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Protocol
+from typing import Any, Iterator, Protocol
 
 from driverdna.chat.tools import TOOL_DEFS, execute_tool
 from driverdna.coach.grounding import number_pool, numeric_claims, unsupported_claims
@@ -159,40 +159,55 @@ class ChatSession:
     # -- one driver turn ----------------------------------------------------
 
     def ask(self, text: str) -> dict[str, Any]:
+        """One driver turn. Thin wrapper draining `ask_stream` to its
+        terminal event — the generator is the single implementation shared
+        with the SSE display path (UI-SPEC decision 4, U3)."""
+        final = None
+        for event in self.ask_stream(text):
+            final = event
+        if final["type"] == "error":
+            return {"error": final["error"]}
+        return {"text": final["text"], "evidence": final["evidence"],
+                "effects": final["effects"], "staged": final["staged"]}
+
+    def ask_stream(self, text: str) -> Iterator[dict[str, Any]]:
+        """Generator form of one driver turn, for SSE progress display
+        (UI-SPEC decision 4): ``thinking`` -> ``consulting_tool``* ->
+        ``validating`` -> ``response``|``error``, repeating the
+        thinking/consulting/validating cycle once more on a rejected first
+        attempt. Text never streams token-by-token — the whole reply is
+        mechanically validated before the terminal ``response`` event
+        fires; a rejected-then-failed turn yields ``error``, never partial
+        text. `ask()` is a thin wrapper that drains this to its last event.
+        """
         self.db.add_chat_turn(
             session_id=self.session_id,
             bundle_version=self.bundle["bundle_version"],
             role="driver", content=text,
         )
         self._messages.append({"role": "user", "content": text})
-        try:
-            reply, cited, effects = self._grounded_reply()
-        except GroundingError as e:
-            error_text = (
-                "response rejected by the grounding contract (after one "
-                f"regeneration): {'; '.join(e.violations)}"
-            )
-            self.db.add_chat_turn(
-                session_id=self.session_id,
-                bundle_version=self.bundle["bundle_version"],
-                role="system-event", content=error_text,
-            )
-            return {"error": error_text}
-        self.db.add_chat_turn(
-            session_id=self.session_id,
-            bundle_version=self.bundle["bundle_version"],
-            role="assistant", content=reply,
-            evidence_cited=sorted(cited), effects=effects,
-        )
-        return {"text": reply, "evidence": sorted(cited), "effects": effects,
-                "staged": list(self.staged)}
+        yield {"type": "thinking"}
 
-    def _grounded_reply(self) -> tuple[str, set[str], dict[str, Any]]:
+        violations: list[str] = []
         for attempt in (1, 2):
-            text, tool_pool, effects = self._drive_provider()
-            violations = self._validate(text, tool_pool)
+            try:
+                reply, tool_pool, effects = yield from self._drive_provider_stream()
+            except GroundingError as e:  # MAX_TOOL_STEPS exceeded
+                violations = e.violations
+                break
+            yield {"type": "validating"}
+            violations = self._validate(reply, tool_pool)
             if not violations:
-                return text, set(_ID_TOKEN.findall(text)), effects
+                cited = set(_ID_TOKEN.findall(reply))
+                self.db.add_chat_turn(
+                    session_id=self.session_id,
+                    bundle_version=self.bundle["bundle_version"],
+                    role="assistant", content=reply,
+                    evidence_cited=sorted(cited), effects=effects,
+                )
+                yield {"type": "response", "text": reply, "evidence": sorted(cited),
+                       "effects": effects, "staged": list(self.staged)}
+                return
             if attempt == 1:
                 self._messages.append({
                     "role": "user",
@@ -200,9 +215,23 @@ class ChatSession:
                                "IDs from the bundle and numbers from the bundle "
                                f"or tool results: {'; '.join(violations)}",
                 })
-        raise GroundingError(violations)
+                yield {"type": "thinking"}
 
-    def _drive_provider(self) -> tuple[str, set[float], dict[str, Any]]:
+        error_text = (
+            "response rejected by the grounding contract (after one "
+            f"regeneration): {'; '.join(violations)}"
+        )
+        self.db.add_chat_turn(
+            session_id=self.session_id,
+            bundle_version=self.bundle["bundle_version"],
+            role="system-event", content=error_text,
+        )
+        yield {"type": "error", "error": error_text}
+
+    def _drive_provider_stream(self) -> Iterator[dict[str, Any]]:
+        """Yields ``consulting_tool`` audit events as each read-only tool
+        call executes; returns (text, tool_pool, effects) as its generator
+        return value (consumed by `yield from` in `ask_stream`)."""
         tool_pool: set[float] = set()
         effects: dict[str, Any] = {}
         for _ in range(self.MAX_TOOL_STEPS):
@@ -232,6 +261,7 @@ class ChatSession:
                     effects.setdefault("staged_proposals", []).append(
                         result["staged"]["key"]
                     )
+                yield {"type": "consulting_tool", "tool": call["name"], "args": call["args"]}
                 results.append({
                     "type": "tool_result", "tool_use_id": call["id"],
                     "content": json.dumps(result, sort_keys=True),

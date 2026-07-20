@@ -127,3 +127,26 @@ td.right, th.right { text-align: right; }
   padding: 0.3rem 0.5rem; width: 8rem;
 }
 .in:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Chat (U3): text never streams — a bubble appears whole, once validated
+   (or an error card replaces it). Driver/assistant distinguished by
+   alignment + tone, never by a data color (rule 2 stays a findings-only
+   convention). */
+.chat-log {
+  display: flex; flex-direction: column; gap: 0.7rem;
+  max-height: 32rem; overflow-y: auto;
+}
+.chat-turn { display: flex; flex-direction: column; }
+.chat-turn.driver { align-items: flex-end; }
+.chat-turn.assistant, .chat-turn.error { align-items: flex-start; }
+.chat-bubble {
+  max-width: 88%; padding: 0.5rem 0.7rem; border-radius: 4px;
+  font-size: 0.86rem; white-space: pre-wrap; line-height: 1.5;
+}
+.chat-turn.driver .chat-bubble { background: var(--raised); }
+.chat-turn.assistant .chat-bubble { background: var(--panel); border: 1px solid var(--line); }
+.chat-progress { font-style: italic; }
+.chat-audit { font-size: 0.7rem; margin-top: 0.2rem; }
+.chat-staged-row { flex-wrap: wrap; }
+.chat-input { display: flex; gap: 0.5rem; }
+.chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }

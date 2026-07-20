@@ -15,12 +15,15 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.db import Database
@@ -50,13 +53,41 @@ class ApplyBody(BaseModel):
     note: str | None = None
 
 
-def create_app(db_path: Path, config_path: Path) -> FastAPI:
-    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None)
+class ChatCreateBody(BaseModel):
+    cohort: str  # cohort slug, as returned by GET /api/cohorts
+    driver: str = "owner"
 
-    def open_db() -> Database:
+
+class ChatMessageBody(BaseModel):
+    text: str
+
+
+def create_app(
+    db_path: Path,
+    config_path: Path,
+    *,
+    chat_provider_factory: Callable[[], ChatProvider] | None = None,
+) -> FastAPI:
+    """`chat_provider_factory` defaults to the real `ClaudeChatProvider`
+    (env-only `ANTHROPIC_API_KEY`, lazy-imported so nothing else needs the
+    SDK installed); tests inject a mocked provider here, same pattern as
+    the CLI's `chat` command — no test ever calls a live model.
+    """
+    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None)
+    chat_sessions: dict[str, dict[str, Any]] = {}
+
+    def make_chat_provider() -> ChatProvider:
+        if chat_provider_factory is not None:
+            return chat_provider_factory()
+        from driverdna.chat.session import ClaudeChatProvider
+
+        cfg = load_config(config_path)
+        return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
+
+    def open_db(*, check_same_thread: bool = True) -> Database:
         if not db_path.exists():
             raise HTTPException(404, detail=f"no DB at {db_path} — run `driverdna import` first")
-        return Database.open(db_path)
+        return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:
         for cohort in list_cohorts(db):
@@ -266,5 +297,73 @@ def create_app(db_path: Path, config_path: Path) -> FastAPI:
                 "SELECT * FROM config_history WHERE change_pk=?", (new_pk,)
             ).fetchone()
             return dict(row)
+
+    # --- chat (U3) ------------------------------------------------------------
+    # A ChatSession is stateful (in-memory conversation + staged proposals,
+    # UI-SPEC decision 5) and keeps its own DB connection open for the
+    # session's lifetime — unlike every other endpoint's per-request
+    # `with open_db() as db:`. This is a deliberate, scoped deviation: a
+    # local, single-user tool (philosophy #8) doesn't need session eviction
+    # machinery for what is, in practice, a handful of concurrent sessions.
+
+    @app.post("/api/chat/sessions")
+    def create_chat_session(body: ChatCreateBody) -> dict[str, Any]:
+        # check_same_thread=False: this connection outlives the request that
+        # opens it (kept in `chat_sessions` for follow-up messages/confirm),
+        # and FastAPI dispatches sync endpoints/StreamingResponse generators
+        # to a thread pool — later calls on this session can legitimately
+        # land on a different worker thread. Access stays sequential (one
+        # request completes before the next starts), never concurrent.
+        db = open_db(check_same_thread=False)
+        try:
+            cohort = resolve(db, body.cohort)
+            try:
+                provider = make_chat_provider()
+            except RuntimeError as e:
+                raise HTTPException(503, detail=str(e)) from None
+            session_id = uuid.uuid4().hex[:12]
+            session = ChatSession(
+                db=db, store=ConfigStore(config_path, db), provider=provider,
+                driver=body.driver, car=cohort["car"], track=cohort["track"],
+                config=load_config(config_path), session_id=session_id,
+            )
+        except Exception:
+            db.close()
+            raise
+        chat_sessions[session_id] = {"session": session, "db": db}
+        return {
+            "session_id": session_id,
+            "cohort": body.cohort,
+            "bundle_version": session.bundle["bundle_version"],
+        }
+
+    def _get_session(session_id: str) -> ChatSession:
+        entry = chat_sessions.get(session_id)
+        if entry is None:
+            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
+        return entry["session"]
+
+    @app.post("/api/chat/sessions/{session_id}/messages")
+    def chat_message(session_id: str, body: ChatMessageBody) -> StreamingResponse:
+        session = _get_session(session_id)
+
+        def events():
+            # SSE progress states (UI-SPEC decision 4): thinking ->
+            # consulting_tool* -> validating -> response|error. No text
+            # streams token-by-token — the validated reply arrives whole in
+            # the terminal "response" event, or "error" replaces it, never
+            # retracted partial text.
+            for event in session.ask_stream(body.text):
+                yield f"data: {json.dumps(event, sort_keys=True)}\n\n"
+
+        return StreamingResponse(events(), media_type="text/event-stream")
+
+    @app.post("/api/chat/sessions/{session_id}/confirm/{index}")
+    def chat_confirm(session_id: str, index: int) -> dict[str, Any]:
+        session = _get_session(session_id)
+        try:
+            return session.confirm(index)
+        except IndexError as e:
+            raise HTTPException(404, detail=str(e)) from None
 
     return app

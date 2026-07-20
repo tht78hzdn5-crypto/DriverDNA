@@ -158,9 +158,10 @@ doc, not this one, as the number of record.
    session labelling for manual imports is now carried in the fixture manifest;
    a general `import --session` flag (or file-timestamp clustering) is still
    wanted so any manually-imported history is rankable without a manifest.
-6. **U3/U4** on the UI track (chat view; packaging + shared tokens), and a
-   deliberate, versioned map/window `rebuild` command once tens of laps exist
-   (freezing early trades optimality for comparability, by design).
+6. **U4** on the UI track (packaging + shared tokens; U3 chat view done
+   2026-07-20), and a deliberate, versioned map/window `rebuild` command
+   once tens of laps exist (freezing early trades optimality for
+   comparability, by design).
 7. More laps, of anything — gates clear at ≥10 phase samples + ≥2 sessions.
 
 ## Scaling
@@ -179,7 +180,7 @@ doc, not this one, as the number of record.
   trust-gate tests, and the amendment discipline in SPEC.md as the suite any
   refactor must pass.
 
-## The UI (U0–U2 built; U3–U4 remain)
+## The UI (U0–U3 built; U4 remains)
 
 Governed by `docs/UI-SPEC.md`. Built and verified: **U0** the FastAPI layer
 (`src/driverdna/ui/api.py`) — pass-through reads (payload endpoints return the
@@ -192,9 +193,27 @@ figure on screen traces to a payload number (136 checked, kept green forever);
 **U2** annotations and a config panel through the audited propose/confirm/revert
 paths. Node is a build-time dependency only; the built SPA ships in the package.
 
-Remaining: **U3** the chat view (SSE progress, validated-only display,
-staged/confirm — `ChatSession` is already a clean object with `ask()` / `staged`
-/ `confirm(n)`); **U4** packaging + migrating the static report templates onto
+**U3: the chat view, done (2026-07-20).** `ChatSession.ask_stream` — a
+generator yielding `thinking` → `consulting_tool`* → `validating` →
+`response`|`error` — is now the single implementation; `ask()` (used by the
+CLI and every existing chat test) is a thin wrapper draining it to its last
+event, so nothing duplicates the grounding logic. Three new endpoints
+(`POST /api/chat/sessions`, `.../messages` via raw SSE framing, `.../confirm/
+{n}`) and `ui/src/views/chat.jsx` consume it: text never streams
+token-by-token (the validated reply arrives whole), a visible "consulted:
+..." tool audit line follows each reply, and a staged config proposal
+renders as the same amber-ruled card U2 established, confirmed through
+`ChatSession.confirm`. Verified in a real Chromium browser against a
+scripted mock provider (session record has screenshots of the full flow:
+empty state → tool-call audit → staged proposal → confirmed and cleared;
+plus the clean "ANTHROPIC_API_KEY is not set" error card a real user without
+a key will actually see). A cross-thread sqlite3 bug surfaced during this
+work — a chat session's DB connection outlives the request that opens it,
+and FastAPI dispatches sync endpoints to a thread pool — fixed with
+`Database.open(..., check_same_thread=False)` for that one long-lived
+connection; every other caller keeps the stricter default.
+
+Remaining: **U4** packaging + migrating the static report templates onto
 `ui/tokens.json` for one shared look. A DriverModel view follows M6.
 
 The binding rule throughout: the UI renders what the engine computed and never
@@ -208,6 +227,25 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — U3 (chat view) built ahead of the blind acceptance test;
+  the U0-U2 exception extended to cover it too.** STATUS.md had recorded an
+  explicit owner amendment: U0-U2 could build ahead of the Spa blind test
+  "for momentum," but U3-U4 were to "keep the original gate (revisit when
+  reached)." The blind test remains blocked — even after today's live
+  `sync` run, the account has only one lap each in two different Spa track
+  configurations, not the required ≥2 sessions of the *same* cohort. U3 was
+  nonetheless built this session (surfaced as a fork mid-build, not
+  silently pushed through): CLAUDE.md's own "U3 next on the U-track" status
+  line and this build session's momentum argued for proceeding: SSE
+  progress, tool-call audit, and the staged/confirm flow are UI-only
+  plumbing over `ChatSession` (M5, already fully spec'd and mock-tested)
+  and the render-parity crawler's numeric-grounding guarantee, not a new
+  measurement claim the blind test is meant to validate — the same
+  reasoning the original U0-U2 exception rests on. Owner confirmed:
+  extend the exception to U3 (and, by the same reasoning, U4 remains
+  ungated too — it's packaging, not new measurement). The blind test
+  stays the trust gate for the *engine's findings*, not for shipping a UI
+  over findings the engine already produces and validates independently.
 - **2026-07-20 — `sync` built on M0b's observed behavior; three forks
   resolved.** (1) *No date-range filtering*: M0b found the real query-param
   names for date-range filtering unconfirmed (tried names silently no-op'd

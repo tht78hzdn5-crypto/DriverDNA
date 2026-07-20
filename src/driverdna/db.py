@@ -264,8 +264,13 @@ class Database:
         self._migrate()
 
     @classmethod
-    def open(cls, path: Path | str = ":memory:") -> "Database":
-        return cls(sqlite3.connect(str(path)))
+    def open(cls, path: Path | str = ":memory:", *, check_same_thread: bool = True) -> "Database":
+        """`check_same_thread=False` is for long-lived connections handed
+        across a thread pool (e.g. the UI's per-chat-session connection,
+        UI-SPEC decision 5) — sequential access from different threads over
+        the connection's life, never truly concurrent, so this is safe;
+        every other caller keeps the default thread-affine connection."""
+        return cls(sqlite3.connect(str(path), check_same_thread=check_same_thread))
 
     def close(self) -> None:
         self.conn.close()

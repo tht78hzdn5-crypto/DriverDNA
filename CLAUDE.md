@@ -101,8 +101,16 @@ from the real fixtures and reviewed.
   error); transcripts persisted with bundle version, evidence, effects.
   ConfigStore write path complete (propose/apply/revert + config_history).
 - **UI: U0 (API) + U1 (read views + render-parity crawler) + U2 (annotations
-  and config panel through audited paths) done. U3 (chat view) next on the
-  U-track.**
+  and config panel through audited paths) + U3 (chat view) done. U4
+  (packaging/tokens) next on the U-track.** U3: `ChatSession.ask_stream`
+  (generator; `ask()` is a thin wrapper over it) drives three new endpoints
+  (`POST /api/chat/sessions`, `.../messages` via SSE, `.../confirm/{n}`) and
+  `ui/src/views/chat.jsx`. SSE progress (thinking → consulting_tool* →
+  validating), tool-call audit, and staged/confirm all browser-verified
+  against a mocked provider; text never streams, a rejected reply is a
+  distinct error card. Fixed a real cross-thread sqlite3 bug found while
+  testing (`Database.open(..., check_same_thread=False)` for the one
+  long-lived chat-session connection).
 - **Constitution adopted (2026-07-19)**: `docs/ARCHITECTURE_VISION.md` — the
   Driver Model is the product; scores are deterministic/versioned/
   confidence-qualified (A14).

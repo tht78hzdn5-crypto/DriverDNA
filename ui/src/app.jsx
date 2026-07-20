@@ -5,9 +5,10 @@ import CornerDrill from "./views/corner.jsx";
 import FindingDetail from "./views/finding.jsx";
 import Laps from "./views/laps.jsx";
 import Config from "./views/config.jsx";
+import Chat from "./views/chat.jsx";
 
 // Tiny hash router: #/ · #/cohort/:slug · #/corner/:slug/:cid ·
-// #/finding/:slug/:fid · #/laps/:slug
+// #/finding/:slug/:fid · #/laps/:slug · #/chat[/:slug]
 function parseHash() {
   const parts = window.location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   return { view: parts[0] || "home", args: parts.slice(1).map(decodeURIComponent) };
@@ -29,11 +30,13 @@ export default function App() {
         <nav>
           {args[0] && view !== "home" && view !== "config" && (
             <>
-              <a href={`#/cohort/${args[0]}`}>cohort</a>
-              <a href={`#/laps/${args[0]}`}>laps</a>
+              {view !== "cohort" && <a href={`#/cohort/${args[0]}`}>cohort</a>}
+              {view !== "laps" && <a href={`#/laps/${args[0]}`}>laps</a>}
+              {view !== "chat" && <a href={`#/chat/${args[0]}`}>chat</a>}
             </>
           )}
           <a href="#/">driver</a>
+          {view !== "chat" && <a href="#/chat">chat</a>}
           <a href="#/config">config</a>
         </nav>
       </header>
@@ -43,6 +46,7 @@ export default function App() {
       {view === "finding" && <FindingDetail slug={args[0]} findingId={args[1]} />}
       {view === "laps" && <Laps slug={args[0]} />}
       {view === "config" && <Config />}
+      {view === "chat" && <Chat slug={args[0]} />}
     </>
   );
 }
