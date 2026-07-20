@@ -42,11 +42,12 @@ unmeasured inference" - the same rule stated at the coaching layer.
 (`config.model.proxy_confidence_cap`) - real signal, honestly bounded.
 
 Trend: SPEC.md's Milestone 6 requires `trend` to always be present but
-allows "unavailable" until real lap dates exist. No ingestion path sets
-`laps.lap_date` yet (M6a added the column; nothing populates it) - so dm-v1
-always reports "unavailable". The field is never dropped, and the
-population/split-by-date logic is a self-contained addition later, not a
-schema or call-site change now.
+allows "unavailable" until real lap dates exist. `sync` (M0b+) is now the
+first ingestion path that sets `laps.lap_date` (from the Garage61 API's
+startTime); manual `import` still does not. dm-v1 nonetheless still always
+reports "unavailable" here, deliberately: _trend()'s date-bucketing/
+direction logic is a self-contained addition, not yet built, not a
+side-effect of sync landing. The field is never dropped in the meantime.
 """
 
 from __future__ import annotations
@@ -241,7 +242,8 @@ def _confidence(
 
 
 def _trend(db: Database, driver: str) -> str:
-    # See module docstring: no ingestion path sets lap_date yet. Always
+    # See module docstring: lap_date is now populated by sync, but the
+    # date-bucketing/direction logic itself isn't built yet. Always
     # "unavailable" today, by design, not by omission.
     return "unavailable"
 

@@ -144,8 +144,16 @@ from the real fixtures and reviewed.
   contract exactly. The one genuine unknown is resolved: other-drivers'
   laps are visible in listings but return `403 forbidden_lap` on
   detail/CSV — reference laps stay on the manual `import` path
-  (SPEC.md decision-of-record #2, clarified). `sync` itself (self-lap
-  ingest) is unblocked but not yet built.
+  (SPEC.md decision-of-record #2, clarified).
+- **`sync` built (2026-07-20)** — `Garage61Client` (stdlib `urllib`, no new
+  dependency) + `sync_driver` + `driverdna sync`. Cohort discovery via
+  `/me/statistics`; every lap is self-filtered on `driver.id` before fetch,
+  so reference laps structurally cannot enter through this path. Real API
+  metadata upgrades `session_key` and `run_index` beyond what manual CSV
+  import can derive, and populates `lap_date` (M6 trend's precondition;
+  trend computation itself remains a separate follow-up). Idempotent via
+  the existing source_file/content_hash dedup. Date-range filtering is
+  deliberately not implemented — M0b found the real param names unconfirmed.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
 - Spa blind acceptance test blocked on the owner's GR86/Spa lap set (≥ 2 sessions).

@@ -9,11 +9,14 @@ and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 
 **One line:** the deterministic engine (M0a–M7) is complete and verified; the
 UI through writes (U0–U2 + render-parity gate) is done, with U3 (chat view) the
-declared next UI-track milestone. M0b (API probe) is now **done** — a later
+declared next UI-track milestone. M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
-documents observed behavior. `sync` for self laps is unblocked but not yet
-built; reference laps stay on the manual `import` path per M0b's finding.
+documents observed behavior. **`sync` (self-lap ingest) is now built** on
+that observed behavior — `driverdna sync` — tested against a mocked
+transport only; not yet run against a live account. Reference laps stay on
+the manual `import` path per M0b's finding (other-drivers' laps return `403
+forbidden_lap`).
 
 ## Verified counts (2026-07-20)
 
@@ -21,7 +24,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **404** (25 test files) | `python3 -m pytest` |
+| Tests passing | **423** (27 test files) | `python3 -m pytest` |
 | Commits on branch | **35** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
@@ -204,7 +207,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 
 | # | Decision | Why it matters | Current default |
 |---|---|---|---|
-| 1 | Build `sync` (M0b done, token provided 2026-07-20)? | Unblocks automatic self-lap ingest, no manual uploads. Reference-lap ingest stays manual regardless (M0b: `403 forbidden_lap` on other-drivers' laps) | Not yet built; manual import still the only ingest path |
+| 1 | Run `driverdna sync` against the live account for the first time | `sync` is built (2026-07-20) and unit-tested against a mocked transport, but has not yet ingested a real lap — worth a first live run before relying on it. Reference-lap ingest stays manual regardless (M0b: `403 forbidden_lap` on other-drivers' laps) | Not yet run live |
 | 2 | Provide `ANTHROPIC_API_KEY`? | Turns coach + chat from mock-tested to actually usable | Deferred; all tests mock it |
 | 3 | When to run the blind test? | It's only meaningful on data whose answer I don't already know | Deferred until independent data |
 | 4 | Session labels for manual imports | Filenames carry no session; grouping affects repeatability | Best-effort by upload batch, editable in the manifest |

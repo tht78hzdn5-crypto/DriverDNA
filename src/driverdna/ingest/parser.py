@@ -19,6 +19,7 @@ what notices contract drift on the fixtures.
 from __future__ import annotations
 
 import csv
+import io
 import re
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -40,6 +41,9 @@ class FlagCode(StrEnum):
     INCOMPLETE_LAP = "incomplete_lap"  # single lap, but covers < a full lap
     METADATA_FAILURE = "metadata_failure"
     INFERRED_UNITS = "inferred_units"
+    API_LAP_METADATA = "api_lap_metadata"  # sync only (M0b): Garage61's own
+    # clean/offtrack/discontinuity/pitlane flags for this lap — metadata the
+    # API carries that the CSV channel contract does not (docs/garage61-api.md).
 
 
 @dataclass(frozen=True)
@@ -160,8 +164,39 @@ def parse_lap(path: Path) -> TelemetryLap:
         except StopIteration:
             raise ParseError(f"{path.name}: empty file") from None
         rows = [row for row in reader if row]
+    match = _FILENAME_RE.search(path.name)
+    lap_id = match.group(1) if match else None
+    return _parse_rows(header, rows, label=path.name, source_path=path, lap_id=lap_id)
+
+
+def parse_lap_text(text: str, *, source_label: str, lap_id: str | None) -> TelemetryLap:
+    """Parse an in-memory CSV export (the `sync` path, M0b) per the same
+    source contract as `parse_lap`. `lap_id` is supplied by the caller — the
+    API's own lap id — rather than parsed from a filename: M0b found the
+    manual-download filename code and the API's lap id are unrelated ID
+    spaces, so `sync` must never try to derive one from the other.
+    """
+    reader = csv.reader(io.StringIO(text))
+    try:
+        header = next(reader)
+    except StopIteration:
+        raise ParseError(f"{source_label}: empty file") from None
+    rows = [row for row in reader if row]
+    return _parse_rows(
+        header, rows, label=source_label, source_path=Path(source_label), lap_id=lap_id
+    )
+
+
+def _parse_rows(
+    header: list[str],
+    rows: list[list[str]],
+    *,
+    label: str,
+    source_path: Path,
+    lap_id: str | None,
+) -> TelemetryLap:
     if not rows:
-        raise ParseError(f"{path.name}: header but no data rows")
+        raise ParseError(f"{label}: header but no data rows")
 
     flags: list[QualityFlag] = []
     idx = {name: i for i, name in enumerate(header)}
@@ -226,11 +261,8 @@ def parse_lap(path: Path) -> TelemetryLap:
     throttle = np.clip(throttle, 0.0, 1.0)
     brake = np.clip(brake, 0.0, 1.0)
 
-    match = _FILENAME_RE.search(path.name)
-    lap_id = match.group(1) if match else None
-
     return TelemetryLap(
-        source_path=path,
+        source_path=source_path,
         lap_id=lap_id,
         n_samples=n,
         duration_s=n / SAMPLE_RATE_HZ,

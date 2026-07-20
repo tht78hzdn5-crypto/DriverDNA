@@ -124,21 +124,16 @@ def run_synthetic_lap(
     session_key: str | None = None,
     config=None,
 ):
-    """Run the full import pipeline on an in-memory synthetic lap by shimming
-    the parser (the pipeline otherwise reads from disk)."""
-    import driverdna.pipeline as pipeline
+    """Run the full import pipeline on an in-memory synthetic lap directly
+    (no file on disk needed — `import_parsed_lap` takes an already-parsed
+    lap, the same entry point `sync` uses for API-fetched laps)."""
     from driverdna.config import DriverDNAConfig
-    from driverdna.pipeline import import_lap_file
+    from driverdna.pipeline import import_parsed_lap
 
-    original = pipeline.parse_lap
-    pipeline.parse_lap = lambda path: lap
-    try:
-        return import_lap_file(
-            db, lap.source_path, driver=driver, car=car, track=track, role=role,
-            session_key=session_key, config=config or DriverDNAConfig(),
-        )
-    finally:
-        pipeline.parse_lap = original
+    return import_parsed_lap(
+        db, lap, driver=driver, car=car, track=track, role=role,
+        session_key=session_key, config=config or DriverDNAConfig(),
+    )
 
 
 def one_corner_lap(n: int = 1800) -> TelemetryLap:

@@ -194,6 +194,22 @@ MIGRATIONS: tuple[str, ...] = (
         UNIQUE (driver, fundamental, scoring_model_version)
     );
     """,
+    # 004 — sync (M0b+): bookkeeping for `driverdna sync`. Idempotency itself
+    # comes from the existing source_file/content_hash dedup in import_lap
+    # (a sync-fetched lap's source_file is "garage61-api://<api lap id>");
+    # this table is a driver-visible summary of the last sync per cohort, not
+    # a second dedup mechanism.
+    """
+    CREATE TABLE garage61_sync_state (
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        laps_seen INTEGER NOT NULL DEFAULT 0,
+        laps_new INTEGER NOT NULL DEFAULT 0,
+        last_synced_at TEXT,
+        PRIMARY KEY (driver, car, track)
+    );
+    """,
 )
 
 
@@ -287,7 +303,9 @@ class Database:
         track: str,
         role: str = "self",
         session_key: str | None = None,
+        run_index: int | None = None,
         imported_at: str | None = None,
+        lap_date: str | None = None,
     ) -> tuple[int, str]:
         """Store lap row + raw blob. Returns (lap_pk, status).
 
@@ -321,13 +339,13 @@ class Database:
         with self.conn:
             cur = self.conn.execute(
                 """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
-                                     session_key, n_samples, duration_s, imported_at,
-                                     quality_flags, content_hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                     session_key, run_index, n_samples, duration_s,
+                                     imported_at, quality_flags, content_hash, lap_date)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     lap.lap_id, str(lap.source_path), driver, car, track, role,
-                    session_key, lap.n_samples, lap.duration_s, imported_at, flags,
-                    content_hash,
+                    session_key, run_index, lap.n_samples, lap.duration_s, imported_at,
+                    flags, content_hash, lap_date,
                 ),
             )
             lap_pk = int(cur.lastrowid)
@@ -909,11 +927,45 @@ class Database:
 
     def driver_dated_lap_count(self, driver: str) -> int:
         """Self-role laps with a real lap_date — the trend-availability
-        check. Always 0 today (no ingestion path sets lap_date yet); exists
-        so trend activates automatically once one does, per SPEC.md M6."""
+        check. `sync` (M0b+) is the first ingestion path that sets it (from
+        the API's startTime); trend computation itself is a separate,
+        not-yet-built follow-up (model/scoring.py's _trend docstring)."""
         row = self.conn.execute(
             """SELECT COUNT(*) n FROM laps
                WHERE role='self' AND driver=? AND lap_date IS NOT NULL""",
             (driver,),
         ).fetchone()
         return int(row["n"])
+
+    # --- garage61 sync state (M0b+) ------------------------------------------
+
+    def record_sync_state(
+        self, *, driver: str, car: str, track: str, laps_seen: int, laps_new: int,
+        synced_at: str | None = None,
+    ) -> None:
+        """Upsert the last-sync summary for one (driver, car, track) cohort.
+
+        Not a dedup mechanism — that's the existing source_file/content_hash
+        checks in import_lap — this is just a driver-visible "what did the
+        last sync do" record.
+        """
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO garage61_sync_state
+                   (driver, car, track, laps_seen, laps_new, last_synced_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (driver, car, track) DO UPDATE SET
+                       laps_seen=excluded.laps_seen,
+                       laps_new=excluded.laps_new,
+                       last_synced_at=excluded.last_synced_at""",
+                (driver, car, track, laps_seen, laps_new, synced_at),
+            )
+
+    def sync_states(self, driver: str) -> list[dict[str, Any]]:
+        return [
+            dict(r) for r in self.conn.execute(
+                """SELECT * FROM garage61_sync_state WHERE driver=?
+                   ORDER BY car, track""",
+                (driver,),
+            )
+        ]

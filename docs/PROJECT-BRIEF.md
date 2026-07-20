@@ -144,11 +144,13 @@ doc, not this one, as the number of record.
    never launders an unmeasured inference (no-signal fundamentals get a
    self-check, never a score). Sequenced after M6; a detector-level subset is
    groundable on today's engine.
-3. **`sync`** — M0b (API probe) is done (`docs/garage61-api.md`, 2026-07-20);
-   build `sync` for self-lap ingest from the observed behavior now that
-   nothing needs to be assumed. Ends the manual-upload loop for self laps —
-   the biggest phone-first win. Reference laps stay manual-import regardless
-   (M0b found other-drivers' lap fetch returns `403 forbidden_lap`).
+3. **`sync`: built (2026-07-20).** Self-lap ingest from the Garage61 API —
+   `Garage61Client` + `sync_driver` + `driverdna sync` — ends the
+   manual-upload loop for self laps. Reference laps stay manual-import
+   regardless (M0b found other-drivers' lap fetch returns `403
+   forbidden_lap`). Not yet exercised against a live account in this
+   session (no `GARAGE61_TOKEN` in the environment when it was built) — a
+   first real `driverdna sync` run is worth doing before relying on it.
 4. **`ANTHROPIC_API_KEY`** → first live coach/chat runs (all logic is
    mock-tested; live runs will shake out prompt/formatting realities).
 5. **The owner's independent Spa lap set** → the blind acceptance test. Note:
@@ -205,6 +207,30 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — `sync` built on M0b's observed behavior; three forks
+  resolved.** (1) *No date-range filtering*: M0b found the real query-param
+  names for date-range filtering unconfirmed (tried names silently no-op'd
+  rather than erroring); rather than guess, `sync` re-lists a cohort's full
+  lap metadata every run (cheap — JSON only) and relies on the existing
+  source_file/content_hash dedup to skip CSV re-fetch (expensive) for laps
+  already imported. Consistent with the standing "never assume API
+  behavior" rule — this is the rule applied to a new call site, not a new
+  decision. (2) *Missing/incomplete laps skipped before fetch*: the API's
+  lap metadata carries `missing`/`incomplete` booleans a bare CSV can't;
+  `sync` treats either as un-fetchable and records why, rather than
+  attempting to parse a lap that can't represent a complete single lap. (3)
+  *Real session/run/date metadata adopted for the sync path only*: the API
+  supplies `event`+`session` (session grouping) and `run` (stint index) —
+  both hand-reconstructed on the manual-import path per SPEC.md's source
+  contract (no run/stint CSV channel exists). `sync` uses the real values
+  directly; `import` is unaffected and keeps reconstructing. `startTime`
+  becomes `lap_date`, satisfying M6's trend precondition — trend
+  *computation* is intentionally left alone (`model/scoring.py`'s `_trend`
+  stays hardcoded "unavailable"; that logic is a separate, self-contained
+  addition per its own docstring, not a side effect of sync landing). None
+  of the three touch the nine philosophy points or the out-of-scope list —
+  they're implementation choices within M0b's already-adopted fallback
+  (reference laps stay manual `import`), not new philosophy forks.
 - **2026-07-20 — M0b (Garage61 API probe) run and resolved; the reference-lap
   fetch question answered.** With a real `GARAGE61_TOKEN`, `/laps` proved not
   owner-scoped by default (a plain track/car query returns laps from many

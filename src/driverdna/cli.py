@@ -95,6 +95,51 @@ def import_cmd(
 
 
 @app.command()
+def sync(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    driver: str = typer.Option("owner", help="Driver label."),
+    car: str = typer.Option(None, help="Restrict to one car (by Garage61 name)."),
+    track: str = typer.Option(None, help="Restrict to one track (by Garage61 name)."),
+) -> None:
+    """Incremental self-lap ingest from the Garage61 API (requires
+    GARAGE61_TOKEN). Reference laps stay on `import` — M0b found other-
+    drivers' laps aren't fetchable with this token (docs/garage61-api.md)."""
+    from driverdna.config import load_config
+    from driverdna.db import Database
+    from driverdna.garage61.client import Garage61Client
+    from driverdna.garage61.sync import sync_driver
+
+    config = load_config()
+    try:
+        client = Garage61Client()
+    except RuntimeError as e:
+        typer.echo(f"error: {e}")
+        raise typer.Exit(code=2) from None
+
+    with Database.open(db_path) as db:
+        summaries = sync_driver(db, client, driver=driver, config=config, car=car, track=track)
+        if not summaries:
+            typer.echo("no cohorts found (nothing driven yet, or --car/--track matched none)")
+            raise typer.Exit(code=0)
+        for s in summaries:
+            typer.echo(
+                f"{s.car} @ {s.track}: {s.laps_seen} seen, {s.laps_new} new"
+            )
+            for lap_id, reason in s.laps_skipped:
+                typer.echo(f"  skipped {lap_id}: {reason}")
+            for r in s.results:
+                if r.status != "imported":
+                    continue
+                if r.admitted:
+                    typer.echo(f"  ADMITTED to map: {', '.join(r.admitted)}")
+                for corner_id, old, new in r.class_changes:
+                    typer.echo(f"  CLASS CHANGE {corner_id}: {old} -> {new}")
+        evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
+        if evicted:
+            typer.echo(f"retention: evicted {evicted} raw lap blob(s); summaries kept")
+
+
+@app.command()
 def metrics(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
     out: Path = typer.Option(

@@ -165,8 +165,15 @@ directly downstream):
 
 ## Architecture
 
-- `Garage61Client`: token auth (`GARAGE61_TOKEN`, env only), list own laps with
-  car/track/date filters, fetch lap CSV, incremental sync state in DB.
+- `Garage61Client`: token auth (`GARAGE61_TOKEN`, env only), list own laps
+  filtered by car/track, fetch lap CSV, sync state in DB. Built 2026-07-20
+  from M0b's observed behavior only: `/laps` is unscoped and requires
+  `tracks`, so listing is client-side self-filtered on `driver.id`; date
+  filtering is deliberately NOT implemented — M0b found the real query-param
+  names for it unconfirmed, and this project never builds on an assumed
+  param name. `sync` therefore re-lists a cohort's full lap metadata each
+  run (cheap) and only fetches a CSV (the expensive part) for genuinely new
+  laps, detected via the same source_file/content_hash dedup `import` uses.
 - `Garage61Parser` → typed `TelemetryLap` (normalized channels, elapsed time, lap
   position, metadata, quality flags). `SessionLoader` → cohorts
   (driver/car/track-configuration) and reconstructed sessions/runs.
@@ -272,6 +279,25 @@ genuine unknown is resolved: other-drivers' laps are visible in listings but
 (see decision-of-record #2's 2026-07-20 clarification above). Also discovered:
 the manual-download filename's `LAPID` is not the API's lap `id` (different ID
 schemes), so `sync` must never try to resolve one from the other.
+
+**`sync` built (2026-07-20)**, directly on M0b's findings: `Garage61Client`
+(`src/driverdna/garage61/client.py`, stdlib `urllib` only — no new
+dependency) + `sync_driver`/`discover_cohorts`
+(`src/driverdna/garage61/sync.py`) + `driverdna sync` CLI. Cohort discovery
+via `/me/statistics` (no unscoped lap listing exists); every listed lap is
+filtered client-side to `driver.id == /me`'s id before fetch, so a
+reference/other-driver lap can never reach the import pipeline through this
+path by construction, not just by convention. The API's own lap metadata
+gave two upgrades the manual-import path can't: `event`+`session` become a
+real `session_key` (no more best-effort reconstruction) and `run` becomes a
+real `run_index` (a genuine stint index, where CSV-only import still has no
+run/stint channel at all — SPEC.md's source contract). `startTime` becomes
+`lap_date`, meeting M6's trend precondition (trend computation itself is
+still a separate, not-yet-built follow-up — `model/scoring.py`'s `_trend`
+stays hardcoded "unavailable" on purpose). Laps the API itself flags
+`missing` or `incomplete` are skipped before fetch, surfaced by reason,
+never silently dropped. Idempotent via the same source_file/content_hash
+dedup `import` already uses (`source_file="garage61-api:<api lap id>"`).
 
 ## Milestone 1 — Parse, segment, identify, classify
 

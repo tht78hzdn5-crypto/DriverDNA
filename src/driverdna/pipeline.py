@@ -26,7 +26,7 @@ from driverdna.corners.classify import (
 from driverdna.corners.identity import build_corner_map
 from driverdna.corners.segmenter import segment_lap
 from driverdna.db import Database, landmark_positions
-from driverdna.ingest.parser import parse_lap
+from driverdna.ingest.parser import TelemetryLap, parse_lap
 from driverdna.metrics.detectors import run_detectors
 from driverdna.metrics.technique import compute_corner_metrics
 
@@ -67,9 +67,37 @@ def import_lap_file(
     config: DriverDNAConfig,
 ) -> ImportResult:
     lap = parse_lap(path)
+    return import_parsed_lap(
+        db, lap, driver=driver, car=car, track=track, role=role,
+        session_key=session_key, imported_at=imported_at, config=config,
+    )
+
+
+def import_parsed_lap(
+    db: Database,
+    lap: TelemetryLap,
+    *,
+    driver: str,
+    car: str,
+    track: str,
+    role: str = "self",
+    session_key: str | None = None,
+    run_index: int | None = None,
+    imported_at: str | None = None,
+    lap_date: str | None = None,
+    config: DriverDNAConfig,
+) -> ImportResult:
+    """Store + measure an already-parsed lap.
+
+    `import_lap_file` (file path -> `parse_lap` -> here) is the manual-import
+    entry point; `sync` (M0b+) calls this directly with a lap parsed from an
+    in-memory API CSV fetch (`parse_lap_text`), plus real session/run/date
+    metadata the API supplies that a bare CSV file cannot.
+    """
     lap_pk, status = db.import_lap(
         lap, driver=driver, car=car, track=track, role=role,
-        session_key=session_key, imported_at=imported_at,
+        session_key=session_key, run_index=run_index, imported_at=imported_at,
+        lap_date=lap_date,
     )
     if status != "imported":
         return ImportResult(lap_pk=lap_pk, status=status)
