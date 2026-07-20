@@ -301,9 +301,16 @@ def cumulative_loss(
 ) -> dict[str, Any]:
     """Median per-lap seconds lost vs the robust baseline, per corner/phase,
     rolled up by phase and by corner class. Phase is the technique-area tag
-    for priced loss in v1 (detector findings carry form, unpriced)."""
+    for priced loss in v1 (detector findings carry form, unpriced).
+
+    `per_corner_phase_n` carries the sample size (post outlier-screening
+    baseline, pre-screening history count) behind each corner/phase loss
+    figure — M6b's opportunity component needs it to weight/gate a
+    fundamental's evidence_count without re-querying phase_history itself.
+    """
     classes = db.corner_classes(car=car, track=track)
     per_corner: dict[str, dict[str, float]] = {}
+    per_corner_phase_n: dict[str, dict[str, int]] = {}
     outlier_counts: dict[str, int] = {}
     for corner_id, windows in sorted(windows_by_corner.items()):
         for phase in PHASES:
@@ -319,6 +326,7 @@ def cumulative_loss(
                 continue
             deltas = [t - base.robust_best_s for t in times]
             per_corner.setdefault(corner_id, {})[phase] = float(np.median(deltas))
+            per_corner_phase_n.setdefault(corner_id, {})[phase] = len(times)
             if base.n_outliers:
                 outlier_counts[f"{corner_id}:{phase}"] = base.n_outliers
     by_phase: dict[str, float] = {}
@@ -333,6 +341,7 @@ def cumulative_loss(
         "per_corner_total": {
             cid: float(sum(phases.values())) for cid, phases in per_corner.items()
         },
+        "per_corner_phase_n": per_corner_phase_n,
         "by_phase": by_phase,
         "by_class": by_class,
         "outliers_screened": outlier_counts,

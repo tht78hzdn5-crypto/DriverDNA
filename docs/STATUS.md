@@ -19,8 +19,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **342** (20 test files) | `python3 -m pytest` |
-| Commits on branch | **28** | `git rev-list --count HEAD` |
+| Tests passing | **357** (21 test files) | `python3 -m pytest` |
+| Commits on branch | **29** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **17 shown · 89 suppressed** (all suppressions state a reason) | same payload |
@@ -41,7 +41,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M3 | Attribution over canonical windows, robust baselines, ranker, gates | done |
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
-| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **in progress — M6a done** (taxonomy + belief store schema; scoring model M6b next) |
+| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **in progress — M6a + M6b done** (taxonomy, belief store, `dm-v1` scoring model; payload/artifact/AI+UI surface M6c next) |
 | M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **design adopted 2026-07-20**, not built |
 | M0b | Garage61 API probe + `sync` | **blocked on `GARAGE61_TOKEN`** |
 
