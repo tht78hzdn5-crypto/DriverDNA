@@ -376,6 +376,79 @@ class ModelConfig(_Section):
         return self
 
 
+class CoachingConfig(_Section):
+    """Coaching Intelligence eligibility/ranking/gap-band thresholds (M7,
+    ontology `coach-onto-v1`; docs/COACHING.md).
+
+    Detector-gated principles reuse `detectors.min_trigger_rate` — one floor
+    for "is this a pattern," not duplicated here. `commitment_cv_floor` and
+    `consistency_cv_floor` gate the two principles with no detector
+    (trust_the_proxy, same_lap_twice): a coefficient of variation (same
+    definition as ModelConfig's) crossing the floor is their trigger.
+
+    Gap bands are absolute, versioned thresholds, never invented per-call
+    (docs/COACHING.md, "Gap bands — mechanics"): seconds-based bands score
+    the phase's `cumulative_loss` for every principle that maps to a phase;
+    `same_lap_twice` has no phase (consistency is cross-cutting, per
+    taxonomy.py) and bands on its own CV instead — the CV-band thresholds
+    exist for that one principle. Below the moderate floor is negligible
+    (silent, never surfaced); moderate is quiet (mentioned only if asked);
+    notable/major are loud (the headline candidate pool).
+    """
+
+    gap_band_moderate_s: float = Field(
+        default=0.05,
+        description="Phase cumulative-loss seconds at/above which a "
+        "principle's tone rises from negligible (silent) to moderate "
+        "(quiet, secondary only).",
+    )
+    gap_band_notable_s: float = Field(
+        default=0.15,
+        description="Phase cumulative-loss seconds at/above which a "
+        "principle's tone rises to notable (loud, headline-eligible).",
+    )
+    gap_band_major_s: float = Field(
+        default=0.35,
+        description="Phase cumulative-loss seconds at/above which a "
+        "principle's tone rises to major (loud, headline-eligible).",
+    )
+    cv_band_moderate: float = Field(
+        default=0.15,
+        description="same_lap_twice's own coefficient-of-variation floor for "
+        "moderate tone (no phase exists for consistency to band on instead).",
+    )
+    cv_band_notable: float = Field(
+        default=0.30,
+        description="same_lap_twice's coefficient-of-variation floor for "
+        "notable tone.",
+    )
+    cv_band_major: float = Field(
+        default=0.50,
+        description="same_lap_twice's coefficient-of-variation floor for "
+        "major tone.",
+    )
+    commitment_cv_floor: float = Field(
+        default=0.15,
+        description="trust_the_proxy's trigger: brake_point_dist_pct's "
+        "coefficient of variation for this corner must reach this floor "
+        "before the entry-commitment proxy principle is eligible.",
+    )
+    consistency_cv_floor: float = Field(
+        default=0.15,
+        description="same_lap_twice's trigger: a corner's own measured "
+        "metrics' pooled coefficient of variation must reach this floor "
+        "before the principle is eligible.",
+    )
+    thin_evidence_floor_n: int = Field(
+        default=8,
+        description="Below this many contributing laps, an eligible "
+        "principle is still shown at its earned gap band but flagged "
+        "thin-evidence — confidence_floor's tempering signal "
+        "(docs/COACHING.md: 'softens phrasing when the measured evidence "
+        "itself is thin,' never the gap band itself).",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -390,6 +463,7 @@ class DriverDNAConfig(_Section):
     coach: CoachConfig = Field(default_factory=CoachConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
+    coaching: CoachingConfig = Field(default_factory=CoachingConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:
