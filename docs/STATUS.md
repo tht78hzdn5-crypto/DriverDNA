@@ -269,7 +269,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 | 1 | Adopt `sync` as the primary ingest path going forward? | `sync` is built and live-verified (2026-07-20): 25 laps pulled, idempotent on rerun, real session/run/date metadata, reference isolation held. Manual `import` remains the fallback for reference laps regardless | Live-verified; not yet the default in any automation (still explicit `driverdna sync`) |
 | 2 | Provide `ANTHROPIC_API_KEY`? | Turns coach + chat from mock-tested to actually usable | Deferred; all tests mock it |
 | 3 | ~~When to run the blind test?~~ | Resolved 2026-07-21 (A18): ran on 11 independent laps, 6 sessions | Done — see below and PROJECT-BRIEF.md |
-| 4 | Session labels for manual imports | Filenames carry no session; grouping affects repeatability | Best-effort by upload batch, editable in the manifest |
+| 4 | Session labels for manual imports | Filenames carry no session (old or new Garage61 shape — the newer shape's filename auto-detect resolves car/track, not session); grouping affects repeatability | Manifest per-entry `session` field, or the upload UI's explicit `session` field (2026-07-21) — the CLI's flag-driven `import` (no manifest) still has no `--session` flag |
 | 5 | Keep committing the built SPA (`ui/static`)? | Convenient (no node at runtime) vs. a build artifact in git | Committed for now |
 | 6 | Corner-map refreeze policy as data grows | Windows/identities freeze early for comparability; a deliberate rebuild command may be wanted later | Freeze-and-match; admissions surfaced |
 | 7 | Cross-car reporting | Computed and stored but out of scope for v1 reports | Out of scope v1 |

@@ -312,8 +312,9 @@ real `session_key` (no more best-effort reconstruction) and `run` becomes a
 real `run_index` (a genuine stint index, where CSV-only import still has no
 run/stint channel at all — SPEC.md's source contract). `startTime` becomes
 `lap_date`, meeting M6's trend precondition (trend computation itself is
-still a separate, not-yet-built follow-up — `model/scoring.py`'s `_trend`
-stays hardcoded "unavailable" on purpose). Laps the API itself flags
+built — see the "Trend" section under Milestone 6 below for the full
+mechanism; this paragraph only concerns what `sync` supplies it with).
+Laps the API itself flags
 `missing` or `incomplete` are skipped before fetch, surfaced by reason,
 never silently dropped. Idempotent via the same source_file/content_hash
 dedup `import` already uses (`source_file="garage61-api:<api lap id>"`).
