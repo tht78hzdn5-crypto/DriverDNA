@@ -19,6 +19,11 @@ fictional ground truth (the spec's original Sector-1 prediction was never
 engine-corroborated, on any dataset; retracted and replaced with the
 engine's actual, now incident-robust output). Full narrative in
 PROJECT-BRIEF.md's decision log.
+**Incident subsystem built (2026-07-21, SPEC.md A19)**: a spin/off/near-stop
+is now measured, not filtered — a deterministic lap-level scan + mechanism
+characterization (`incidents/`), surfaced in the payload, a `driverdna
+incidents` artifact, and the cohort/laps UI; the coaching "why" over
+incidents (Layer 3) is the next pass.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -37,9 +42,9 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **450** (30 test files) | `python3 -m pytest` |
-| Commits on branch | **52** | `git rev-list --count HEAD` |
-| Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
+| Tests passing | **475** (31 test files) | `python3 -m pytest` |
+| Commits on branch | **56** | `git rev-list --count HEAD` |
+| Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |
 | Laguna cohort | 1 lap · 0 sessions · 0 shown · 71 suppressed | insufficient data by design |

@@ -886,3 +886,37 @@ Accepted at owner plan review; rationale recorded in the review:
   restated ground truth above. Full narrative, including the incident
   forensics (speed-trace confirmation of both incidents), in
   PROJECT-BRIEF.md's decision log.
+- **A19** (2026-07-21, incident subsystem — a new deterministic finding
+  family): every other telemetry tool discards a spin/off as noise; per
+  philosophy #1 ("measure the driver, not the lap") DriverDNA measures it —
+  an incident is the richest driver signal on a lap. New `incidents/`
+  subsystem: a lap-level scan (`detector.py`) finds incident windows
+  (near-stop, off-track via `PositionType` — corroborating only, per A13 —
+  and a steering-reversal-with-yaw-spike snap), and `classify.py` names the
+  mechanism (trail-brake / lift-off / power-on oversteer, understeer-off,
+  external kerb/bump) from the telemetry at the *causal* onset — the first
+  yaw divergence, where the input that caused it still lives, not the
+  peak-yaw moment by which the driver is already catching it. This refines
+  three philosophy points, named here per the decision-discipline rule:
+  #2 (sources separately inspectable — an incident record decomposes to the
+  exact samples and channel values), #3 (insufficient-data-over-guessing —
+  an ambiguous signature returns `unclassified`, never a guessed cause;
+  confidence is high/medium/low, never a percentage that would launder an
+  inference, echoing A15's binding rule one level down), and #7 (nothing
+  hidden — today's A18 fix *screens* incidents from pace stats, so the
+  constitution requires they still be *surfaced*: they are, richly).
+  An incident is characterised as a single event (N=1: "this lap did X"),
+  never generalised into a trait — a repeated pattern needs N and goes
+  through the normal finding gates. Persisted in a new `incidents` table
+  (migration 005), scanned for self laps only (reference laps never enter),
+  surfaced in the payload (`incidents` section, PAYLOAD_VERSION 3→4), the
+  `driverdna incidents` artifact, and the cohort/laps UI. Deliberately kept
+  OUT of the coach/chat bundles: the AI may *explain* a classification only
+  once the grounded citation path exists (incident evidence IDs in the
+  citable universe) — that is "Coaching over incidents" (Layer 3), a
+  separate later pass, not built here. Two thresholds (near-stop absolute
+  floor; the on-track `PositionType` value) are track/sim assumptions with
+  documented defaults, retunable through ConfigStore. Validated on the
+  committed real ground-truth laps (A18's `9XVJTW` spin →
+  trail_brake_oversteer/high; `9PH9M2` dead-stop → detected; every clean lap
+  silent). Full record in PROJECT-BRIEF.md's decision log.

@@ -252,6 +252,50 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Incident subsystem built (SPEC.md A19): a spin is a
+  measurement, not noise.** Owner's insight, and it's deeply on-thesis: every
+  other telemetry app treats a spin or an off as an annoyance to filter;
+  "measure the driver, not the lap" makes it the single richest driver signal
+  on a lap. Owner-chosen scope: Layers 1+2 (detect + characterize,
+  deterministic) this pass; the coaching "why & what to do" (Layer 3) is the
+  next pass and cannot precede the classification it must cite. Verified the
+  telemetry supports it before designing anything — the real `9XVJTW` La
+  Source trace shows the whole mechanism (hard trailing brake → rear steps out
+  → off-track via `PositionType` 3→4 → opposite-lock catch → near-stop) from
+  channels the parser already carries. Detection (`detector.py`): a lap-level
+  scan for near-stop / off-track / steering-reversal-with-yaw-spike snap,
+  merged into one event, labelled with the nearest frozen corner.
+  Characterization (`classify.py`): mechanism named from the state at the
+  *causal* onset. Two design decisions worth recording, both found by testing
+  against the real lap, not guessed: (a) onset is the *first yaw divergence*,
+  not the peak-yaw moment — at peak yaw the driver is already reacting
+  (throttle stab, opposite lock) and the causal input is gone, which
+  misclassified the real spin as power-on until fixed; (b) the snap signal is
+  a steering *reversal through zero* with an elevated yaw rate, not
+  "steering-opposite-to-yaw" — in this data steering and yaw share a sign
+  convention and reversed together, so the opposite-sign heuristic would have
+  missed it. Conservative by construction: an ambiguous signature is
+  `unclassified` (detected, cause not named), confidence is a coarse word
+  never a laundered percentage, and one incident is N=1 — an event, never a
+  trait. Deliberately did NOT build a separate ingest-time incident detector:
+  the existing MAD outlier fence already isolates exactly the two known
+  incidents, so a second mechanism would add surface area, not correctness —
+  and did NOT feed incidents to the coach/chat, because the grounded
+  citation path for them is Layer 3's job (a model must not narrate a spin it
+  cannot cite). Persistence (`incidents` table, migration 005), payload
+  section (PAYLOAD_VERSION 3→4, stripped from AI bundles), `driverdna
+  incidents` artifact, and cohort/laps UI. Validated end-to-end on the
+  committed real ground truth: `9XVJTW`→trail_brake_oversteer/high at C01,
+  `9PH9M2`→near-stop at C15, the two genuinely-slow La Source laps flag real
+  near-stops (5–19 km/h vs 45–70 clean), every clean lap silent — no false
+  positives. ~26 tests (synthetic per-mechanism, determinism, isolation, real
+  ground truth). 475 total green.
+- **2026-07-21 — 11 independent Spa blind-test laps committed as a second
+  cohort** (`tests/fixtures/spa-blind-2026-07/`), out of the primary fixtures
+  glob so no existing anchor moves. They were the owner's own laps for the A18
+  blind test — now preserved (the scratchpad is ephemeral) and doubling as
+  real-data regression material; the two incident laps (`9XVJTW`, `9PH9M2`)
+  are the ground-truth fixtures the incident subsystem above asserts against.
 - **2026-07-21 — Spa blind test finally run (SPEC.md A18): it caught a real
   bug and a fictional ground truth, not a passing grade.** The owner supplied
   laps in batches; each was hashed against `tests/fixtures/` and every prior

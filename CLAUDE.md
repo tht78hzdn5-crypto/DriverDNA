@@ -206,6 +206,19 @@ from the real fixtures and reviewed.
   fixed (`attribution/ranker.py` now reuses `baseline()`'s outlier fence).
   Gate 1 in SPEC.md restates the engine's actual, incident-robust findings
   as the new ground truth. Full narrative: PROJECT-BRIEF.md decision log.
+- **Incident subsystem: built (2026-07-21, SPEC.md A19)** — a spin/off/
+  near-stop is measured, not filtered ("measure the driver, not the lap").
+  New `incidents/` package: deterministic lap-level detection (near-stop,
+  off-track via `PositionType`, steering-reversal-with-yaw-spike snap) +
+  mechanism characterization (trail-brake/lift-off/power-on oversteer,
+  understeer-off, external, or `unclassified` when ambiguous), classified
+  from the *causal* onset (first yaw divergence). N=1 events, never traits;
+  reference laps never scanned; `incidents` table (migration 005); payload
+  section (kept out of coach/chat until the Layer-3 grounded path exists);
+  `driverdna incidents` artifact; cohort/laps UI. The 11 committed
+  `spa-blind-2026-07/` laps are the real ground truth (`9XVJTW` spin →
+  trail_brake_oversteer, `9PH9M2` dead-stop → detected). **Next: Coaching
+  over incidents (Layer 3) — AI explains a classification, citing it.**
 
 Update this section as milestones complete.
 
