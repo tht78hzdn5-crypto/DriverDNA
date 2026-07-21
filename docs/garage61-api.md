@@ -212,17 +212,31 @@ publish shared content via a whole separate subsystem —
 plus ghost-lap and iRacing-setup downloads. This is gated by its own
 permissions (`team_datapacks_read`, `_write`, `_subscribers_read`,
 `_archived_read` — all "requires approval" + "requires user acceptance"),
-**none of which this token has**, so it is completely untested here — not
-ruled out, just not reached. Unlike `/laps` (an ad-hoc, per-lap
+**none of which this token has.** Unlike `/laps` (an ad-hoc, per-lap
 "is this driver visible to me" check that legitimately 403s on strangers),
 data packs are Garage61's own explicit content-*sharing* mechanism — a
 coach or team publishing reference material for members to pull. If
 DriverDNA's reference-lap feature is ever revisited, this is the
 mechanism to probe next, not another attempt at `/laps` with a different
-plan tier. Requires: the app registered for `team_datapacks_read`
-(approval), the driver opting in, and — since data packs are
-team-scoped — an actual team whose owner has published lap content to
-subscribe to. Recorded here so a future session starts from this position
+plan tier.
+
+**Observed 2026-07-21:** `GET /teams/{id}/datapacks` and
+`GET /teams/{id}/datapackgroups`, tried against both of the probing
+account's teams, both return **`401`** (not `403`) with the identical body
+`{"message": "Bad authentication: operation GetTeamDataPacks: security
+\"OAuth2\": Missing app scope (not approved): team_datapacks_read.",
+...}` (and `GetTeamDataPackGroups` for the groups call). This is a
+**hard, application-level gate** — checked before any team- or
+user-specific authorization, since the error is identical regardless of
+which team is queried, or whether that team has other members. It is
+*not* something the driver can grant from their own account; the
+`team_datapacks_read` scope must be approved for the DriverDNA
+application itself first (via the developer portal's "My applications" —
+self-service toggle vs a Garage61-side approval request is itself
+unconfirmed from the docs' wording). Until that scope is approved,
+**whether either team actually has a published data pack is unknown and
+unknowable via this API** — the 401 fires before that question is ever
+reached. Recorded here so a future session starts from this position
 instead of re-deriving it (SPEC.md decision-of-record #2 is not reopened
 by this note — manual `import` remains correct for v1 until data packs
 are actually probed and shown to work).
@@ -321,10 +335,12 @@ from scratch; none of this is used by `sync` today.
   with this token (`driving_data`'s default scope is self+teammates, per
   official docs) — reference laps stay on the manual `import` path,
   `role=reference`, as already specified. **Team data packs are a
-  separate, unexplored mechanism** that might legitimately serve
-  reference laps without hitting this wall — untested, requires
-  `team_datapacks_read` app approval this token doesn't have (see "Other
-  documented endpoints" above).
+  separate mechanism, confirmed blocked at the application level**
+  (`GET /teams/{id}/datapacks[groups]` → `401 Missing app scope (not
+  approved): team_datapacks_read`, both teams, identical error) — the
+  scope needs approval for the app before it's even possible to check
+  whether either team has published lap content (see "Other documented
+  endpoints" above and "team data packs" in the reference-lap section).
 - ⚠️ `sync` must discover cohorts via `/me/statistics` (or a
   driver-supplied car/track list) and loop `/laps?tracks=...&cars=...`
   per cohort — there is no unscoped "give me everything" call.
