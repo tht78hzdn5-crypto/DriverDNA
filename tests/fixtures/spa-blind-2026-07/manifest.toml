@@ -1,0 +1,186 @@
+# Second GR86/Spa cohort — the owner's independent laps used for the Spa blind
+# acceptance test (SPEC.md A18, 2026-07-21). Deliberately kept in this
+# subdirectory, OUT of the primary tests/fixtures/ glob, so the M0a/metrics/
+# attribution regression anchors and docs/*-report.md byte-identity are
+# untouched. Six sessions: each was a distinct upload batch (owner's rule,
+# one message = one session). Two laps carry real incidents and are the
+# ground-truth fixtures for the incident-detection subsystem (Phase B).
+# Identities verified from data (GPS + rows/60); dirty-data counts are locks.
+
+[[fixtures]]
+file = "Garage_61_98D9NK.csv"
+lap_id = "98D9NK"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s01"
+lap_time_s = 186.517
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 4
+throttle_under = 15
+brake_over = 0
+brake_under = 67
+gear0_samples = 113
+
+[[fixtures]]
+file = "Garage_61_X0P687.csv"
+lap_id = "X0P687"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s02"
+lap_time_s = 172.383
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 5
+throttle_under = 13
+brake_over = 0
+brake_under = 263
+gear0_samples = 138
+
+[[fixtures]]
+file = "Garage_61_60GBCK.csv"
+lap_id = "60GBCK"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s02"
+lap_time_s = 175.75
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 6
+throttle_under = 18
+brake_over = 1
+brake_under = 250
+gear0_samples = 151
+
+[[fixtures]]
+file = "Garage_61_TTMWSD.csv"
+lap_id = "TTMWSD"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s02"
+lap_time_s = 173.867
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 6
+throttle_under = 13
+brake_over = 0
+brake_under = 108
+gear0_samples = 149
+
+[[fixtures]]
+file = "Garage_61_FS2F1N.csv"
+lap_id = "FS2F1N"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s02"
+lap_time_s = 181.283
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 4
+throttle_under = 14
+brake_over = 2
+brake_under = 231
+gear0_samples = 155
+
+# INCIDENT: La Source (C01) spin — brake-on rotation, ~5 km/h near-stop, off-track (PositionType 4), opposite-lock catch. Phase-B ground truth.
+[[fixtures]]
+file = "Garage_61_9XVJTW.csv"
+lap_id = "9XVJTW"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s03"
+lap_time_s = 182.067
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 7
+throttle_under = 14
+brake_over = 0
+brake_under = 157
+gear0_samples = 137
+
+[[fixtures]]
+file = "Garage_61_GZHYTY.csv"
+lap_id = "GZHYTY"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s04"
+lap_time_s = 176.867
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 2
+throttle_under = 12
+brake_over = 1
+brake_under = 209
+gear0_samples = 150
+
+[[fixtures]]
+file = "Garage_61_808ASQ.csv"
+lap_id = "808ASQ"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s05"
+lap_time_s = 174.85
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 7
+throttle_under = 10
+brake_over = 0
+brake_under = 169
+gear0_samples = 145
+
+# INCIDENT: Bus Stop (C15) near-stop — ~15 s below 25 km/h, full stop (0 km/h). Phase-B ground truth.
+[[fixtures]]
+file = "Garage_61_9PH9M2.csv"
+lap_id = "9PH9M2"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s06"
+lap_time_s = 192.3
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 2
+throttle_under = 16
+brake_over = 3
+brake_under = 38
+gear0_samples = 178
+
+[[fixtures]]
+file = "Garage_61_X8R0PS.csv"
+lap_id = "X8R0PS"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s06"
+lap_time_s = 173.167
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 3
+throttle_under = 9
+brake_over = 0
+brake_under = 15
+gear0_samples = 116
+
+[[fixtures]]
+file = "Garage_61_QHD9QC.csv"
+lap_id = "QHD9QC"
+role = "self"
+car = "GR86"
+track = "Spa-Francorchamps"
+session = "spa-blind-s06"
+lap_time_s = 171.15
+expected_lat = 50.44
+expected_lon = 5.97
+throttle_over = 2
+throttle_under = 10
+brake_over = 4
+brake_under = 34
+gear0_samples = 162
