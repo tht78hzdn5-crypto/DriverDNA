@@ -181,6 +181,7 @@ def create_app(
                    FROM laps WHERE car=? AND track=? ORDER BY lap_pk""",
                 (c["car"], c["track"]),
             ).fetchall()
+            incident_counts = db.incident_counts_by_lap([r["lap_pk"] for r in rows])
             return [
                 {
                     "lap_pk": r["lap_pk"],
@@ -189,6 +190,7 @@ def create_app(
                     "duration_s": r["duration_s"],
                     "session_key": r["session_key"],
                     "quality_flags": json.loads(r["quality_flags"]),
+                    "incidents": incident_counts.get(r["lap_pk"], 0),
                     "raw_retained": bool(r["raw_retained"]),
                 }
                 for r in rows

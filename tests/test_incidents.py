@@ -200,6 +200,39 @@ def test_self_incident_is_persisted_with_evidence(tmp_db):
     assert incs[0]["classification"] == "trail_brake_oversteer"
 
 
+def test_payload_has_incidents_section_but_ai_bundles_do_not(tmp_db):
+    """Incidents are deterministic engine output and belong in the full
+    payload (report + UI); but the coach and chat bundles must NOT carry them
+    yet — the grounded citation path (Layer 3) does not exist, so the model
+    must not see a spin it cannot ground."""
+    from driverdna.chat.session import build_chat_bundle
+    from driverdna.coach.payload import build_coach_payload
+    from driverdna.config import DriverDNAConfig
+    from driverdna.report.payload import build_cohort_payload
+    from synth import run_synthetic_lap
+
+    cfg = DriverDNAConfig()
+    for i in range(2):
+        run_synthetic_lap(tmp_db, _lap_with_spin(f"s{i}.csv"), session_key=f"s{i}", config=cfg)
+    cohort = dict(driver="owner", car="TestCar", track="SynthRing", config=cfg)
+
+    report = build_cohort_payload(tmp_db, **cohort)
+    assert report["incidents"]["n"] >= 1
+    assert report["incidents"]["events"][0]["incident_id"].startswith("incident:")
+
+    assert "incidents" not in build_coach_payload(tmp_db, **cohort)["report"]
+    assert "incidents" not in build_chat_bundle(tmp_db, **cohort)["report"]
+
+
+def test_incidents_report_is_deterministic(tmp_db):
+    from driverdna.incidents.report import build_incidents_report
+    from driverdna.config import DriverDNAConfig
+
+    run_synthetic_lap = __import__("synth", fromlist=["run_synthetic_lap"]).run_synthetic_lap
+    run_synthetic_lap(tmp_db, _lap_with_spin("r.csv"), config=DriverDNAConfig())
+    assert build_incidents_report(tmp_db) == build_incidents_report(tmp_db)
+
+
 def test_import_produces_deterministic_incident_rows():
     """Two independent imports of identical content -> identical incident
     rows (byte-diff of the normalised list)."""

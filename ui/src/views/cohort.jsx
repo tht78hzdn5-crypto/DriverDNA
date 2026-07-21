@@ -94,6 +94,30 @@ export default function Cohort({ slug }) {
         <SourceSections findings={p.findings} slug={slug} />
       </section>
 
+      {p.incidents && p.incidents.n > 0 && (
+        <section className="panel">
+          <p className="eyebrow">Incidents — spins, offs, near-stops · single events, not traits</p>
+          {p.incidents.events.map((e) => (
+            <div key={e.incident_id}
+                 className={`finding ${e.classification === "unclassified" ? "suppressed" : ""}`}>
+              <div className="head">
+                <span className="desc">
+                  {e.corner_id ? <a href={`#/corner/${slug}/${e.corner_id}`}>{e.corner_id}</a> : "—"}
+                  {" · "}{e.classification.replace(/_/g, " ")}
+                </span>
+                <span className="val">{e.confidence}</span>
+              </div>
+              <div className="meta">
+                {e.kinds} · min <span className="num">{fmt(e.min_speed_kmh, 0)}</span> km/h ·
+                peak yaw <span className="num">{fmt(e.peak_yaw_rate)}</span> rad/s · {e.lap_id}
+              </div>
+              <div className="reason">{e.rationale}</div>
+            </div>
+          ))}
+          <div className="sub">{p.incidents.note}</div>
+        </section>
+      )}
+
       <section className="panel">
         <p className="eyebrow">Corners</p>
         <div className="scroll-x">

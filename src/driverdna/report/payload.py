@@ -30,7 +30,7 @@ from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
 from driverdna.model.taxonomy import TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 3  # +coaching (M7)
+PAYLOAD_VERSION = 4  # +incidents
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -87,6 +87,25 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
             }
             for fid, b in beliefs.items()
         },
+    }
+
+
+def incidents_section(
+    db: Database, *, driver: str, car: str, track: str
+) -> dict[str, Any]:
+    """Detected incidents for this cohort's self laps. Each is a single event
+    (N=1) — characterised, never generalised into a trait; a repeated pattern
+    would need N and go through the finding gates like everything else."""
+    events = db.incidents_for_cohort(driver=driver, car=car, track=track)
+    return {
+        "n": len(events),
+        "events": events,
+        "note": (
+            "Incidents are single events (N=1): this lap did X, decomposable "
+            "to the trace. Not a driver trait, and never priced as recoverable "
+            "time. An 'unclassified' incident is detected but its cause was "
+            "not clean enough to name — stated, not guessed."
+        ),
     }
 
 
@@ -198,6 +217,7 @@ def build_cohort_payload(
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
         "driver_model": driver_model_section(db, driver=driver, config=config),
         "coaching": coaching_section(db, driver=driver, car=car, track=track, config=config),
+        "incidents": incidents_section(db, driver=driver, car=car, track=track),
         "caveats": caveats,
     }
 

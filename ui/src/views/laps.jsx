@@ -12,13 +12,13 @@ export default function Laps({ slug }) {
     <div className="grid">
       <section className="panel">
         <h1>Laps</h1>
-        <div className="sub"><a href={`#/cohort/${slug}`}>← cohort</a> · red marks are data quality, never driving</div>
+        <div className="sub"><a href={`#/cohort/${slug}`}>← cohort</a> · red marks are data quality, never driving · incidents (spins/offs) are driving events, detailed on the cohort page</div>
       </section>
       <section className="panel">
         <div className="scroll-x">
           <table>
             <thead><tr><th>lap</th><th>role</th><th>session</th><th className="right">time</th>
-              <th>quality flags</th><th className="right">raw retained</th></tr></thead>
+              <th>quality flags</th><th>incidents</th><th className="right">raw retained</th></tr></thead>
             <tbody>
               {laps.data.map((lap) => (
                 <tr key={lap.lap_pk}>
@@ -33,6 +33,13 @@ export default function Laps({ slug }) {
                         <span className="flag">■</span> {flag.code}
                       </span>
                     ))}
+                  </td>
+                  <td>
+                    {lap.incidents > 0
+                      ? <a href={`#/cohort/${slug}`} className="chip" title="detailed on the cohort page">
+                          {lap.incidents} incident{lap.incidents === 1 ? "" : "s"}
+                        </a>
+                      : <span className="dim">—</span>}
                   </td>
                   <td className="right dim">{lap.raw_retained ? "yes" : "evicted (summaries kept)"}</td>
                 </tr>

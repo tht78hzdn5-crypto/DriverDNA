@@ -537,6 +537,25 @@ def attribution(
 
 
 @app.command()
+def incidents(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    out: Path = typer.Option(
+        Path("docs/incidents-report.md"), help="Where to write the report."
+    ),
+) -> None:
+    """Incident artifact: detected spins/offs/near-stops + their mechanism."""
+    from driverdna.db import Database
+    from driverdna.incidents.report import build_incidents_report
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    with Database.open(db_path) as db:
+        out.write_text(build_incidents_report(db))
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
 def corners(
     fixtures_dir: Path = typer.Option(
         Path("tests/fixtures"), help="Directory holding the fixture CSVs and manifest.toml."

@@ -106,10 +106,15 @@ def build_chat_bundle(
 ) -> dict[str, Any]:
     """Deterministic context bundle — a known, inspectable state."""
     report = build_cohort_payload(db, driver=driver, car=car, track=track, config=config)
+    # Incidents stay out of the chat context until Layer 3 gives the model a
+    # grounded way to cite them (incident evidence IDs in the citable
+    # universe); bundle_version still reflects the full payload version.
+    bundle_version = report["payload_version"]
+    report = {k: v for k, v in report.items() if k != "incidents"}
     coach_runs = db.coach_history(driver=driver, car=car, track=track)
     return {
         "prompt_version": CHAT_PROMPT_VERSION,
-        "bundle_version": report["payload_version"],
+        "bundle_version": bundle_version,
         "report": report,
         "annotations": db.annotations(),
         "config": {k: v for k, v in sorted(config_snapshot(config).items())},
