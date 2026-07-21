@@ -240,6 +240,17 @@ from the real fixtures and reviewed.
   fix so the pre-any-lap empty state reads as direction, not a raw 404.
 - **Git workflow (2026-07-21, owner instruction): commits go straight to
   `main`.** The branch + PR flow used earlier this session is retired.
+- **Car/track auto-detect from filename (2026-07-21)** — Garage61's newer
+  export filename shape (`Garage_61__<driver>__<car>__<track>__<laptime>__
+  <id>.csv`) embeds car/track directly; `parse_garage61_filename`
+  (`ingest/parser.py`) is additive to the locked M0a contract, only widening
+  `lap_id` extraction. Both `driverdna import` (no `--car`/`--track`) and
+  `#/upload` (blank fields) auto-detect per file, itemizing — never
+  partially importing — any file that can't resolve either way. Verified
+  against the owner's real Mustang GT4 / Summit Point laps, CLI and browser
+  both. One flagged, unverified observation in `docs/garage61-api.md`: the
+  new filename's trailing ID structurally matches the API's own ULID shape,
+  unlike the old short code — untested against a live call.
 
 Update this section as milestones complete.
 

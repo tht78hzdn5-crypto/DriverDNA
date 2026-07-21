@@ -275,6 +275,35 @@ order, units, dirty-data character) was instead confirmed against a
 freshly API-fetched own-account lap, as detailed above, and matches the
 locked M0a contract exactly.
 
+## A second, newer manual-download filename shape (observed 2026-07-21)
+
+Laps supplied by the owner from a Ford Mustang GT4 / Summit Point Raceway
+session used a different filename shape than every fixture seen before:
+`Garage_61__<driver name>__<car>__<track>__<M.SS.mmm laptime>__<id>.csv`
+(double-underscore delimited), versus the short `Garage_61_<LAPID>.csv`
+form the M0a fixtures and the parity check above are built on. Both forms
+were seen from the same Garage61 account across different sessions/exports,
+so this looks like a tool version difference, not a fixed contract — CSV
+column content was unaffected (`ingest/parser.py`'s parsing/dirty-data
+handling never touches the filename beyond the ID it may or may not carry).
+
+**Observed, not verified**: the new form's trailing ID is 26 characters
+starting `01K...` — same length and leading-character pattern as the API's
+own ULID `id` field documented above (`01KVNRRWZVY7QY49HK6MWMESDV`), unlike
+the old short LAPID code this doc already found to be "a different, shorter
+scheme." This suggests the newer export may embed the real API lap ID
+directly, which — if true — would reopen the `/laps/{id}/csv` parity check
+above for laps in this format. **Not confirmed against a live call**; flagged
+for whoever next has a live `GARAGE61_TOKEN` and a lap in this filename
+shape, not assumed.
+
+**Built on this (2026-07-21)**: `ingest/parser.py`'s `parse_garage61_filename`
+auto-detects car/track (and the trailing ID, used as `lap_id`) from this
+shape — `driverdna import` (no `--car`/`--track`) and the UI's `#/upload`
+(blank car/track fields) both use it, per-file, falling back loudly (never
+silently) to requiring explicit car/track for files that don't match either
+filename shape.
+
 ## Rate limits
 
 No `X-RateLimit-*` or `Retry-After` response headers were observed on any

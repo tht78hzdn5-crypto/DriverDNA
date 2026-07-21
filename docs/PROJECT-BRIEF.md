@@ -252,6 +252,30 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Car/track auto-detected from Garage61's newer export
+  filename shape, closing the gap flagged when upload-laps first shipped.**
+  A real second batch of owner laps (Ford Mustang GT4 @ Summit Point
+  Raceway) used a filename Garage61 apparently switched to for some exports:
+  `Garage_61__<driver>__<car>__<track>__<laptime>__<id>.csv`, double-
+  underscore delimited, versus the short `Garage_61_<LAPID>.csv` form every
+  fixture and the M0a contract were built on. New `parse_garage61_filename`
+  (`ingest/parser.py`) recognizes it — additive, doesn't touch the locked
+  parsing contract itself, only widens what can produce `lap_id`. Wired into
+  both entry points: `driverdna import` with no `--car`/`--track` now tries
+  per-file auto-detect (itemizes, in one loud error, any file that can't
+  resolve — never partially imports), and the upload API's `car`/`track`
+  form fields became optional the same way, each file landing in its own
+  resolved cohort. Real end-to-end proof, not just unit tests: imported the
+  owner's actual 4 distinct Mustang laps (a 5th was a re-download duplicate,
+  same pattern as the Spa uploads) with zero flags typed, in both the CLI
+  and a real Playwright browser session. One finding recorded in
+  `docs/garage61-api.md`, flagged unverified rather than asserted: the new
+  filename's trailing ID is 26 characters starting `01K...`, matching the
+  API's own ULID `id` field's shape — unlike the old short code, which M0b
+  already established as a different ID space entirely. If that holds
+  against a live call (not tested here), the `/laps/{id}/csv` parity gap
+  M0b hit might be closable for laps in this format; left for whoever next
+  has a live token and a lap in this shape.
 - **2026-07-21 — Upload-laps UI built, closing the last CLI-only gap in
   UI-SPEC view 7 ("Laps"), plus a git-workflow change: commits go straight
   to `main` from here on.** Owner asked directly for the workflow switch
