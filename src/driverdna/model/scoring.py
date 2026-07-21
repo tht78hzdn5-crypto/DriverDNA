@@ -41,12 +41,15 @@ unmeasured inference" - the same rule stated at the coaching layer.
 `proxy` fundamentals reach the math but their confidence is capped
 (`config.model.proxy_confidence_cap`) - real signal, honestly bounded.
 
-Trend (built 2026-07-20): a fundamental's `trend` is the direction of its
-own score between an earlier and a recent bucket of the driver's dated laps
-(`_trend`). Dated self-laps (lap_date set — `sync` is the first ingestion
-path that sets it, from the API's startTime; manual `import` does not) are
-ordered by (lap_date, lap_pk) and split by count at the midpoint; the same
-scoring function runs on each half, and the recent-minus-earlier delta is
+Trend (built 2026-07-20; dated manual import 2026-07-21): a fundamental's
+`trend` is the direction of its own score between an earlier and a recent
+bucket of the driver's dated laps (`_trend`). Dated self-laps (lap_date set
+— `sync` sets it from the API's startTime; `driverdna import --date` or a
+manifest entry's own `date` field sets it too, since the Garage61 API caps
+`/laps` at ~1 saved lap per driver per cohort, so a real per-cohort trend
+needs the driver's own exported history) are ordered by (lap_date, lap_pk)
+and split by count at the midpoint; the same scoring function runs on each
+half, and the recent-minus-earlier delta is
 banded against `config.model.trend_delta_points`. It stays "unavailable"
 when there are too few dated laps (`trend_min_laps_per_bucket` per half) or
 a bucket lacks scorable evidence — so on today's undated fixtures it still

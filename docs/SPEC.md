@@ -587,19 +587,23 @@ findings; see the clarification there.
   `trend` and `evidence_count` are **required fields on every belief row,
   always** — when the data isn't available they hold an explicit "unavailable"
   value, never dropped from the schema for convenience.
-- **Trend (built 2026-07-20).** A fundamental's `trend` is the direction of
-  its own score between an *earlier* and a *recent* bucket of the driver's
-  dated laps. Dated self-laps (`lap_date` set — `sync` populates it from the
-  API's `startTime`; manual `import` does not) are ordered by
-  `(lap_date, lap_pk)` and split by count at the midpoint into two halves; the
-  **same** scoring function runs on each (via a lap-pk evidence filter,
-  additive to the M2/M3 query surface), and the recent-minus-earlier delta is
-  banded against `config.model.trend_delta_points` (default 5 points) →
+- **Trend (built 2026-07-20; dated manual import built 2026-07-21).** A
+  fundamental's `trend` is the direction of its own score between an
+  *earlier* and a *recent* bucket of the driver's dated laps. Dated self-laps
+  (`lap_date` set — `sync` populates it from the API's `startTime`; manual
+  `import` can set it too, via `--date` or a manifest entry's own `date`
+  field, since the Garage61 API caps `/laps` at ~1 saved lap per driver per
+  cohort — `docs/garage61-api.md` — so a real per-cohort trend needs the
+  driver's own exported history) are ordered by `(lap_date, lap_pk)` and
+  split by count at the midpoint into two halves; the **same** scoring
+  function runs on each (via a lap-pk evidence filter, additive to the M2/M3
+  query surface), and the recent-minus-earlier delta is banded against
+  `config.model.trend_delta_points` (default 5 points) →
   `improving` / `stable` / `declining`. It reads `unavailable` when there are
   fewer than `2 × trend_min_laps_per_bucket` dated laps (default 4/bucket) or a
   bucket has no scorable evidence for the fundamental — so on undated fixtures
-  and the manual-import path it stays `unavailable`, by honest gap not
-  omission. Deterministic (explicit lap-timestamp order, per the
+  it stays `unavailable`, by honest gap not omission. Deterministic (explicit
+  lap-timestamp order, per the
   Reproducibility contract). Completing this field changes no score/confidence
   for any evidence set, so `scoring_model_version` stays `dm-v1` (the field was
   always specified; dated evidence never existed under the old always-

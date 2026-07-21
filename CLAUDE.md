@@ -125,8 +125,7 @@ from the real fixtures and reviewed.
   see SPEC.md's M6 section, "Known v1 limitation."
 - **M6 trend: built (2026-07-20)** — `trend` is the direction of a
   fundamental's own score between an earlier and a recent bucket of the
-  driver's dated laps (dated by `sync`; manual import stays undated →
-  "unavailable"). Same scoring function per bucket via an additive lap-pk
+  driver's dated laps. Same scoring function per bucket via an additive lap-pk
   evidence filter; deterministic (ordered by lap_date, lap_pk); banded by
   `config.model.trend_delta_points`. `scoring_model_version` stays `dm-v1`
   (score/confidence unchanged for every evidence set; the field was always
@@ -135,6 +134,20 @@ from the real fixtures and reviewed.
   SPEC.md M6 "Trend". First live run on the owner's 25-lap synced history:
   braking/rotation `improving`, corner_exit/commitment `stable`,
   consistency/vehicle_management honestly `unavailable`.
+- **Dated manual import: built (2026-07-21)** — `driverdna import --date
+  YYYY-MM-DD|<ISO8601>` sets `lap_date` on every imported file the same way
+  `sync` does from the API's `startTime`; a manifest entry's own `date`
+  field overrides the flag for that entry, so a mixed-date directory can be
+  imported in one pass. Malformed dates are rejected loudly (exit 2, nothing
+  imported) — never silently accepted, since trend sorts on this string.
+  Exists because the Garage61 API caps `/laps` at ~1 saved lap per driver
+  per cohort (`docs/garage61-api.md`), so a real per-cohort trend needs the
+  driver's own exported history, not `sync` alone. Verified end-to-end
+  against the real fixture CSVs (not just synthetic tests): dating the
+  11-lap Spa cohort by session produced a real `declining` trend on
+  `consistency` from `driverdna model`, byte-identical across two runs; the
+  committed fixture manifest itself stays undated (comment-only change) so
+  `docs/driver-model-report.md` is untouched.
 - **Coaching Intelligence (M7): design adopted, then built (2026-07-20)**:
   `docs/COACHING.md` — grounded coaching ontology (technique → driving
   principle → coaching principle), nine seed `CoachingPrinciple`s

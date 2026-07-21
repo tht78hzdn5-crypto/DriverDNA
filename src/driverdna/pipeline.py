@@ -64,12 +64,18 @@ def import_lap_file(
     role: str = "self",
     session_key: str | None = None,
     imported_at: str | None = None,
+    lap_date: str | None = None,
     config: DriverDNAConfig,
 ) -> ImportResult:
+    """`lap_date` (optional) mirrors what `sync` writes from the API's
+    startTime — set it (via `driverdna import --date`, or a manifest
+    entry's `date`) to make manually-imported laps eligible for M6 trend,
+    the same as synced ones."""
     lap = parse_lap(path)
     return import_parsed_lap(
         db, lap, driver=driver, car=car, track=track, role=role,
-        session_key=session_key, imported_at=imported_at, config=config,
+        session_key=session_key, imported_at=imported_at, lap_date=lap_date,
+        config=config,
     )
 
 

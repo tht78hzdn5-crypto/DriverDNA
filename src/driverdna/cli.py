@@ -28,6 +28,30 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def _validate_lap_date(value: str) -> str:
+    """YYYY-MM-DD or a full ISO8601 timestamp — the same `lap_date` shape
+    `sync` writes from the API's `startTime`. Rejected loudly on a
+    malformed value, never silently accepted: M6 trend sorts laps on this
+    string, so a bad date would corrupt chronological ordering silently
+    if let through."""
+    from datetime import date as _date, datetime as _datetime
+
+    try:
+        _date.fromisoformat(value)
+        return value
+    except ValueError:
+        pass
+    try:
+        _datetime.fromisoformat(value)
+        return value
+    except ValueError:
+        typer.echo(
+            f"error: date {value!r} is not valid (expected YYYY-MM-DD or a "
+            "full ISO8601 timestamp)"
+        )
+        raise typer.Exit(code=2) from None
+
+
 @app.command("import")
 def import_cmd(
     directory: Path = typer.Argument(
@@ -38,12 +62,22 @@ def import_cmd(
     car: str = typer.Option(None, help="Car label (required without manifest)."),
     track: str = typer.Option(None, help="Track label (required without manifest)."),
     role: str = typer.Option("self", help="Lap role: self or reference."),
+    date: str = typer.Option(
+        None, "--date",
+        help="Lap date (YYYY-MM-DD or full ISO8601) applied to every imported "
+        "file. With a manifest, a per-entry `date` overrides this for that "
+        "entry only. Mirrors what `sync` sets from the API — enables M6 "
+        "trend on manually-imported laps.",
+    ),
 ) -> None:
     """Import lap CSVs: parse, segment, identify, measure, persist."""
     from driverdna.config import load_config
     from driverdna.db import Database
     from driverdna.ingest.contract import load_fixture_manifest
     from driverdna.pipeline import import_lap_file
+
+    if date is not None:
+        date = _validate_lap_date(date)
 
     config = load_config()
     manifest_path = directory / "manifest.toml"
@@ -56,6 +90,7 @@ def import_cmd(
                 "track": e["track"],
                 "role": e["role"],
                 "session_key": e.get("session"),
+                "lap_date": _validate_lap_date(e["date"]) if "date" in e else date,
             }
             for e in load_fixture_manifest(directory)
         ]
@@ -64,7 +99,8 @@ def import_cmd(
             typer.echo("error: --car and --track are required without a manifest.toml")
             raise typer.Exit(code=2)
         jobs = [
-            {"path": p, "driver": driver, "car": car, "track": track, "role": role}
+            {"path": p, "driver": driver, "car": car, "track": track, "role": role,
+             "lap_date": date}
             for p in sorted(directory.glob("*.csv"))
         ]
 

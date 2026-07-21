@@ -227,6 +227,25 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Dated manual import built, closing the gap the data-pack
+  investigation surfaced.** With `sync` capped at ~1 saved lap per driver
+  per cohort (the same-day data-pack findings above), M6 trend's real
+  test case needs the driver's own exported history, not the API.
+  `driverdna import` gained `--date YYYY-MM-DD|<ISO8601>`, applied to every
+  file in a flag-driven import, plus a per-manifest-entry `date` field that
+  overrides the flag for that entry — so a mixed-date directory imports in
+  one pass. Both paths write `lap_date` through the same field `sync`
+  already populates; the trend algorithm itself needed no changes. A
+  malformed date is rejected loudly (exit 2, nothing imported) rather than
+  silently accepted, since trend sorts laps on this string — a bad value
+  would corrupt chronological ordering invisibly otherwise. The committed
+  `tests/fixtures/manifest.toml` stays deliberately undated (comment-only
+  change documenting the field) so `docs/driver-model-report.md` and other
+  fixture-derived regression anchors stay byte-identical. Verified against
+  real telemetry, not just synthetic tests: dating the real 11-lap Spa
+  fixture cohort by session (via a scratch copy, not the committed
+  manifest) produced an actual `declining` trend on `consistency` from
+  `driverdna model`, byte-identical across two runs.
 - **2026-07-21 — Team data packs deprioritized as a reference-lap path
   (not closed).** Follow-up to the same-day data-packs finding below.
   Probed `GET /teams/{id}/datapacks[groups]` against both of the owner's

@@ -10,6 +10,14 @@
 #
 # Car/track strings are cohort labels for tests, not authoritative iRacing
 # names (those come from Garage61 API metadata once sync exists, M0b+).
+#
+# An entry may also carry an optional `date` field (YYYY-MM-DD or a full
+# ISO8601 timestamp) — `driverdna import` reads it as that lap's lap_date,
+# the same field `sync` populates from the API's startTime, enabling M6
+# trend on manually-imported laps. None of these fixture entries set one
+# deliberately: it would perturb docs/driver-model-report.md and other
+# fixture-derived artifacts already committed as byte-identical regression
+# anchors.
 
 [[fixtures]]
 file = "Garage_61_RH11X7.csv"
