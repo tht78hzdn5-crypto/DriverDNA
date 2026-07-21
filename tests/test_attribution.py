@@ -181,6 +181,36 @@ def test_vs_self_finds_the_planted_weakness(db):
     assert all(f.gate_reason for f in others)
 
 
+def test_vs_self_opportunity_ignores_one_incident_lap(db):
+    """A single off/spin/near-stop must not manufacture a phantom
+    opportunity the way it must never become the baseline (docs/SPEC.md
+    M3): the blind acceptance test on real independent Spa laps found this
+    exact failure mode (2026-07-21) — a spin at one corner inflated its
+    reported "opportunity" ~2.5x. This plants the same shape: a consistent
+    cohort plus one lap with a severe, isolated time loss at C01."""
+    _build_cohort(db)
+    incident = warp_time(track_lap(src="incident.csv"), C01_WARP_WINDOW, 6.0)
+    run_synthetic_lap(db, incident, session_key="s1")  # 13th lap, slowest by far
+
+    findings = vs_self_findings(
+        db, **COHORT, windows_by_corner=_windows(db), config=CONFIG
+    )
+    c01 = [f for f in findings if f.corner_id == "C01"]
+    assert any(f.details["n_outliers"] >= 1 for f in c01), (
+        "the incident lap must be screened at C01, mirroring baseline()'s fence"
+    )
+    # Opportunity must track the planted 0.4 s technique effect, not the
+    # incident's 6 s loss — screening must land close to the un-incidented
+    # test above (0.3-0.5 s total), not somewhere between that and 6 s.
+    c01_total = sum(
+        f.details["opportunity_s"] for f in c01 if f.details["opportunity_s"] is not None
+    )
+    assert c01_total < 1.0, f"incident leaked into opportunity: {c01_total} s"
+    # The raw observation is never silently dropped: n and evidence still
+    # include it, only the derived opportunity/repeatability exclude it.
+    assert any(f.n == 13 for f in c01)
+
+
 def test_stint_only_variation_yields_zero_shown_findings(db):
     """Acceptance gate 4 (M3 form): identical laps, only session/stint
     position varies -> no technique findings survive."""

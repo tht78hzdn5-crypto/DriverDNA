@@ -87,26 +87,26 @@ Outliers screened from baselines (kept in history): C01:entry (1), C01:exit (3),
 |---|---|---|---|---|---|
 | C09 mid | 0.490 | 1.000 | 0.490 | 8 | no — insufficient data: 8 phase samples < 10 |
 | C08 exit | 0.205 | 1.000 | 0.205 | 10 | yes |
-| C06 mid | 0.204 | 1.000 | 0.204 | 9 | no — insufficient data: 9 phase samples < 10 |
 | C05 mid | 0.182 | 1.000 | 0.182 | 11 | yes |
-| C06 exit | 0.172 | 1.000 | 0.172 | 9 | no — insufficient data: 9 phase samples < 10 |
 | C01 mid | 0.234 | 0.667 | 0.156 | 11 | yes |
 | C14 entry | 0.204 | 0.667 | 0.136 | 11 | yes |
+| C06 exit | 0.134 | 1.000 | 0.134 | 9 | no — insufficient data: 9 phase samples < 10 |
 | C05 entry | 0.105 | 1.000 | 0.105 | 11 | yes |
 | C04 mid | 0.099 | 1.000 | 0.099 | 9 | no — insufficient data: 9 phase samples < 10 |
 | C10 exit | 0.145 | 0.667 | 0.097 | 11 | yes |
-| C03 exit | 0.180 | 0.333 | 0.060 | 11 | yes |
-| C02 mid | 0.053 | 1.000 | 0.053 | 10 | yes |
+| C06 mid | 0.042 | 1.000 | 0.042 | 9 | no — insufficient data: 9 phase samples < 10 |
 | C04 exit | 0.061 | 0.667 | 0.040 | 9 | no — insufficient data: 9 phase samples < 10 |
-| C14 exit | 0.056 | 0.667 | 0.038 | 11 | yes |
 | C01 entry | 0.020 | 1.000 | 0.020 | 11 | no — no effect: faster and slower laps do not differ here |
-| C01 exit | 0.022 | 0.667 | 0.015 | 11 | no — no effect: faster and slower laps do not differ here |
+| C14 exit | 0.024 | 0.667 | 0.016 | 11 | no — no effect: faster and slower laps do not differ here |
 | C10 mid | 0.021 | 0.667 | 0.014 | 11 | no — no effect: faster and slower laps do not differ here |
 | C10 entry | 0.013 | 0.667 | 0.009 | 11 | no — no effect: faster and slower laps do not differ here |
 | C04 entry | 0.012 | 0.667 | 0.008 | 9 | no — insufficient data: 9 phase samples < 10 |
-| C05 exit | 0.068 | 0.000 | 0.000 | 11 | yes |
+| C01 exit | 0.006 | 1.000 | 0.006 | 11 | no — no effect: faster and slower laps do not differ here |
+| C02 mid | 0.006 | 0.667 | 0.004 | 10 | no — no effect: faster and slower laps do not differ here |
+| C03 exit | 0.115 | 0.000 | 0.000 | 11 | yes |
+| C05 exit | 0.053 | 0.000 | 0.000 | 11 | yes |
 | C09 exit | -0.026 | 0.000 | -0.000 | 8 | no — insufficient data: 8 phase samples < 10 |
-| C09 entry | -0.013 | 0.333 | -0.004 | 8 | no — insufficient data: 8 phase samples < 10 |
+| C09 entry | -0.017 | 0.333 | -0.006 | 8 | no — insufficient data: 8 phase samples < 10 |
 | C03 entry | -0.059 | 0.333 | -0.020 | 11 | no — no effect: faster and slower laps do not differ here |
 | C03 mid | -0.178 | 0.667 | -0.119 | 11 | no — no effect: faster and slower laps do not differ here |
 | C14 mid | -0.334 | 0.667 | -0.223 | 11 | no — no effect: faster and slower laps do not differ here |

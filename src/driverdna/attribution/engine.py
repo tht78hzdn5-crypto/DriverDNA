@@ -172,17 +172,26 @@ class PhaseBaseline:
     spread_s: float  # sample std of screened times
 
 
-def screen_outliers(times: list[float], k: float) -> tuple[list[float], int]:
-    """Median ± k·MAD fence. Returns (kept, n_screened)."""
+def outlier_mask(times: list[float], k: float) -> list[bool]:
+    """Median ± k·MAD fence. True = kept. Exposed separately from
+    screen_outliers so callers needing to filter a parallel list (e.g. the
+    ranker's per-observation history, not just the bare time values) can
+    apply the identical fence instead of re-deriving it."""
     if len(times) < 4:
-        return list(times), 0  # too few points to call anything an outlier
+        return [True] * len(times)  # too few points to call anything an outlier
     arr = np.asarray(times, dtype=np.float64)
     med = float(np.median(arr))
     mad = float(np.median(np.abs(arr - med)))
     if mad == 0.0:
-        return list(times), 0
-    keep = np.abs(arr - med) <= k * mad
-    return [float(v) for v in arr[keep]], int(np.sum(~keep))
+        return [True] * len(times)
+    return [bool(v) for v in (np.abs(arr - med) <= k * mad)]
+
+
+def screen_outliers(times: list[float], k: float) -> tuple[list[float], int]:
+    """Median ± k·MAD fence. Returns (kept, n_screened)."""
+    mask = outlier_mask(times, k)
+    kept = [t for t, m in zip(times, mask) if m]
+    return kept, len(times) - len(kept)
 
 
 def baseline(times: list[float], cfg: AttributionConfig) -> PhaseBaseline | None:

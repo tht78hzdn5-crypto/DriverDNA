@@ -29,6 +29,7 @@ from driverdna.attribution.engine import (
     PHASES,
     PhaseWindows,
     baseline,
+    outlier_mask,
     reference_envelope,
 )
 from driverdna.config import DriverDNAConfig
@@ -105,12 +106,25 @@ def vs_self_findings(
             )
             if not history:
                 continue
-            fast = [h["time_s"] for h in history if h["lap_pk"] in fast_laps]
-            slow = [h["time_s"] for h in history if h["lap_pk"] in slow_laps]
+            # One incident lap (spin, off, near-stop) is not a technique
+            # weakness — it must never inflate "opportunity" the way it
+            # must never become the baseline. Apply the identical
+            # median+/-k*MAD fence baseline() already uses, at the same
+            # per-corner-phase granularity, before the fast/slow split.
+            # The raw observation stays in n/evidence_ids either way
+            # (never silently dropped from history) — only the computed
+            # opportunity/repeatability/spread exclude it.
+            mask = outlier_mask(
+                [h["time_s"] for h in history], config.attribution.outlier_mad_k
+            )
+            n_outliers = sum(1 for m in mask if not m)
+            clean_history = [h for h, m in zip(history, mask) if m]
+            fast = [h["time_s"] for h in clean_history if h["lap_pk"] in fast_laps]
+            slow = [h["time_s"] for h in clean_history if h["lap_pk"] in slow_laps]
             opportunity = (
                 float(np.median(slow) - np.median(fast)) if fast and slow and n_laps >= 3 else None
             )
-            repeatability = _repeatability(history, session_of, duration_of, opportunity)
+            repeatability = _repeatability(clean_history, session_of, duration_of, opportunity)
 
             n_samples = len(history)
             n_sessions = _sessions_of(history)
@@ -126,7 +140,8 @@ def vs_self_findings(
                 if opportunity is not None and repeatability is not None
                 else None
             )
-            spread = float(np.std([h["time_s"] for h in history], ddof=1)) if n_samples > 1 else 0.0
+            clean_times = [h["time_s"] for h in clean_history]
+            spread = float(np.std(clean_times, ddof=1)) if len(clean_times) > 1 else 0.0
             findings.append(
                 Finding(
                     finding_id=_finding_id("vs-self", car, track, corner_id, phase, "opportunity"),
@@ -150,6 +165,7 @@ def vs_self_findings(
                         "repeatability": repeatability,
                         "rank_score": score,
                         "n_sessions": n_sessions,
+                        "n_outliers": n_outliers,
                     },
                 )
             )
