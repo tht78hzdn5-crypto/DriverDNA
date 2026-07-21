@@ -101,8 +101,15 @@ from the real fixtures and reviewed.
   error); transcripts persisted with bundle version, evidence, effects.
   ConfigStore write path complete (propose/apply/revert + config_history).
 - **UI: U0 (API) + U1 (read views + render-parity crawler) + U2 (annotations
-  and config panel through audited paths) + U3 (chat view) done. U4
-  (packaging/tokens) next on the U-track.** U3: `ChatSession.ask_stream`
+  and config panel through audited paths) + U3 (chat view) + U4
+  (packaging/tokens) done — the full UI-SPEC.md milestone track is built.**
+  U4 (2026-07-21): static HTML reports migrated onto `ui/tokens.json`'s dark
+  theme (`report/builder.py`'s `_TOKENS` mirrors it; a test asserts they
+  match byte-for-byte); IBM Plex self-hosted in the SPA (latin subset only,
+  8 files/176KB — SPA only, reports keep the system-font fallback); a real
+  Playwright test for trust gate 5 (route-level blocking of all
+  non-localhost requests across every route, not just a static grep).
+  U3: `ChatSession.ask_stream`
   (generator; `ask()` is a thin wrapper over it) drives three new endpoints
   (`POST /api/chat/sessions`, `.../messages` via SSE, `.../confirm/{n}`) and
   `ui/src/views/chat.jsx`. SSE progress (thinking → consulting_tool* →

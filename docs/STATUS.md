@@ -8,8 +8,10 @@ and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
 
 **One line:** the deterministic engine (M0a–M7) is complete and verified; the
-UI through writes (U0–U2 + render-parity gate) is done, with U3 (chat view) the
-declared next UI-track milestone. M0b (API probe) is **done** — a later
+full UI-SPEC.md milestone track (U0–U4) is built, including the chat view
+and the report/SPA visual unification. M6 trend now computes real
+directions from dated laps (`sync`, or manual import with `--date`).
+M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
 documents observed behavior. **`sync` (self-lap ingest) is built and
@@ -27,7 +29,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **445** (29 test files) | `python3 -m pytest` |
+| Tests passing | **449** (30 test files) | `python3 -m pytest` |
 | Commits on branch | **35** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
@@ -53,7 +55,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **done** — ontology, eligibility/ranking/gap-band engine, `driverdna coaching` artifact, wired into report/coach/chat payload, grounding validator extended |
 | M0b | Garage61 API probe + `sync` | **done, live-verified** — `docs/garage61-api.md`; 25 laps synced from the real account, idempotent, reference isolation held |
 
-### UI — through chat (U0–U3)
+### UI — U0–U4, the full milestone track built (2026-07-21)
 
 | Milestone | What it does | State |
 |---|---|---|
@@ -62,7 +64,7 @@ Regenerated from the repo this date, not asserted from memory:
 | U1 gate 1 | Render-parity crawler (Chromium): no invented on-screen number | done |
 | U2 | Writes — annotations + config panel through audited paths | done |
 | U3 | Chat view (SSE, validated-only display, staged/confirm) | **done** — browser-verified against a mocked provider (screenshots); real live chat still needs `ANTHROPIC_API_KEY` |
-| U4 | Packaging (`driverdna ui` ships built assets), token unification | pending |
+| U4 | Packaging, token unification, offline verification | **done** — static reports migrated onto `ui/tokens.json`'s dark theme; IBM Plex self-hosted in the SPA; trust gate 5 (offline) now a real Playwright test, not just a static grep |
 
 ### Data on record
 
@@ -113,9 +115,11 @@ Immediate, no blockers, recommended order:
    connection (`sqlite3.ProgrammingError`) — fixed with
    `Database.open(..., check_same_thread=False)` for that one long-lived
    connection only. Only *runs live* with an Anthropic key.
-3. **U4 — packaging & polish.** `driverdna ui` one-command launch, static HTML
-   report templates migrated onto `ui/tokens.json` so both surfaces share one
-   look (report determinism tests stay green through the restyle).
+3. **U4 — packaging & polish: done (2026-07-21).** Static HTML reports
+   migrated onto `ui/tokens.json`'s dark theme; IBM Plex self-hosted in the
+   SPA; trust gate 5 (offline) and HTML determinism both now real tests.
+   See the UI table above and PROJECT-BRIEF.md's decision log for the full
+   record. The UI-SPEC.md milestone track (U0–U4) is complete.
 
 Done since the last snapshot: **U2 — findings are now actionable.** Annotate a
 finding (acknowledged / intentional) so it drops out of priority framing while

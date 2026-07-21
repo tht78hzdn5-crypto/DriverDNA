@@ -158,10 +158,11 @@ doc, not this one, as the number of record.
    session labelling for manual imports is now carried in the fixture manifest;
    a general `import --session` flag (or file-timestamp clustering) is still
    wanted so any manually-imported history is rankable without a manifest.
-6. **U4** on the UI track (packaging + shared tokens; U3 chat view done
-   2026-07-20), and a deliberate, versioned map/window `rebuild` command
-   once tens of laps exist (freezing early trades optimality for
-   comparability, by design).
+6. The UI-SPEC.md milestone track (U0–U4) is now fully built (U4 done
+   2026-07-21). A deliberate, versioned map/window `rebuild` command once
+   tens of laps exist remains open (freezing early trades optimality for
+   comparability, by design) — this is the veteran cold-start item A17
+   already flagged.
 7. More laps, of anything — gates clear at ≥10 phase samples + ≥2 sessions.
 
 ## Scaling
@@ -180,7 +181,7 @@ doc, not this one, as the number of record.
   trust-gate tests, and the amendment discipline in SPEC.md as the suite any
   refactor must pass.
 
-## The UI (U0–U3 built; U4 remains)
+## The UI (U0–U4 built — the full milestone track)
 
 Governed by `docs/UI-SPEC.md`. Built and verified: **U0** the FastAPI layer
 (`src/driverdna/ui/api.py`) — pass-through reads (payload endpoints return the
@@ -213,8 +214,32 @@ and FastAPI dispatches sync endpoints to a thread pool — fixed with
 `Database.open(..., check_same_thread=False)` for that one long-lived
 connection; every other caller keeps the stricter default.
 
-Remaining: **U4** packaging + migrating the static report templates onto
-`ui/tokens.json` for one shared look. A DriverModel view follows M6.
+**U4: packaging & polish, done (2026-07-21).** Closed the three concrete
+gaps a scoping pass found (the UI command and package-data shipping were
+already true since U0): (1) static HTML reports were still the original
+light theme — `report/builder.py` now declares `_TOKENS`, a mirror of
+`ui/tokens.json` kept honest by a test that reads the real file, and
+renders one `:root { --name: value; }` block that both the `<style>` and
+the inline SVG charts reference via `var(--name)` (a standard SVG
+presentation-attribute capability) — no JS runtime needed in a static
+file. Chart colors now match the SPA's own `app.css` `.lossrow`
+convention exactly, including the single-largest-value amber highlight.
+(2) IBM Plex was named "bundled" in the design language but no font files
+existed anywhere — `@fontsource/ibm-plex-{sans,mono}` now self-host them
+in the SPA, latin subset only (this UI is 100% English/numeric; the
+unsubsetted import would have shipped ~46 unused cyrillic/greek/etc.
+files) and only the four weights `app.css` actually sets — 8 files,
+176KB. Verified via `document.fonts` in a real browser, not just build
+output. Reports stay on the system-font fallback (SPA-only, per the
+earlier owner call) — an unavailable named font just falls through the
+stack. (3) Trust gate 5 ("offline") had only a static grep
+(`test_ui_static.py`); added a real dynamic test that actively blocks
+every non-localhost request via Playwright route interception across
+every route (including chat) and asserts each one still renders real
+content. Also closed a gap the milestone's own text named: HTML output
+had no determinism test, only payload/JSON — added one (byte-identical
+across independent renders). A DriverModel UI view remains open, follows
+naturally from M6 but wasn't part of U0–U4's scope.
 
 The binding rule throughout: the UI renders what the engine computed and never
 computes a measurement (mechanically enforced). What does NOT belong in a UI:
@@ -227,6 +252,25 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — U4 built; the UI-SPEC.md milestone track (U0–U4) is
+  complete.** Three concrete gaps, from a scoping pass before starting:
+  static HTML reports were still the pre-token-system light theme
+  (`#1a1a1a` text, `#4472a8` chart blue — genuinely off the color grammar,
+  since blue isn't in the semantic palette at all); no IBM Plex font files
+  existed anywhere despite the design language naming them "bundled";
+  trust gate 5 ("offline") had only a static grep, not the dynamic check
+  its own wording describes. All three closed — see "The UI" section
+  above for the full build record. One fork worth naming: fonts were
+  self-hosted in the SPA only, not reports (owner's explicit call,
+  recorded earlier 2026-07-21) — base64-inlining them into every
+  self-contained report file would have added ~100-200KB per file for a
+  cosmetic win reports don't need; an unavailable named font in report
+  HTML just falls through to the system stack, which was already the
+  status quo. Also fixed while verifying: chart colors were literally
+  outside the token palette (blue has no semantic meaning in the timing
+  convention), not just a different shade of an existing one — this was a
+  correctness gap against UI-SPEC's color-grammar rule 1, not only a
+  cosmetic mismatch.
 - **2026-07-21 — Dated manual import built, closing the gap the data-pack
   investigation surfaced.** With `sync` capped at ~1 saved lap per driver
   per cohort (the same-day data-pack findings above), M6 trend's real
