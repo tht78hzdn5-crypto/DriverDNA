@@ -344,7 +344,10 @@ dedup `import` already uses (`source_file="garage61-api:<api lap id>"`).
   the frozen map (nearest corner within a configurable radius), never re-clustered
   — IDs must not drift as data accumulates. A genuinely new corner is admitted only
   when unmatched consistently across a configured number of laps; every map change
-  is surfaced in the report, never silent.
+  is surfaced in the report, never silent. The one deliberate way to re-derive a
+  frozen map's centroids + canonical windows from the accumulated full lap set is
+  the explicit, in-place `driverdna rebuild-map` command (A22) — IDs still never
+  change, so it sharpens the map without drifting identity or breaking evidence IDs.
 - Cohort key includes track **configuration** (from Garage61 metadata) — track
   variants are distinct cohorts.
 - Classification: class assigned per corner identity from the median minimum corner
@@ -1009,3 +1012,48 @@ Accepted at owner plan review; rationale recorded in the review:
   multiples of a metric's own unit reference rather than raw CV). Full
   record, including the two rejected pooling designs (flat mean, median),
   in PROJECT-BRIEF.md's decision log.
+- **A22** (2026-07-21, `rebuild-map` — versioned-in-name, in-place-in-fact
+  corner-map/window refreeze): corner maps and canonical phase windows
+  freeze from a cohort's first laps (M1 build→freeze→match) and never
+  re-derive as more data accumulates — a gap deferred since A17 ("no build
+  work now"; it only bites at veteran-scale histories). `driverdna
+  rebuild-map --car --track` re-derives every corner's centroid + canonical
+  windows from the cohort's FULL current observation set and re-measures
+  phase times. Two design forks, both owner-decided deliberately (not
+  assumed) after the mechanism was fully read out:
+  1. **In-place, not a new `map_pk`.** `corner_pk` / `corner_id` never
+     change, so every evidence ID (`obs:{obs_pk}`, and the corner it resolves
+     through) stays valid; existing observations keep their corner
+     assignment and each corner's centroid is recomputed FROM those
+     assignments, so the two stay consistent with no re-matching. This
+     reuses the exact mechanism `_freeze_windows_for_admitted` already
+     applies to a newly-admitted corner, generalized to every corner.
+     Rejected: a versioned map (new `map_pk` per rebuild) would force
+     dropping `corner_maps`' `UNIQUE(car, track)`, a current-map concept, and
+     an `AND c.map_pk = <current>` filter on every query joining `corners`
+     (else cross-version double-counting) — a large query-layer change for a
+     history-of-past-maps feature not needed at this scale; every other
+     frozen value in the codebase is single-current, so in-place is
+     consistent, not an exception. Refines philosophy #6 (longitudinal/
+     versioned) pragmatically: the *scoring* model and taxonomy carry real
+     version strings because past beliefs must stay recomputable; a corner
+     map is geometry that only ever sharpens toward the true track, so a
+     single current map that improves in place is the honest model, and
+     evidence-ID stability is the property actually worth protecting.
+  2. **An evicted raw blob → clear the stale phase times + report, never
+     leave them.** A lap whose blob was evicted past retention can't have its
+     phase times honestly re-interpolated against the new windows; leaving
+     the old numbers would present a measurement against a retired window
+     definition — silent repair, forbidden (philosophy #7 / the "nothing
+     silently repaired" rule). `rebuild-map` DELETEs those `phase_times` rows
+     and lists every affected `(lap_pk, corner_id)`; the lap's
+     `corner_observations` row, metrics, detector results, and evidence ID
+     all stay intact — only the phase-time attribution figure goes, exactly
+     like any other "insufficient data" gap. At today's data volume
+     (retention default 100/cohort) this doesn't fire, but the behavior is
+     defined and tested (a shrunk retention forces an eviction) rather than
+     discovered later. Genuinely new geometry still enters through the
+     existing audited admission path; classes re-derive after,
+     hysteresis-sticky, self-only. Deterministic and idempotent (a second
+     rebuild of the same data is a no-op — verified by test). Full record in
+     PROJECT-BRIEF.md's decision log.

@@ -252,6 +252,61 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — `rebuild-map`: in-place refreeze of a frozen corner map from
+  its full lap set (SPEC.md A22), the last of the owner's E→F→G arc.** Corner
+  maps + canonical phase windows freeze from a cohort's first laps (M1) and
+  never re-derive as more accumulate — deferred since A17 because it only
+  bites at veteran-scale histories. Owner chose to take it on now; a real
+  motivating case exists (two independent Spa/GR86 cohorts —
+  `tests/fixtures` + committed `spa-blind-2026-07/` — that froze from
+  disjoint lap sets). Investigation-first, per the arc's rule: read
+  `corners/identity.py`, `pipeline.py`'s import + `_freeze_windows_for_
+  admitted` + `_reclassify`, and every `db.py` corner/window/phase-time
+  path before designing. Two forks surfaced with the full mechanism in hand
+  and owner-decided (not assumed):
+  - **Versioning: in-place, NOT a new `map_pk`** (owner: "lets go #1"). Same
+    `corner_pk`/`corner_id`; each corner's centroid is recomputed from its
+    *currently assigned* observations' apex positions (so centroid and
+    assignment stay consistent — no re-matching), its windows from all its
+    observations' landmark positions via the existing `derive_windows`, then
+    phase times re-measured. This literally generalizes
+    `_freeze_windows_for_admitted` (which already does exactly this for one
+    newly-admitted corner) to every corner. Rejected — a versioned map (new
+    `map_pk` per rebuild, old evidence pinned): would force dropping
+    `corner_maps`' `UNIQUE(car, track)`, adding a current-map concept, and
+    adding `AND c.map_pk = <current>` to *every* query joining `corners`
+    (`self_metric_table`, `self_detector_table`, `phase_history`,
+    `vs_self_findings` and siblings) or a two-version cohort would silently
+    double-count — a large, invasive query-layer change for a
+    history-of-past-maps feature not needed at this scale. Every other frozen
+    value in the codebase is single-current, so in-place is consistent, not
+    an exception. The property actually worth protecting is evidence-ID
+    stability, and in-place gives it outright: `corner_observations` rows are
+    never renumbered or deleted, only their linked window/phase-time data is
+    refreshed (verified by test — corner_pks and obs→corner assignments
+    byte-identical across a rebuild).
+  - **Evicted-blob laps: clear the stale phase times + report loudly** (owner:
+    "make sure #2 gets added to the plan if it's important" — it is, so it's
+    in the plan, SPEC A22, and here). A lap whose raw blob was evicted past
+    retention can't have its phase times honestly re-interpolated against the
+    new windows; leaving the old numbers would present a measurement against
+    a retired window — silent repair, forbidden (philosophy #7). So the
+    command DELETEs those `phase_times` rows and lists every affected
+    `(lap_pk, corner_id)`; identity/metrics/detectors/evidence-ID all stay
+    intact, only the phase-time figure goes — an honest "insufficient data"
+    gap, same as anywhere else. Doesn't fire at today's volume (retention
+    default 100/cohort), but is defined and tested (a shrunk retention forces
+    an eviction; `total_cleared > 0`, phase rows gone, observation rows
+    intact). New geometry still enters through the existing audited admission
+    path (verified: a below-threshold candidate stays unadmitted until the
+    threshold is lowered, then rebuild admits it — never a silent map
+    change). Deterministic + idempotent: two independent import+rebuild runs
+    produce byte-identical centroids and windows, and a second rebuild of the
+    same DB is a no-op. Real two-cohort run: merging the primary + blind Spa
+    cohorts and rebuilding sharpened centroids by up to ~58 m toward the
+    full-set median and shifted 20/21 windows, IDs unchanged. No committed
+    artifact changes (the `corners`/`metrics`/`model` reports all regenerate
+    from a fresh import with no rebuild step). 10 new tests; 534 green.
 - **2026-07-21 — `consistency`'s cross-metric-type CV pooling fixed
   (`dm-v2`, SPEC.md A21), after the original diagnosis turned out to be
   wrong.** Owner-specified order for this arc: doc fixes, then this fix,

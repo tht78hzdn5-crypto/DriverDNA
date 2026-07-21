@@ -269,6 +269,21 @@ from the real fixtures and reviewed.
   back to Python `repr()`, invalid TOML) — never hit before this was the
   first dict-valued config field. Full record: PROJECT-BRIEF.md's decision
   log.
+- **`rebuild-map`: in-place corner-map/window refreeze (2026-07-21, SPEC.md
+  A22)** — `driverdna rebuild-map --car --track` re-derives every corner's
+  centroid + canonical windows from the cohort's full accumulated lap set
+  (not just the laps that first froze the map) and re-measures phase times.
+  **In place, not versioned**: corner IDs / `corner_pk` never change, so
+  evidence IDs stay valid — reasoning for in-place over a new `map_pk` in
+  SPEC.md A22 (a versioned map would need a query-layer-wide `map_pk` filter
+  to avoid cross-version double-counting; not worth it at this scale, and
+  every other frozen value here is single-current). A lap whose raw blob was
+  evicted past retention can't be honestly re-measured → its stale phase
+  times are cleared and reported, never left silent (philosophy #7). New
+  geometry still enters through the existing admission path; deterministic +
+  idempotent (verified against the two real Spa/GR86 cohorts). Reuses
+  `_freeze_windows_for_admitted`'s exact mechanism, generalized to every
+  corner. Closes the A17-deferred refreeze gap.
 
 Update this section as milestones complete.
 

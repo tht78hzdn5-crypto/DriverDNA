@@ -56,6 +56,15 @@ rejected; see `model/scoring.py`). Real effect on the committed fixtures:
 `consistency` 5.1 → 34.3; `commitment` (inflated the *other* way by the same
 bug) 96.5 → 56.1. `SCORING_MODEL_VERSION` bumps `dm-v1` → `dm-v2`. Full
 record: PROJECT-BRIEF.md's decision log.
+**`rebuild-map` built (2026-07-21, SPEC.md A22)**: `driverdna rebuild-map
+--car --track` re-derives a frozen cohort's corner centroids + canonical
+windows from the full accumulated lap set (not just the laps that first
+froze the map) and re-measures phase times — **in place**, so corner IDs
+and evidence IDs never change. A lap whose raw blob was evicted past
+retention can't be honestly re-measured, so its stale phase times are
+cleared and reported, never left silently outdated. Deterministic and
+idempotent; new geometry still enters only through the existing audited
+admission path. Closes the A17-deferred corner-map refreeze gap.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -74,8 +83,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **524** (34 test files) | `python3 -m pytest` |
-| Commits | **73** | `git rev-list --count HEAD` |
+| Tests passing | **534** (35 test files) | `python3 -m pytest` |
+| Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |
@@ -288,7 +297,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 | 3 | ~~When to run the blind test?~~ | Resolved 2026-07-21 (A18): ran on 11 independent laps, 6 sessions | Done — see below and PROJECT-BRIEF.md |
 | 4 | Session labels for manual imports | Filenames carry no session (old or new Garage61 shape — the newer shape's filename auto-detect resolves car/track, not session); grouping affects repeatability | Manifest per-entry `session` field, or the upload UI's explicit `session` field (2026-07-21) — the CLI's flag-driven `import` (no manifest) still has no `--session` flag |
 | 5 | Keep committing the built SPA (`ui/static`)? | Convenient (no node at runtime) vs. a build artifact in git | Committed for now |
-| 6 | Corner-map refreeze policy as data grows | Windows/identities freeze early for comparability; a deliberate rebuild command may be wanted later | Freeze-and-match; admissions surfaced |
+| 6 | ~~Corner-map refreeze policy as data grows~~ | Resolved 2026-07-21 (SPEC.md A22): `driverdna rebuild-map` re-derives centroids + windows from the full lap set **in place** (IDs never change, evidence IDs stay valid), re-measures phase times, clears+reports any lap whose blob was evicted. Not a new map version — see A22 for why in-place over versioned | Done — freeze-and-match at import; explicit `rebuild-map` to refreeze |
 | 7 | Cross-car reporting | Computed and stored but out of scope for v1 reports | Out of scope v1 |
 
 ---
@@ -327,10 +336,11 @@ also recorded in the durable docs, per the Decision-discipline rule):
 ```
 python3 -m pip install -e ".[dev]"      # engine + UI + test deps
 driverdna demo                           # one command: seed sample laps + open the cockpit
-python3 -m pytest                        # 524 tests (2026-07-21)
+python3 -m pytest                        # 534 tests (2026-07-21)
 driverdna import tests/fixtures          # build the local DB from the fixtures
 driverdna report                         # Markdown + JSON + self-contained HTML
 driverdna corners | metrics | attribution | incidents   # per-milestone inspectable artifacts
+driverdna rebuild-map --car GR86 --track Spa-Francorchamps   # refreeze a cohort's map from its full lap set
 driverdna ui                             # local cockpit at 127.0.0.1 over your own data
 ```
 
