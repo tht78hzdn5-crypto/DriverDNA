@@ -226,6 +226,20 @@ from the real fixtures and reviewed.
   get no principle and cannot be explained. Built for the `coach`
   structured-output path; chat's live Q&A doesn't consume incidents yet
   (explicit boundary, tested both sides).
+- **Coaching + Driver Model surfaced in the UI (2026-07-21)** — the M7
+  coaching layer (headline/secondary/self-checks) was computed since M7 but
+  never rendered; now a cohort-page section, grouped by principle so one
+  notable at many corners is said once. Driver Model tab redesigned as a
+  pyramid (foundations at the base; deliberately not a radar chart — its
+  area would read as a blended score, forbidden by philosophy #6).
+- **Upload-laps built (2026-07-21)** — `POST /api/laps/upload` (multipart,
+  thin wrapper over `import_lap_file`, DB-effect parity with the CLI
+  verified directly) + `#/upload` view close the last CLI-only gap in
+  UI-SPEC view 7. The one write endpoint allowed to create the DB fresh —
+  a true cold start, zero-to-cockpit through the browser alone, including a
+  fix so the pre-any-lap empty state reads as direction, not a raw 404.
+- **Git workflow (2026-07-21, owner instruction): commits go straight to
+  `main`.** The branch + PR flow used earlier this session is retired.
 
 Update this section as milestones complete.
 

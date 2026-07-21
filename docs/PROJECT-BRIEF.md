@@ -1,6 +1,6 @@
 # DriverDNA — Project Brief
 
-Updated 2026-07-20 · branch `claude/plan-review-philosophy-hl3cdg`. Orientation
+Updated 2026-07-21 · branch `main`. Orientation
 document for anyone (human or AI) picking the project up. **Verified counts and
 the current milestone table live in `docs/STATUS.md`** (dated, reproducible) —
 this brief is the durable "what/why/how" and the decision log.
@@ -252,6 +252,76 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Upload-laps UI built, closing the last CLI-only gap in
+  UI-SPEC view 7 ("Laps"), plus a git-workflow change: commits go straight
+  to `main` from here on.** Owner asked directly for the workflow switch
+  ("auto commit and push everything to main in the future") — merged the one
+  commit still ahead on the feature branch (a trivial fork, both sides
+  descending from the same parent) and will keep committing to `main`
+  directly; the branch + PR flow used for the rest of this session is
+  retired. On upload: `POST /api/laps/upload` is a thin multipart wrapper
+  over `import_lap_file` — the exact function `driverdna import` calls per
+  file, verified not just asserted: the same fixture lap imported via the
+  API and via the CLI to independent fresh DBs produced byte-identical lap
+  rows and corner-observation counts (`test_upload_api.py`). One deliberate
+  exception to every other endpoint's "DB must already exist" rule: this one
+  creates it, so a driver can go from nothing to a working cockpit through
+  the browser alone. That surfaced a real gap while testing it end to end in
+  a live browser (not just the API in isolation, per this project's UI
+  testing rule) — Driver Home's cohorts panel called `/api/cohorts`
+  unconditionally, so before the very first lap ever exists it showed a raw
+  `no DB at ... run driverdna import first` error, a CLI instruction a
+  browser-only user has no way to act on. Fixed: that specific 404 now routes
+  to the same "Import laps →" direction the zero-cohorts state already gives
+  (UI-SPEC's "empty state is a primary state" principle extended one layer
+  earlier, to before a DB file exists at all). New `#/upload` view: file
+  picker, car/track/role/date/session fields (mirroring `driverdna import`'s
+  own flags exactly), and the engine's own per-file report rendered back
+  verbatim (matched/admitted/class-changed/duplicate) — nothing computed in
+  the browser. The landing link into a freshly-created cohort uses the
+  server's own returned slug, never a client-side-regenerated one (decision
+  2: no derivation in the SPA). Same pass also finally surfaced the M7
+  coaching layer in the UI (computed since M7 but never rendered) and
+  redesigned the Driver Model tab as a pyramid, per direct owner feedback
+  after using the product for the first time ("sound advice, wants it
+  friendlier and prettier") — full detail in the entry below this one, from
+  earlier the same day. 11 new tests (API-parity + a real Playwright flow:
+  file picked, submitted, result rendered, landed cohort verified) on top of
+  today's earlier 486. `python-multipart` added as a declared dependency
+  (FastAPI's Form/File support requires it; wasn't installed, a real gap
+  caught by actually running the endpoint, not just importing it).
+- **2026-07-21 — Coaching surfaced in the UI and the Driver Model tab
+  redesigned, per direct owner feedback after using the product for the
+  first time.** Feedback was specific: the coach's advice ("sound") needed
+  to be "a little more user friendly and visually appealing," same for the
+  model tab. Investigation before building anything found the real issue
+  wasn't styling: the whole M7 grounded-coaching layer (headline / secondary
+  / self-checks) was fully computed in the payload and never rendered
+  anywhere in the SPA — findings only ever showed raw numbers. Added
+  `CoachingHeadline`/`CoachingSecondary`/`CoachingSelfChecks`
+  (`ui/src/views/shared.jsx`) to the cohort page. Caught and fixed a real UX
+  problem while building it, not just guessed at: on the real Spa data one
+  principle (repeatability) clears the gate at 14 different corners
+  independently, and rendering that as 14 identical paragraphs read as spam
+  — grouped by principle instead, said once, with each corner's own
+  magnitude as a compact tag (pure layout; every number still traces 1:1 to
+  its own record). A second pass caught the headline's own principle
+  re-appearing verbatim in secondary for its other corners too — now
+  cross-referenced instead of repeated. For the model tab, owner chose a
+  bold pyramid over refined meters (offered both); built as a truncated
+  SVG pyramid, foundations at the base, deliberately NOT a radar/spider
+  chart since its enclosed area would read as a blended overall score,
+  which the philosophy forbids (rule 6). Score magnitude uses one neutral
+  steel-grey hue per the dataviz skill's sequential-encoding rule, never
+  the palette's reserved semantic colors. Fixed a real grammar violation
+  found while rechecking the file: the fundamentals meter list's trend
+  arrows were colored green/red, quietly breaking the "no alarm color on
+  driving" rule since Phase C first built the tab. Verified against the
+  live-built SPA with Playwright screenshots, not just described — including
+  catching and closing a real render-parity coverage gap the pyramid
+  introduced (its SVG score text used a custom class the crawler's `.num`
+  selector didn't match, so those numbers weren't mechanically checked until
+  fixed). 486 tests green at the time.
 - **2026-07-21 — Coaching over incidents built (SPEC.md A20): the deferred
   Layer 3, closing the loop A19 opened.** Owner asked to continue straight
   into it after the model view. The design question was whether the AI picks

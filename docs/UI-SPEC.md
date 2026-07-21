@@ -23,7 +23,7 @@ Read (all pass-through or existing read paths):
 `GET /api/driver` (rollup payload) · `GET /api/cohorts` · `GET /api/cohorts/{id}/payload` · `GET /api/cohorts/{id}/corners` (identity map incl. apex GPS + class) · `GET /api/laps?cohort=` (metadata, session key, quality flags) · `GET /api/metrics/{corner_id}/{metric}/distribution` (mirrors the chat read-only tool) · `GET /api/config` (`config_snapshot` + `describe_key`) · `GET /api/config/history`.
 
 Write (wrappers only, each returning the audit record it created):
-`POST /api/findings/{id}/annotate` · `POST /api/config/propose` · `POST /api/config/apply` · `POST /api/chat/sessions` · `POST /api/chat/sessions/{id}/messages` (response via SSE per decision 4) · `POST /api/chat/sessions/{id}/confirm/{n}`.
+`POST /api/findings/{id}/annotate` · `POST /api/config/propose` · `POST /api/config/apply` · `POST /api/chat/sessions` · `POST /api/chat/sessions/{id}/messages` (response via SSE per decision 4) · `POST /api/chat/sessions/{id}/confirm/{n}` · `POST /api/laps/upload` (multipart; wraps `import_lap_file`, the same function `driverdna import` calls per file — the one endpoint deliberately allowed to create the DB fresh, since it's the cold-start path).
 
 ## Views
 
@@ -33,7 +33,7 @@ Write (wrappers only, each returning the audit record it created):
 4. **Finding detail.** The evidence view: N, spread, source tag, confidence context, evidence IDs resolving to real laps and corners (deep-linked), plain-language principle rationale where applicable, and the annotate actions (acknowledged / intentional) with their effect stated before use.
 5. **Chat.** Grounded session per decision 4/5. Evidence IDs in responses are links into views 3–4. Staged proposals render as a distinct card; `Confirm change` is its own labeled action.
 6. **Config.** Snapshot with per-key documentation, edits flowing through propose/apply, and `config_history` as the audit view with revert.
-7. **Laps.** Import/session listing with quality flags surfaced (clipped pedals, GPS-degraded, outlier screens) — the data-quality conscience of the instrument.
+7. **Laps.** Import/session listing with quality flags surfaced (clipped pedals, GPS-degraded, outlier screens) — the data-quality conscience of the instrument. **Import itself is `#/upload` (built 2026-07-21)**: file picker, car/track/role/date/session fields, and the engine's own per-file report (matched corners, admitted, class changes, duplicate detection) rendered back verbatim — no CLI required, including for the very first lap ever imported.
 
 ## Design language and tokens
 

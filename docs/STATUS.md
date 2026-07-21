@@ -1,6 +1,7 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-21.** Branch `claude/plan-review-philosophy-hl3cdg`.
+**Snapshot date: 2026-07-21.** Branch `main` (commits land here directly as of
+today — the feature-branch/PR flow used earlier this session is retired).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -27,6 +28,15 @@ incidents` artifact, and the cohort/laps UI. **Coaching over incidents built
 classification (never choose or override it — the classification-to-principle
 link is a fixed 1:1 engine mapping) through the same `coach` structured-output
 path findings already use; chat's live Q&A doesn't consume incidents yet.
+**Coaching + Driver Model surfaced in the UI, and upload-laps built
+(2026-07-21)**: the M7 coaching layer (headline/secondary/self-checks) was
+computed but never rendered — now a cohort-page section, grouped by
+principle so one notable at many corners is said once, not repeated; the
+Driver Model tab redesigned as a pyramid (foundations at the base, never a
+blended score); and `#/upload` (`POST /api/laps/upload`, a thin wrapper over
+`import_lap_file`) lets a driver import from the browser alone, including
+the very first lap — the one write endpoint allowed to create the DB fresh,
+closing the last CLI-only gap in UI-SPEC view 7.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -45,8 +55,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **481** (31 test files) | `python3 -m pytest` |
-| Commits on branch | **60** | `git rev-list --count HEAD` |
+| Tests passing | **497** (34 test files) | `python3 -m pytest` |
+| Commits | **68** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |
