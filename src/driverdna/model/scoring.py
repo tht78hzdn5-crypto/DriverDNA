@@ -20,7 +20,10 @@ weighted per `config.model`:
   opportunity - normalized median seconds lost vs the robust per-corner
                 baseline, on the fundamental's own phases (vs-self signal).
   consistency - normalized coefficient of variation on the fundamental's own
-                metrics (lap-to-lap repeatability of the same technique).
+                metrics (lap-to-lap repeatability of the same technique), each
+                metric's raw CV first divided by its own unit's typical scale
+                (config.model.consistency_unit_reference_cv) before pooling -
+                see "Per-unit consistency normalization (dm-v2)" below.
                 The "consistency" fundamental itself has no metrics of its
                 own by design (module docstring, taxonomy.py) - it pools
                 every MEASURED technique's metrics instead, matching its
@@ -58,6 +61,32 @@ does not change dm-v1's score/confidence for any evidence set, so
 SCORING_MODEL_VERSION is unchanged (the field was always specified; dated
 evidence never existed under the old code path). See `_trend` for the
 flagged era-relative-baseline limitation on the opportunity component.
+
+Per-unit consistency normalization (dm-v2, built 2026-07-21): dm-v1's
+`consistency` component pooled every metric's *raw* CV (std/mean) with a
+plain average. This was documented as a cross-*cohort* raw-magnitude issue,
+but investigation against real multi-cohort telemetry (GR86/Spa +
+Mustang/Summit Point + Mustang/Laguna) showed each CV was already computed
+from one cohort's own values - the actual mechanism was cross-*metric-type*:
+a "% lap" landmark position metric has a naturally tiny CV (~0.01) while a
+small-integer "count" metric (e.g. steering corrections) has a naturally
+huge one (~1.0) for equally repeatable driving, and a plain average let the
+naturally-high-CV metrics dominate regardless of the driver's actual
+consistency. `_consistency_component` now divides each raw CV by its own
+unit's typical scale (`config.model.consistency_unit_reference_cv`, keyed by
+metrics/technique.py's METRIC_DEFS units), then pools in two levels - mean
+within each unit, then mean across units - rather than one flat mean, so a
+unit with many contributing metrics/corners cannot dominate purely by sample
+count either (see `_consistency_component`'s own docstring for both
+rejected alternatives: a flat mean, and a median at either level). This is a
+real formula change for the same evidence, so SCORING_MODEL_VERSION bumps
+dm-v1 -> dm-v2 per the Scoring Contract
+(ARCHITECTURE_VISION.md condition 2); see SPEC.md's Milestone 6 amendment
+for the full record, including the correction to the original (inaccurate)
+"cross-cohort" diagnosis. The separate, structurally similar M7 coaching-
+layer note (`same_lap_twice` / `CoachingConfig.consistency_cv_floor`,
+SPEC.md's Milestone 7 section) is a different code path and is NOT resolved
+by this change.
 """
 
 from __future__ import annotations
@@ -70,6 +99,7 @@ import numpy as np
 from driverdna.attribution.ranker import cumulative_loss
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.metrics.technique import METRIC_DEFS
 from driverdna.model.taxonomy import (
     FUNDAMENTALS,
     TAXONOMY_VERSION,
@@ -80,7 +110,7 @@ from driverdna.model.taxonomy import (
 )
 from driverdna.pipeline import phase_windows_from_stored
 
-SCORING_MODEL_VERSION = "dm-v1"
+SCORING_MODEL_VERSION = "dm-v2"
 
 
 @dataclass(frozen=True)
@@ -194,10 +224,32 @@ def _consistency_component(
     fundamental_id: str, config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
 ) -> _Component:
+    """dm-v2: each metric's raw CV is divided by its own unit's typical scale
+    (module docstring, "Per-unit consistency normalization") before pooling,
+    so a naturally-high-CV unit (a small-integer count) cannot dominate a
+    naturally-low-CV unit (a % lap position) purely by scale.
+
+    Pooling is two-level - mean within each unit, then mean across units -
+    not a single flat mean over every (corner, metric) sample. A flat mean
+    was tried during development and rejected against real fixture data: a
+    unit with many contributing corners/metrics (e.g. "% lap", with 5 metrics
+    per corner) dominates a flat pool purely by sample count, and dividing by
+    a very small reference (a "% lap" CV's reference is ~0.007) amplifies any
+    one genuinely inconsistent corner into a normalized value large enough to
+    crush the whole pooled mean - observed on real data, a single corner's
+    varying entry/exit points swung the flat-pooled score to 0 regardless of
+    every other corner's real consistency. Giving each unit equal weight
+    keeps that corner's real signal inside its own "% lap" average instead of
+    overwhelming every other unit's. A median (within or across units) was
+    also tried and rejected: with as few as one corner's worth of metrics in
+    a pool, the median just selects whichever metric ranks middle, which need
+    not be the one actually varying - mean keeps every sample proportionally
+    represented."""
     metric_names = _scoring_metric_names(fundamental_id)
     if not metric_names:
         return _Component(None, 0)
-    cvs: list[float] = []
+    reference = config.model.consistency_unit_reference_cv
+    by_unit: dict[str, list[float]] = {}
     n_total = 0
     for car, track in cohorts:
         table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
@@ -209,13 +261,17 @@ def _consistency_component(
                 mean = float(np.mean(arr))
                 if mean == 0:
                     continue  # CV is undefined at a zero mean; skip, don't fabricate
-                cvs.append(float(np.std(arr, ddof=1) / abs(mean)))
+                cv = float(np.std(arr, ddof=1) / abs(mean))
+                unit = METRIC_DEFS[metric][0]
+                normalized = cv / reference.get(unit, 1.0)
+                by_unit.setdefault(unit, []).append(normalized)
                 n_total += len(values)
-    if not cvs:
+    if not by_unit:
         return _Component(None, 0)
-    avg_cv = float(np.mean(cvs))
+    unit_means = [float(np.mean(values)) for values in by_unit.values()]
+    pooled = float(np.mean(unit_means))
     ceiling = config.model.consistency_cv_ceiling
-    normalized = max(0.0, min(1.0, 1.0 - avg_cv / ceiling)) if ceiling > 0 else 0.0
+    normalized = max(0.0, min(1.0, 1.0 - pooled / ceiling)) if ceiling > 0 else 0.0
     return _Component(normalized, n_total)
 
 

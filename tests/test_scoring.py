@@ -6,6 +6,7 @@ SPEC.md's Milestone 6 done-criteria — deterministic, honest about
 insufficient evidence, and never scores a no_signal fundamental.
 """
 
+import numpy as np
 import pytest
 
 from driverdna.config import DriverDNAConfig
@@ -13,6 +14,7 @@ from driverdna.db import Database
 from driverdna.model.scoring import (
     SCORING_MODEL_VERSION,
     _Component,
+    _consistency_component,
     _weighted_score,
     compute_all_beliefs,
     compute_belief,
@@ -90,6 +92,102 @@ def test_weighted_score_none_available_returns_none():
         "consistency": _Component(None, 0),
     }
     assert _weighted_score(components, CONFIG) is None
+
+
+# --- _consistency_component: dm-v2 per-unit normalization ------------------
+#
+# Real fixtures exposed the actual mechanism (2026-07-21): "% lap" landmark
+# metrics have a naturally tiny raw CV (~0.007) while small-integer "count"
+# metrics have a naturally huge one (~0.99+), for equally repeatable driving.
+# dm-v1 pooled raw CVs with a flat mean, so whichever metrics happened to be
+# high-CV *by unit* dominated the pooled signal regardless of the driver's
+# actual consistency. These tests stub `self_metric_table` directly (the
+# only Database method _consistency_component calls) so the normalization
+# math is exercised in isolation, without a full synthetic-lap pipeline.
+
+
+class _StubMetricDB:
+    def __init__(self, tables: dict[tuple[str, str], dict]):
+        self._tables = tables
+
+    def self_metric_table(self, *, driver, car, track, lap_pks=None):
+        return self._tables.get((car, track), {})
+
+
+def _cv(values: list[float]) -> float:
+    arr = np.asarray(values, dtype=float)
+    return float(np.std(arr, ddof=1) / abs(np.mean(arr)))
+
+
+def test_consistency_per_unit_normalization_prevents_high_cv_unit_from_dominating():
+    # turn_in_dist_pct ("% lap") near its own reference scale; steering_
+    # corrections ("count") near ITS reference scale - both roughly
+    # "typical" for their own unit, but ~115x apart in raw CV.
+    pct_values = [50.0, 50.4, 49.6, 50.3, 49.7]
+    count_values = [0.0, 1.0, 2.0, 1.0, 3.0]
+    assert _cv(count_values) > 100 * _cv(pct_values)  # the real scale mismatch
+
+    db = _StubMetricDB({
+        ("CarX", "TrackX"): {
+            "C01": {
+                "turn_in_dist_pct": pct_values,
+                "steering_corrections": count_values,
+            },
+        },
+    })
+    component = _consistency_component(
+        db, "owner", [("CarX", "TrackX")], "consistency", CONFIG,
+    )
+    assert component.value is not None
+    # Both metrics sit near their own reference (normalized ~1.0), so the
+    # pooled score should land near the "typical" midpoint (ceiling=2.0 ->
+    # normalized 1.0 scores 50) - not crushed toward 0 by the count metric's
+    # much larger raw number, and not pulled toward 100 by the pct metric's
+    # much smaller one.
+    assert 0.30 < component.value < 0.70
+
+    # Matches the documented formula exactly: per-metric CV / that metric's
+    # own unit reference, meaned within unit then across units.
+    ref = CONFIG.model.consistency_unit_reference_cv
+    expected_pooled = (
+        _cv(pct_values) / ref["% lap"] + _cv(count_values) / ref["count"]
+    ) / 2
+    expected = max(0.0, min(1.0, 1.0 - expected_pooled / CONFIG.model.consistency_cv_ceiling))
+    assert component.value == pytest.approx(expected)
+
+
+def test_consistency_unit_with_many_samples_does_not_outweigh_a_thin_one():
+    # "% lap" here contributes 4 corners' worth of samples (all genuinely
+    # inconsistent, real raw CV far above reference) against a single
+    # "count" sample near ITS OWN reference. A flat mean over every
+    # (corner, metric) sample would let the numerous "% lap" samples
+    # swamp the lone "count" one; per-unit-then-across-unit pooling keeps
+    # them at equal, one-vote-per-unit weight instead.
+    noisy_pct = [10.0, 14.0, 8.0, 16.0, 9.0]  # real spread, well above reference
+    typical_count = [0.0, 1.0, 2.0, 1.0, 3.0]
+
+    db = _StubMetricDB({
+        ("CarX", "TrackX"): {
+            "C01": {"turn_in_dist_pct": noisy_pct},
+            "C02": {"brake_point_dist_pct": noisy_pct},
+            "C03": {"apex_dist_pct": noisy_pct},
+            "C04": {"throttle_pickup_dist_pct": noisy_pct, "steering_corrections": typical_count},
+        },
+    })
+    component = _consistency_component(
+        db, "owner", [("CarX", "TrackX")], "consistency", CONFIG,
+    )
+    ref = CONFIG.model.consistency_unit_reference_cv
+    pct_norm = _cv(noisy_pct) / ref["% lap"]
+    count_norm = _cv(typical_count) / ref["count"]
+    expected_pooled = (pct_norm + count_norm) / 2  # one vote per unit, not per sample
+    expected = max(0.0, min(1.0, 1.0 - expected_pooled / CONFIG.model.consistency_cv_ceiling))
+    assert component.value == pytest.approx(expected)
+    # A flat per-sample mean (4 noisy "% lap" samples vs. 1 "count" sample)
+    # would have pulled the pool much closer to the noisy pct signal alone -
+    # confirm the per-unit result differs from that flat alternative.
+    flat_mean = (pct_norm * 4 + count_norm) / 5
+    assert not (expected_pooled == pytest.approx(flat_mean))
 
 
 # --- no_signal fundamentals never reach the component math -----------------
@@ -246,9 +344,17 @@ def test_store_all_beliefs_persists_every_fundamental(db):
 # "declining". Each lap gets a unique vert_accel marker (read by no
 # metric/detector) so identical-shaped laps are still distinct telemetry and
 # don't collapse under content-dedup — real laps never are identical.
+#
+# Peaks span a wide 0.1-0.9 range (dm-v2, 2026-07-21): only brake_peak and
+# brake_application_rate respond to a varied peak height directly (timing
+# landmarks like brake_point_dist_pct don't move), and dm-v2's per-unit
+# pooling (model/scoring.py) gives each metric's *unit* equal weight rather
+# than each raw sample — so the signal needs to be unmistakable within its
+# own two units to clear trend_delta_points, the same bar a real, clearly
+# inconsistent driver would clear.
 
-_VARIED_PEAKS = [0.4, 0.5, 0.6, 0.7, 0.8]
-_FLAT_PEAKS = [0.8, 0.8, 0.8, 0.8, 0.8]
+_VARIED_PEAKS = [0.1, 0.3, 0.5, 0.7, 0.9]
+_FLAT_PEAKS = [0.9, 0.9, 0.9, 0.9, 0.9]
 
 
 def _brake_peak_lap(i, peak):

@@ -370,7 +370,7 @@ class RetentionConfig(_Section):
 
 
 class ModelConfig(_Section):
-    """Driver Model deterministic scoring (M6, model `dm-v1`).
+    """Driver Model deterministic scoring (M6, model `dm-v2`).
 
     A fundamental's score is a weighted aggregation of principle-adherence
     rate, normalized vs-self opportunity, and consistency
@@ -402,12 +402,37 @@ class ModelConfig(_Section):
         "mapped phases considered maximal (scores 0); scaled linearly from 0 "
         "loss (scores 100) to this ceiling.",
     )
+    consistency_unit_reference_cv: dict[str, float] = Field(
+        default={
+            "% lap": 0.007,
+            "km/h": 0.064,
+            "rad/s": 0.11,
+            "deg/s^2": 0.33,
+            "m/s^2": 0.33,
+            "fraction": 0.53,
+            "fraction/s": 0.60,
+            "s": 0.58,
+            "count": 0.99,
+        },
+        description="Per-unit typical coefficient of variation, keyed by the "
+        "same unit strings as metrics/technique.py's METRIC_DEFS (dm-v2). "
+        "Raw CV is not comparable across metrics of different natural scale: "
+        "a '% lap' landmark position typically varies ~1% lap-to-lap, while a "
+        "small-integer 'count' metric (e.g. steering corrections) typically "
+        "varies ~100%, for equally repeatable driving — dividing each raw CV "
+        "by its own unit's entry here before pooling removes that scale bias "
+        "so no unit dominates the pooled signal purely by being counted in "
+        "small numbers. Values are the observed median raw CV per unit across "
+        "the project's real committed multi-car/multi-track telemetry "
+        "(2026-07-21), not guessed; see SPEC.md's Milestone 6 amendment.",
+    )
     consistency_cv_ceiling: float = Field(
-        default=0.5,
-        description="Coefficient of variation (std/|mean|, unitless — keeps "
-        "the consistency component comparable across metrics in different "
-        "units) considered maximally inconsistent (scores 0); scaled "
-        "linearly from CV 0 (scores 100) to this ceiling.",
+        default=2.0,
+        description="Ceiling for the pooled consistency signal, expressed in "
+        "multiples of a metric's own unit-typical CV (after dividing by "
+        "consistency_unit_reference_cv; dm-v2) — considered maximally "
+        "inconsistent (scores 0); scaled linearly from 0 (scores 100) to this "
+        "ceiling. 1.0 (exactly unit-typical) scores 50.",
     )
     min_evidence_for_score: int = Field(
         default=5,
@@ -602,6 +627,25 @@ def describe_key(key: str) -> str | None:
     return None if field is None else field.description
 
 
+def _render_toml_value(value) -> str:
+    """Hand-rolled TOML rendering (no writer dependency; tomllib is read-only
+    stdlib) for exactly the value shapes a DriverDNAConfig field can hold.
+    Dicts render as inline tables with quoted keys - needed since dm-v2's
+    consistency_unit_reference_cv keys (e.g. "% lap", "m/s^2") aren't valid
+    bare TOML keys, and Python's repr() (the pre-dict fallback here) uses ':'
+    and single quotes, neither valid TOML."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return f'"{value}"'
+    if isinstance(value, dict):
+        inner = ", ".join(
+            f'"{k}" = {_render_toml_value(v)}' for k, v in value.items()
+        )
+        return "{" + inner + "}"
+    return repr(value)
+
+
 class ConfigStore:
     """The single write path for parameter changes — CLI or a confirmed chat
     proposal. Every change is validated against the typed schema, written to
@@ -676,12 +720,6 @@ class ConfigStore:
         for section in sorted(data):
             lines.append(f"[{section}]")
             for field_name, value in sorted(data[section].items()):
-                if isinstance(value, bool):
-                    rendered = "true" if value else "false"
-                elif isinstance(value, str):
-                    rendered = f'"{value}"'
-                else:
-                    rendered = repr(value)
-                lines.append(f"{field_name} = {rendered}")
+                lines.append(f"{field_name} = {_render_toml_value(value)}")
             lines.append("")
         self.path.write_text("\n".join(lines))
