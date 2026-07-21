@@ -8,7 +8,12 @@ citing an unknown or ineligible coaching_principle_id, and any
 confidence/percentage language attached to a no_signal principle
 (docs/COACHING.md: "a confidence value never launders an unmeasured
 inference") — both mechanical rejections, same mechanism as an unknown
-evidence ID. A rejected output is never persisted and never shown as a plan.
+evidence ID. Incidents (Layer 3, SPEC.md A20) add: an incident_explanation
+must cite exactly the ONE coaching_principle_id the engine deterministically
+judged eligible for that incident's classification — the AI explains the
+engine's verdict, it never picks or overrides it — and an incident with no
+eligible principle (unclassified/external) cannot be explained at all. A
+rejected output is never persisted and never shown as a plan.
 """
 
 from __future__ import annotations
@@ -18,7 +23,7 @@ import re
 from typing import Any
 
 from driverdna.coach.grounding import number_pool, numeric_claims, unsupported_claims
-from driverdna.coach.payload import evidence_universe
+from driverdna.coach.payload import eligible_incident_principles, evidence_universe
 from driverdna.coaching.ontology import PRINCIPLES
 from driverdna.model.taxonomy import SignalStatus
 
@@ -39,7 +44,8 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
     except json.JSONDecodeError as e:
         raise CoachValidationError([f"output is not valid JSON: {e}"]) from None
 
-    for key in ("measured_priorities", "coaching_priorities", "coaching_plan", "hypotheses"):
+    for key in ("measured_priorities", "coaching_priorities", "coaching_plan",
+                "hypotheses", "incident_explanations"):
         if not isinstance(output.get(key), list):
             violations.append(f"missing or non-list section: {key}")
     if violations:
@@ -103,6 +109,36 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
                     "unmeasured inference"
                 )
 
+    incident_principles = eligible_incident_principles(report)
+    for i, ie in enumerate(output["incident_explanations"]):
+        where = f"incident_explanations[{i}]"
+        incident_id = ie.get("incident_id")
+        required_principle = incident_principles.get(incident_id)
+        if required_principle is None:
+            violations.append(
+                f"{where}: incident {incident_id!r} is not eligible for "
+                "explanation (unknown, or the engine did not classify it "
+                "clearly enough to name a cause)"
+            )
+        elif ie.get("coaching_principle_id") != required_principle:
+            violations.append(
+                f"{where}: coaching_principle_id {ie.get('coaching_principle_id')!r} "
+                f"does not match the engine's own verdict {required_principle!r} "
+                f"for incident {incident_id!r} — the AI explains the "
+                "classification, it does not choose or override it"
+            )
+        ids = ie.get("evidence_ids") or []
+        if incident_id not in ids:
+            violations.append(f"{where}: must cite its own incident_id as evidence")
+        for e in ids:
+            if e not in evidence:
+                violations.append(f"{where}: unknown evidence ID {e!r}")
+        if ie.get("confidence") not in _CONFIDENCES:
+            violations.append(
+                f"{where}: incident explanation must carry confidence low/medium/high"
+            )
+        check_numbers(str(ie.get("explanation", "")), where)
+
     for i, step in enumerate(output["coaching_plan"]):
         where = f"coaching_plan[{i}]"
         if not step.get("title"):
@@ -147,6 +183,14 @@ def render_plan_markdown(output: dict[str, Any], cohort: dict[str, Any]) -> str:
             f"{cp.get('why', '')} "
             f"(evidence: {', '.join(cp.get('evidence_ids') or []) or 'none — self-check'})"
         ]
+    if output.get("incident_explanations"):
+        lines += ["", "## Incidents", ""]
+        for ie in output["incident_explanations"]:
+            lines += [
+                f"- **{ie['incident_id']}** ({ie['coaching_principle_id']}, "
+                f"{ie['confidence']}) — {ie.get('explanation', '')} "
+                f"(evidence: {', '.join(ie.get('evidence_ids') or [])})"
+            ]
     lines += ["", "## Plan", ""]
     for step in output["coaching_plan"]:
         lines += [f"### {step['title']}", "", step.get("focus", ""), ""]

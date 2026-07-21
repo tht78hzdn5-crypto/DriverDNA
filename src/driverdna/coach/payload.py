@@ -14,13 +14,13 @@ def build_coach_payload(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
 ) -> dict[str, Any]:
     report = build_cohort_payload(db, driver=driver, car=car, track=track, config=config)
-    # Incidents are deterministic engine output and live in the full payload
-    # (report + UI), but the coach must not see them yet: the grounded path
-    # that lets AI *explain* a classification while citing it (incident
-    # evidence IDs in the citable universe) is Layer 3, a later pass. Until
-    # then, keep them out of the model's context entirely so nothing can be
-    # said about a spin without the machinery to ground it.
-    report = {k: v for k, v in report.items() if k != "incidents"}
+    # Incidents are now grounded (Layer 3): each event carries the one
+    # coaching_principle_id the engine deterministically judged eligible
+    # (None for unclassified/external), and the coach may write a validated
+    # "why" for exactly that principle, citing the incident's evidence — see
+    # validate.py's incident_explanations checks. The AI still never picks
+    # the principle or the cause; it only explains the engine's own verdict.
+    # Chat's live Q&A path does not consume incidents yet — a later pass.
     # Raw traces stay out unless explicitly enabled; nothing implements the
     # flag yet, and it defaults off — the findings are the ground truth.
     return {
@@ -44,4 +44,17 @@ def evidence_universe(report: dict[str, Any]) -> tuple[set[str], set[str]]:
     for f in report["findings"]:
         evidence.add(f["finding_id"])
         evidence.update(f["evidence_ids"])
+    for e in report.get("incidents", {}).get("events", []):
+        evidence.add(e["incident_id"])
     return shown_findings, evidence
+
+
+def eligible_incident_principles(report: dict[str, Any]) -> dict[str, str]:
+    """incident_id -> the one coaching_principle_id it may be explained
+    through (only classified mechanisms; unclassified/external are absent —
+    the AI may not explain a cause the engine itself didn't identify)."""
+    return {
+        e["incident_id"]: e["coaching_principle_id"]
+        for e in report.get("incidents", {}).get("events", [])
+        if e.get("coaching_principle_id")
+    }

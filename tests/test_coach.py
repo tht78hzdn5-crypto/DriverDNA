@@ -2,6 +2,7 @@
 
 import json
 
+import numpy as np
 import pytest
 
 from driverdna.coach.grounding import number_pool, unsupported_claims
@@ -80,6 +81,7 @@ def _valid_output(payload):
                 "evidence_ids": [f["finding_id"]],
             }
         ],
+        "incident_explanations": [],
     }
 
 
@@ -167,6 +169,95 @@ def test_ineligible_coaching_principle_rejected(payload):
     )
     with pytest.raises(CoachValidationError, match="not eligible"):
         validate_coach_output(json.dumps(output), payload["report"])
+
+
+@pytest.fixture()
+def incident_payload():
+    """A cohort with one classified incident (trail_brake_oversteer, inside
+    C01's window), mirroring test_incidents.py's injection approach."""
+    with Database.open(":memory:") as database:
+        for i in range(3):
+            run_synthetic_lap(database, track_lap(src=f"clean{i}.csv"), session_key="s1")
+        spin_lap = track_lap(src="spin.csv")
+        at = 720  # inside CORNER_WINDOWS[0] = (700, 850)
+        spin_lap.steering_deg[at : at + 12] = np.linspace(-80.0, 80.0, 12)
+        spin_lap.yaw_rate[at : at + 12] = 1.0
+        spin_lap.speed[at : at + 20] = 5.0
+        spin_lap.brake[at : at + 12] = 0.8
+        run_synthetic_lap(database, spin_lap, session_key="s1")
+        yield build_coach_payload(database, **COHORT, config=CONFIG)
+
+
+def _incident_event(payload):
+    events = payload["report"]["incidents"]["events"]
+    return next(e for e in events if e["coaching_principle_id"])
+
+
+def _valid_incident_explanation(payload):
+    # Independent of _valid_output: this cohort (3 clean laps + 1 spin) has
+    # no shown vs-self finding to anchor a measured_priorities entry on, so
+    # every other required section is validly empty/minimal instead.
+    e = _incident_event(payload)
+    return {
+        "measured_priorities": [],
+        "coaching_priorities": [],
+        "coaching_plan": [{"title": "Rebuild the entry", "focus": "", "actions": []}],
+        "hypotheses": [],
+        "incident_explanations": [
+            {
+                "incident_id": e["incident_id"],
+                "coaching_principle_id": e["coaching_principle_id"],
+                "explanation": "The rear stepped out while still trail-braking "
+                                "into the corner — releasing more progressively "
+                                "keeps the front loaded through rotation.",
+                "confidence": "high",
+                "evidence_ids": [e["incident_id"]],
+            }
+        ],
+    }
+
+
+def test_incident_present_and_classified(incident_payload):
+    events = incident_payload["report"]["incidents"]["events"]
+    assert events and events[0]["classification"] == "trail_brake_oversteer"
+    assert events[0]["coaching_principle_id"] == "cp.brake_release.finish_the_front"
+
+
+def test_valid_incident_explanation_accepted_and_rendered(incident_payload):
+    output = validate_coach_output(
+        json.dumps(_valid_incident_explanation(incident_payload)),
+        incident_payload["report"],
+    )
+    md = render_plan_markdown(output, incident_payload["report"]["cohort"])
+    assert "## Incidents" in md and "cp.brake_release.finish_the_front" in md
+
+
+def test_incident_explanation_must_match_engines_own_principle(incident_payload):
+    output = _valid_incident_explanation(incident_payload)
+    output["incident_explanations"][0]["coaching_principle_id"] = "cp.turn_in.one_commitment"
+    with pytest.raises(CoachValidationError, match="does not match the engine's own verdict"):
+        validate_coach_output(json.dumps(output), incident_payload["report"])
+
+
+def test_unclassified_incident_cannot_be_explained(incident_payload):
+    output = _valid_incident_explanation(incident_payload)
+    output["incident_explanations"][0]["incident_id"] = "incident:999999"
+    with pytest.raises(CoachValidationError, match="not eligible for explanation"):
+        validate_coach_output(json.dumps(output), incident_payload["report"])
+
+
+def test_incident_explanation_missing_confidence_rejected(incident_payload):
+    output = _valid_incident_explanation(incident_payload)
+    del output["incident_explanations"][0]["confidence"]
+    with pytest.raises(CoachValidationError, match="must carry confidence"):
+        validate_coach_output(json.dumps(output), incident_payload["report"])
+
+
+def test_incident_explanation_invented_number_rejected(incident_payload):
+    output = _valid_incident_explanation(incident_payload)
+    output["incident_explanations"][0]["explanation"] = "This costs 42.7 s."
+    with pytest.raises(CoachValidationError, match="number not present"):
+        validate_coach_output(json.dumps(output), incident_payload["report"])
 
 
 def test_no_signal_confidence_language_rejected(payload):

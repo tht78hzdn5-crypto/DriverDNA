@@ -96,7 +96,12 @@ def incidents_section(
     """Detected incidents for this cohort's self laps. Each is a single event
     (N=1) — characterised, never generalised into a trait; a repeated pattern
     would need N and go through the finding gates like everything else."""
+    from driverdna.incidents.coaching import eligible_principle_for
+
     events = db.incidents_for_cohort(driver=driver, car=car, track=track)
+    for e in events:
+        # Deterministic: the engine decides eligibility, never the AI.
+        e["coaching_principle_id"] = eligible_principle_for(e["classification"])
     return {
         "n": len(events),
         "events": events,

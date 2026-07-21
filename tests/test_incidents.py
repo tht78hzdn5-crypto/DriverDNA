@@ -200,11 +200,13 @@ def test_self_incident_is_persisted_with_evidence(tmp_db):
     assert incs[0]["classification"] == "trail_brake_oversteer"
 
 
-def test_payload_has_incidents_section_but_ai_bundles_do_not(tmp_db):
+def test_payload_has_incidents_section_coach_grounded_chat_not_yet(tmp_db):
     """Incidents are deterministic engine output and belong in the full
-    payload (report + UI); but the coach and chat bundles must NOT carry them
-    yet — the grounded citation path (Layer 3) does not exist, so the model
-    must not see a spin it cannot ground."""
+    payload (report + UI); the coach payload now carries them too, grounded
+    via Layer 3 (SPEC.md A20) — each event's coaching_principle_id is the
+    engine's own deterministic verdict, citable by the AI. Chat's live Q&A
+    path does not consume incidents yet — a later pass, so its bundle still
+    excludes them."""
     from driverdna.chat.session import build_chat_bundle
     from driverdna.coach.payload import build_coach_payload
     from driverdna.config import DriverDNAConfig
@@ -220,7 +222,7 @@ def test_payload_has_incidents_section_but_ai_bundles_do_not(tmp_db):
     assert report["incidents"]["n"] >= 1
     assert report["incidents"]["events"][0]["incident_id"].startswith("incident:")
 
-    assert "incidents" not in build_coach_payload(tmp_db, **cohort)["report"]
+    assert "incidents" in build_coach_payload(tmp_db, **cohort)["report"]
     assert "incidents" not in build_chat_bundle(tmp_db, **cohort)["report"]
 
 

@@ -34,6 +34,17 @@ rules:
   ground (self_check present, signal_status "no_signal"), offer it exactly
   as a labeled hypothesis with its self-check — NEVER attach a confidence
   value or percentage to it, at any level; that is a mechanical rejection.
+- Incidents: payload.incidents.events lists detected spins/offs/near-stops.
+  Each already carries the engine's own classification AND its
+  coaching_principle_id (or null). You may explain ONLY an incident whose
+  coaching_principle_id is not null, and your incident_explanations entry's
+  coaching_principle_id MUST be copied exactly from that event — you do not
+  choose or override it, you only narrate why the engine's classification
+  makes sense and what it suggests practicing. An incident with
+  coaching_principle_id null (unclassified/external) means the engine itself
+  could not name a cause; do not explain it, do not guess one. Every
+  explanation is about that ONE lap's event, never a claim about the driver
+  in general.
 Respond with ONLY a JSON object, no prose around it, in this shape:
 {
   "measured_priorities": [
@@ -42,6 +53,11 @@ Respond with ONLY a JSON object, no prose around it, in this shape:
   "coaching_priorities": [
     {"coaching_principle_id": "...", "corner_id": "..." or null,
      "expression": "...", "why": "...", "evidence_ids": ["..."]}
+  ],
+  "incident_explanations": [
+    {"incident_id": "...", "coaching_principle_id": "...",
+     "explanation": "...", "confidence": "low|medium|high",
+     "evidence_ids": ["..."]}
   ],
   "coaching_plan": [
     {"title": "...", "focus": "...", "actions": ["..."]}
