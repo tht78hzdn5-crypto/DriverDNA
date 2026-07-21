@@ -150,3 +150,47 @@ td.right, th.right { text-align: right; }
 .chat-staged-row { flex-wrap: wrap; }
 .chat-input { display: flex; gap: 0.5rem; }
 .chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }
+
+/* Driver Model pyramid (M6). The one bold element on the tab; everything
+   else stays quiet. Score magnitude uses a neutral steel-grey fill whose
+   opacity tracks the score — never a semantic hue (no alarm colour on
+   driving). no_signal tiers are an empty dashed outline; proxy tiers carry
+   a dashed edge to mark the softer signal. */
+.pyramid-panel { text-align: center; }
+.pyramid { width: 100%; max-width: 30rem; height: auto; display: block; margin: 0.5rem auto 0.4rem; }
+.pyramid .tier { stroke: var(--line); stroke-width: 0.5; stroke-linejoin: round; }
+.pyramid .tier.proxy { stroke: var(--dim); stroke-dasharray: 1.6 1.1; }
+.pyramid .tier.no_signal { fill: none; stroke: var(--dim); stroke-dasharray: 1.1 1.3; opacity: 0.7; }
+.pyramid .t-name { fill: var(--text); font-family: var(--sans); font-size: 2px;
+  text-anchor: middle; font-weight: 500; letter-spacing: 0.02em; }
+.pyramid .t-score { fill: var(--text); font-family: var(--mono); font-size: 3.8px;
+  text-anchor: middle; font-variant-numeric: tabular-nums; }
+
+/* Fundamentals meter list. Neutral score bar (data colour, not warn), quiet
+   trend arrows (direction from the glyph, never green/red — that would
+   editorialize about driving). */
+.fbar { border-top: 1px solid var(--line); padding: 0.55rem 0.1rem; }
+.fbar:first-of-type { border-top: 0; }
+.fbar-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.fbar-name { font-size: 0.9rem; }
+.fbar-score { margin-left: auto; font-size: 1.05rem; }
+.fbar .track { height: 6px; margin: 0.4rem 0 0.3rem; }
+.fbar .track i { display: block; height: 100%; background: rgba(70, 100, 140, 0.9); border-radius: 2px; }
+.fbar-meta { color: var(--dim); font-size: 0.74rem; }
+.fbar.off .fbar-name, .fbar.off .fbar-score { color: var(--dim); }
+
+/* Coaching cards — surfacing the grounded coaching layer (M7). The headline
+   is the product's clearest "do this next"; secondary principles are quieter;
+   self-checks (no_signal) are labelled hypotheses with no score, ever. */
+.coach-headline {
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  background: var(--raised); border-radius: 3px; padding: 0.8rem 0.9rem;
+}
+.coach-say { font-size: 1.05rem; font-weight: 500; line-height: 1.4; }
+.coach-why { color: var(--dim); font-size: 0.82rem; margin-top: 0.4rem; line-height: 1.5; }
+.coach-drill { font-size: 0.82rem; margin-top: 0.55rem; }
+.coach-drill b { color: var(--text); }
+.coach-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.55rem; align-items: center; }
+.coach-item { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem; }
+.coach-item .coach-say { font-size: 0.9rem; font-weight: 500; }
+.coach-item .coach-why { margin-top: 0.25rem; }
