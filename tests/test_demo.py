@@ -42,3 +42,17 @@ def test_seed_demo_db_is_idempotent(tmp_path):
 def test_demo_command_is_registered():
     result = CliRunner().invoke(app, ["demo", "--help"])
     assert result.exit_code == 0 and "seed the bundled sample laps" in result.output
+
+
+def test_runnable_as_python_m_module():
+    """`python -m driverdna` must work (PATH-independent entry point) — the
+    only fallback when pip's Scripts/bin dir isn't on PATH, e.g. on Windows.
+    Guards the __main__.py that provides it."""
+    import subprocess
+    import sys
+
+    out = subprocess.run(
+        [sys.executable, "-m", "driverdna", "version"],
+        capture_output=True, text=True,
+    )
+    assert out.returncode == 0, out.stderr
