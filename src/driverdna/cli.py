@@ -340,6 +340,107 @@ def ui(
     uvicorn.run(application, host="127.0.0.1", port=port, log_level="warning")
 
 
+def _demo_fixtures_dir() -> Path | None:
+    """The bundled sample laps (tests/fixtures) live in the source tree, not
+    the wheel — `demo` is the clone-and-run path. None if not a source
+    checkout."""
+    fixtures = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
+    return fixtures if (fixtures / "manifest.toml").exists() else None
+
+
+def _seed_demo_db(db, fixtures: Path, config) -> int:
+    """Import the bundled sample laps into an empty demo DB (idempotent: a
+    non-empty DB is left alone). Returns the lap count."""
+    from driverdna.ingest.contract import load_fixture_manifest
+    from driverdna.pipeline import import_lap_file
+
+    existing = db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"]
+    if existing == 0:
+        for e in load_fixture_manifest(fixtures):
+            import_lap_file(
+                db, fixtures / e["file"], config=config,
+                driver=e.get("driver", "owner"), car=e["car"], track=e["track"],
+                role=e["role"], session_key=e.get("session"),
+            )
+        db.enforce_retention(config.retention.raw_laps_per_cohort)
+    return db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"]
+
+
+@app.command()
+def demo(
+    port: int = typer.Option(8710, help="Port on 127.0.0.1."),
+    fresh: bool = typer.Option(
+        False, help="Rebuild the demo DB from the bundled sample laps."
+    ),
+    no_browser: bool = typer.Option(
+        False, "--no-browser", help="Don't try to open a browser window."
+    ),
+) -> None:
+    """One-command tour: seed the bundled sample laps and open the cockpit.
+
+    No data or API key needed — imports the fixture laps into a demo DB under
+    ~/.driverdna/ and serves the local cockpit at 127.0.0.1, opening your
+    browser. The full `driverdna ui` is the same UI over your own data.
+    """
+    import threading
+
+    from driverdna.config import load_config
+    from driverdna.db import Database
+
+    try:
+        import uvicorn
+        from fastapi.staticfiles import StaticFiles
+
+        from driverdna.ui.api import create_app
+    except ModuleNotFoundError:
+        typer.echo(
+            "error: the UI extra is not installed — run "
+            "`python3 -m pip install -e '.[ui]'`"
+        )
+        raise typer.Exit(code=2) from None
+
+    fixtures = _demo_fixtures_dir()
+    if fixtures is None:
+        typer.echo(
+            "error: bundled sample laps not found (expected tests/fixtures/ "
+            "in a source checkout). Import your own with `driverdna import` "
+            "and launch `driverdna ui`."
+        )
+        raise typer.Exit(code=2)
+
+    home = Path.home() / ".driverdna"
+    home.mkdir(exist_ok=True)
+    db_path, config_path = home / "demo.db", home / "demo.toml"
+    if fresh and db_path.exists():
+        db_path.unlink()
+
+    config = load_config()
+    with Database.open(db_path) as db:
+        n = _seed_demo_db(db, fixtures, config)
+    typer.echo(f"demo cockpit ready — {n} sample laps.")
+
+    application = create_app(db_path, config_path)
+    static_dir = Path(__file__).parent / "ui" / "static"
+    if static_dir.exists():
+        application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
+
+    url = f"http://127.0.0.1:{port}"
+    typer.echo(f"DriverDNA cockpit: {url}  (Ctrl-C to stop)")
+    if not no_browser:
+        # Fire once the server is a beat from ready; harmless if headless.
+        threading.Timer(1.2, lambda: _try_open_browser(url)).start()
+    uvicorn.run(application, host="127.0.0.1", port=port, log_level="warning")
+
+
+def _try_open_browser(url: str) -> None:
+    import webbrowser
+
+    try:
+        webbrowser.open(url)
+    except Exception:  # headless / no display — the URL is printed anyway
+        pass
+
+
 @app.command()
 def chat(
     db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),

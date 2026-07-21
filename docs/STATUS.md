@@ -294,11 +294,12 @@ also recorded in the durable docs, per the Decision-discipline rule):
 
 ```
 python3 -m pip install -e ".[dev]"      # engine + UI + test deps
-python3 -m pytest                        # 315 tests (2026-07-20)
+driverdna demo                           # one command: seed sample laps + open the cockpit
+python3 -m pytest                        # 485 tests (2026-07-21)
 driverdna import tests/fixtures          # build the local DB from the fixtures
 driverdna report                         # Markdown + JSON + self-contained HTML
-driverdna corners | metrics | attribution   # per-milestone inspectable artifacts
-driverdna ui                             # local cockpit at 127.0.0.1 (needs .[ui])
+driverdna corners | metrics | attribution | incidents   # per-milestone inspectable artifacts
+driverdna ui                             # local cockpit at 127.0.0.1 over your own data
 ```
 
 Coach/chat additionally need `ANTHROPIC_API_KEY`; `sync` needs `GARAGE61_TOKEN`
