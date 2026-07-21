@@ -43,7 +43,7 @@ Regenerated from the repo this date, not asserted from memory:
 | Count | Value | How to reproduce |
 |---|---|---|
 | Tests passing | **475** (31 test files) | `python3 -m pytest` |
-| Commits on branch | **56** | `git rev-list --count HEAD` |
+| Commits on branch | **58** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |

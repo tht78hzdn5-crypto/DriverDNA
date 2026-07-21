@@ -625,7 +625,8 @@ findings; see the clarification there.
   number). Every score is presented with its confidence, evidence count, and a
   plain "this is a model estimate; here's how to sharpen it."
 - **Artifact:** `driverdna model` — the per-fundamental score / confidence /
-  evidence table, deterministic. A DriverModel UI view follows on the U-track.
+  evidence table, deterministic. The DriverModel UI view (`#/model`) was
+  built 2026-07-21 (render-only over this section; PROJECT-BRIEF.md log).
 
 Done when: the scoring model is deterministic and versioned (two runs →
 identical beliefs); every score carries confidence + evidence count;

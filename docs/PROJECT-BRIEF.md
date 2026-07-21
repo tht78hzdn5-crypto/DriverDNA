@@ -238,8 +238,8 @@ every non-localhost request via Playwright route interception across
 every route (including chat) and asserts each one still renders real
 content. Also closed a gap the milestone's own text named: HTML output
 had no determinism test, only payload/JSON — added one (byte-identical
-across independent renders). A DriverModel UI view remains open, follows
-naturally from M6 but wasn't part of U0–U4's scope.
+across independent renders). A DriverModel UI view (open when U4 shipped)
+was built 2026-07-21 — see the decision-log entry above.
 
 The binding rule throughout: the UI renders what the engine computed and never
 computes a measurement (mechanically enforced). What does NOT belong in a UI:
@@ -252,6 +252,21 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Driver Model UI view built: M6 is finally visible.** The
+  Driver Model is the constitution's centre of gravity ("the persistent Driver
+  Model is the product"), yet the whole U0–U4 UI track shipped without a screen
+  for it — it lived only in the payload and the `driverdna model` artifact.
+  New render-only `#/model` view surfaces the 7 fundamentals (score /
+  confidence / evidence / trend) from `/api/driver`'s existing `driver_model`
+  section; render-parity crawler extended to cover it. The A14 rule is now
+  enforced *visually* too, not just in the engine: a `no_signal` fundamental
+  renders in its own "stated, never scored" section with no score/confidence
+  at any level — `vision` on the fixture data is the live example. Scope call:
+  rendered fundamentals, the granularity the belief store carries; a
+  technique-level decomposition (the 17 techniques under the 7 fundamentals)
+  would first need the payload to expose per-technique signals — a follow-on,
+  outside "render-only". Completes the three-item arc (preserve laps →
+  incidents → model view) from this session's "what's next".
 - **2026-07-21 — Incident subsystem built (SPEC.md A19): a spin is a
   measurement, not noise.** Owner's insight, and it's deeply on-thesis: every
   other telemetry app treats a spin or an off as an annoyance to filter;
