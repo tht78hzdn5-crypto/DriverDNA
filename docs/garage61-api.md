@@ -236,10 +236,22 @@ self-service toggle vs a Garage61-side approval request is itself
 unconfirmed from the docs' wording). Until that scope is approved,
 **whether either team actually has a published data pack is unknown and
 unknowable via this API** — the 401 fires before that question is ever
-reached. Recorded here so a future session starts from this position
-instead of re-deriving it (SPEC.md decision-of-record #2 is not reopened
-by this note — manual `import` remains correct for v1 until data packs
-are actually probed and shown to work).
+reached.
+
+**Owner's domain read (2026-07-21, not API-verified — labeled as such):**
+the schema supports a `lap.csv` content item alongside `ghost.bin`/
+`replay.bin`/`setup.sto`, but the owner's real-world expectation, from
+using Garage61 day to day, is that data packs in practice are used for
+sharing car **setups**, not lap telemetry — so even with the scope
+approved, the realistic payoff for reference laps specifically is low.
+On that basis, this avenue is **deprioritized, not closed**: the
+approval-friction (self-service vs a Garage61-side request, still
+unconfirmed) isn't worth spending against an expected-empty result.
+Recorded here — including the schema fact and the owner's caveat kept
+separate — so a future session starts from this position instead of
+re-deriving it (SPEC.md decision-of-record #2 is not reopened by this
+note — manual `import` remains correct for v1 until data packs are
+actually probed and shown to work).
 
 ## Parity check
 
@@ -334,13 +346,13 @@ from scratch; none of this is used by `sync` today.
 - ❌ Other-driver ("reference") lap fetch via `/laps` is **not available**
   with this token (`driving_data`'s default scope is self+teammates, per
   official docs) — reference laps stay on the manual `import` path,
-  `role=reference`, as already specified. **Team data packs are a
-  separate mechanism, confirmed blocked at the application level**
-  (`GET /teams/{id}/datapacks[groups]` → `401 Missing app scope (not
-  approved): team_datapacks_read`, both teams, identical error) — the
-  scope needs approval for the app before it's even possible to check
-  whether either team has published lap content (see "Other documented
-  endpoints" above and "team data packs" in the reference-lap section).
+  `role=reference`, as already specified. **Team data packs are a separate
+  mechanism, confirmed blocked at the application level** (`GET
+  /teams/{id}/datapacks[groups]` → `401 Missing app scope (not approved):
+  team_datapacks_read`, both teams, identical error) and **deprioritized**
+  — the owner's real-world expectation is that data packs in practice hold
+  setups, not lap telemetry, so the approval friction likely isn't worth
+  it for this goal (see "team data packs" in the reference-lap section).
 - ⚠️ `sync` must discover cohorts via `/me/statistics` (or a
   driver-supplied car/track list) and loop `/laps?tracks=...&cars=...`
   per cohort — there is no unscoped "give me everything" call.

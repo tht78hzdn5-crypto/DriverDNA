@@ -227,6 +227,24 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Team data packs deprioritized as a reference-lap path
+  (not closed).** Follow-up to the same-day data-packs finding below.
+  Probed `GET /teams/{id}/datapacks[groups]` against both of the owner's
+  teams (`DriverDNA`, solo; `Blue Flags & Dads`, has another driver): both
+  return an identical `401 Missing app scope (not approved):
+  team_datapacks_read` — an application-level gate checked before any
+  team- or content-specific authorization, so whether either team has a
+  published data pack is unknown and unknowable via this API until the
+  scope is approved for the app. Owner's real-world read, kept labeled
+  separately from anything API-confirmed: data packs in practice are used
+  for sharing car **setups**, not lap telemetry, even though the
+  documented schema supports a `lap.csv` content item alongside
+  `ghost.bin`/`replay.bin`/`setup.sto`. Decision: don't spend the
+  approval-friction (self-service vs a Garage61-side request — itself
+  unconfirmed) chasing an expected-empty result. Deprioritized, not
+  ruled out — if a populated lap data pack is ever confirmed to exist,
+  this is still the more architecturally sound path than another `/laps`
+  attempt. Decision-of-record #2 stays as-is: manual `import`.
 - **2026-07-21 — Garage61's official developer docs obtained and
   cross-referenced; the 403 finding explained, a second reference-lap path
   surfaced, unrelated to any code change.** The live developer portal
