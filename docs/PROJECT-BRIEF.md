@@ -227,6 +227,38 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Garage61's official developer docs obtained and
+  cross-referenced; the 403 finding explained, a second reference-lap path
+  surfaced, unrelated to any code change.** The live developer portal
+  (`garage61.net/developer/*`) is a JS-rendered SPA this session's fetch
+  tooling can't reach; the owner supplied the actual pages (Getting
+  started, Authentication, Permissions, Endpoints, Webhooks) as PDFs.
+  Two things change the M0b record, both in `docs/garage61-api.md`, no
+  code touched: (1) the `403 forbidden_lap` finding is now *explained*,
+  not just observed — the `driving_data` permission's documented default
+  scope is "the authenticated user and their teammates," and the 403'd
+  driver in the original probe wasn't a teammate; consistent, not
+  contradictory, with `/laps` listings themselves showing dozens of
+  non-teammate drivers (the docs distinguish search/listing approval from
+  per-lap access — different gates). (2) A structurally distinct,
+  completely unexplored mechanism exists for legitimate lap sharing:
+  **team data packs** (`/teams/{team}/datapacks/*`, including a
+  `lap.csv` export), gated by `team_datapacks_read`/`_write` — permissions
+  this token doesn't have. Unlike `/laps` (a per-lap visibility check that
+  correctly 403s strangers), data packs are Garage61's own explicit
+  content-*sharing* subsystem — the more plausible path for a reference-lap
+  feature, if one is ever built. Decision-of-record #2 is **not reopened**
+  — manual `import` stays correct for v1 — but SPEC.md now points at data
+  packs as the next thing to probe, not another `/laps` attempt with a
+  different plan tier. Also recorded for later, not used by anything now:
+  the `/analyses` endpoint (a different permission than `driving_data`,
+  untested whether its lap coverage differs from `/laps`'s one-per-
+  driver-per-cohort shape); OAuth2 (relevant only if A17's deferred
+  productization ever happens); and a push-based webhook/live-timing
+  subsystem (a different ingestion model than `sync`'s polling, would need
+  a public receiver — out of keeping with philosophy #8's local-only v1
+  design). Standing caveat now on record: Garage61 states "there is no API
+  stability yet" — `sync` is built against a contract that may change.
 - **2026-07-20 — M6 trend built; its (previously unspecified) definition
   and three sub-forks resolved.** No doc had ever prescribed *how* trend is
   computed — only that the field is always present and reads "unavailable"

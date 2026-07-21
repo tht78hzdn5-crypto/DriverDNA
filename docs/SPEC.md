@@ -67,11 +67,17 @@ These nine principles are binding on every design decision below.
    feed per-corner reference envelopes and gap analysis only — never the driver's
    technique history, trends, or consistency statistics. Clarified 2026-07-20
    (M0b observed behavior, `docs/garage61-api.md`): with the probed token/plan,
-   `sync` cannot fetch a lap it doesn't own (`403 forbidden_lap`), even though
-   such laps appear in unscoped `/laps` listings — so reference laps arrive via
-   the manual `import` path only, tagged `role=reference`, exactly as this
-   milestone's fallback already specified. `sync` for the driver's own laps is
-   unaffected.
+   `sync` cannot fetch a lap it doesn't own via `/laps` (`403 forbidden_lap`),
+   even though such laps appear in unscoped `/laps` listings — so reference laps
+   arrive via the manual `import` path only, tagged `role=reference`, exactly as
+   this milestone's fallback already specified. `sync` for the driver's own laps
+   is unaffected. Not reopened, but noted (2026-07-21, official Garage61 docs
+   cross-referenced): the 403 is explained by `driving_data`'s documented
+   default scope (self + teammates only), and a structurally different,
+   entirely unexplored mechanism exists for legitimate sharing — team **data
+   packs** (`docs/garage61-api.md`, "team data packs") — gated by permissions
+   this token doesn't have. If reference-lap `sync` is ever revisited, that's
+   the path to probe, not another `/laps` attempt.
 3. Every finding carries a source tag: `vs-principle` (canonical technique checks —
    catches uniform weaknesses), `vs-self` (faster-vs-slower × stability), or
    `vs-reference` (gap to faster drivers). Reported separately; never blended into

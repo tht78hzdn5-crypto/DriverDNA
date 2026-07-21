@@ -2,15 +2,25 @@
 
 Probed 2026-07-20 against the live API with a real `GARAGE61_TOKEN`
 (scopes granted: `profile`, `openid`, `driving_data`; free subscription
-plan). Every fact below is from an observed HTTP response, not
-documentation or inference — where a question couldn't be answered from
-observed behavior it is marked **unconfirmed**, per the "never assume API
-behavior" rule. The token was passed only as an environment variable to a
-throwaway probe script for this session; it was never written to disk,
-logged, or committed, and no request/response evidence containing it was
-saved. Third-party drivers' names encountered while probing shared/team
-endpoints are redacted below (`Driver B`, `Driver C`, ...); only the
-probing account's own data and structural facts are reported.
+plan). Cross-referenced 2026-07-21 against Garage61's own developer-portal
+pages (Getting started, Authentication, Permissions, Endpoints, Webhooks —
+owner-supplied, since the live site is a JS-rendered SPA this session's
+tooling can't fetch). Facts below are tagged by source: **observed** (an
+actual HTTP response from this account/token), **per official docs**
+(stated in Garage61's own developer documentation, not independently
+re-verified against this token), or **unconfirmed** (neither — do not
+build on it without checking first). The token was passed only as an
+environment variable to throwaway probe scripts for this session; it was
+never written to disk, logged, or committed, and no request/response
+evidence containing it was saved. Third-party drivers' names encountered
+while probing shared/team endpoints are redacted below (`Driver B`,
+`Driver C`, ...); only the probing account's own data and structural
+facts are reported.
+
+**Per official docs, standing caveat:** "there is no API stability yet" —
+Garage61 states the API may change at any point, with best-effort (not
+guaranteed) advance notice of breaking changes. `sync` should be treated
+as built against a moving target, not a frozen contract.
 
 ## Base URL, versioning, auth
 
@@ -22,6 +32,50 @@ probing account's own data and structural facts are reported.
   Me: security \"OAuth2\": invalid access token."}`
 - Every response carries `X-G61-Trace` (a per-request trace id) — worth
   logging on error for support purposes, never as a secret.
+
+## Permissions (per official docs) — this explains the 403 finding below
+
+Every token carries a set of granted permissions (observed on this token,
+via `/me.apiPermissions`: `profile`, `openid`, `driving_data`). Per
+official docs, the permission relevant to `sync` is:
+
+- **`driving_data`** — "Allows access to the driving data (activity,
+  telemetry and setups) that is **visible to the authenticated user** in
+  the application. This is still subject to the privacy settings in the
+  application: the API application will have the exact same view on data
+  as the user. If a team mate does not share setups, you won't find them
+  in the API either. **By default, applications can only query the
+  authenticated user and their teammates.** Some applications may
+  additionally be approved to search all driving data that is visible to
+  the authenticated user." Requires app-level approval + the user opting
+  in (both already true for this token, since `driving_data` shows up on
+  `/me`).
+
+**This explains, not just describes, the 403 `forbidden_lap` finding
+below**: this token's default `driving_data` scope is self + teammates
+only. The driver whose lap 403'd (surfaced through an unscoped `/laps`
+listing) was not a teammate of the probing account — consistent with the
+documented default. `/laps` *listing* itself showing ~30–66 non-teammate
+drivers per query is not contradictory: per official docs, some
+applications get **search** approved beyond the default scope even where
+per-lap **access** (detail/CSV) stays gated to self+teammates+sharing —
+metadata visibility and content access are different gates. This is the
+most coherent reading of the observed 403-on-non-teammate + broad-listing
+combination, not an independently re-verified mechanism.
+
+Permissions this token does **not** have, each requiring separate app
+approval and (for most) the driver's own opt-in — listed because two are
+directly relevant to `sync`'s reference-lap question (see the data-packs
+note further down):
+
+- **`analyses`** — access to the authenticated user's own analyses
+  (telemetry analysis / laps, and training-plan results). A different
+  permission from `driving_data`; untested here (not granted).
+- **`team_datapacks_read`** (+ `_archived_read`, `_subscribers_read`,
+  `team_datapacks_write`) — read/write access to a team's **data packs**:
+  team-curated shared content (see "Team data packs" below).
+- **`datapacks_subscriptions`**, **`team_trainingplans_read`**,
+  **`team_members`** — not relevant to DriverDNA's scope.
 
 ## List/lookup endpoints (all `GET`, all return `{"items": [...], "total": N}`)
 
@@ -91,9 +145,11 @@ not the iRacing `platform_id` strings — these integer IDs are what
   cars), **every single driver had exactly 1 lap, no exceptions**
   (`Counter({1: 30})` and `Counter({1: 66})` — zero drivers with >1). One
   row per driver per cohort is `/laps`'s behavior for everyone, not a
-  plan-gated limit on this account. (The actual mechanism — best-lap-only,
-  most-recent-only, or something else — is still unconfirmed; only the
-  "exactly one, universally" shape is.) **Consequence:** `sync` already
+  plan-gated limit on this account. Per official docs, the endpoint's own
+  description is "**Find laps and lap records**" — wording that supports
+  (without fully proving) the lap-record/personal-best-per-driver-per-combo
+  reading over a raw per-driver log; the exact rule (best time vs most
+  recent vs something else) remains unconfirmed. **Consequence:** `sync` already
   pulls everything `/laps` returns; this is the endpoint's shape, not an
   under-pull, and not something a different plan or more API calls can
   pull around. M6's per-cohort trend (avoiding the cross-cohort
@@ -132,18 +188,44 @@ not the iRacing `platform_id` strings — these integer IDs are what
     restriction) is unconfirmed** — this probe only demonstrates the
     "unrelated driver" case.
 
-## The reference-lap question — resolved for this token
+## The reference-lap question — resolved for `/laps`; a second, unexplored path exists
 
 Decision-of-record #2 and the M0b spec both name this the "one genuine
-unknown": can this token fetch laps shared by other drivers? **Observed
-answer: no.** Other drivers' laps are visible in `/laps` list results
-(track/car scoped, not owner-scoped) but their detail and CSV endpoints
-return `403 forbidden_lap`. Own-account laps work fully. Per SPEC.md's
-already-written contingency ("If other-driver fetch is unavailable,
-reference laps degrade to manual-download import tagged `reference`"),
-**the reference-lap feature will use the manual `import` path only,
-never `sync`**, until/unless a different plan tier or an explicit
-sharing relationship is confirmed to change this (untested here).
+unknown": can this token fetch laps shared by other drivers? **Via
+`/laps`, observed answer: no.** Other drivers' laps are visible in `/laps`
+list results (track/car scoped, not owner-scoped) but their detail and CSV
+endpoints return `403 forbidden_lap`. Own-account laps work fully. Per
+official docs (Permissions, above), this is consistent with `driving_data`
+defaulting to self + teammates: the 403'd driver in this probe wasn't a
+teammate. Per SPEC.md's already-written contingency ("If other-driver
+fetch is unavailable, reference laps degrade to manual-download import
+tagged `reference`"), **the reference-lap feature uses the manual `import`
+path for laps reached via `/laps`**, until/unless a teammate relationship
+is confirmed to change the 403 outcome (still untested — no teammate lap
+was available to probe against).
+
+**A structurally different path exists and is unexplored: team data
+packs.** Per official docs (Endpoints, Permissions), a team can curate and
+publish shared content via a whole separate subsystem —
+`GET/POST/DELETE /api/v1/teams/{team}/datapacks*` — including
+`GET .../content/{item}/lap.csv` (telemetry export for a data-pack lap),
+plus ghost-lap and iRacing-setup downloads. This is gated by its own
+permissions (`team_datapacks_read`, `_write`, `_subscribers_read`,
+`_archived_read` — all "requires approval" + "requires user acceptance"),
+**none of which this token has**, so it is completely untested here — not
+ruled out, just not reached. Unlike `/laps` (an ad-hoc, per-lap
+"is this driver visible to me" check that legitimately 403s on strangers),
+data packs are Garage61's own explicit content-*sharing* mechanism — a
+coach or team publishing reference material for members to pull. If
+DriverDNA's reference-lap feature is ever revisited, this is the
+mechanism to probe next, not another attempt at `/laps` with a different
+plan tier. Requires: the app registered for `team_datapacks_read`
+(approval), the driver opting in, and — since data packs are
+team-scoped — an actual team whose owner has published lap content to
+subscribe to. Recorded here so a future session starts from this position
+instead of re-deriving it (SPEC.md decision-of-record #2 is not reopened
+by this note — manual `import` remains correct for v1 until data packs
+are actually probed and shown to work).
 
 ## Parity check
 
@@ -186,6 +268,47 @@ neither was observed here.
 | 403 | `{"message": "...", "code": "forbidden_lap", "trace": "..."}` | lap detail/CSV for a lap the token doesn't own |
 | 404 | `{"message": "Lap not found", "trace": "..."}` | lap id doesn't exist *or* isn't visible to this token (indistinguishable) |
 
+## Other documented endpoints/subsystems, not probed (per official docs)
+
+Recorded so a future session knows these exist without re-discovering them
+from scratch; none of this is used by `sync` today.
+
+- **`GET /analyses`, `GET /analyses/{id}`** — "Analyses for current user,"
+  including "telemetry analysis (laps), but also training plan results."
+  Gated by the `analyses` permission (not granted to this token) — a
+  *different* permission from `driving_data`, so untested whether this
+  route's data shape or lap coverage differs from `/laps`. Worth probing
+  before assuming `/laps`'s one-per-driver-per-cohort shape also applies
+  here.
+- **`GET /teams/{team}/statistics`** — a team-scoped variant of
+  `/me/statistics`, which was probed and is what `sync`'s cohort discovery
+  actually uses (the personal one, not this). The team variant exists but
+  isn't used by anything here.
+- **Training plans** (`GET /teams/{team}/trainingplans[/{id}]`) — out of
+  scope for DriverDNA (no coaching-plan-authoring feature exists here).
+- **Team membership writes** (`POST .../invites`, `DELETE .../members/{id}`)
+  — administrative, out of scope; DriverDNA is read-mostly except the
+  audited `sync`/`import` paths.
+- **OAuth2** (Authorization URL `https://garage61.net/app/account/oauth`,
+  Token URL `https://garage61.net/api/oauth/token`, User Info URL
+  `https://garage61.net/api/oauth/userinfo`, Authorization Code Grant +
+  PKCE) — the alternative to a personal access token, for an app used by
+  *many* users each authorizing their own access. `sync` uses a personal
+  access token (decision-of-record #1's ingestion design assumes one
+  driver, one token) and has no reason to need OAuth2 unless DriverDNA
+  is ever productized for multiple users (A17 — deferred, not v1).
+- **Webhooks** (live timing) — a push-based event stream, HMAC-SHA256
+  signed (`X-Garage61-Timestamp` + `X-Garage61-Signature: v1=<hex>`,
+  `message = "<timestamp>.<raw body>"`), delivering session/lap/pit
+  events in real time: `START_SESSION`, `SESSION_PARTICIPANT_UPDATE`,
+  `INITIAL_STINT_STARTED`, `STINT_COMPLETED`, `PIT_IN`, `PIT_OUT`,
+  `DRIVER_CHANGE`, `LAP_COMPLETED`, `LAP_TIME_UPDATED`, `RUNNER_RESUMED`,
+  `RUNNER_SHUTDOWN`. This is a fundamentally different ingestion model
+  from `sync`'s pull-based polling — live, not historical — and would
+  need a webhook receiver (a public endpoint, out of keeping with
+  philosophy #8's "local, no server" v1 design) to use. Recorded for
+  completeness; not a fit for `sync` as designed, and not proposed here.
+
 ## Capabilities summary → implications for building `sync`
 
 - ✅ Auth, own-lap listing (track/car-scoped + client-side self-filter on
@@ -194,9 +317,14 @@ neither was observed here.
 - ✅ CSV format from the API matches the manual-download contract
   exactly — the existing `Garage61Parser` needs no format changes to
   accept API-sourced CSVs.
-- ❌ Other-driver ("reference") lap fetch is **not available** with this
-  token — reference laps stay on the manual `import` path,
-  `role=reference`, as already specified.
+- ❌ Other-driver ("reference") lap fetch via `/laps` is **not available**
+  with this token (`driving_data`'s default scope is self+teammates, per
+  official docs) — reference laps stay on the manual `import` path,
+  `role=reference`, as already specified. **Team data packs are a
+  separate, unexplored mechanism** that might legitimately serve
+  reference laps without hitting this wall — untested, requires
+  `team_datapacks_read` app approval this token doesn't have (see "Other
+  documented endpoints" above).
 - ⚠️ `sync` must discover cohorts via `/me/statistics` (or a
   driver-supplied car/track list) and loop `/laps?tracks=...&cars=...`
   per cohort — there is no unscoped "give me everything" call.
