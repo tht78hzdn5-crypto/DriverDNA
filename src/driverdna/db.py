@@ -488,6 +488,49 @@ class Database:
                 "UPDATE corners SET class=? WHERE corner_pk=?", (cls, corner_pk)
             )
 
+    def corner_apex_positions(
+        self, corner_pk: int
+    ) -> list[tuple[float, float, float]]:
+        """(apex_lat, apex_lon, apex_lap_dist) for every observation currently
+        assigned to this corner — the input to an in-place centroid refreeze
+        (`rebuild-map`). Compact rows only; survives blob eviction."""
+        rows = self.conn.execute(
+            """SELECT apex_lat, apex_lon, apex_lap_dist FROM corner_observations
+               WHERE corner_pk=? ORDER BY obs_pk""",
+            (corner_pk,),
+        ).fetchall()
+        return [
+            (float(r["apex_lat"]), float(r["apex_lon"]), float(r["apex_lap_dist"]))
+            for r in rows
+        ]
+
+    def update_corner_centroid(
+        self, corner_pk: int, *, lat: float, lon: float, lap_dist: float
+    ) -> None:
+        """Overwrite a corner's frozen centroid in place (`rebuild-map`); the
+        corner_pk and corner_id never change, so every evidence ID that
+        resolves through this corner stays valid."""
+        with self.conn:
+            self.conn.execute(
+                "UPDATE corners SET lat=?, lon=?, lap_dist=? WHERE corner_pk=?",
+                (lat, lon, lap_dist, corner_pk),
+            )
+
+    def observations_of_corner(self, corner_pk: int) -> list[tuple[int, int]]:
+        """(obs_pk, lap_pk) for every observation assigned to this corner."""
+        rows = self.conn.execute(
+            "SELECT obs_pk, lap_pk FROM corner_observations WHERE corner_pk=? ORDER BY obs_pk",
+            (corner_pk,),
+        ).fetchall()
+        return [(int(r["obs_pk"]), int(r["lap_pk"])) for r in rows]
+
+    def delete_phase_times(self, obs_pk: int) -> None:
+        """Drop an observation's phase times (`rebuild-map`, when a lap's raw
+        blob was evicted so its phase times can't be honestly re-interpolated
+        against the new windows — never left silently stale)."""
+        with self.conn:
+            self.conn.execute("DELETE FROM phase_times WHERE obs_pk=?", (obs_pk,))
+
     # --- observations, metrics, detectors ----------------------------------
 
     def store_observation(

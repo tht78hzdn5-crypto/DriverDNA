@@ -23,7 +23,7 @@ from driverdna.corners.classify import (
     CornerClass,
     classify_with_hysteresis,
 )
-from driverdna.corners.identity import build_corner_map
+from driverdna.corners.identity import _gps_ok, _meters, build_corner_map
 from driverdna.corners.segmenter import segment_lap
 from driverdna.db import Database, landmark_positions
 from driverdna.incidents import scan_incidents
@@ -237,3 +237,136 @@ def _reclassify(
         if changed:
             changes.append((identity.corner_id, previous.value, new_class.value))
     return changes
+
+
+# --- rebuild-map: in-place refreeze of a frozen cohort map (SPEC.md A22) ----
+
+
+@dataclass
+class CornerRebuild:
+    corner_id: str
+    centroid_shift_m: float | None  # meters the centroid moved; None if GPS-degraded
+    window_changed: bool
+    laps_remeasured: int
+    laps_cleared: list[int] = field(default_factory=list)  # blob-evicted lap_pks
+
+
+@dataclass
+class RebuildResult:
+    car: str
+    track: str
+    existed: bool  # False when there was no map for this cohort to rebuild
+    corners: list[CornerRebuild] = field(default_factory=list)
+    admitted: list[str] = field(default_factory=list)
+    class_changes: list[tuple[str, str, str]] = field(default_factory=list)
+
+    @property
+    def total_cleared(self) -> int:
+        return sum(len(c.laps_cleared) for c in self.corners)
+
+
+def _windows_differ(old: dict, new: PhaseWindows) -> bool:
+    def diff(a: float | None, b: float | None) -> bool:
+        if a is None or b is None:
+            return (a is None) != (b is None)  # None <-> value is a change
+        return abs(a - b) > 1e-9
+
+    return (
+        diff(old.get("entry_start"), new.entry_start)
+        or diff(old.get("turn_in"), new.turn_in)
+        or diff(old.get("apex"), new.apex)
+        or diff(old.get("exit_end"), new.exit_end)
+    )
+
+
+def rebuild_cohort_map(
+    db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
+) -> RebuildResult:
+    """In-place refreeze of a cohort's frozen corner map (SPEC.md A22).
+
+    Recomputes every existing corner's centroid + canonical windows from the
+    cohort's FULL current observation set (not just the laps that originally
+    froze the map), re-measures phase times for every observation whose raw
+    blob still survives retention, and DELETEs + reports phase times for any
+    whose blob was evicted (a lap that can't be honestly re-interpolated
+    against the new windows is never left silently stale — philosophy #7).
+
+    In-place, not versioned: `corner_pk` / `corner_id` never change, so every
+    evidence ID that resolves through a corner stays valid; existing
+    observations keep their corner assignment (the centroid is recomputed FROM
+    those assignments, so the two stay consistent by construction — no
+    re-matching). New geometry still enters through the existing admission
+    path; classes are re-derived after, hysteresis-sticky, self-only.
+    """
+    loaded = db.load_corner_map(car=car, track=track)
+    if loaded is None:
+        return RebuildResult(car=car, track=track, existed=False)
+    map_pk, corner_map = loaded
+    old_windows = db.load_corner_windows(map_pk)
+
+    corner_results: list[CornerRebuild] = []
+    for identity in corner_map.corners:
+        corner_pk = db.corner_pk(map_pk, identity.corner_id)
+
+        # (a) centroid — median apex position of the corner's own observations.
+        apexes = db.corner_apex_positions(corner_pk)
+        shift_m: float | None = None
+        if apexes:
+            new_lat = float(np.nanmedian([a[0] for a in apexes]))
+            new_lon = float(np.nanmedian([a[1] for a in apexes]))
+            new_dist = float(np.median([a[2] for a in apexes]))
+            if _gps_ok(identity.lat, identity.lon) and _gps_ok(new_lat, new_lon):
+                shift_m = _meters(identity.lat, identity.lon, new_lat, new_lon)
+            db.update_corner_centroid(
+                corner_pk, lat=new_lat, lon=new_lon, lap_dist=new_dist
+            )
+
+        # (b) canonical windows — from every observation's landmark positions.
+        window_changed = False
+        new_windows = derive_windows(db.observation_positions(corner_pk))
+        if new_windows is not None:
+            window_changed = _windows_differ(
+                old_windows.get(identity.corner_id, {}), new_windows
+            )
+            db.store_corner_windows(
+                corner_pk, entry_start=new_windows.entry_start,
+                turn_in=new_windows.turn_in, apex=new_windows.apex,
+                exit_end=new_windows.exit_end,
+            )
+
+        # (c) re-measure phase times against the new window; a lap whose raw
+        #     blob was evicted can't be honestly re-interpolated — clear it and
+        #     report, never leave a number measured against a retired window.
+        remeasured = 0
+        cleared: list[int] = []
+        if new_windows is not None:
+            for obs_pk, lap_pk in db.observations_of_corner(corner_pk):
+                arrays = db.load_lap_arrays(lap_pk)
+                if arrays is None:
+                    db.delete_phase_times(obs_pk)
+                    cleared.append(lap_pk)
+                    continue
+                times = compute_phase_times(
+                    arrays["lap_dist"], arrays["elapsed_s"], new_windows
+                )
+                if times:
+                    db.store_phase_times(obs_pk, times)
+                    remeasured += 1
+
+        corner_results.append(CornerRebuild(
+            corner_id=identity.corner_id, centroid_shift_m=shift_m,
+            window_changed=window_changed, laps_remeasured=remeasured,
+            laps_cleared=cleared,
+        ))
+
+    # Genuinely new geometry (unmatched candidates) enters through the same
+    # audited admission path a normal import uses — never silently.
+    admitted = db.admit_pending_candidates(car=car, track=track, cfg=config.identity)
+    for corner_id in admitted:
+        _freeze_windows_for_admitted(db, map_pk, corner_id)
+    class_changes = _reclassify(db, driver=driver, car=car, track=track, config=config)
+
+    return RebuildResult(
+        car=car, track=track, existed=True, corners=corner_results,
+        admitted=admitted, class_changes=class_changes,
+    )

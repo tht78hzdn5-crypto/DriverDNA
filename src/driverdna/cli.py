@@ -711,6 +711,61 @@ def corners(
     typer.echo(f"wrote {out}")
 
 
+@app.command("rebuild-map")
+def rebuild_map(
+    car: str = typer.Option(..., help="Car label of the cohort to rebuild."),
+    track: str = typer.Option(..., help="Track label of the cohort to rebuild."),
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    driver: str = typer.Option("owner", help="Driver whose classes are re-derived."),
+) -> None:
+    """In-place refreeze of a cohort's frozen corner map from its full lap set.
+
+    Recomputes each corner's centroid + canonical windows from every lap
+    imported so far (not just the ones that first froze the map), re-measures
+    phase times against the new windows, admits any genuinely new corners, and
+    reclassifies. corner IDs never change, so evidence IDs stay valid. A lap
+    whose raw blob was evicted past retention can't be re-measured — its stale
+    phase times are cleared and reported, never left silently outdated.
+    """
+    from driverdna.config import load_config
+    from driverdna.db import Database
+    from driverdna.pipeline import rebuild_cohort_map
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    config = load_config()
+    with Database.open(db_path) as db:
+        result = rebuild_cohort_map(
+            db, driver=driver, car=car, track=track, config=config
+        )
+    if not result.existed:
+        typer.echo(f"error: no corner map for {car} @ {track} — nothing to rebuild")
+        raise typer.Exit(code=2)
+
+    typer.echo(f"rebuilt {car} @ {track}")
+    for c in result.corners:
+        shift = "GPS-degraded" if c.centroid_shift_m is None else f"{c.centroid_shift_m:.1f} m"
+        win = "window shifted" if c.window_changed else "window unchanged"
+        line = (
+            f"  {c.corner_id}: centroid {shift}, {win}, "
+            f"{c.laps_remeasured} lap(s) re-measured"
+        )
+        if c.laps_cleared:
+            line += f", {len(c.laps_cleared)} cleared (blob evicted): {c.laps_cleared}"
+        typer.echo(line)
+    if result.admitted:
+        typer.echo(f"  admitted new corners: {', '.join(result.admitted)}")
+    for corner_id, old, new in result.class_changes:
+        typer.echo(f"  CLASS CHANGE {corner_id}: {old} -> {new}")
+    if result.total_cleared:
+        typer.echo(
+            f"note: {result.total_cleared} phase-time record(s) cleared — their raw "
+            f"blobs were evicted past retention and can't be re-measured against the "
+            f"new windows. The laps' identity, metrics, and detectors are unchanged."
+        )
+
+
 @app.command("schema-report")
 def schema_report(
     fixtures_dir: Path = typer.Option(
