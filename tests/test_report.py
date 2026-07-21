@@ -1,5 +1,6 @@
 """M4 report tests: deterministic payload/JSON, offline HTML, CLI."""
 
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -8,6 +9,7 @@ from driverdna.cli import app
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.report.builder import (
+    _TOKENS,
     render_cohort_html,
     render_cohort_markdown,
     render_driver_html,
@@ -63,6 +65,37 @@ def test_html_is_self_contained_with_charts():
     assert "<svg" in page and "polyline" in page
     for forbidden in ("http://", "https://", "src=", "@import", "url("):
         assert forbidden not in page, f"external reference found: {forbidden}"
+
+
+def test_html_is_byte_identical_across_independent_renders():
+    """U4's own requirement ("report determinism tests must stay green
+    through the restyle") needs a test that actually exercises HTML, not
+    just the payload/JSON — this is that test."""
+    with _build_db() as db:
+        payload = build_cohort_payload(db, **COHORT, config=CONFIG)
+        a = render_cohort_html(payload)
+        b = render_cohort_html(payload)
+    assert a == b
+
+
+def test_report_css_tokens_match_ui_tokens_json():
+    """U4: the static reports and the SPA share one appearance by both
+    deriving from ui/tokens.json. A static HTML file has no JS runtime to
+    import the JSON at render time, so report/builder.py mirrors it in
+    `_TOKENS` — this is the guard against that mirror silently drifting."""
+    tokens_path = Path(__file__).parent.parent / "ui" / "tokens.json"
+    tokens = json.loads(tokens_path.read_text())
+    assert _TOKENS == {**tokens["color"], **tokens["font"]}
+
+
+def test_html_uses_token_colors_not_the_old_light_theme():
+    with _build_db() as db:
+        payload = build_cohort_payload(db, **COHORT, config=CONFIG)
+        page = render_cohort_html(payload)
+    assert "var(--base)" in page and "var(--warn)" in page
+    # The old hardcoded light-theme palette must be fully gone.
+    for old_color in ("#1a1a1a", "#f2f2f2", "#4472a8", "#fff8e6", "#e0b400"):
+        assert old_color not in page
 
 
 def test_driver_rollup_gates_single_track():

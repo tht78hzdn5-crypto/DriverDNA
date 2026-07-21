@@ -5,6 +5,20 @@ the JSON report IS the payload. HTML is one self-contained file per cohort
 plus a rolling driver.html: inline CSS, inline hand-rolled SVG charts
 (cumulative loss by phase, loss by class, lap trend). No server, no external
 assets, no build step, no timestamps.
+
+Styling (U4, 2026-07-21): mirrors `ui/tokens.json`, the SPA's single visual
+source of truth (UI-SPEC.md, "Design language and tokens" — "consumed by
+both [surfaces]"). `_TOKENS` below is that mirror, made explicit because a
+static HTML file has no JS runtime to import the JSON at render time (the
+SPA's `main.jsx` does the equivalent by injecting each color as a CSS custom
+property); `tests/test_report.py` asserts `_TOKENS` matches `ui/tokens.json`
+byte-for-byte so the two surfaces can't silently drift. Declared as CSS
+custom properties in one `:root` block so both the stylesheet and the
+inline SVG (`fill="var(--dim)"` etc. — a standard SVG presentation-attribute
+capability) reference the same names. Fonts name IBM Plex first, same as
+the SPA, but the files themselves are not bundled into reports (SPA-only,
+owner decision 2026-07-21) — an unavailable named font just falls through
+to the next stack entry, so this stays fully offline and self-contained.
 """
 
 from __future__ import annotations
@@ -12,20 +26,49 @@ from __future__ import annotations
 import html
 from typing import Any
 
-_CSS = """
-body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-       max-width: 60rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-h1, h2, h3 { line-height: 1.2; }
-table { border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem; }
-th, td { border: 1px solid #ccc; padding: 0.3rem 0.55rem; text-align: left; }
-th { background: #f2f2f2; }
-.suppressed { color: #777; }
-.tag { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 0.6rem;
-       background: #eee; margin-right: 0.4rem; }
-svg { max-width: 100%; height: auto; }
-.caveat { background: #fff8e6; border-left: 4px solid #e0b400;
-          padding: 0.5rem 0.8rem; margin: 0.5rem 0; }
-""".strip()
+# Mirrors ui/tokens.json exactly — kept in sync by test_report.py.
+_TOKENS = {
+    "base": "#101318", "panel": "#171B22", "raised": "#1F242D", "line": "#2A303A",
+    "text": "#E8EAED", "dim": "#8C93A0", "best": "#B48CFF", "ok": "#3ECF8E",
+    "warn": "#E8A13C", "bad": "#E5484D", "accent": "#6EA8D8",
+    "mono": "'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
+    "sans": "'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+}
+
+# The SPA's own default chart-bar fill (app.css `.lossrow .bar i`) — one
+# non-semantic data color, not itself a design token, kept identical here
+# so bar/line charts read the same on both surfaces (UI-SPEC: "share one
+# appearance"). The single largest bar highlights in `--warn`, mirroring
+# `.lossrow.max .bar i` — direction, not alarm (color grammar rule 1).
+_DATA_COLOR = "#46566B"
+
+_CSS = ("""
+:root {{
+  --base: {base}; --panel: {panel}; --raised: {raised}; --line: {line};
+  --text: {text}; --dim: {dim}; --best: {best}; --ok: {ok};
+  --warn: {warn}; --bad: {bad}; --accent: {accent};
+  --mono: {mono}; --sans: {sans};
+}}
+body {{
+  font-family: var(--sans); max-width: 60rem; margin: 2rem auto; padding: 0 1rem;
+  background: var(--base); color: var(--text); line-height: 1.45;
+}}
+h1, h2, h3 {{ line-height: 1.2; }}
+a {{ color: var(--accent); }}
+table {{ border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem;
+         width: 100%; font-variant-numeric: tabular-nums; }}
+th, td {{ border-top: 1px solid var(--line); padding: 0.4rem 0.55rem; text-align: left; }}
+th {{ border-top: 0; color: var(--dim); font-weight: 500; font-size: 0.72rem;
+      letter-spacing: 0.08em; text-transform: uppercase; }}
+.suppressed {{ color: var(--dim); }}
+.tag {{ font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
+        padding: 0.05rem 0.4rem; margin-right: 0.4rem; background: var(--raised); }}
+svg {{ max-width: 100%; height: auto; }}
+svg text {{ fill: var(--dim); font-family: var(--mono); }}
+.caveat {{ background: var(--raised); border-left: 3px solid var(--warn);
+           padding: 0.5rem 0.8rem; margin: 0.5rem 0; color: var(--text); }}
+""".strip()).format(**_TOKENS)
 
 
 def _bar_chart(title: str, data: list[tuple[str, float]], unit: str = "s") -> str:
@@ -33,15 +76,17 @@ def _bar_chart(title: str, data: list[tuple[str, float]], unit: str = "s") -> st
         return ""
     width, bar_h, gap, label_w = 640, 26, 8, 130
     peak = max(abs(v) for _, v in data) or 1.0
+    max_abs = max(abs(v) for _, v in data)
     rows = []
     for i, (label, value) in enumerate(data):
         y = i * (bar_h + gap)
         w = max(1.0, abs(value) / peak * (width - label_w - 90))
+        fill = "var(--warn)" if abs(value) == max_abs else _DATA_COLOR
         rows.append(
             f'<text x="{label_w - 8}" y="{y + bar_h * 0.7:.0f}" '
             f'text-anchor="end" font-size="12">{html.escape(label)}</text>'
             f'<rect x="{label_w}" y="{y}" width="{w:.1f}" height="{bar_h}" '
-            f'fill="#4472a8"/>'
+            f'fill="{fill}"/>'
             f'<text x="{label_w + w + 6:.1f}" y="{y + bar_h * 0.7:.0f}" '
             f'font-size="12">{value:.3f} {unit}</text>'
         )
@@ -68,7 +113,7 @@ def _line_chart(title: str, values: list[float], unit: str = "s") -> str:
         f"<h3>{html.escape(title)}</h3>"
         f'<svg viewBox="0 0 {width} {height}" role="img" '
         f'aria-label="{html.escape(title)}">'
-        f'<polyline fill="none" stroke="#4472a8" stroke-width="2" '
+        f'<polyline fill="none" stroke="{_DATA_COLOR}" stroke-width="2" '
         f'points="{" ".join(pts)}"/>'
         f'<text x="{pad}" y="{height - 8}" font-size="11">first lap</text>'
         f'<text x="{width - pad}" y="{height - 8}" text-anchor="end" '
