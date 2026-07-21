@@ -210,6 +210,29 @@ MIGRATIONS: tuple[str, ...] = (
         PRIMARY KEY (driver, car, track)
     );
     """,
+    # 005 — incidents (spins, offs, near-stops): deterministic detection +
+    # mechanism characterization, one row per detected event. Not a
+    # quality-flag (an incident is a driving event, not a data-quality issue
+    # like a clipped pedal); surfaced first-class. Self laps only — reference
+    # laps are never scanned into self incident records.
+    """
+    CREATE TABLE incidents (
+        incident_pk INTEGER PRIMARY KEY,
+        lap_pk INTEGER NOT NULL REFERENCES laps(lap_pk) ON DELETE CASCADE,
+        kinds TEXT NOT NULL,
+        classification TEXT NOT NULL,
+        confidence TEXT NOT NULL,
+        corner_id TEXT,
+        span_start INTEGER NOT NULL,
+        span_end INTEGER NOT NULL,
+        onset INTEGER NOT NULL,
+        min_speed_kmh REAL NOT NULL,
+        peak_yaw_rate REAL NOT NULL,
+        rationale TEXT NOT NULL,
+        detail TEXT NOT NULL
+    );
+    CREATE INDEX idx_incidents_lap ON incidents(lap_pk);
+    """,
 )
 
 
@@ -670,6 +693,78 @@ class Database:
             for r in self.conn.execute(
                 "SELECT corner_id, class FROM corners WHERE map_pk=? ORDER BY corner_id",
                 (map_pk,),
+            )
+        }
+
+    def corner_positions(self, *, car: str, track: str) -> dict[str, float]:
+        """corner_id -> apex lap-distance fraction (0-1) from the frozen map;
+        used to label an incident's location."""
+        loaded = self.load_corner_map(car=car, track=track)
+        if loaded is None:
+            return {}
+        map_pk, _ = loaded
+        return {
+            r["corner_id"]: float(r["lap_dist"])
+            for r in self.conn.execute(
+                "SELECT corner_id, lap_dist FROM corners WHERE map_pk=?", (map_pk,)
+            )
+        }
+
+    # --- incidents ----------------------------------------------------------
+
+    def store_incidents(self, lap_pk: int, incidents: list) -> None:
+        """Persist detected incidents for one lap. Deterministic order
+        (by span start) so two imports produce identical rows."""
+        with self.conn:
+            for inc in sorted(incidents, key=lambda i: i.span_start):
+                self.conn.execute(
+                    """INSERT INTO incidents (lap_pk, kinds, classification, confidence,
+                        corner_id, span_start, span_end, onset, min_speed_kmh,
+                        peak_yaw_rate, rationale, detail)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        lap_pk, "+".join(inc.kinds), inc.classification, inc.confidence,
+                        inc.corner_id, inc.span_start, inc.span_end, inc.onset,
+                        inc.min_speed_kmh, inc.peak_yaw_rate, inc.rationale,
+                        json.dumps(inc.detail, sort_keys=True),
+                    ),
+                )
+
+    def incidents_for_cohort(self, *, driver: str, car: str, track: str) -> list[dict]:
+        """All incidents for a cohort's self laps, newest-driven first then
+        by position, each with its lap_id for evidence. Deterministic."""
+        return [
+            {
+                "incident_id": f"incident:{r['incident_pk']}",
+                "lap_id": r["lap_id"],
+                "lap_pk": r["lap_pk"],
+                "kinds": r["kinds"],
+                "classification": r["classification"],
+                "confidence": r["confidence"],
+                "corner_id": r["corner_id"],
+                "min_speed_kmh": r["min_speed_kmh"],
+                "peak_yaw_rate": r["peak_yaw_rate"],
+                "rationale": r["rationale"],
+                "detail": json.loads(r["detail"]),
+            }
+            for r in self.conn.execute(
+                """SELECT i.*, l.lap_id FROM incidents i JOIN laps l ON l.lap_pk=i.lap_pk
+                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+                   ORDER BY i.corner_id IS NULL, i.corner_id, i.span_start, i.incident_pk""",
+                (driver, car, track),
+            )
+        ]
+
+    def incident_counts_by_lap(self, lap_pks: list[int]) -> dict[int, int]:
+        """lap_pk -> incident count, for the laps view."""
+        if not lap_pks:
+            return {}
+        marks = ",".join("?" * len(lap_pks))
+        return {
+            r["lap_pk"]: r["n"]
+            for r in self.conn.execute(
+                f"SELECT lap_pk, COUNT(*) n FROM incidents WHERE lap_pk IN ({marks}) GROUP BY lap_pk",
+                lap_pks,
             )
         }
 

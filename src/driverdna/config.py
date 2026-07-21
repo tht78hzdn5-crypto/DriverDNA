@@ -277,6 +277,87 @@ class CoachConfig(_Section):
     )
 
 
+class IncidentConfig(_Section):
+    """Incident detection + characterization thresholds (deterministic, like
+    the principle detectors). Every value is a documented default, tunable
+    through ConfigStore. Detection finds an incident window; characterization
+    names the mechanism from the telemetry at onset, confidence-qualified,
+    and returns 'unclassified' whenever the signature is ambiguous — a spin
+    the engine cannot confidently explain is never given a guessed cause."""
+
+    # --- Detection (Layer 1) ---
+    offtrack_position_value: int = Field(
+        default=4,
+        description="PositionType value meaning off-track surface (iRacing "
+        "TrackSurface; 3=on-track, 4=off). Stored-not-depended-on per A13 — "
+        "used only as a corroborating signal, never as the sole trigger.",
+    )
+    offtrack_min_s: float = Field(
+        default=0.20,
+        description="Off-track surface sustained at least this long is an "
+        "incident signal (a single stray sample is not).",
+    )
+    near_stop_speed_kmh: float = Field(
+        default=25.0,
+        description="Speed below this, sustained, mid-lap and out of the pits "
+        "is a near-stop: below any road-course racing corner (Spa's slowest, "
+        "La Source, apexes ~45-50 km/h). Retune for tracks with genuine "
+        "sub-25 km/h corners.",
+    )
+    near_stop_min_s: float = Field(
+        default=0.50,
+        description="Near-stop speed sustained at least this long before it "
+        "counts — brief dips at a hairpin exit do not.",
+    )
+    spin_window_s: float = Field(
+        default=0.35,
+        description="Window over which a steering reversal (full sign flip, "
+        "large magnitude both sides) is looked for — the opposite-lock catch "
+        "of a slide happens within this long.",
+    )
+    spin_steering_reversal_deg: float = Field(
+        default=60.0,
+        description="A steering reversal counts as a spin/snap signal only if "
+        "the wheel swings past +/- this magnitude on both sides of zero "
+        "within spin_window_s (catching a slide), not the gentle "
+        "unwind of a normal corner.",
+    )
+    spin_yaw_rate_min: float = Field(
+        default=0.30,
+        description="Peak |yaw rate| (rad/s) that must accompany a steering "
+        "reversal for it to read as a genuine snap rather than a tidy "
+        "hand-over-hand on a slow hairpin.",
+    )
+    merge_gap_s: float = Field(
+        default=0.60,
+        description="Incident signals (off-track, near-stop, spin) closer "
+        "than this merge into one incident event — a spin, its excursion, and "
+        "its recovery stop are one incident, not three.",
+    )
+    # --- Characterization (Layer 2) ---
+    classify_brake_floor: float = Field(
+        default=0.20,
+        description="Brake application at onset above this reads the snap as "
+        "trail-brake / entry oversteer (still braking into rotation).",
+    )
+    classify_throttle_floor: float = Field(
+        default=0.20,
+        description="Throttle at onset above this, with the car past the apex "
+        "and not braking, reads as power-on oversteer.",
+    )
+    classify_throttle_drop: float = Field(
+        default=0.30,
+        description="A throttle drop of at least this in the moment before "
+        "onset reads as lift-off oversteer.",
+    )
+    classify_vert_accel_spike: float = Field(
+        default=4.0,
+        description="Vertical acceleration deviation (m/s^2) from ~1 g at "
+        "onset above this reads the disturbance as external (kerb/bump) — "
+        "possibly-not-driver, flagged so, never blamed on technique.",
+    )
+
+
 class RetentionConfig(_Section):
     """Raw-sample retention (M2). Compact summaries are permanent."""
 
@@ -483,6 +564,7 @@ class DriverDNAConfig(_Section):
     gates: GatesConfig = Field(default_factory=GatesConfig)
     coach: CoachConfig = Field(default_factory=CoachConfig)
     retention: RetentionConfig = Field(default_factory=RetentionConfig)
+    incidents: IncidentConfig = Field(default_factory=IncidentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
     coaching: CoachingConfig = Field(default_factory=CoachingConfig)
 

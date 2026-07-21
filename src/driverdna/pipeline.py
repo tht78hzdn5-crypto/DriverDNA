@@ -26,6 +26,7 @@ from driverdna.corners.classify import (
 from driverdna.corners.identity import build_corner_map
 from driverdna.corners.segmenter import segment_lap
 from driverdna.db import Database, landmark_positions
+from driverdna.incidents import scan_incidents
 from driverdna.ingest.parser import TelemetryLap, parse_lap
 from driverdna.metrics.detectors import run_detectors
 from driverdna.metrics.technique import compute_corner_metrics
@@ -157,6 +158,18 @@ def import_parsed_lap(
     for corner_id in admitted:
         _freeze_windows_for_admitted(db, map_pk, corner_id)
     class_changes = _reclassify(db, driver=driver, car=car, track=track, config=config)
+
+    # Incident scan (deterministic): self laps only — reference laps are never
+    # scanned into self incident records. Corner positions (post-admission)
+    # label an incident's location; detection itself needs only the trace.
+    if role == "self":
+        incidents = scan_incidents(
+            lap,
+            corner_positions=db.corner_positions(car=car, track=track),
+            config=config.incidents,
+        )
+        if incidents:
+            db.store_incidents(lap_pk, incidents)
     return ImportResult(
         lap_pk=lap_pk,
         status="imported",
