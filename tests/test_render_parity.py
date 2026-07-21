@@ -150,6 +150,7 @@ def test_every_fractional_figure_traces_to_the_payload(server):
         f"/#/finding/{slug}/{quote(finding_id, safe='')}",
         f"/#/laps/{slug}",
         "/#/config",  # U2: config values must trace to /api/config too
+        "/#/model",  # M6 Driver Model view: scores/confidence/trend from the payload
     ]
 
     violations: list[str] = []

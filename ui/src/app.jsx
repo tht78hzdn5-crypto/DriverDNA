@@ -6,6 +6,7 @@ import FindingDetail from "./views/finding.jsx";
 import Laps from "./views/laps.jsx";
 import Config from "./views/config.jsx";
 import Chat from "./views/chat.jsx";
+import DriverModel from "./views/model.jsx";
 
 // Tiny hash router: #/ · #/cohort/:slug · #/corner/:slug/:cid ·
 // #/finding/:slug/:fid · #/laps/:slug · #/chat[/:slug]
@@ -36,6 +37,7 @@ export default function App() {
             </>
           )}
           <a href="#/">driver</a>
+          {view !== "model" && <a href="#/model">model</a>}
           {view !== "chat" && <a href="#/chat">chat</a>}
           <a href="#/config">config</a>
         </nav>
@@ -46,6 +48,7 @@ export default function App() {
       {view === "finding" && <FindingDetail slug={args[0]} findingId={args[1]} />}
       {view === "laps" && <Laps slug={args[0]} />}
       {view === "config" && <Config />}
+      {view === "model" && <DriverModel />}
       {view === "chat" && <Chat slug={args[0]} />}
     </>
   );
