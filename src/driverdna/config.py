@@ -362,6 +362,20 @@ class ModelConfig(_Section):
         description="Distinct cars at which the car-breadth third of "
         "confidence's breadth half saturates.",
     )
+    trend_min_laps_per_bucket: int = Field(
+        default=4,
+        description="Trend needs at least this many dated laps (lap_date set, "
+        "e.g. from sync) in EACH of the earlier/recent halves before a "
+        "direction is computed; below 2x this in dated laps total, trend is "
+        "'unavailable' — never a direction inferred from one or two laps.",
+    )
+    trend_delta_points: float = Field(
+        default=5.0,
+        description="A fundamental's recent-minus-earlier score (on the 0-100 "
+        "scale) must move more than this many points to read as "
+        "improving/declining; within +/- this band it is 'stable'. Guards "
+        "against calling ordinary noise a trend.",
+    )
 
     @model_validator(mode="after")
     def _weights_sum_to_one(self) -> "ModelConfig":

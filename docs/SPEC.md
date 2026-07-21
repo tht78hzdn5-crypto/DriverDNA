@@ -577,12 +577,37 @@ findings; see the clarification there.
 - **Gated longitudinal outputs.** Archetype (a deterministic pattern over the
   fundamentals) and any universal-pace-gain estimate stay "insufficient data"
   until enough breadth exists (≥ 2 tracks / ≥ 2 cars, as the existing gates
-  require). **Trend needs real lap dates** — a dependency on sync metadata or a
-  user-supplied date on import (flagged; degrades to "trend unavailable"). Per
-  `ARCHITECTURE_VISION.md`'s Scoring Contract condition 5: `trend` and
-  `evidence_count` are **required fields on every belief row, always** — when
-  ungated data isn't available they hold an explicit "unavailable" value, they
-  are never dropped from the schema for convenience.
+  require). Per `ARCHITECTURE_VISION.md`'s Scoring Contract condition 5:
+  `trend` and `evidence_count` are **required fields on every belief row,
+  always** — when the data isn't available they hold an explicit "unavailable"
+  value, never dropped from the schema for convenience.
+- **Trend (built 2026-07-20).** A fundamental's `trend` is the direction of
+  its own score between an *earlier* and a *recent* bucket of the driver's
+  dated laps. Dated self-laps (`lap_date` set — `sync` populates it from the
+  API's `startTime`; manual `import` does not) are ordered by
+  `(lap_date, lap_pk)` and split by count at the midpoint into two halves; the
+  **same** scoring function runs on each (via a lap-pk evidence filter,
+  additive to the M2/M3 query surface), and the recent-minus-earlier delta is
+  banded against `config.model.trend_delta_points` (default 5 points) →
+  `improving` / `stable` / `declining`. It reads `unavailable` when there are
+  fewer than `2 × trend_min_laps_per_bucket` dated laps (default 4/bucket) or a
+  bucket has no scorable evidence for the fundamental — so on undated fixtures
+  and the manual-import path it stays `unavailable`, by honest gap not
+  omission. Deterministic (explicit lap-timestamp order, per the
+  Reproducibility contract). Completing this field changes no score/confidence
+  for any evidence set, so `scoring_model_version` stays `dm-v1` (the field was
+  always specified; dated evidence never existed under the old always-
+  "unavailable" path — decision recorded in PROJECT-BRIEF.md). *Two flagged v1
+  limitations, in the era-windowing territory A17 deferred:* (1) the
+  opportunity component's baseline is recomputed per bucket, so it is
+  era-relative (adherence/consistency carry the signal cleanly); (2) buckets
+  pool across cohorts, so when dated laps are thin-per-cohort the two halves
+  can hold different cars/tracks and a direction partly reflects cohort mix,
+  not skill-over-time alone — sharpens as dated laps accumulate per cohort.
+  First live exercise (owner's 25-lap synced history): braking and rotation
+  read `improving`, corner_exit/commitment `stable`, consistency/vehicle_
+  management honestly `unavailable` (1 lap/cohort can't fill a bucket's
+  per-corner CV).
 - **AI role (unchanged contract).** Coach/chat gain the beliefs in their
   payload/bundle and may *explain* a score and *recommend the highest-impact
   practice priority*; they never produce or adjust a score (enforced by the

@@ -122,17 +122,19 @@ def run_synthetic_lap(
     track: str = "SynthRing",
     role: str = "self",
     session_key: str | None = None,
+    lap_date: str | None = None,
     config=None,
 ):
     """Run the full import pipeline on an in-memory synthetic lap directly
     (no file on disk needed — `import_parsed_lap` takes an already-parsed
-    lap, the same entry point `sync` uses for API-fetched laps)."""
+    lap, the same entry point `sync` uses for API-fetched laps). `lap_date`
+    mirrors what sync populates, so M6 trend can be exercised."""
     from driverdna.config import DriverDNAConfig
     from driverdna.pipeline import import_parsed_lap
 
     return import_parsed_lap(
         db, lap, driver=driver, car=car, track=track, role=role,
-        session_key=session_key, config=config or DriverDNAConfig(),
+        session_key=session_key, lap_date=lap_date, config=config or DriverDNAConfig(),
     )
 
 

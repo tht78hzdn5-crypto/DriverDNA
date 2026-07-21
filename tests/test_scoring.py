@@ -236,3 +236,93 @@ def test_store_all_beliefs_persists_every_fundamental(db):
     assert loaded["vision"]["signal_status"] == "no_signal"
     assert loaded["rotation"]["score"] == computed["rotation"].score
     assert loaded["rotation"]["evidence_count"] == computed["rotation"].evidence_count
+
+
+# --- trend: direction of the score across dated earlier/recent buckets ------
+#
+# Lever: brake-peak spread within a bucket drives its consistency (and
+# bucket-relative opportunity) score. A varied bucket scores lower than a
+# flat (repeatable) one, so varied->flat reads "improving" and flat->varied
+# "declining". Each lap gets a unique vert_accel marker (read by no
+# metric/detector) so identical-shaped laps are still distinct telemetry and
+# don't collapse under content-dedup — real laps never are identical.
+
+_VARIED_PEAKS = [0.4, 0.5, 0.6, 0.7, 0.8]
+_FLAT_PEAKS = [0.8, 0.8, 0.8, 0.8, 0.8]
+
+
+def _brake_peak_lap(i, peak):
+    lap = one_corner_lap()
+    lap.source_path = lap.source_path.with_name(f"bp{i}.csv")
+    lap.vert_accel[:] = 9.8 + i * 1e-6
+    lap.brake[:] = 0.0
+    ramp(lap.brake, 600, 630, 0.0, peak)
+    lap.brake[630:690] = peak
+    ramp(lap.brake, 690, 720, peak, 0.0)
+    return lap
+
+
+def _dated_brake_cohort(db, peaks, *, dated=True):
+    for i, peak in enumerate(peaks):
+        # 2026-01-01, -02, ... — increasing so import order is date order.
+        date = f"2026-01-{i + 1:02d}" if dated else None
+        run_synthetic_lap(
+            db, _brake_peak_lap(i, peak), session_key=f"s{i % 2}", lap_date=date
+        )
+
+
+def test_trend_improving_when_recent_laps_are_more_repeatable(db):
+    _dated_brake_cohort(db, _VARIED_PEAKS + _FLAT_PEAKS)  # earlier varied, recent flat
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.trend == "improving"
+
+
+def test_trend_declining_when_recent_laps_are_less_repeatable(db):
+    _dated_brake_cohort(db, _FLAT_PEAKS + _VARIED_PEAKS)  # earlier flat, recent varied
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.trend == "declining"
+
+
+def test_trend_stable_when_both_buckets_match(db):
+    _dated_brake_cohort(db, _FLAT_PEAKS + _FLAT_PEAKS)
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.trend == "stable"
+
+
+def test_trend_unavailable_without_dates(db):
+    # Same evidence, no lap_date — the honest gap that today's undated
+    # fixtures (and manual import) still hit.
+    _dated_brake_cohort(db, _VARIED_PEAKS + _FLAT_PEAKS, dated=False)
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.score is not None  # the belief itself still scores
+    assert belief.trend == "unavailable"
+
+
+def test_trend_unavailable_below_min_dated_laps(db):
+    # 6 dated laps: enough to score (>= min_evidence_for_score) but under
+    # 2 x trend_min_laps_per_bucket, so no direction is claimed.
+    assert 6 < 2 * CONFIG.model.trend_min_laps_per_bucket + 2
+    _dated_brake_cohort(db, [0.4, 0.5, 0.6, 0.7, 0.8, 0.8])
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.score is not None
+    assert belief.trend == "unavailable"
+
+
+def test_trend_ignores_undated_laps_in_bucketing(db):
+    # Undated laps never enter the timeline: 6 dated (< gate) + 6 undated
+    # still yields "unavailable", not a direction fabricated from the
+    # undated ones.
+    _dated_brake_cohort(db, [0.4, 0.5, 0.6, 0.7, 0.8, 0.8])
+    for i, peak in enumerate(_FLAT_PEAKS):
+        run_synthetic_lap(
+            db, _brake_peak_lap(100 + i, peak), session_key=f"u{i}", lap_date=None
+        )
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert belief.trend == "unavailable"
+
+
+def test_trend_is_deterministic(db):
+    _dated_brake_cohort(db, _VARIED_PEAKS + _FLAT_PEAKS)
+    b1 = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    b2 = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert b1 == b2 and b1.trend == "improving"

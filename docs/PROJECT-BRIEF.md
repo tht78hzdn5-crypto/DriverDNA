@@ -227,6 +227,39 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — M6 trend built; its (previously unspecified) definition
+  and three sub-forks resolved.** No doc had ever prescribed *how* trend is
+  computed — only that the field is always present and reads "unavailable"
+  until dated laps exist. Now that `sync` populates `lap_date`, trend is
+  defined as: **the direction of a fundamental's own score between an
+  earlier and a recent bucket of the driver's dated laps.** Dated self-laps
+  are ordered by `(lap_date, lap_pk)`, split by count at the midpoint, and
+  the same scoring function runs on each half via an additive lap-pk
+  evidence filter threaded through the M2/M3 query surface
+  (`self_metric_table`/`self_detector_table`/`phase_history`/
+  `cumulative_loss` gain an optional `lap_pks` param, default None =
+  unchanged for every existing caller). Sub-forks, picked deliberately not
+  silently:
+  (1) *Reuse the full composite score per bucket* (not a bespoke trend
+  metric): simplest, and "did my score move" is the honest meaning. Cost:
+  the opportunity component's baseline recomputes per bucket → era-relative;
+  flagged, not hidden (adherence/consistency are baseline-free and carry the
+  signal). (2) *Bucket by lap count, not by calendar midpoint*: equal-N
+  halves are more comparable and dodge date-tie ambiguity; determinism from
+  the `(lap_date, lap_pk)` total order. (3) *No `scoring_model_version`
+  bump* — stays `dm-v1`. Reasoning: dm-v1 always specified `trend` as a
+  required output reading "unavailable" pending dates (ARCHITECTURE_VISION
+  condition 5); populating it now *fulfils* that contract rather than
+  changing it, and score/confidence are byte-identical for every evidence
+  set (dated evidence never existed under the old path, so no persisted
+  belief is invalidated). A conscious call, revisitable — recorded here so
+  it's a decision, not an oversight. Known limitation surfaced by the first
+  live run (25-lap synced history, 1 lap/cohort): when dated laps are thin
+  per cohort, the two buckets hold different cars/tracks, so a direction
+  partly reflects cohort mix — the same era-windowing question A17 deferred,
+  sharpening as dated laps accumulate per cohort. Trend *computation* logic
+  is the deliverable; a longitudinal *history-over-time* view (storing
+  belief snapshots per date) remains a separate future item.
 - **2026-07-20 — Product intent recorded: philosophy #8 refined (A17),
   deferred but real.** Owner intent, on the record so post-M6 conversations
   start from a recorded position instead of re-deriving it: DriverDNA may

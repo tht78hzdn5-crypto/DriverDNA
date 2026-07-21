@@ -298,6 +298,7 @@ def vs_reference_findings(
 def cumulative_loss(
     db: Database, *, driver: str, car: str, track: str,
     windows_by_corner: dict[str, PhaseWindows], config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> dict[str, Any]:
     """Median per-lap seconds lost vs the robust baseline, per corner/phase,
     rolled up by phase and by corner class. Phase is the technique-area tag
@@ -307,6 +308,10 @@ def cumulative_loss(
     baseline, pre-screening history count) behind each corner/phase loss
     figure — M6b's opportunity component needs it to weight/gate a
     fundamental's evidence_count without re-querying phase_history itself.
+
+    `lap_pks` (M6 trend only) restricts the history to a date-bucket's laps;
+    the robust baseline is then that bucket's own best — an intentionally
+    era-relative reference (see model/scoring.py's _trend caveat).
     """
     classes = db.corner_classes(car=car, track=track)
     per_corner: dict[str, dict[str, float]] = {}
@@ -318,7 +323,7 @@ def cumulative_loss(
                 continue
             history = db.phase_history(
                 car=car, track=track, corner_id=corner_id, phase=phase,
-                role="self", driver=driver,
+                role="self", driver=driver, lap_pks=lap_pks,
             )
             times = [h["time_s"] for h in history]
             base = baseline(times, config.attribution)

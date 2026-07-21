@@ -119,11 +119,22 @@ from the real fixtures and reviewed.
   scoring model (adherence/opportunity/consistency, weight-redistributed,
   proxy-capped confidence), `driverdna model` artifact, and beliefs wired
   into the report/coach/chat payload (`driver_model` section — cited through
-  the existing numeric-grounding validator, no new validator code). `trend`
-  is honestly "unavailable" today (no ingestion path sets `lap_date` yet).
+  the existing numeric-grounding validator, no new validator code).
   Flagged, not silently accepted: `consistency`'s CV pools raw metric scale
   across a driver's different cars/tracks with no per-cohort normalization —
   see SPEC.md's M6 section, "Known v1 limitation."
+- **M6 trend: built (2026-07-20)** — `trend` is the direction of a
+  fundamental's own score between an earlier and a recent bucket of the
+  driver's dated laps (dated by `sync`; manual import stays undated →
+  "unavailable"). Same scoring function per bucket via an additive lap-pk
+  evidence filter; deterministic (ordered by lap_date, lap_pk); banded by
+  `config.model.trend_delta_points`. `scoring_model_version` stays `dm-v1`
+  (score/confidence unchanged for every evidence set; the field was always
+  specified). Two flagged limitations (era-relative opportunity baseline;
+  cross-cohort bucket composition when dated laps are thin-per-cohort) — see
+  SPEC.md M6 "Trend". First live run on the owner's 25-lap synced history:
+  braking/rotation `improving`, corner_exit/commitment `stable`,
+  consistency/vehicle_management honestly `unavailable`.
 - **Coaching Intelligence (M7): design adopted, then built (2026-07-20)**:
   `docs/COACHING.md` — grounded coaching ontology (technique → driving
   principle → coaching principle), nine seed `CoachingPrinciple`s

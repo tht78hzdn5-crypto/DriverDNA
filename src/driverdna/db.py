@@ -232,6 +232,20 @@ def _lap_blob(lap: TelemetryLap) -> bytes:
     return buf.getvalue()
 
 
+def _lap_pk_filter(lap_pks: frozenset[int] | None) -> tuple[str, list[int]]:
+    """SQL fragment restricting `laps l` to a lap-pk set — the mechanism M6's
+    trend uses to score an earlier vs recent date-bucket over the same
+    machinery. None means no restriction (every non-trend caller). An empty
+    set matches nothing (an empty bucket honestly has no evidence), not
+    everything."""
+    if lap_pks is None:
+        return "", []
+    if not lap_pks:
+        return " AND 0", []
+    ordered = sorted(lap_pks)
+    return f" AND l.lap_pk IN ({','.join('?' * len(ordered))})", ordered
+
+
 def _landmarks_json(landmarks: Landmarks) -> str:
     return json.dumps(asdict(landmarks), sort_keys=True)
 
@@ -555,17 +569,23 @@ class Database:
 
     def phase_history(
         self, *, car: str, track: str, corner_id: str, phase: str, role: str,
-        driver: str | None = None,
+        driver: str | None = None, lap_pks: frozenset[int] | None = None,
     ) -> list[dict[str, Any]]:
         """Per-lap phase times for one corner, filtered by role.
 
         role='self' additionally requires driver (self history is one
         driver's); role='reference' aggregates all reference drivers.
+        `lap_pks` (M6 trend only) further restricts to a date-bucket's laps.
         """
         if role == "self" and driver is None:
             raise ValueError("self phase history requires a driver")
         clause = "AND l.driver = ?" if driver is not None else ""
-        params = [car, track, corner_id, phase, role] + ([driver] if driver else [])
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
+        params = (
+            [car, track, corner_id, phase, role]
+            + ([driver] if driver else [])
+            + pk_params
+        )
         rows = self.conn.execute(
             f"""SELECT p.time_s, l.lap_pk, l.session_key, o.obs_pk
                 FROM phase_times p
@@ -573,7 +593,7 @@ class Database:
                 JOIN corners c ON c.corner_pk = o.corner_pk
                 JOIN laps l ON l.lap_pk = o.lap_pk
                 WHERE l.car=? AND l.track=? AND c.corner_id=? AND p.phase=?
-                  AND l.role=? {clause}
+                  AND l.role=? {clause}{pk_clause}
                 ORDER BY l.lap_pk, o.span_start""",
             params,
         ).fetchall()
@@ -591,18 +611,21 @@ class Database:
         return [json.loads(r["landmark_positions"]) for r in rows]
 
     def self_metric_table(
-        self, *, driver: str, car: str, track: str
+        self, *, driver: str, car: str, track: str,
+        lap_pks: frozenset[int] | None = None,
     ) -> dict[str, dict[str, list[float]]]:
-        """{corner_id: {metric: per-lap values}} — role='self' only."""
+        """{corner_id: {metric: per-lap values}} — role='self' only.
+        `lap_pks` (M6 trend only) restricts to a date-bucket's laps."""
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
         rows = self.conn.execute(
-            """SELECT c.corner_id, mv.name, mv.value FROM metric_values mv
+            f"""SELECT c.corner_id, mv.name, mv.value FROM metric_values mv
                JOIN corner_observations o ON o.obs_pk = mv.obs_pk
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN laps l ON l.lap_pk = o.lap_pk
                WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
-                 AND mv.value IS NOT NULL
+                 AND mv.value IS NOT NULL{pk_clause}
                ORDER BY c.corner_id, mv.name, l.lap_pk, o.span_start""",
-            (driver, car, track),
+            [driver, car, track, *pk_params],
         ).fetchall()
         table: dict[str, dict[str, list[float]]] = {}
         for r in rows:
@@ -612,20 +635,23 @@ class Database:
         return table
 
     def self_detector_table(
-        self, *, driver: str, car: str, track: str
+        self, *, driver: str, car: str, track: str,
+        lap_pks: frozenset[int] | None = None,
     ) -> dict[str, dict[str, tuple[int, int]]]:
-        """{corner_id: {detector: (triggered, total)}} — role='self' only."""
+        """{corner_id: {detector: (triggered, total)}} — role='self' only.
+        `lap_pks` (M6 trend only) restricts to a date-bucket's laps."""
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
         rows = self.conn.execute(
-            """SELECT c.corner_id, d.detector,
+            f"""SELECT c.corner_id, d.detector,
                       SUM(d.triggered) AS trig, COUNT(*) AS total
                FROM detector_results d
                JOIN corner_observations o ON o.obs_pk = d.obs_pk
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN laps l ON l.lap_pk = o.lap_pk
-               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?{pk_clause}
                GROUP BY c.corner_id, d.detector
                ORDER BY c.corner_id, d.detector""",
-            (driver, car, track),
+            [driver, car, track, *pk_params],
         ).fetchall()
         table: dict[str, dict[str, tuple[int, int]]] = {}
         for r in rows:
@@ -933,14 +959,27 @@ class Database:
     def driver_dated_lap_count(self, driver: str) -> int:
         """Self-role laps with a real lap_date — the trend-availability
         check. `sync` (M0b+) is the first ingestion path that sets it (from
-        the API's startTime); trend computation itself is a separate,
-        not-yet-built follow-up (model/scoring.py's _trend docstring)."""
+        the API's startTime)."""
         row = self.conn.execute(
             """SELECT COUNT(*) n FROM laps
                WHERE role='self' AND driver=? AND lap_date IS NOT NULL""",
             (driver,),
         ).fetchone()
         return int(row["n"])
+
+    def dated_self_lap_pks(self, driver: str) -> list[int]:
+        """Self-role lap_pks that carry a lap_date, ordered by (lap_date,
+        lap_pk) — M6 trend's time axis. lap_pk breaks date ties into a total,
+        deterministic order (the Scoring Contract's 'explicitly ordered by
+        lap timestamp'). Undated laps are excluded: they can't be placed on
+        the timeline, so they never enter a trend bucket."""
+        rows = self.conn.execute(
+            """SELECT lap_pk FROM laps
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL
+               ORDER BY lap_date, lap_pk""",
+            (driver,),
+        ).fetchall()
+        return [int(r["lap_pk"]) for r in rows]
 
     # --- garage61 sync state (M0b+) ------------------------------------------
 

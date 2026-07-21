@@ -27,7 +27,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **423** (27 test files) | `python3 -m pytest` |
+| Tests passing | **438** (28 test files) | `python3 -m pytest` |
 | Commits on branch | **35** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
@@ -49,7 +49,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M3 | Attribution over canonical windows, robust baselines, ranker, gates | done |
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
-| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence) | **done** — taxonomy, belief store, `dm-v1` scoring, `driverdna model` artifact, wired into report/coach/chat payload |
+| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence+trend) | **done** — taxonomy, belief store, `dm-v1` scoring, `driverdna model` artifact, wired into report/coach/chat payload; **trend built (2026-07-20)**: direction of a fundamental's score across dated earlier/recent buckets, live-verified on the 25-lap synced history (braking/rotation improving) |
 | M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **done** — ontology, eligibility/ranking/gap-band engine, `driverdna coaching` artifact, wired into report/coach/chat payload, grounding validator extended |
 | M0b | Garage61 API probe + `sync` | **done, live-verified** — `docs/garage61-api.md`; 25 laps synced from the real account, idempotent, reference isolation held |
 
@@ -200,6 +200,13 @@ also recorded in the durable docs, per the Decision-discipline rule):
   rather than being dropped when data is thin — the longitudinal guarantee,
   made non-optional. `ARCHITECTURE_VISION.md` Scoring Contract condition 5;
   mirrored in SPEC.md's M6 section.
+- **Trend computation built (2026-07-20).** With `sync` now populating
+  `lap_date`, `trend` is the direction of a fundamental's score across an
+  earlier vs recent bucket of the driver's dated laps (same scoring function
+  per bucket, deterministic, banded by `trend_delta_points`). Stays
+  `dm-v1` (score/confidence unchanged). Two flagged v1 limitations
+  (era-relative opportunity baseline; cross-cohort bucket composition when
+  dated laps are thin per cohort). Full record in the decision log above.
 
 **UI**
 - The normalized JSON payload is the rendering contract; the UI never computes a

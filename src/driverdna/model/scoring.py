@@ -41,13 +41,20 @@ unmeasured inference" - the same rule stated at the coaching layer.
 `proxy` fundamentals reach the math but their confidence is capped
 (`config.model.proxy_confidence_cap`) - real signal, honestly bounded.
 
-Trend: SPEC.md's Milestone 6 requires `trend` to always be present but
-allows "unavailable" until real lap dates exist. `sync` (M0b+) is now the
-first ingestion path that sets `laps.lap_date` (from the Garage61 API's
-startTime); manual `import` still does not. dm-v1 nonetheless still always
-reports "unavailable" here, deliberately: _trend()'s date-bucketing/
-direction logic is a self-contained addition, not yet built, not a
-side-effect of sync landing. The field is never dropped in the meantime.
+Trend (built 2026-07-20): a fundamental's `trend` is the direction of its
+own score between an earlier and a recent bucket of the driver's dated laps
+(`_trend`). Dated self-laps (lap_date set — `sync` is the first ingestion
+path that sets it, from the API's startTime; manual `import` does not) are
+ordered by (lap_date, lap_pk) and split by count at the midpoint; the same
+scoring function runs on each half, and the recent-minus-earlier delta is
+banded against `config.model.trend_delta_points`. It stays "unavailable"
+when there are too few dated laps (`trend_min_laps_per_bucket` per half) or
+a bucket lacks scorable evidence — so on today's undated fixtures it still
+reads "unavailable", by honest gap, not omission. Completing this field
+does not change dm-v1's score/confidence for any evidence set, so
+SCORING_MODEL_VERSION is unchanged (the field was always specified; dated
+evidence never existed under the old code path). See `_trend` for the
+flagged era-relative-baseline limitation on the opportunity component.
 """
 
 from __future__ import annotations
@@ -130,13 +137,14 @@ def _scoring_metric_names(fundamental_id: str) -> tuple[str, ...]:
 def _adherence_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     detector_names: tuple[str, ...],
+    lap_pks: frozenset[int] | None = None,
 ) -> _Component:
     if not detector_names:
         return _Component(None, 0)
     triggered_total = 0
     n_total = 0
     for car, track in cohorts:
-        table = db.self_detector_table(driver=driver, car=car, track=track)
+        table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for detectors in table.values():
             for detector, (triggered, total) in detectors.items():
                 if detector in detector_names:
@@ -150,6 +158,7 @@ def _adherence_component(
 def _opportunity_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     phases: tuple[str, ...], config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> _Component:
     if not phases:
         return _Component(None, 0)
@@ -161,7 +170,7 @@ def _opportunity_component(
             continue
         loss = cumulative_loss(
             db, driver=driver, car=car, track=track,
-            windows_by_corner=windows_by_corner, config=config,
+            windows_by_corner=windows_by_corner, config=config, lap_pks=lap_pks,
         )
         for corner_id, phase_losses in loss["per_corner"].items():
             for phase, seconds in phase_losses.items():
@@ -180,6 +189,7 @@ def _opportunity_component(
 def _consistency_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     fundamental_id: str, config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> _Component:
     metric_names = _scoring_metric_names(fundamental_id)
     if not metric_names:
@@ -187,7 +197,7 @@ def _consistency_component(
     cvs: list[float] = []
     n_total = 0
     for car, track in cohorts:
-        table = db.self_metric_table(driver=driver, car=car, track=track)
+        table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for metrics in table.values():
             for metric, values in metrics.items():
                 if metric not in metric_names or len(values) < 2:
@@ -241,11 +251,85 @@ def _confidence(
     return confidence
 
 
-def _trend(db: Database, driver: str) -> str:
-    # See module docstring: lap_date is now populated by sync, but the
-    # date-bucketing/direction logic itself isn't built yet. Always
-    # "unavailable" today, by design, not by omission.
-    return "unavailable"
+def _score_components(
+    db: Database, driver: str, fundamental_id: str,
+    cohorts: list[tuple[str, str]], config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
+) -> dict[str, _Component]:
+    """The three score components for one fundamental. `lap_pks` (M6 trend)
+    restricts the evidence to a date-bucket's laps; None = full history."""
+    fundamental = FUNDAMENTALS[fundamental_id]
+    detector_names = fundamental_detectors(fundamental_id)
+    return {
+        "adherence": _adherence_component(db, driver, cohorts, detector_names, lap_pks),
+        "opportunity": _opportunity_component(
+            db, driver, cohorts, fundamental.phases, config, lap_pks
+        ),
+        "consistency": _consistency_component(
+            db, driver, cohorts, fundamental_id, config, lap_pks
+        ),
+    }
+
+
+def _bucket_score(
+    db: Database, driver: str, fundamental_id: str,
+    cohorts: list[tuple[str, str]], config: DriverDNAConfig, lap_pks: frozenset[int],
+) -> float | None:
+    """This fundamental's score computed over one date-bucket's laps only —
+    same machinery as the full-history score, just lap-pk-filtered."""
+    return _weighted_score(
+        _score_components(db, driver, fundamental_id, cohorts, config, lap_pks), config
+    )
+
+
+def _trend(
+    db: Database, driver: str, fundamental_id: str,
+    cohorts: list[tuple[str, str]], config: DriverDNAConfig,
+) -> str:
+    """Direction of this fundamental's score between an earlier and a recent
+    bucket of the driver's dated laps (SPEC.md M6; ARCHITECTURE_VISION.md
+    Scoring Contract condition 5).
+
+    Deterministic: dated self-laps are ordered by (lap_date, lap_pk) and
+    split by count at the midpoint into earlier/recent halves; the same
+    scoring function runs on each. `improving`/`declining` require the recent
+    score to move more than `trend_delta_points`; otherwise `stable`.
+    `unavailable` when there are too few dated laps, or a bucket has no
+    scorable evidence for this fundamental — an honest gap, never a guessed
+    direction.
+
+    Two known v1 limitations, flagged not silently accepted (both in the
+    era-windowing territory A17 recorded as deferred, PROJECT-BRIEF.md):
+      1. The opportunity component's robust baseline is recomputed within
+         each bucket, so it is era-relative — a driver who got uniformly
+         faster is measured against their own faster recent best, which can
+         mute an opportunity trend. Adherence and consistency, being
+         baseline-free, carry the signal cleanly.
+      2. Buckets pool across cohorts (the Driver Model's whole point is a
+         belief about the driver, not the lap). When a driver's dated laps
+         are spread thinly across many cars/tracks, the earlier and recent
+         buckets can hold *different* cohorts, so a direction partly reflects
+         which cars/tracks fell in each half, not skill-over-time alone. The
+         signal sharpens as multiple dated laps accumulate per cohort.
+    """
+    dated = db.dated_self_lap_pks(driver)
+    k = config.model.trend_min_laps_per_bucket
+    if len(dated) < 2 * k:
+        return "unavailable"
+    half = len(dated) // 2
+    earlier = frozenset(dated[:half])
+    recent = frozenset(dated[half:])
+    earlier_score = _bucket_score(db, driver, fundamental_id, cohorts, config, earlier)
+    recent_score = _bucket_score(db, driver, fundamental_id, cohorts, config, recent)
+    if earlier_score is None or recent_score is None:
+        return "unavailable"
+    delta = recent_score - earlier_score
+    threshold = config.model.trend_delta_points
+    if delta > threshold:
+        return "improving"
+    if delta < -threshold:
+        return "declining"
+    return "stable"
 
 
 def _no_signal_belief(fundamental_id: str) -> Belief:
@@ -296,11 +380,7 @@ def compute_belief(
             f"insufficient evidence: {evidence_count} lap(s) < minimum {floor}",
         )
 
-    components = {
-        "adherence": _adherence_component(db, driver, cohorts, detector_names),
-        "opportunity": _opportunity_component(db, driver, cohorts, fundamental.phases, config),
-        "consistency": _consistency_component(db, driver, cohorts, fundamental_id, config),
-    }
+    components = _score_components(db, driver, fundamental_id, cohorts, config)
     score = _weighted_score(components, config)
     if score is None:
         # Reachable in principle (a lap could carry a metric value without
@@ -315,7 +395,8 @@ def compute_belief(
     return Belief(
         fundamental=fundamental_id, signal_status=signal_status,
         score=round(score, 2), confidence=round(confidence, 4),
-        evidence_count=evidence_count, trend=_trend(db, driver),
+        evidence_count=evidence_count,
+        trend=_trend(db, driver, fundamental_id, cohorts, config),
         insufficient_reason=None,
         scoring_model_version=SCORING_MODEL_VERSION, taxonomy_version=TAXONOMY_VERSION,
     )
