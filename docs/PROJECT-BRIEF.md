@@ -252,6 +252,98 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — `consistency`'s cross-metric-type CV pooling fixed
+  (`dm-v2`, SPEC.md A21), after the original diagnosis turned out to be
+  wrong.** Owner-specified order for this arc: doc fixes, then this fix,
+  then a `rebuild-map` command. The M6 "Known v1 limitation" note (written
+  when M6 shipped, 2026-07-20) blamed *cross-cohort* raw-magnitude pooling —
+  two cars with different natural scales for the same metric inflating the
+  pooled CV. Investigated before writing any fix code (this project's
+  standing practice: verify a documented mechanism against real code and
+  real data first): reading `_consistency_component` showed each CV was
+  *already* computed from one cohort's own value array, never pooled raw
+  across cohorts — the original note's mechanism was simply inaccurate. A
+  real two-cohort test (the primary GR86/Spa fixtures plus a second, real
+  car/track cohort) confirmed it empirically: the *same* metric's CV came
+  out comparable across cars (e.g. `min_speed_kmh` 0.078 vs 0.069;
+  `apex_dist_pct` 0.008 vs 0.011) — cross-cohort pooling wasn't depressing
+  anything. The real mechanism, found by grouping raw CVs by
+  `metrics/technique.py METRIC_DEFS`'s existing `unit` field: percentage-
+  of-distance metrics ("% lap": turn-in point, brake point, apex, throttle
+  pickup) have a naturally tiny CV, observed median ~0.007, while small-
+  integer count metrics (steering corrections, throttle modulation) have a
+  naturally huge one, observed median ~0.99 — a ~140x scale gap. Pooling
+  raw CVs with a flat mean let whichever metrics were high-CV *by unit*
+  dominate the pooled signal regardless of the driver's actual consistency.
+  <br><br>
+  Presented four fix options to the owner via AskUserQuestion; **owner
+  picked per-metric normalization**: divide each metric's raw CV by a
+  documented per-unit reference scale before pooling. Two design choices
+  had to be made beyond that pick, both settled empirically against real
+  data and the existing test suite rather than assumed:
+  1. *Reference values*: fixed, documented per-unit constants
+     (`config.model.consistency_unit_reference_cv`, 9 units) rather than
+     recomputed live from whatever's being scored — a live self-reference
+     (e.g. each metric's own median from the same query) was considered and
+     rejected: normalizing a sample against a reference drawn from that same
+     sample set trends any driver's pooled score toward a fixed "shape"
+     constant regardless of their actual consistency, destroying the score's
+     discriminative power. The 9 defaults are observed median raw CV per
+     unit from real committed multi-car/multi-track telemetry, not guessed.
+  2. *Pooling structure*: two-level (mean within each unit, then mean across
+     units), not a flat mean over every sample. A flat mean was tried first
+     and rejected against real data: a unit with many contributing
+     corners/metrics (e.g. "% lap", ~5 metrics × many corners) dominated a
+     flat pool by sample count alone, and dividing by a very small reference
+     amplifies any one genuinely inconsistent corner into a normalized value
+     large enough to crush the whole average — observed for real: one
+     corner's genuinely wide entry/exit-point variation swung the flat-
+     pooled score to 0 regardless of every other corner's real consistency.
+     A median (flat, or at either level of the two-level scheme) was also
+     tried and rejected: with as few as one corner's worth of metrics in a
+     pool, a median just selects whichever metric ranks middle, which need
+     not be the one actually varying — this broke three existing trend
+     tests (`test_trend_improving/declining/is_deterministic`) outright, a
+     real regression the test suite caught, not a style preference. Mean at
+     both levels keeps every sample proportionally represented while
+     capping how far any single unit's sample count can skew the result.
+  <br><br>
+  The ceiling (`consistency_cv_ceiling`) also needed recalibrating, since
+  its old default (0.5) was tuned for raw CV magnitudes, not multiples of a
+  unit reference: 2.0 was chosen so a normalized value of 1.0 ("exactly
+  your own typical/reference consistency for that kind of metric") scores
+  50 — a clean, legible midpoint. This is a real formula change for the
+  same evidence, so `SCORING_MODEL_VERSION` bumps `dm-v1` → `dm-v2` per the
+  Scoring Contract. Real-fixture effect (`docs/driver-model-report.md`):
+  `consistency` 5.1 → 34.3 (no longer crushed near zero, the original
+  complaint); `braking` 71.9 → 80.5; `corner_exit` 66.0 → 65.2; `rotation`
+  58.6 → 60.2; `commitment` 96.5 → 56.1 — this last one dropped because it
+  was inflated by the *same* bug in the opposite direction: its only
+  consistency metric is a "% lap" type, which scored trivially near-perfect
+  against the old ceiling regardless of real spread. Both directions
+  correcting confirms the fix generalizes, not just patches the one
+  symptom that prompted it.
+  <br><br>
+  One incidental bug found and fixed while implementing: `ConfigStore._write_
+  toml` (`config.py`) is a hand-rolled TOML writer (no library dependency;
+  `tomllib` is stdlib read-only) that had only ever needed to render bool/
+  str/numeric config values — it fell back to Python's `repr()` for anything
+  else, which produces `{'key': value}` (colon separator, single-quoted
+  keys) for a dict, not valid TOML (`{"key" = value}`). Never hit before
+  because no config field had ever been dict-valued; `consistency_unit_
+  reference_cv` is the first. Fixed generally (`_render_toml_value`,
+  recursive, quotes keys) rather than special-cased, and round-trip tested
+  (write → `tomllib` read back → equals the original dict) — caught by the
+  full test suite (`test_api.py`/`test_chat.py`'s config propose/apply/
+  revert tests), not by the new scoring tests themselves.
+  <br><br>
+  Left deliberately unfixed, flagged in SPEC.md: the M7 coaching layer's
+  `same_lap_twice` principle has the *same* cross-metric-type CV pooling
+  issue, one level down (per-corner instead of per-driver;
+  `coaching/engine.py`, `CoachingConfig.consistency_cv_floor`) — a different
+  code path, out of this fix's scope, likely reusable via the same
+  `consistency_unit_reference_cv` table whenever that principle's scoring is
+  next revisited.
 - **2026-07-21 — Car/track auto-detected from Garage61's newer export
   filename shape, closing the gap flagged when upload-laps first shipped.**
   A real second batch of owner laps (Ford Mustang GT4 @ Summit Point

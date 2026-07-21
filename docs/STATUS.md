@@ -42,6 +42,20 @@ embeds driver/car/track/laptime directly; both `driverdna import` (no
 flags) and `#/upload` (blank fields) now auto-detect per file
 (`parse_garage61_filename`), verified against the owner's real Mustang/
 Summit Point laps end to end, in the CLI and a real browser.
+**Consistency scoring fixed: per-unit CV normalization, `dm-v2` (2026-07-21,
+SPEC.md A21)**: investigated before fixing (per this project's practice) and
+found the "Known v1 limitation" note's own diagnosis was wrong — it blamed
+cross-cohort pooling, but each CV was already computed per-cohort; the real
+mechanism was cross-*metric-type* (a "% lap" metric's naturally tiny CV vs.
+a "count" metric's naturally huge one dominating a flat average regardless
+of actual driver consistency). Fixed with a documented per-unit reference
+scale (9 units, values are observed medians from real telemetry) and
+two-level pooling (mean within unit, then across units — a flat mean and a
+median were both tried against real data and the existing trend tests, and
+rejected; see `model/scoring.py`). Real effect on the committed fixtures:
+`consistency` 5.1 → 34.3; `commitment` (inflated the *other* way by the same
+bug) 96.5 → 56.1. `SCORING_MODEL_VERSION` bumps `dm-v1` → `dm-v2`. Full
+record: PROJECT-BRIEF.md's decision log.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -60,8 +74,8 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **508** (34 test files) | `python3 -m pytest` |
-| Commits | **70** | `git rev-list --count HEAD` |
+| Tests passing | **524** (34 test files) | `python3 -m pytest` |
+| Commits | **73** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
 | Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |
@@ -82,7 +96,7 @@ Regenerated from the repo this date, not asserted from memory:
 | M3 | Attribution over canonical windows, robust baselines, ranker, gates | done |
 | M4 | Reports (MD/JSON/HTML) + one-shot coach with local validation | done |
 | M5 | Grounded chat: tools, annotations, staged config, mechanical grounding | done |
-| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence+trend) | **done** — taxonomy, belief store, `dm-v1` scoring, `driverdna model` artifact, wired into report/coach/chat payload; **trend built (2026-07-20)**: direction of a fundamental's score across dated earlier/recent buckets, live-verified on the 25-lap synced history (braking/rotation improving) |
+| M6 | Driver Model: deterministic versioned scoring (Score+Confidence+Evidence+trend) | **done** — taxonomy, belief store, `dm-v2` scoring (per-unit-normalized consistency, 2026-07-21), `driverdna model` artifact, wired into report/coach/chat payload; **trend built (2026-07-20)**: direction of a fundamental's score across dated earlier/recent buckets, live-verified on the 25-lap synced history (braking/rotation improving) |
 | M7 | Coaching Intelligence: grounded coaching ontology (`docs/COACHING.md`) | **done** — ontology, eligibility/ranking/gap-band engine, `driverdna coaching` artifact, wired into report/coach/chat payload, grounding validator extended |
 | M0b | Garage61 API probe + `sync` | **done, live-verified** — `docs/garage61-api.md`; 25 laps synced from the real account, idempotent, reference isolation held |
 
@@ -238,10 +252,13 @@ also recorded in the durable docs, per the Decision-discipline rule):
 - **Trend computation built (2026-07-20).** With `sync` now populating
   `lap_date`, `trend` is the direction of a fundamental's score across an
   earlier vs recent bucket of the driver's dated laps (same scoring function
-  per bucket, deterministic, banded by `trend_delta_points`). Stays
-  `dm-v1` (score/confidence unchanged). Two flagged v1 limitations
-  (era-relative opportunity baseline; cross-cohort bucket composition when
-  dated laps are thin per cohort). Full record in the decision log above.
+  per bucket, deterministic, banded by `trend_delta_points`). Did not itself
+  change `dm-v1`'s score/confidence for any evidence set. (The version has
+  since moved to `dm-v2` for an unrelated reason — the consistency
+  per-unit-normalization fix, 2026-07-21, SPEC.md A21, below.) Two flagged
+  v1 limitations (era-relative opportunity baseline; cross-cohort bucket
+  composition when dated laps are thin per cohort) remain, unaffected by the
+  version bump. Full record in the decision log above.
 
 **UI**
 - The normalized JSON payload is the rendering contract; the UI never computes a
@@ -310,7 +327,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 ```
 python3 -m pip install -e ".[dev]"      # engine + UI + test deps
 driverdna demo                           # one command: seed sample laps + open the cockpit
-python3 -m pytest                        # 485 tests (2026-07-21)
+python3 -m pytest                        # 524 tests (2026-07-21)
 driverdna import tests/fixtures          # build the local DB from the fixtures
 driverdna report                         # Markdown + JSON + self-contained HTML
 driverdna corners | metrics | attribution | incidents   # per-milestone inspectable artifacts

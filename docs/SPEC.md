@@ -569,7 +569,43 @@ findings; see the clarification there.
   deferred (it would add cost to every import for a value already computed
   live on read); this can be revisited if a persisted history-over-time view
   is wanted later.
-- **Known v1 limitation, flagged not silently accepted (2026-07-20).** The
+- **v1 limitation resolved: per-unit CV normalization, dm-v2 (2026-07-21,
+  A21).** The v1 note below (as originally written) diagnosed this as
+  cross-*cohort* raw-magnitude pooling with no per-cohort normalization.
+  Investigation before fixing it (per this project's practice of verifying a
+  documented mechanism against real code and real data before changing
+  anything) found that diagnosis **did not match reality**: each CV was
+  already computed from one cohort's own value array —
+  `_consistency_component` never pooled raw magnitude across cohorts. A real
+  two-cohort test (GR86/Spa + a second, real car/track) showed the *same*
+  metric's CV was actually comparable across cars. The actual mechanism was
+  cross-*metric-type*: a "% lap" landmark-position metric has a naturally
+  tiny CV (~0.007) while a small-integer "count" metric (e.g. steering
+  corrections) has a naturally huge one (~0.99), for equally repeatable
+  driving — pooling raw CVs with a flat mean let whichever metrics were
+  high-CV *by unit* dominate the signal regardless of the driver's actual
+  consistency. Fixed: each raw CV is now divided by its own unit's typical
+  scale (`config.model.consistency_unit_reference_cv`, 9 units keyed to
+  metrics/technique.py's `METRIC_DEFS`, values are observed medians from
+  real committed multi-car/multi-track telemetry) before pooling, and pooled
+  in two levels — mean within each unit, then mean across units — so a unit
+  with many contributing corners/metrics can't dominate by sample count
+  either. A flat mean and a median (at either pooling level) were both tried
+  and rejected against real data and the existing trend tests; see
+  `model/scoring.py`'s `_consistency_component` docstring for why. Real
+  formula change for the same evidence, so `SCORING_MODEL_VERSION` bumps
+  `dm-v1` → `dm-v2` per the Scoring Contract (condition 2). Real-fixture
+  effect (`docs/driver-model-report.md`, GR86/Spa + Mustang/Laguna):
+  `consistency` 5.1 → 34.3, and `commitment` (previously inflated by the
+  same bug in the opposite direction — its only consistency metric is a
+  "% lap" type, trivially "consistent" against the old flat ceiling) 96.5 →
+  56.1, both now correctly recalibrated rather than sitting at either
+  extreme. Full record: PROJECT-BRIEF.md's decision log. **Not resolved by
+  this change**: the separate, structurally similar M7 coaching-layer note
+  below (`same_lap_twice` / `CoachingConfig.consistency_cv_floor`) — a
+  different code path, still open.
+  <br><br>
+  *Original v1 note (2026-07-20), preserved for the record:* the
   `consistency` fundamental's coefficient of variation pools each metric's
   *raw* magnitude across every one of a driver's cohorts (car × track), with
   no per-cohort normalization first. Two cars with very different natural
@@ -674,13 +710,21 @@ values (M2) — nothing upstream is rewritten.
   launders an unmeasured inference"). Coach's structured schema bumped
   `coach-v1` → `coach-v2` (adds `coaching_priorities`); chat's bundle bumped
   `chat-v1` → `chat-v2` (same rule, prose-scoped). `PAYLOAD_VERSION` 2 → 3.
-- **Known v1 limitation, flagged not silently accepted.** `same_lap_twice`
+- **Known v1 limitation, flagged not silently accepted. Still open (A21,
+  2026-07-21, only fixed M6's sibling issue — see below).** `same_lap_twice`
   (the one principle with no phase to band on — consistency is cross-cutting)
   pools coefficient of variation across every measured metric on a corner,
   unweighted, mixing metrics of very different scale/type (percentages, rates,
   small integer counts). A low-mean count metric can produce an outsized CV
-  that dominates the average — the same underlying issue as M6's cross-cohort
-  `consistency` caveat, one level down (per-corner instead of per-driver). See
+  that dominates the average — the same underlying mechanism as M6's
+  `consistency` fundamental had (cross-*metric-type*, not cross-cohort as
+  first documented), one level down (per-corner instead of per-driver). M6's
+  own case was fixed by per-unit CV normalization (A21, Milestone 6 section
+  above); this coaching-layer case uses a different code path
+  (`coaching/engine.py`, `CoachingConfig.consistency_cv_floor`) and was
+  deliberately left unfixed here — a same-shaped fix could likely reuse
+  `model.consistency_unit_reference_cv`, but that's a call for whenever this
+  principle's own scoring is revisited, not bundled into A21's scope. See
   `CoachingConfig.consistency_cv_floor`'s docstring.
 - **Artifact:** `driverdna coaching` — per-cohort headline/secondary/silent/
   self-checks with triggers and gap bands shown, deterministic ("why this
@@ -943,3 +987,25 @@ Accepted at owner plan review; rationale recorded in the review:
   live Q&A does not consume incidents yet (a later pass — the boundary is
   explicit and tested on both sides). Full record in PROJECT-BRIEF.md's
   decision log.
+- **A21** (2026-07-21, `consistency` per-unit CV normalization, `dm-v2`):
+  the M6 "Known v1 limitation" note's original diagnosis (cross-cohort raw-
+  magnitude pooling) was investigated before being fixed and found not to
+  match the code or real data — the actual mechanism was cross-*metric-type*
+  pooling (a "% lap" metric's naturally tiny CV vs. a "count" metric's
+  naturally huge one). `_consistency_component` now normalizes each metric's
+  CV against a documented per-unit reference before pooling in two levels
+  (mean within unit, then mean across units); see the corrected Milestone 6
+  note above for the full mechanism and real-fixture before/after. Refines
+  non-negotiable #4 (composite scores must be "deterministic, versioned,
+  and confidence-qualified... always decomposable to the sources") one
+  level further: decomposability includes the pooling formula itself being
+  honest about *what* it's normalizing against, not just citing evidence
+  IDs — an inaccurate documented mechanism is its own kind of opacity, even
+  when the score is technically decomposable to real numbers. `dm-v1` →
+  `dm-v2` per the Scoring Contract (ARCHITECTURE_VISION.md condition 2 —
+  a real formula change for the same evidence). New config default:
+  `model.consistency_unit_reference_cv` (9 units); `model.consistency_
+  cv_ceiling`'s default changed 0.5 → 2.0 (same role, now expressed in
+  multiples of a metric's own unit reference rather than raw CV). Full
+  record, including the two rejected pooling designs (flat mean, median),
+  in PROJECT-BRIEF.md's decision log.

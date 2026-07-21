@@ -127,16 +127,17 @@ from the real fixtures and reviewed.
   proxy-capped confidence), `driverdna model` artifact, and beliefs wired
   into the report/coach/chat payload (`driver_model` section — cited through
   the existing numeric-grounding validator, no new validator code).
-  Flagged, not silently accepted: `consistency`'s CV pools raw metric scale
-  across a driver's different cars/tracks with no per-cohort normalization —
-  see SPEC.md's M6 section, "Known v1 limitation."
+  Flagged, not silently accepted at the time: `consistency`'s CV pooling —
+  fixed 2026-07-21, `dm-v2`, see below; the original "cross-cohort" diagnosis
+  was itself wrong, see SPEC.md's M6 section.
 - **M6 trend: built (2026-07-20)** — `trend` is the direction of a
   fundamental's own score between an earlier and a recent bucket of the
   driver's dated laps. Same scoring function per bucket via an additive lap-pk
   evidence filter; deterministic (ordered by lap_date, lap_pk); banded by
-  `config.model.trend_delta_points`. `scoring_model_version` stays `dm-v1`
-  (score/confidence unchanged for every evidence set; the field was always
-  specified). Two flagged limitations (era-relative opportunity baseline;
+  `config.model.trend_delta_points`. Did not itself change `dm-v1`'s
+  score/confidence for any evidence set (the field was always specified;
+  the version has since moved to `dm-v2` for an unrelated reason, see
+  below). Two flagged limitations (era-relative opportunity baseline;
   cross-cohort bucket composition when dated laps are thin-per-cohort) — see
   SPEC.md M6 "Trend". First live run on the owner's 25-lap synced history:
   braking/rotation `improving`, corner_exit/commitment `stable`,
@@ -251,6 +252,23 @@ from the real fixtures and reviewed.
   both. One flagged, unverified observation in `docs/garage61-api.md`: the
   new filename's trailing ID structurally matches the API's own ULID shape,
   unlike the old short code — untested against a live call.
+- **`consistency` scoring fixed: per-unit CV normalization, `dm-v2`
+  (2026-07-21, SPEC.md A21)** — the M6 "Known v1 limitation" note's own
+  diagnosis (cross-cohort raw-magnitude pooling) was investigated before
+  fixing and found wrong: each CV was already per-cohort. The real
+  mechanism was cross-metric-*type* — a "% lap" metric's naturally tiny CV
+  (~0.007) vs. a "count" metric's naturally huge one (~0.99) — dominating a
+  flat average regardless of actual consistency. Fixed with a documented
+  per-unit reference scale (`config.model.consistency_unit_reference_cv`, 9
+  units from real telemetry) and two-level pooling (mean within unit, then
+  across units — a flat mean and a median were both tried and rejected
+  against real data and the existing trend tests). Real-fixture effect:
+  `consistency` 5.1 → 34.3; `commitment` (inflated the *other* way by the
+  same bug) 96.5 → 56.1. Found and fixed one incidental bug along the way:
+  `ConfigStore`'s hand-rolled TOML writer had no dict-value support (fell
+  back to Python `repr()`, invalid TOML) — never hit before this was the
+  first dict-valued config field. Full record: PROJECT-BRIEF.md's decision
+  log.
 
 Update this section as milestones complete.
 
