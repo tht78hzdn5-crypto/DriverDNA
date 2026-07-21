@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from driverdna.ingest.contract import EXPECTED_HEADER, load_fixture_manifest
-from driverdna.ingest.parser import FlagCode, ParseError, parse_lap
+from driverdna.ingest.parser import FlagCode, ParseError, parse_garage61_filename, parse_lap
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 MANIFEST = load_fixture_manifest(FIXTURES_DIR)
@@ -220,3 +220,51 @@ def test_foreign_filename_gives_no_lap_id(tmp_path):
     lap = parse_lap(write_csv(tmp_path / "someones-lap.csv"))
     assert lap.lap_id is None
     assert lap.flag(FlagCode.METADATA_FAILURE) is None
+
+
+# --- newer Garage61 filename shape: Garage_61__<driver>__<car>__<track>__
+# <laptime>__<id>.csv -- embeds car/track directly, unlike the older
+# Garage_61_<ID>.csv form that carries only an opaque ID. -----------------
+
+
+def test_new_filename_format_extracts_car_track_and_lap_id():
+    detected = parse_garage61_filename(
+        "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+        "01.26.602__01KY31T54KGGQ351PDAMC7M6ER.csv"
+    )
+    assert detected == {
+        "car": "Ford Mustang GT4",
+        "track": "Summit Point Raceway",
+        "lap_id": "01KY31T54KGGQ351PDAMC7M6ER",
+    }
+
+
+def test_new_filename_format_handles_re_download_suffix():
+    """A browser re-download appends a digit before .csv (seen in practice);
+    the ULID capture is permissive enough to still resolve car/track."""
+    detected = parse_garage61_filename(
+        "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+        "01.31.115__01KY31T54KGGQ351PDABVEREMJ1.csv"
+    )
+    assert detected is not None
+    assert detected["car"] == "Ford Mustang GT4"
+    assert detected["lap_id"] == "01KY31T54KGGQ351PDABVEREMJ1"
+
+
+def test_old_filename_format_not_matched_by_new_parser():
+    assert parse_garage61_filename("Garage_61_HKWPXX.csv") is None
+
+
+def test_unrelated_filename_not_matched():
+    assert parse_garage61_filename("someones-lap.csv") is None
+
+
+def test_parse_lap_uses_new_format_for_lap_id(tmp_path):
+    dest = write_csv(
+        tmp_path / (
+            "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+            "01.26.602__01KY31T54KGGQ351PDAMC7M6ER.csv"
+        )
+    )
+    lap = parse_lap(dest)
+    assert lap.lap_id == "01KY31T54KGGQ351PDAMC7M6ER"

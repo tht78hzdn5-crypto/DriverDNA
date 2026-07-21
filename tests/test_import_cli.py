@@ -80,6 +80,48 @@ def test_import_without_manifest_requires_metadata(tmp_path):
     assert "--car and --track" in result.output
 
 
+def _as_new_filename_format(dest_dir, src, *, car="Ford_Mustang_GT4",
+                             track="Summit_Point_Raceway", lap_id="01KY31T54KGGQ351PDAMC7M6ER"):
+    """A copy of a committed fixture's real telemetry, renamed to the newer
+    Garage61 export filename shape — the content doesn't matter for testing
+    filename-based auto-detection, only the name does, so this reuses an
+    existing fixture rather than committing a second duplicate CSV."""
+    dest = dest_dir / f"Garage_61__Benjamin_Richards__{car}__{track}__01.26.602__{lap_id}.csv"
+    dest.write_bytes(src.read_bytes())
+    return dest
+
+
+def test_import_auto_detects_car_track_from_new_filename_format_without_flags(tmp_path):
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    _as_new_filename_format(src_dir, FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    db_path = tmp_path / "auto.db"
+
+    result = CliRunner().invoke(app, ["import", str(src_dir), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    assert "auto-detected from filename: Ford Mustang GT4 @ Summit Point Raceway" in result.output
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("Ford Mustang GT4", "Summit Point Raceway")
+
+
+def test_import_mixed_unresolvable_filenames_rejects_nothing_imported(tmp_path):
+    """One auto-detectable file plus one old-format file, no --car/--track:
+    the whole batch is rejected, itemized — nothing partially imported."""
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    _as_new_filename_format(src_dir, FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    (src_dir / "Garage_61_OLDFMT.csv").write_bytes(
+        (FIXTURES_DIR / "Garage_61_HKWPXX.csv").read_bytes()
+    )
+    db_path = tmp_path / "mixed.db"
+
+    result = CliRunner().invoke(app, ["import", str(src_dir), "--db", str(db_path)])
+    assert result.exit_code == 2
+    assert "Garage_61_OLDFMT.csv" in result.output
+    assert not db_path.exists()
+
+
 def test_metrics_without_db_fails_loudly(tmp_path):
     result = CliRunner().invoke(
         app, ["metrics", "--db", str(tmp_path / "missing.db")]

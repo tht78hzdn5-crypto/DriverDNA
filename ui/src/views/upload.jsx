@@ -17,29 +17,34 @@ export default function Upload() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // {results, evicted}
-  const [landedCohort, setLandedCohort] = useState(null); // {slug, car, track}
+  const [landedCohorts, setLandedCohorts] = useState([]); // [{slug, car, track}]
 
   async function submit(e) {
     e.preventDefault();
-    if (!files.length || !car.trim() || !track.trim()) return;
+    if (!files.length) return;
     setBusy(true);
     setError(null);
     setResult(null);
+    setLandedCohorts([]);
     try {
       const form = new FormData();
       for (const f of files) form.append("files", f);
-      form.append("car", car.trim());
-      form.append("track", track.trim());
+      // Both blank => the server auto-detects per file from the newer
+      // Garage61 filename shape; either given overrides for every file.
+      if (car.trim()) form.append("car", car.trim());
+      if (track.trim()) form.append("track", track.trim());
       form.append("role", role);
       if (date.trim()) form.append("date", date.trim());
       if (session.trim()) form.append("session", session.trim());
       const r = await uploadLaps(form);
       setResult(r);
-      // The slug is server-truth, never computed here (UI-SPEC decision 2) —
-      // re-fetch and match by car/track to link into the cohort that landed.
+      // The slug is server-truth, never computed here (UI-SPEC decision 2):
+      // re-fetch and match against each result's own (car, track) -- not
+      // the form fields, since auto-detected files can land in different
+      // cohorts within one batch.
       const cohorts = await get("/api/cohorts");
-      const landed = cohorts.find((c) => c.car === car.trim() && c.track === track.trim());
-      setLandedCohort(landed || null);
+      const wanted = new Set(r.results.map((x) => `${x.car}::${x.track}`));
+      setLandedCohorts(cohorts.filter((c) => wanted.has(`${c.car}::${c.track}`)));
     } catch (e2) {
       setError(String(e2.message || e2));
     } finally {
@@ -75,15 +80,22 @@ export default function Upload() {
             </label>
             <div className="upload-row">
               <label className="upload-field">
-                <span className="upload-label">Car *</span>
-                <input className="in" style={{ width: "100%" }} value={car}
-                       onChange={(e) => setCar(e.target.value)} placeholder="GR86" required />
+                <span className="upload-label">Car (optional)</span>
+                <input className="in" style={{ width: "100%" }} value={car} name="car"
+                       onChange={(e) => setCar(e.target.value)} placeholder="auto-detect from filename" />
               </label>
               <label className="upload-field">
-                <span className="upload-label">Track *</span>
-                <input className="in" style={{ width: "100%" }} value={track}
-                       onChange={(e) => setTrack(e.target.value)} placeholder="Spa-Francorchamps" required />
+                <span className="upload-label">Track (optional)</span>
+                <input className="in" style={{ width: "100%" }} value={track} name="track"
+                       onChange={(e) => setTrack(e.target.value)} placeholder="auto-detect from filename" />
               </label>
+            </div>
+            <div className="sub" style={{ marginTop: 0 }}>
+              Leave car/track blank to auto-detect from Garage61's newer export
+              filenames (each file can land in a different cohort); provide either
+              one to apply it to every file instead — required for the older
+              <code> Garage_61_&lt;id&gt;.csv</code> filename shape, which carries no
+              car/track.
             </div>
             <div className="upload-row">
               <label className="upload-field">
@@ -110,8 +122,7 @@ export default function Upload() {
               groups laps for within-session repeatability, same as a manifest's <code>session</code>.
             </div>
             <div className="actions">
-              <button className="btn confirm" type="submit"
-                      disabled={busy || !files.length || !car.trim() || !track.trim()}>
+              <button className="btn confirm" type="submit" disabled={busy || !files.length}>
                 {busy ? "Importing…" : "Import"}
               </button>
             </div>
@@ -128,6 +139,10 @@ export default function Upload() {
               <div className="head">
                 <span className="desc">{r.filename}</span>
                 <span className="val">{r.status}</span>
+              </div>
+              <div className="meta">
+                {r.car} @ {r.track}
+                {r.auto_detected && <span className="src-tag" style={{ marginLeft: "0.4rem" }}>auto-detected</span>}
               </div>
               {r.status === "imported" && (
                 <div className="meta num">
@@ -154,11 +169,13 @@ export default function Upload() {
               retention: {result.evicted} raw lap blob(s) evicted (summaries kept, never findings)
             </div>
           )}
-          {landedCohort && (
+          {landedCohorts.length > 0 && (
             <div className="actions">
-              <a className="btn confirm" href={`#/cohort/${landedCohort.slug}`}>
-                View {landedCohort.car} @ {landedCohort.track} →
-              </a>
+              {landedCohorts.map((c) => (
+                <a key={c.slug} className="btn confirm" href={`#/cohort/${c.slug}`}>
+                  View {c.car} @ {c.track} →
+                </a>
+              ))}
             </div>
           )}
         </section>

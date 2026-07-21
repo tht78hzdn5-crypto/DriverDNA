@@ -47,7 +47,8 @@ def test_upload_creates_a_fresh_db_and_imports(client):
     assert r.status_code == 200
     body = r.json()
     assert body["results"] == [{
-        "filename": "Garage_61_HKWPXX.csv", "status": "imported", "lap_pk": 1,
+        "filename": "Garage_61_HKWPXX.csv", "car": "GR86", "track": "Spa-Francorchamps",
+        "auto_detected": False, "status": "imported", "lap_pk": 1,
         "corners_matched": 14, "corners_total": 14, "admitted": [], "class_changes": [],
     }]
     assert db_path.exists()  # the cold-start path: no CLI ever touched
@@ -105,6 +106,59 @@ def test_multi_file_upload_in_one_request(client):
     assert [x["status"] for x in r.json()["results"]] == ["imported", "imported"]
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 2
+
+
+def _as_new_filename_format(tmp_path, src, *, car="Ford_Mustang_GT4",
+                             track="Summit_Point_Raceway", lap_id="01KY31T54KGGQ351PDAMC7M6ER"):
+    """A copy of a committed fixture's real telemetry bytes, renamed to the
+    newer Garage61 export filename shape (Garage_61__<driver>__<car>__
+    <track>__<laptime>__<id>.csv) — the content doesn't matter for testing
+    filename-based car/track detection, only the name does, so this avoids
+    committing a second, duplicate multi-hundred-KB CSV fixture."""
+    dest = tmp_path / f"Garage_61__Benjamin_Richards__{car}__{track}__01.26.602__{lap_id}.csv"
+    dest.write_bytes(src.read_bytes())
+    return dest
+
+
+def test_upload_without_car_track_auto_detects_from_new_filename_format(client):
+    c, db_path = client
+    new_style = _as_new_filename_format(db_path.parent, ONE_LAP)
+    with open(new_style, "rb") as fh:
+        r = c.post("/api/laps/upload", files=[("files", (new_style.name, fh, "text/csv"))], data={})
+    assert r.status_code == 200
+    result = r.json()["results"][0]
+    assert result["car"] == "Ford Mustang GT4"
+    assert result["track"] == "Summit Point Raceway"
+    assert result["auto_detected"] is True
+    assert result["status"] == "imported"
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("Ford Mustang GT4", "Summit Point Raceway")
+
+
+def test_upload_unresolvable_filename_without_car_track_rejected_nothing_imported(client):
+    c, db_path = client
+    with open(ONE_LAP, "rb") as fh:  # old-format filename, no car/track given
+        r = c.post("/api/laps/upload", files=[("files", (ONE_LAP.name, fh, "text/csv"))], data={})
+    assert r.status_code == 422
+    assert "Garage_61_HKWPXX.csv" in r.json()["detail"]
+    assert not db_path.exists()  # rejected before the DB was even opened
+
+
+def test_explicit_car_track_overrides_filename_for_every_file(client):
+    """When car/track ARE given, they apply uniformly -- even to a file
+    whose name would otherwise auto-detect something different."""
+    c, db_path = client
+    new_style = _as_new_filename_format(db_path.parent, ONE_LAP)
+    with open(new_style, "rb") as fh:
+        r = c.post(
+            "/api/laps/upload",
+            files=[("files", (new_style.name, fh, "text/csv"))],
+            data={"car": "GR86", "track": "Spa-Francorchamps"},
+        )
+    result = r.json()["results"][0]
+    assert result["car"] == "GR86" and result["track"] == "Spa-Francorchamps"
+    assert result["auto_detected"] is False
 
 
 def test_db_effects_identical_to_cli_import(tmp_path):

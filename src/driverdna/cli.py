@@ -74,6 +74,7 @@ def import_cmd(
     from driverdna.config import load_config
     from driverdna.db import Database
     from driverdna.ingest.contract import load_fixture_manifest
+    from driverdna.ingest.parser import parse_garage61_filename
     from driverdna.pipeline import import_lap_file
 
     if date is not None:
@@ -95,19 +96,53 @@ def import_cmd(
             for e in load_fixture_manifest(directory)
         ]
     else:
-        if not car or not track:
-            typer.echo("error: --car and --track are required without a manifest.toml")
-            raise typer.Exit(code=2)
-        jobs = [
-            {"path": p, "driver": driver, "car": car, "track": track, "role": role,
-             "lap_date": date}
-            for p in sorted(directory.glob("*.csv"))
-        ]
+        csv_files = sorted(directory.glob("*.csv"))
+        if car and track:
+            jobs = [
+                {"path": p, "driver": driver, "car": car, "track": track, "role": role,
+                 "lap_date": date}
+                for p in csv_files
+            ]
+        else:
+            # No manifest, no (complete) --car/--track: try auto-detecting
+            # each file from the newer Garage61 export filename shape
+            # (Garage_61__<driver>__<car>__<track>__<laptime>__<id>.csv,
+            # ingest/parser.py's parse_garage61_filename). Never guessed past
+            # what the filename actually states — a file that doesn't match
+            # is a loud, itemized error, nothing partially imported.
+            jobs = []
+            unresolved: list[str] = []
+            for p in csv_files:
+                detected = parse_garage61_filename(p.name)
+                if detected:
+                    jobs.append({
+                        "path": p, "driver": driver, "car": detected["car"],
+                        "track": detected["track"], "role": role, "lap_date": date,
+                        "_auto_detected": True,
+                    })
+                else:
+                    unresolved.append(p.name)
+            if not csv_files or unresolved:
+                detail = (
+                    f" (could not auto-detect car/track from {len(unresolved)} "
+                    f"filename(s): {', '.join(unresolved[:5])}"
+                    f"{', ...' if len(unresolved) > 5 else ''})"
+                ) if unresolved else ""
+                typer.echo(
+                    "error: --car and --track are required without a manifest.toml"
+                    + detail
+                )
+                raise typer.Exit(code=2)
 
     with Database.open(db_path) as db:
         for job in jobs:
             path = job.pop("path")
+            auto_detected = job.pop("_auto_detected", False)
             result = import_lap_file(db, path, config=config, **job)
+            detected_note = (
+                f" (auto-detected from filename: {job['car']} @ {job['track']})"
+                if auto_detected else ""
+            )
             if result.status == "exists":
                 typer.echo(f"{path.name}: already imported, skipped")
                 continue
@@ -119,7 +154,10 @@ def import_cmd(
                 )
                 continue
             matched = sum(1 for a in result.assigned if a)
-            line = f"{path.name}: lap {result.lap_pk}, corners {matched}/{len(result.assigned)} matched"
+            line = (
+                f"{path.name}: lap {result.lap_pk}, corners "
+                f"{matched}/{len(result.assigned)} matched{detected_note}"
+            )
             if result.admitted:
                 line += f"; ADMITTED to map: {', '.join(result.admitted)}"
             for corner_id, old, new in result.class_changes:

@@ -223,8 +223,8 @@ def create_app(
     @app.post("/api/laps/upload")
     async def upload_laps(
         files: list[UploadFile] = File(...),
-        car: str = Form(...),
-        track: str = Form(...),
+        car: str | None = Form(None),
+        track: str | None = Form(None),
         role: str = Form("self"),
         date: str | None = Form(None),
         session: str | None = Form(None),
@@ -235,31 +235,61 @@ def create_app(
         exist: `Database.open` creates + migrates a fresh file, the same as
         pointing the CLI at a new --db path, so this is a genuine cold-start
         path — a driver can go from nothing to a populated cockpit without
-        ever touching the CLI."""
+        ever touching the CLI.
+
+        `car`/`track` are optional: when both are omitted, each file's own
+        car/track is auto-detected from the newer Garage61 export filename
+        shape (`ingest/parser.py`'s `parse_garage61_filename`) — mirrors
+        `driverdna import`'s own per-file auto-detect. A file that can't be
+        resolved (old filename shape, no car/track given) is rejected before
+        anything is imported, listed by name — never silently skipped."""
         if role not in ("self", "reference"):
             raise HTTPException(422, detail="role must be self or reference")
         if date is not None:
             date = _parse_lap_date(date)
 
+        from driverdna.ingest.parser import parse_garage61_filename
         from driverdna.pipeline import import_lap_file
+
+        explicit = bool(car and track)
+        resolved: list[tuple[UploadFile, str, str]] = []  # (upload, car, track)
+        unresolved: list[str] = []
+        for upload in files:
+            if explicit:
+                resolved.append((upload, car, track))  # type: ignore[arg-type]
+                continue
+            detected = parse_garage61_filename(upload.filename or "")
+            if detected:
+                resolved.append((upload, detected["car"], detected["track"]))
+            else:
+                unresolved.append(upload.filename or "(unnamed file)")
+        if unresolved:
+            raise HTTPException(
+                422,
+                detail="car/track not given and could not be auto-detected from "
+                f"filename for: {', '.join(unresolved)}",
+            )
 
         config = load_config(config_path)
         results: list[dict[str, Any]] = []
         with tempfile.TemporaryDirectory() as tmp:
             with Database.open(db_path) as db:
-                for upload in files:
+                for upload, file_car, file_track in resolved:
                     # Original filename preserved (not a random temp name):
                     # parse_lap's Garage61 lap-ID regex reads it, same as a
                     # real directory import.
                     dest = Path(tmp) / (upload.filename or "upload.csv")
                     dest.write_bytes(await upload.read())
                     result = import_lap_file(
-                        db, dest, config=config, driver="owner", car=car,
-                        track=track, role=role, session_key=session, lap_date=date,
+                        db, dest, config=config, driver="owner", car=file_car,
+                        track=file_track, role=role, session_key=session, lap_date=date,
                     )
                     matched = sum(1 for a in result.assigned if a)
                     results.append({
                         "filename": upload.filename,
+                        "car": file_car,
+                        "track": file_track,
+                        "auto_detected": not explicit,
                         "status": result.status,
                         "lap_pk": result.lap_pk,
                         "corners_matched": matched,

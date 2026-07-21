@@ -58,6 +58,36 @@ class ParseError(ValueError):
 
 _FILENAME_RE = re.compile(r"Garage_61_([A-Za-z0-9]+)\.csv$")
 
+# A newer Garage61 export filename shape embeds driver/car/track/laptime/
+# lap-id directly, double-underscore delimited:
+#   Garage_61__<driver>__<car>__<track>__<M.SS.mmm laptime>__<ULID>.csv
+# unlike the older Garage_61_<ID>.csv form, which carries only an opaque ID.
+# Store, don't depend on the shape persisting (A13's own caution about
+# filename-derived metadata) -- parse_garage61_filename() below is optional,
+# additive, and every caller falls back to an explicit --car/--track or
+# manifest entry when it returns None, never guesses past that.
+_NEW_FILENAME_RE = re.compile(
+    r"^Garage_61__(?P<driver>[^_].*?)__(?P<car>.+?)__(?P<track>.+?)__"
+    r"(?P<laptime>\d+\.\d+\.\d+)__(?P<lap_id>[A-Za-z0-9]+)\.csv$"
+)
+
+
+def parse_garage61_filename(name: str) -> dict[str, str] | None:
+    """Car/track (and lap_id) auto-detected from the newer Garage61 export
+    filename shape. Underscores within a field are the export tool's own
+    word-separator, not data -- decoded to spaces for a human-readable
+    label. Returns None for the older Garage_61_<ID>.csv form or anything
+    else that doesn't match, so callers can fall back to an explicit
+    --car/--track or manifest entry."""
+    m = _NEW_FILENAME_RE.match(name)
+    if not m:
+        return None
+    return {
+        "car": m.group("car").replace("_", " "),
+        "track": m.group("track").replace("_", " "),
+        "lap_id": m.group("lap_id"),
+    }
+
 # A LapDistPct drop larger than this between consecutive samples is a
 # start/finish crossing. A single lap has 0 or 1 crossings depending on where
 # the file boundary falls relative to the line (a line-to-line sample wraps
@@ -165,7 +195,11 @@ def parse_lap(path: Path) -> TelemetryLap:
             raise ParseError(f"{path.name}: empty file") from None
         rows = [row for row in reader if row]
     match = _FILENAME_RE.search(path.name)
-    lap_id = match.group(1) if match else None
+    if match:
+        lap_id = match.group(1)
+    else:
+        new_format = parse_garage61_filename(path.name)
+        lap_id = new_format["lap_id"] if new_format else None
     return _parse_rows(header, rows, label=path.name, source_path=path, lap_id=lap_id)
 
 

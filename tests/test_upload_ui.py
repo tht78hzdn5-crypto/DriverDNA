@@ -98,8 +98,8 @@ def test_upload_flow_end_to_end_through_the_real_browser(cold_server):
 
         page.goto(f"{base}/#/upload", wait_until="networkidle")
         page.set_input_files("input[type=file]", str(ONE_LAP.resolve()))
-        page.fill("input[placeholder='GR86']", "GR86")
-        page.fill("input[placeholder='Spa-Francorchamps']", "Spa-Francorchamps")
+        page.fill("input[name=car]", "GR86")
+        page.fill("input[name=track]", "Spa-Francorchamps")
         page.click("button:has-text('Import')")
         page.wait_for_selector("text=Import result", timeout=8000)
         page.wait_for_timeout(300)
@@ -125,6 +125,39 @@ def test_upload_flow_end_to_end_through_the_real_browser(cold_server):
     ]
 
 
+def test_auto_detect_flow_with_blank_car_track_through_the_real_browser(cold_server, tmp_path):
+    """Real user path for the newer Garage61 export shape: no car/track
+    typed at all, just the file — car/track come from its filename."""
+    base, db_path = cold_server
+    new_style = tmp_path / (
+        "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+        "01.26.602__01KY31T54KGGQ351PDAMC7M6ER.csv"
+    )
+    new_style.write_bytes(ONE_LAP.read_bytes())
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 960, "height": 900})
+
+        page.goto(f"{base}/#/upload", wait_until="networkidle")
+        page.set_input_files("input[type=file]", str(new_style.resolve()))
+        # car/track left blank on purpose.
+        page.click("button:has-text('Import')")
+        page.wait_for_selector("text=Import result", timeout=8000)
+        page.wait_for_timeout(300)
+
+        result_text = page.locator("body").inner_text()
+        assert "Ford Mustang GT4 @ Summit Point Raceway" in result_text
+        assert "auto-detected" in result_text.lower()  # .src-tag renders upper-case
+        assert "View Ford Mustang GT4 @ Summit Point Raceway" in result_text
+
+        page.click("text=View Ford Mustang GT4 @ Summit Point Raceway")
+        page.wait_for_selector("svg.trackmap", timeout=8000)
+        assert "Ford Mustang GT4" in page.locator("h1").first.inner_text()
+
+        browser.close()
+
+
 def test_duplicate_reupload_reported_not_double_counted(cold_server):
     base, _ = cold_server
     with sync_playwright() as p:
@@ -134,8 +167,8 @@ def test_duplicate_reupload_reported_not_double_counted(cold_server):
 
         for _ in range(2):
             page.set_input_files("input[type=file]", str(ONE_LAP.resolve()))
-            page.fill("input[placeholder='GR86']", "GR86")
-            page.fill("input[placeholder='Spa-Francorchamps']", "Spa-Francorchamps")
+            page.fill("input[name=car]", "GR86")
+            page.fill("input[name=track]", "Spa-Francorchamps")
             page.click("button:has-text('Import')")
             page.wait_for_selector("text=Import result", timeout=8000)
             page.wait_for_timeout(300)
