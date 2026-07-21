@@ -77,7 +77,20 @@ Strict order; a milestone begins only when the prior one's gates pass.
 
 ## Out of scope
 
-Authentication and multi-user, hosted deployment, mobile app, editing measurements, client-side computation of any figure, blended scores in any form, setup advice surfaces, Tauri/Electron packaging (deferred, not designed against).
+Split per A17 (2026-07-20, SPEC.md amendment log; full record in
+PROJECT-BRIEF.md's decision log): philosophy #8 is refined to "personal
+instrument first" — product potential is acknowledged and deferred, so the
+exclusions below are no longer one undifferentiated list.
+
+**Permanent — trust properties, not v1 conveniences.** These hold in any
+future form of DriverDNA, productized or not: editing measurements,
+client-side computation of any figure, blended scores in any form, setup
+advice surfaces (no setup data exists to ground them).
+
+**v1-only — deferred, revisitable after the instrument is proven on its
+owner (post-M6, post-blind-test).** Authentication and multi-user, hosted
+deployment, mobile app, Tauri/Electron packaging (deferred, not designed
+against). Any revisit keeps the permanent list above intact.
 
 ## Setup notes
 
@@ -87,3 +100,12 @@ Lives at `docs/UI-SPEC.md`; add the amendment reference in `docs/SPEC.md` and a 
 acceptance test, accepting the risk stated above (owner's explicit call, for
 momentum). U2–U4 keep the original gate: revisit when reached — either the
 blind test has run by then, or the owner decides again, recorded here.
+
+**Owner amendments, continued (2026-07-19/20):** the gate was revisited as
+required, each time by explicit owner call recorded in PROJECT-BRIEF.md's
+decision log: U2 built ahead of the blind test (2026-07-19, same momentum
+rationale), then U3 (2026-07-20 — UI plumbing over the already-mock-tested
+`ChatSession` and the render-parity crawler's grounding guarantee, not a new
+measurement claim; the same reasoning covers U4, which is packaging). The
+blind acceptance test remains the trust gate for the *engine's findings*,
+still pending the owner's independent multi-session Spa data.

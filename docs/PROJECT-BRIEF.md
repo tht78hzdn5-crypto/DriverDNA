@@ -227,6 +227,55 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-20 — Product intent recorded: philosophy #8 refined (A17),
+  deferred but real.** Owner intent, on the record so post-M6 conversations
+  start from a recorded position instead of re-deriving it: DriverDNA may
+  eventually go to market — plausibly to veteran drivers with large
+  existing lap histories. Nothing changes in the build order; v1 remains a
+  personal instrument and nothing is built for multi-user now. Philosophy
+  #8 ("Personal instrument, not a product") is refined A14-style, not
+  contradicted: **personal instrument first; product potential is
+  acknowledged and deferred until the instrument is proven on its owner
+  (post-M6, post-blind-test). Any productization keeps the gates,
+  no-blending, and evidence-ID constraints unchanged** — those are
+  architecture-independent trust properties, not v1 conveniences. Recorded
+  as SPEC.md amendment A17; mirrored in UI-SPEC's out-of-scope list, now
+  split into permanent exclusions vs. v1-only deferrals (a split flagged
+  earlier and pending until this entry).
+
+  *Veteran cold-start (recorded now so it isn't rediscovered later).* A
+  marketed DriverDNA meets drivers with ~10,000-lap histories, which
+  strains three current design constants: (1) **frozen-from-first-laps
+  corner maps and canonical windows** — a bulk historical import freezes
+  identity/windows on the oldest data; the planned versioned `rebuild-map`
+  command becomes a hard requirement for that user, not a nice-to-have.
+  (2) **The vs-self baseline across skill eras** — a veteran's 2019 laps
+  and 2026 laps are not one population; tercile opportunity computed
+  against a career-spanning history may need era-windowing. Open
+  analytical question — noted, deliberately not solved here. (3)
+  **Bulk-import ergonomics** — ~1–2 s/lap means hours for a big history;
+  acceptable for v1, but one-time-import UX would matter in a product.
+  No build work on any of this now.
+
+  *Blob-retention question, answered from the code rather than assumed
+  (2026-07-20).* After import, all downstream measurement math reads
+  compact rows only — M3 attribution reads stored `phase_times`, and M6
+  belief recomputation (`compute_all_beliefs`) reads only compact helpers
+  (`self_metric_table`, `self_detector_table`, corner maps/windows,
+  session/lap counts). **A scoring-version bump therefore never needs raw
+  blobs**, and raising `retention.raw_laps_per_cohort` (newest-100) is
+  pointless for that purpose. The one measurement path that re-reads raw
+  blobs is corner-admission window backfill
+  (`pipeline._freeze_windows_for_admitted`): phase times for a newly
+  admitted corner are recomputed from whatever blobs retention still
+  holds, and evicted laps are skipped. A future `rebuild-map` has the same
+  shape — new canonical windows require re-interpolating t(distance) from
+  raw arrays, so **a rebuild can only re-measure laps whose blobs
+  survive retention**. That is the one real reason blob retention might be
+  raised, and it matters precisely in the veteran/bulk-import scenario
+  above. (Also noted while verifying: `coach.include_raw_traces` is
+  defined in config but consumed nowhere — raw traces never enter AI
+  payloads today; the flag is documentation of intent, not a live path.)
 - **2026-07-20 — U3 (chat view) built ahead of the blind acceptance test;
   the U0-U2 exception extended to cover it too.** STATUS.md had recorded an
   explicit owner amendment: U0-U2 could build ahead of the Spa blind test

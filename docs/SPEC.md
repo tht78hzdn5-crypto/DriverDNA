@@ -49,7 +49,12 @@ These nine principles are binding on every design decision below.
    reprioritized; thresholds retuned — every change explicit, confirmed, versioned,
    reversible. Suppressing a finding never deletes the measurement.
 8. **Personal instrument, not a product.** Local CLI, SQLite, static reports. No
-   server. Simplicity and auditability outrank generality.
+   server. Simplicity and auditability outrank generality. (Refined by A17,
+   2026-07-20: personal instrument *first* — product potential is acknowledged
+   and deferred until the instrument is proven on its owner, post-M6 and
+   post-blind-test; any productization keeps the gates, no-blending, and
+   evidence-ID constraints unchanged. Full record in PROJECT-BRIEF.md's
+   decision log, including the veteran cold-start implications.)
 9. **Designed to be distrusted.** Determinism tests, evidence IDs on every claim,
    trust gates. The architecture assumes verification before belief.
 
@@ -201,7 +206,15 @@ directly downstream):
   values, findings, evidence refs, report outcomes, reference envelopes, sync
   state, coaching outputs, chat transcripts, and config history. Eviction of a
   lap's raw blob is a single-row delete that never touches summaries. Migrations
-  under test.
+  under test. Stated, not assumed (2026-07-20, verified from code): after
+  import, all downstream measurement math reads compact rows only — M3 reads
+  stored phase times, M6 recomputes beliefs from compact rows — so a
+  scoring-version bump never needs raw blobs and never justifies raising
+  retention. The one measurement path that re-reads blobs is corner-admission
+  window backfill (and a future map/window `rebuild` would share its shape):
+  it re-measures only laps whose blobs survive retention, skipping evicted
+  ones. That is the sole reason `retention.raw_laps_per_cohort` might ever be
+  raised (see A17's veteran cold-start record).
 
 Repository layout:
 
@@ -791,3 +804,14 @@ Accepted at owner plan review; rationale recorded in the review:
   contract match) work fully. Reference laps therefore use the manual `import`
   path only (decision-of-record #2, clarified above); `sync` for self laps is
   unblocked. Full evidence: `docs/garage61-api.md`.
+- **A17** (2026-07-20, owner decision): philosophy #8 refined — personal
+  instrument *first*; product potential (plausibly veteran drivers with large
+  lap histories) is acknowledged and **deferred until the instrument is proven
+  on its owner** (post-M6, post-blind-test). Nothing in the build order
+  changes; nothing is built for multi-user now. Any future productization
+  keeps the gates, no-blending, and evidence-ID constraints unchanged.
+  UI-SPEC's out-of-scope list is split accordingly (permanent exclusions vs
+  v1-only deferrals). Full record — including the veteran cold-start strains
+  (map/window refreeze via `rebuild-map`, vs-self era-windowing, bulk-import
+  ergonomics) and the verified answer to the blob-retention question — in
+  PROJECT-BRIEF.md's decision log.
