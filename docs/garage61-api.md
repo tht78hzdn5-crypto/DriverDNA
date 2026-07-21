@@ -78,6 +78,22 @@ not the iRacing `platform_id` strings — these integer IDs are what
   returned lap (`driver.id == /me`'s `id`) — every list item carries a
   full `driver` object (`id`, `slug`, `firstName`, `lastName`), so this
   needs no extra request.
+- **`/laps` exposes only *saved* laps, not the full driven history — one
+  per cohort on the probed account.** Census re-run 2026-07-20: iterating
+  every cohort from `/me/statistics` and self-filtering, the account's own
+  retrievable laps totalled **26 — exactly one per (car, track) cohort**
+  (max in any single cohort: 1). Yet `/me/statistics` reports **979 laps
+  driven** for the same account (up to 163 in one cohort). So the API
+  serves a curated subset (empirically one saved lap per cohort), not
+  every lap driven. Observed fact = 1 saved lap/cohort; the *cause* is
+  unconfirmed — the account is `subscriptionPlan: "free"` (from `/me`), so
+  a free-plan retention/exposure cap is the leading hypothesis, not a
+  verified one. **Consequence:** `sync` already pulls everything `/laps`
+  returns, so this is a data ceiling, not an under-pull. Anything needing
+  many laps *per cohort* — M6's per-cohort trend without the cross-cohort
+  bucket-composition confound — is not reachable from this account's API
+  contents as they stand; it needs more saved laps per cohort (or a dated
+  manual-import path for locally-exported CSVs).
 
 ## Single-lap detail and CSV — `/laps/{lap_id}`, `/laps/{lap_id}/csv`
 
@@ -178,6 +194,12 @@ neither was observed here.
 - ⚠️ `sync` must discover cohorts via `/me/statistics` (or a
   driver-supplied car/track list) and loop `/laps?tracks=...&cars=...`
   per cohort — there is no unscoped "give me everything" call.
+- ⚠️ `/laps` returns only *saved* laps — observed as **one per cohort** on
+  the probed (free-plan) account, vs 979 laps driven. `sync` pulls all of
+  them, so it's a data ceiling, not an under-pull: M6's per-cohort trend
+  can't be fed from this account's API contents until more laps are saved
+  per cohort (leading hypothesis: a free-plan cap — unconfirmed) or a
+  dated manual-import path is added for locally-exported CSVs.
 - ⚠️ Unconfirmed, do not assume before re-checking: the real query-param
   names for date-range and team/account-scoped filtering; the exact
   `limit` ceiling; whether team-shared consent changes the 403 outcome;
