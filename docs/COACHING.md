@@ -435,3 +435,19 @@ in any test.
 Items 4–7 default to what's written above per no correction received; flag any
 of them and they change in a future revision — the ontology is versioned data
 specifically so that's cheap.
+
+## A second grounded-citation surface: incidents (2026-07-21, SPEC.md A20)
+
+Findings aren't the only thing the coach can now cite — a detected incident
+(`incidents/detector.py` + `classify.py`, SPEC.md A19) can be too, through the
+same trigger-gated discipline this document specifies for findings: the
+engine decides eligibility deterministically (a fixed `classification ->
+coaching_principle_id` map, `incidents/coaching.py`, reusing this document's
+existing seed set — no new principles), the AI only narrates, and the
+mechanical validator rejects any deviation exactly as it rejects an unknown
+evidence ID or an ineligible `coaching_principle_id`. The one incident-specific
+rule beyond what findings already require: the cited principle must match the
+engine's verdict *exactly*, not merely be "an eligible principle" — the
+mapping is 1:1, so there's nothing for the AI to choose. `unclassified`/
+`external` incidents map to no principle and cannot be explained at all,
+mirroring a `no_signal` fundamental one level down.

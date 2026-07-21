@@ -214,11 +214,18 @@ from the real fixtures and reviewed.
   understeer-off, external, or `unclassified` when ambiguous), classified
   from the *causal* onset (first yaw divergence). N=1 events, never traits;
   reference laps never scanned; `incidents` table (migration 005); payload
-  section (kept out of coach/chat until the Layer-3 grounded path exists);
-  `driverdna incidents` artifact; cohort/laps UI. The 11 committed
+  section; `driverdna incidents` artifact; cohort/laps UI. The 11 committed
   `spa-blind-2026-07/` laps are the real ground truth (`9XVJTW` spin →
-  trail_brake_oversteer, `9PH9M2` dead-stop → detected). **Next: Coaching
-  over incidents (Layer 3) — AI explains a classification, citing it.**
+  trail_brake_oversteer, `9PH9M2` dead-stop → detected).
+- **Coaching over incidents: built (2026-07-21, SPEC.md A20)** — the deferred
+  Layer 3. `incidents/coaching.py` fixes a deterministic, 1:1
+  classification -> `coaching_principle_id` map (existing nine seed
+  principles, none new); the coach's `incident_explanations` output is
+  mechanically rejected unless it cites exactly that verdict — the AI
+  explains, it never picks or overrides. `unclassified`/`external` incidents
+  get no principle and cannot be explained. Built for the `coach`
+  structured-output path; chat's live Q&A doesn't consume incidents yet
+  (explicit boundary, tested both sides).
 
 Update this section as milestones complete.
 

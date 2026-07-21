@@ -921,3 +921,24 @@ Accepted at owner plan review; rationale recorded in the review:
   committed real ground-truth laps (A18's `9XVJTW` spin →
   trail_brake_oversteer/high; `9PH9M2` dead-stop → detected; every clean lap
   silent). Full record in PROJECT-BRIEF.md's decision log.
+- **A20** (2026-07-21, coaching over incidents — Layer 3, closing A19's
+  explicit deferral): the AI may now *explain* an incident's classification,
+  never produce or choose it — refining non-negotiable #1 ("AI... never
+  produces or adjusts a number") one level further: here the AI never
+  produces or adjusts a *diagnosis* either. The link from an incident's
+  classification to the one coaching principle eligible to explain it
+  (`incidents/coaching.py`'s fixed mapping — `trail_brake_oversteer` →
+  `cp.brake_release.finish_the_front`; `lift_off_oversteer`/
+  `power_on_oversteer` → `cp.throttle_pickup.roll_it_on`;
+  `understeer_off` → `cp.turn_in.one_commitment`, from the existing nine
+  seed principles) is deterministic and 1:1, computed once in the payload,
+  identical for every consumer. The coach's `incident_explanations` output
+  is mechanically rejected if its `coaching_principle_id` differs from that
+  verdict even slightly — the AI has zero choice, only prose — and rejected
+  outright for `unclassified`/`external` incidents (refines #3,
+  insufficient-data-over-guessing: the engine didn't name a cause, so
+  neither may the AI, mechanically enforced the same way an unknown
+  evidence ID is). Built for the coach's structured-output path only; chat's
+  live Q&A does not consume incidents yet (a later pass — the boundary is
+  explicit and tested on both sides). Full record in PROJECT-BRIEF.md's
+  decision log.

@@ -252,6 +252,33 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Coaching over incidents built (SPEC.md A20): the deferred
+  Layer 3, closing the loop A19 opened.** Owner asked to continue straight
+  into it after the model view. The design question was whether the AI picks
+  *which* coaching principle explains an incident from a set of eligible
+  ones (as `coaching_priorities` already allows for findings) or whether that
+  link is itself deterministic. Went with the latter, and it's the more
+  defensible reading of the constitution: an incident's classification is
+  already a diagnosis the engine made (A19); letting the AI then choose among
+  several plausible principles for *why* would reopen exactly the
+  diagnosis-by-AI door non-negotiable #1 closes for scores. So
+  `incidents/coaching.py` fixes a 1:1 map from classification to principle
+  (reusing the nine existing seed principles, no new ones invented), computed
+  once in the payload; the coach's `incident_explanations` output is
+  mechanically rejected if it cites anything other than that exact principle
+  — the AI has zero choice, only prose, same posture as a `finding_id`'s
+  number. `unclassified`/`external` incidents get no principle and cannot be
+  explained — the engine didn't name a cause, so the AI doesn't either.
+  Scope: built for the `coach` structured-output path (JSON schema, local
+  validator, persisted plans) since that's where the existing grounded-output
+  machinery already lives; chat's live Q&A doesn't consume incidents yet —
+  deliberately left as a boundary, tested on both sides (a coach payload now
+  carries `incidents`; a chat bundle still doesn't), not silently forgotten.
+  6 new tests (wrong-principle rejection, unclassified-incident rejection,
+  missing confidence, invented number, acceptance + markdown rendering).
+  481 tests green. No live run possible (`ANTHROPIC_API_KEY` unset in this
+  environment, as for every coach/chat feature so far) — mock-provider tested
+  only, consistent with the rest of the suite.
 - **2026-07-21 — Driver Model UI view built: M6 is finally visible.** The
   Driver Model is the constitution's centre of gravity ("the persistent Driver
   Model is the product"), yet the whole U0–U4 UI track shipped without a screen
