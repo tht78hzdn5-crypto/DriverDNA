@@ -697,12 +697,21 @@ score or confidence, at any level, in any test.
 ## Acceptance — trust gates
 
 1. Spa blind test: run on the owner's GR86/Spa laps (≥ 2 sessions; to be supplied)
-   with no hints. Top findings must independently include high-speed-corner entry
-   commitment and elevated entry-phase inconsistency (known ground truth: Sector 1,
-   ±1.2 s spread vs ±0.4–0.7 s elsewhere). Failure blocks trusting any novel
-   finding. Caveat, recorded honestly: the expected answer is written in this spec,
+   with no hints. **Run 2026-07-21 on 11 independent laps across 6 sessions
+   (none in `tests/fixtures/`) — see A18.** The originally-stated ground truth
+   below never held on any dataset and is retracted; the engine's own
+   incident-screened output is the current ground truth, restated here so a
+   future re-run has something concrete to compare against:
+   entry-and-mid-phase loss concentrated at the two slow corners (La
+   Source C01 mid ≈0.82 s, Bus Stop C15 exit/entry, both repeatable across
+   sessions), fast corners (Eau Rouge/Raidillon, Blanchimont) essentially
+   loss-free (≈0.09 s aggregate). Class-level loss: slow ≈1.33 s > medium
+   ≈0.96 s > fast ≈0.09 s per lap — the *inverse* of the original
+   high-speed-entry prediction. Failure blocks trusting any novel finding.
+   Caveat, recorded honestly: the expected answer is written in this spec,
    which the builder reads — so this is a smoke test against gross failure, not
-   independent proof.
+   independent proof; A18 also documents why the *original* ground truth was
+   never independently verified either, which is what the blind run caught.
 2. Determinism: identical inputs → identical JSON (normalized: sorted keys, fixed
    float precision, no wall-clock timestamps).
 3. Reference isolation: importing a reference lap changes gap analyses only; self
@@ -849,4 +858,31 @@ Accepted at owner plan review; rationale recorded in the review:
   v1-only deferrals). Full record — including the veteran cold-start strains
   (map/window refreeze via `rebuild-map`, vs-self era-windowing, bulk-import
   ergonomics) and the verified answer to the blob-retention question — in
+  PROJECT-BRIEF.md's decision log.
+- **A18** (2026-07-21, Spa blind test finally run): 11 independent GR86/Spa
+  laps supplied across 6 sessions, imported to an isolated scratch DB (never
+  `tests/fixtures/`). Two findings, both real:
+  (1) The gate itself works — no crash, all three sources decomposable,
+  thin corners correctly suppressed with stated reasons.
+  (2) The *predicted* answer (high-speed-corner entry commitment, Sector-1
+  ±1.2 s entry spread) never held — not on the new data, and, re-checked, not
+  on the original `tests/fixtures/` corpus either (max per-corner entry
+  spread ≈0.15 s in both). The figure in gate 1 was never engine-corroborated;
+  it read as a coarse, unverified belief about the driving, written into the
+  acceptance criteria before the criteria could check it. That is exactly the
+  failure mode a blind test exists to catch, and it caught it.
+  Separately, investigating *why* the top two engine-reported findings looked
+  large (C01 mid 2.06 s, C15 exit 1.95 s) surfaced a real engine bug: one spin
+  (La Source, 5 km/h) and one 15 s dead stop (Bus Stop) landed in the slow
+  tercile of `vs_self_findings`'s opportunity split, which — unlike
+  `baseline()` — applied no outlier screening. Fixed: the same median±k·MAD
+  fence `baseline()` already used is now applied to the opportunity/
+  repeatability computation too (`attribution/engine.py`'s `outlier_mask`,
+  `attribution/ranker.py`); `docs/attribution-report.md` regenerated (two
+  fixture findings, C03 exit and C02 mid, were themselves partly
+  outlier-inflated and are now correctly suppressed); a regression test
+  (`test_vs_self_opportunity_ignores_one_incident_lap`) plants an isolated
+  incident and asserts it's screened. Re-run post-fix produced gate 1's
+  restated ground truth above. Full narrative, including the incident
+  forensics (speed-trace confirmation of both incidents), in
   PROJECT-BRIEF.md's decision log.

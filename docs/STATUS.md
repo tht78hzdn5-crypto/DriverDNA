@@ -1,6 +1,6 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-20.** Branch `claude/plan-review-philosophy-hl3cdg`.
+**Snapshot date: 2026-07-21.** Branch `claude/plan-review-philosophy-hl3cdg`.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -11,6 +11,14 @@ and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 full UI-SPEC.md milestone track (U0–U4) is built, including the chat view
 and the report/SPA visual unification. M6 trend now computes real
 directions from dated laps (`sync`, or manual import with `--date`).
+**The Spa blind acceptance test finally ran (2026-07-21, SPEC.md A18)** on
+11 independent GR86/Spa laps the engine had never seen — it caught a real
+bug (an unscreened incident lap could manufacture a phantom vs-self
+"opportunity"; fixed to reuse `baseline()`'s existing outlier fence) and a
+fictional ground truth (the spec's original Sector-1 prediction was never
+engine-corroborated, on any dataset; retracted and replaced with the
+engine's actual, now incident-robust output). Full narrative in
+PROJECT-BRIEF.md's decision log.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -23,17 +31,17 @@ sync twice more was fully idempotent (0 new laps, 25 total unchanged), and
 on the manual `import` path per M0b's finding (other-drivers' laps return
 `403 forbidden_lap`) — confirmed again live: every synced lap is `role='self'`.
 
-## Verified counts (2026-07-20)
+## Verified counts (2026-07-21)
 
 Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **449** (30 test files) | `python3 -m pytest` |
-| Commits on branch | **35** | `git rev-list --count HEAD` |
+| Tests passing | **450** (30 test files) | `python3 -m pytest` |
+| Commits on branch | **52** | `git rev-list --count HEAD` |
 | Real laps imported | **12** (GR86/Spa 11, Mustang/Laguna 1) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
-| Spa findings | **17 shown · 89 suppressed** (all suppressions state a reason) | same payload |
+| Spa findings | **15 shown · 91 suppressed** (all suppressions state a reason; 2 fewer shown than the prior snapshot — the incident-outlier fix, A18, correctly demoted 2 partly outlier-inflated findings) | same payload |
 | Laguna cohort | 1 lap · 0 sessions · 0 shown · 71 suppressed | insufficient data by design |
 | Determinism | byte-identical reports across two independent imports | `driverdna report` ×2, `diff` |
 
@@ -237,7 +245,7 @@ also recorded in the durable docs, per the Decision-discipline rule):
 |---|---|---|---|
 | 1 | Adopt `sync` as the primary ingest path going forward? | `sync` is built and live-verified (2026-07-20): 25 laps pulled, idempotent on rerun, real session/run/date metadata, reference isolation held. Manual `import` remains the fallback for reference laps regardless | Live-verified; not yet the default in any automation (still explicit `driverdna sync`) |
 | 2 | Provide `ANTHROPIC_API_KEY`? | Turns coach + chat from mock-tested to actually usable | Deferred; all tests mock it |
-| 3 | When to run the blind test? | It's only meaningful on data whose answer I don't already know | Deferred until independent data |
+| 3 | ~~When to run the blind test?~~ | Resolved 2026-07-21 (A18): ran on 11 independent laps, 6 sessions | Done — see below and PROJECT-BRIEF.md |
 | 4 | Session labels for manual imports | Filenames carry no session; grouping affects repeatability | Best-effort by upload batch, editable in the manifest |
 | 5 | Keep committing the built SPA (`ui/static`)? | Convenient (no node at runtime) vs. a build artifact in git | Committed for now |
 | 6 | Corner-map refreeze policy as data grows | Windows/identities freeze early for comparability; a deliberate rebuild command may be wanted later | Freeze-and-match; admissions surfaced |
@@ -247,12 +255,20 @@ also recorded in the durable docs, per the Decision-discipline rule):
 
 ## Risks & things worth knowing
 
-- **The blind test is not yet proof.** Its expected answer (Spa Sector-1 entry
-  commitment + entry inconsistency) is written in the spec I built from, so a
-  pass is a smoke test against gross failure, not independent validation. It
-  becomes real when data arrives whose answer I haven't seen. That the top
-  findings already cluster on entry/mid consistency, unprompted, is encouraging
-  but not conclusive.
+- **The blind test ran (2026-07-21, A18) and it worked exactly as a trust
+  gate should: it caught something, rather than rubber-stamping a guess.**
+  The spec's original expected answer (Sector-1 high-speed entry, ±1.2 s
+  spread) turned out to have never been engine-corroborated on any dataset
+  — it was a written belief, not a verified one — and was retracted. The
+  process of checking it also surfaced a real ranking bug (one spin, one
+  15 s dead-stop lap could manufacture a phantom "opportunity" finding
+  because the opportunity calc, unlike `baseline()`, didn't screen
+  outliers); that's fixed now, with a regression test. What survives:
+  the engine's machinery (gates, decomposability, suppression-with-reason)
+  held up under real independent data with no crash, and it now has a
+  restated, incident-robust ground truth (loss concentrated at the two slow
+  corners, fast corners essentially clean) to compare future runs against.
+  Full forensics in PROJECT-BRIEF.md's decision log.
 - **The current findings are shaped by "not fresh" laps.** Two slower practice
   laps sit in the self-history and legitimately pull the vs-self opportunities
   (slower-lap-vs-faster-lap is exactly what vs-self measures). More clean laps

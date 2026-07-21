@@ -198,7 +198,14 @@ from the real fixtures and reviewed.
   deliberately not implemented — M0b found the real param names unconfirmed.
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
-- Spa blind acceptance test blocked on the owner's GR86/Spa lap set (≥ 2 sessions).
+- **Spa blind acceptance test: run (2026-07-21, SPEC.md A18)** on 11
+  independent GR86/Spa laps, 6 sessions. Caught two real things: the spec's
+  original ground truth (Sector-1 high-speed entry, ±1.2 s) was never
+  engine-corroborated on any dataset and is retracted; a genuine ranker bug
+  (unscreened incident laps could inflate vs-self opportunity) was found and
+  fixed (`attribution/ranker.py` now reuses `baseline()`'s outlier fence).
+  Gate 1 in SPEC.md restates the engine's actual, incident-robust findings
+  as the new ground truth. Full narrative: PROJECT-BRIEF.md decision log.
 
 Update this section as milestones complete.
 

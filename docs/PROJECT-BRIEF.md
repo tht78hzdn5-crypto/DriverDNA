@@ -252,6 +252,64 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-21 — Spa blind test finally run (SPEC.md A18): it caught a real
+  bug and a fictional ground truth, not a passing grade.** The owner supplied
+  laps in batches; each was hashed against `tests/fixtures/` and every prior
+  batch before import — most turned out to be re-downloads (browser `_2`/`_3`
+  suffixes) of laps already in the corpus the engine was built on, which
+  cannot count as independent evidence. 11 genuinely new GR86/Spa laps across
+  6 sessions survived that filter and were imported to an isolated scratch DB
+  (never `tests/fixtures/`), clearing both `min_sessions` (6≥2) and, per
+  corner, `min_phase_samples` (10-11 raw). Verified before trusting the
+  result: a whole-lap incident exclusion would have dropped nearly every
+  corner below the sample gate, but the actual incidents were corner-specific
+  (see below), so a corner-level exclusion left every corner at or above the
+  floor — no additional laps were needed to run the real test.
+  Two findings came out of the run, both worth recording on their own:
+  (1) **The predicted ground truth in gate 1 (Sector-1 high-speed-entry
+  commitment, ±1.2 s spread) never held — on the new data, or, re-checked
+  directly, on the original fixture corpus either** (max per-corner entry
+  spread ≈0.15 s in both — an order of magnitude under the claim). It was
+  never engine-corroborated; it read as a coarse, unverified belief about the
+  driving written into binding acceptance criteria before anything could
+  check it against the criteria's own instrument. Retracted in SPEC.md gate 1,
+  replaced with the engine's actual output as the new comparison point:
+  loss concentrated at the two slow corners (La Source, Bus Stop), fast
+  corners (Eau Rouge/Raidillon, Blanchimont) essentially loss-free — the
+  inverse of the original claim.
+  (2) **Investigating why the top two reported findings looked implausibly
+  large (C01 mid 2.06 s, C15 exit 1.95 s) found a genuine engine bug.**
+  Per-lap phase-time forensics (cross-checked against raw speed traces, not
+  just the numbers) identified one lap with a 5 km/h near-stop at La Source
+  (a spin) and one with a 15-second dead stop at the Bus Stop — both landed
+  in the slow tercile of `vs_self_findings`'s opportunity split, which,
+  unlike `baseline()`, applied no outlier screening. Confirmed by removing
+  the incident laps by hand first (C01 mid fell to 0.82 s, matching the
+  post-fix engine run exactly) before touching any code. Fixed: the same
+  median±k·MAD fence `baseline()` already used (`outlier_mad_k`, config
+  default 3.5, already owner-approved and versioned) is now applied to the
+  opportunity/repeatability computation too — `engine.screen_outliers`
+  refactored into a reusable `outlier_mask` so `ranker.py` can filter full
+  observation records, not just bare time values. Deliberately *not* built:
+  a new ingest-time "incident detector" — hand-verifying the MAD fence
+  against both known incidents showed the existing statistical mechanism
+  already isolates exactly them, so a second, redundant subsystem would
+  have added surface area without adding correctness.
+  `docs/attribution-report.md` regenerated from the real fixture corpus: two
+  previously-"shown" findings (C03 exit, C02 mid) turn out to have been
+  partly outlier-inflated themselves and are now correctly suppressed as
+  no-effect/gated — the fix changed fixture-corpus output too, not just the
+  new blind-test data. New regression test
+  (`test_vs_self_opportunity_ignores_one_incident_lap`, `tests/test_attribution.py`)
+  plants an isolated severe incident on top of the existing planted-weakness
+  cohort and asserts it's screened while the raw sample stays counted
+  (`details.n_outliers`, never silently dropped). 450 tests green.
+  Net verdict: the *machinery* passed — no crash, gates enforced, sources
+  decomposable, and it surfaced a real robustness gap in its own ranking
+  logic, which is what a trust gate is for. The *specific prediction* did
+  not pass, because it was never a real prediction. SPEC.md gate 1 now
+  states what the engine actually, repeatably finds on clean independent
+  data as the standing comparison point for any future re-run.
 - **2026-07-21 — U4 built; the UI-SPEC.md milestone track (U0–U4) is
   complete.** Three concrete gaps, from a scoping pass before starting:
   static HTML reports were still the pre-token-system light theme
