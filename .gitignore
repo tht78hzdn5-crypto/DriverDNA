@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.pytest_cache/
+
+# DriverDNA local state and generated output (reports are regenerated, not committed)
+*.db
+*.sqlite3
+reports/
+out/
+
+# Secrets — env-only, never committed (CLAUDE.md)
+.env
+.env.*
+
+# OS noise
+.DS_Store
+ui/node_modules/
