@@ -101,6 +101,8 @@ def test_app_loads_and_operates_with_non_localhost_network_blocked(server):
         f"/#/laps/{slug}",
         "/#/config",
         "/#/chat",
+        "/#/model",
+        "/#/upload",
     ]
 
     blocked: list[str] = []

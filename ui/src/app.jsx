@@ -7,6 +7,7 @@ import Laps from "./views/laps.jsx";
 import Config from "./views/config.jsx";
 import Chat from "./views/chat.jsx";
 import DriverModel from "./views/model.jsx";
+import Upload from "./views/upload.jsx";
 
 // Tiny hash router: #/ · #/cohort/:slug · #/corner/:slug/:cid ·
 // #/finding/:slug/:fid · #/laps/:slug · #/chat[/:slug]
@@ -39,6 +40,7 @@ export default function App() {
           <a href="#/">driver</a>
           {view !== "model" && <a href="#/model">model</a>}
           {view !== "chat" && <a href="#/chat">chat</a>}
+          {view !== "upload" && <a href="#/upload">import</a>}
           <a href="#/config">config</a>
         </nav>
       </header>
@@ -49,6 +51,7 @@ export default function App() {
       {view === "laps" && <Laps slug={args[0]} />}
       {view === "config" && <Config />}
       {view === "model" && <DriverModel />}
+      {view === "upload" && <Upload />}
       {view === "chat" && <Chat slug={args[0]} />}
     </>
   );

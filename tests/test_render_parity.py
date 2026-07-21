@@ -151,6 +151,11 @@ def test_every_fractional_figure_traces_to_the_payload(server):
         f"/#/laps/{slug}",
         "/#/config",  # U2: config values must trace to /api/config too
         "/#/model",  # M6 Driver Model view: scores/confidence/trend from the payload
+        # /#/upload deliberately not crawled here: the bare pre-submission form
+        # has no .num content to check (nothing computed until a real upload
+        # happens) -- test_offline.py covers it loading clean, and a dedicated
+        # Playwright flow (test_upload_ui.py) exercises the real numbers a
+        # completed upload renders.
     ]
 
     violations: list[str] = []

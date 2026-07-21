@@ -15,11 +15,12 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import json
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -195,6 +196,82 @@ def create_app(
                 }
                 for r in rows
             ]
+
+    def _parse_lap_date(value: str) -> str:
+        """Same shape `driverdna import --date` accepts (YYYY-MM-DD or a
+        full ISO8601 timestamp); rejected loudly, never silently accepted —
+        M6 trend sorts laps on this string. Pure input-shape validation
+        (same class as the annotate endpoint's status check), not business
+        logic — the CLI's own `_validate_lap_date` can't be reused directly
+        since it reports failure via typer.Exit, not an HTTP error."""
+        from datetime import date as _date, datetime as _datetime
+
+        try:
+            _date.fromisoformat(value)
+            return value
+        except ValueError:
+            pass
+        try:
+            _datetime.fromisoformat(value)
+            return value
+        except ValueError:
+            raise HTTPException(
+                422, detail=f"date {value!r} is not valid (expected YYYY-MM-DD "
+                "or a full ISO8601 timestamp)",
+            ) from None
+
+    @app.post("/api/laps/upload")
+    async def upload_laps(
+        files: list[UploadFile] = File(...),
+        car: str = Form(...),
+        track: str = Form(...),
+        role: str = Form("self"),
+        date: str | None = Form(None),
+        session: str | None = Form(None),
+    ) -> dict[str, Any]:
+        """Wraps `import_lap_file` — the exact function `driverdna import`
+        calls per file (UI-SPEC decision 3: no business logic here). Unlike
+        every read endpoint, this one does NOT require the DB to already
+        exist: `Database.open` creates + migrates a fresh file, the same as
+        pointing the CLI at a new --db path, so this is a genuine cold-start
+        path — a driver can go from nothing to a populated cockpit without
+        ever touching the CLI."""
+        if role not in ("self", "reference"):
+            raise HTTPException(422, detail="role must be self or reference")
+        if date is not None:
+            date = _parse_lap_date(date)
+
+        from driverdna.pipeline import import_lap_file
+
+        config = load_config(config_path)
+        results: list[dict[str, Any]] = []
+        with tempfile.TemporaryDirectory() as tmp:
+            with Database.open(db_path) as db:
+                for upload in files:
+                    # Original filename preserved (not a random temp name):
+                    # parse_lap's Garage61 lap-ID regex reads it, same as a
+                    # real directory import.
+                    dest = Path(tmp) / (upload.filename or "upload.csv")
+                    dest.write_bytes(await upload.read())
+                    result = import_lap_file(
+                        db, dest, config=config, driver="owner", car=car,
+                        track=track, role=role, session_key=session, lap_date=date,
+                    )
+                    matched = sum(1 for a in result.assigned if a)
+                    results.append({
+                        "filename": upload.filename,
+                        "status": result.status,
+                        "lap_pk": result.lap_pk,
+                        "corners_matched": matched,
+                        "corners_total": len(result.assigned),
+                        "admitted": result.admitted,
+                        "class_changes": [
+                            {"corner_id": c, "old": o, "new": n}
+                            for c, o, n in result.class_changes
+                        ],
+                    })
+                evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
+        return {"results": results, "evicted": evicted}
 
     @app.get("/api/metrics/{corner_id}/{metric}/distribution")
     def metric_distribution(corner_id: str, metric: str, cohort: str) -> dict[str, Any]:

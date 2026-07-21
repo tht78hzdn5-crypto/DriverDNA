@@ -194,3 +194,10 @@ td.right, th.right { text-align: right; }
 .coach-item { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem; }
 .coach-item .coach-say { font-size: 0.9rem; font-weight: 500; }
 .coach-item .coach-why { margin-top: 0.25rem; }
+
+/* Upload view (view 7: import). A plain form, same visual language as
+   Config's cfg-edit rows -- inputs on var(--base), quiet borders. */
+.upload-field { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 9rem; }
+.upload-label { font-size: 0.74rem; color: var(--dim); }
+.upload-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.upload-field input[type="file"] { font-size: 0.82rem; color: var(--text); }

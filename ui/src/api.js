@@ -24,6 +24,19 @@ export async function send(method, path, body) {
   return response.json();
 }
 
+// Upload (UI-SPEC decision 3, view 7): a multipart wrapper over
+// `import_lap_file`, same audited path `driverdna import` uses per file —
+// no Content-Type set here so the browser attaches its own multipart
+// boundary, which fetch(JSON.stringify(...)) above would break.
+export async function uploadLaps(formData) {
+  const response = await fetch("/api/laps/upload", { method: "POST", body: formData });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `${response.status} on upload`);
+  }
+  return response.json();
+}
+
 // Chat (UI-SPEC decision 4): no native EventSource here (it's GET-only, and
 // this is a POST with a body) — read the SSE-framed response body directly.
 // Each frame is a whole progress/response/error event, never partial text;
