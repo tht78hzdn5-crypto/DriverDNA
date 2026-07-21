@@ -2,7 +2,9 @@ import React from "react";
 import { get } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
-import { LossBars, SourceSections } from "./shared.jsx";
+import {
+  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, SourceSections,
+} from "./shared.jsx";
 
 // Cohort view (UI-SPEC view 2). The signature element: the track outline
 // drawn from the driver's own retained GPS trace, corner markers at the
@@ -75,6 +77,28 @@ export default function Cohort({ slug }) {
           <TrackMap trace={trace.data} corners={corners.data} perCornerLoss={perCornerLoss} slug={slug} />
         </section>
       )}
+
+      <section className="panel">
+        <p className="eyebrow">Coaching — what to work on next, in plain language</p>
+        <CoachingHeadline
+          headline={p.coaching.headline} headline_reason={p.coaching.headline_reason}
+          silent_count={p.coaching.silent_count} slug={slug}
+        />
+        {(p.coaching.secondary.length > 0 || p.coaching.self_checks.length > 0) && (
+          <>
+            <div style={{ height: "0.3rem" }} />
+            <CoachingSecondary
+              items={p.coaching.secondary} slug={slug}
+              headlinePrincipleId={p.coaching.headline?.coaching_principle_id}
+            />
+            <CoachingSelfChecks items={p.coaching.self_checks} />
+          </>
+        )}
+        <div className="sub">
+          Deterministically eligible and ranked from your measurements
+          (docs/COACHING.md) — the wording explains, it never invents a number.
+        </div>
+      </section>
 
       <section className="panel">
         <p className="eyebrow">Typical loss vs robust baseline (s/lap)</p>
