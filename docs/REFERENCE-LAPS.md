@@ -121,16 +121,44 @@ R0 below pins it rather than guessing.)
   live); the reference-first-in-empty-cohort question answered by a small
   test, documented here. R0 is the gate for everything below — no UI work
   for a feature the instrument's owner hasn't exercised once.
-- **R1 — Visibility (UI-only; can ride U5's restyle or land alone).**
-  Cohort header chips gain "N reference laps · M reference drivers"
-  (counts the DB already answers, `cli.py:580` pattern); when N=0, the
-  vs-reference section slot renders one dim direction line ("No reference
-  laps yet — import one with role: reference to get gap context") in the
-  exact gates-panel register; vs-reference finding meta adds
-  "ref n=K" from `details.reference_n` (already in the payload —
-  render-parity-clean by construction); the upload role select gains one
-  help line stating the isolation guarantee. Tests: existing route lists
-  unchanged; DOM assertions updated in the same change.
+- **R1 — See & understand (UI-only; folded into U5, see UI-SPEC.md
+  "Reference-lap visibility").** The owner's ask restated: reference laps
+  are currently *invisible until fed and unexplained once present*. R1 fixes
+  both, in two halves split by their data dependency:
+
+  **R1a — Discoverability (needs no reference data; not R0-gated — this is
+  what leads the owner to R0).** The vs-reference section is a designed
+  primary state even at N=0: where it renders nothing today, it renders one
+  dim direction line in the gates-panel register — *"No reference laps yet.
+  Add a faster driver's lap as a reference for gap context — it never enters
+  your history, trends, or scores. Import → role: reference."* — with a real
+  button to `#/upload`. One **guarantee line** sits wherever references
+  appear, stating the isolation plainly (never history / trends / classes /
+  consistency / incidents / Driver Model). The upload role `<option>`
+  already carries a short hint (`upload.jsx:106`); R1a promotes it to a
+  visible help line under the select, same copy as the guarantee.
+
+  **R1b — Legibility of real references (needs one reference lap; testable
+  against a fixture reference lap, which the suite already builds —
+  `test_attribution.py:253` et al.).** A **pit-board stat tile** on the
+  cohort page: "N reference laps" (count of `/api/laps` rows with
+  `role='reference'` — the `shownCount` counting precedent, render-parity
+  clean). Each vs-reference finding's meta gains **"ref n=K"** from
+  `details.reference_n` (already in the payload — clean by construction), so
+  a gap to one lap never reads like a gap to thirty. The **"who"**: a
+  compact "References" line listing each reference lap's driver + lap time —
+  lap time (`duration_s`) is already returned by `/api/laps`; **driver is
+  not**, so R1b adds `driver` to that endpoint's SELECT (`api.py:177`) — a
+  single read-field addition, the value then traces to a read endpoint like
+  every other on-screen figure (render-parity honored, not bypassed).
+
+  Tests: `#/garage` aside, R1 adds no route, so both hardcoded route lists
+  are unchanged; the render-parity crawler now needs a reference lap in its
+  fixture DB so the vs-reference section is exercised (add one — the same
+  synthetic `role='reference'` helper the attribution tests use); DOM
+  assertions on the cohort/laps markup updated in the same change. Deeper
+  reference identity (date, per-lap distribution in the corner drill) stays
+  in R2.
 - **R2 — Reference identity and depth (small engine + payload).** A
   `references` block in the cohort payload: the envelope (n, median, best)
   plus contributing laps (driver, lap time, date — already stored, never

@@ -158,11 +158,48 @@ loop from color-only to every token group. `_TOKENS` mirrors the `color` +
 `font` merges only, so `shape` never touches the reports; the
 `font.display` addition does, one line, test-enforced.
 
+**Reference-lap visibility (owner-directed 2026-07-22; folds REFERENCE-LAPS.md
+R1 into this restyle).** Reference laps are a built, tested, isolated engine
+feature (`docs/REFERENCE-LAPS.md`) that is invisible in the UI until fed and
+unexplained once present. Because U5 already rebuilds the exact surfaces
+involved — cohort stat tiles, empty states, the upload view — reference
+visibility rides U5 rather than waiting:
+
+- The **vs-reference source section** becomes a designed primary state at
+  N=0 (like every other empty state here): a dim direction line — *"No
+  reference laps yet. Add a faster driver's lap as a reference for gap
+  context — it never enters your history, trends, or scores."* — plus a
+  button to `#/upload`. This is the affordance that makes the feature
+  discoverable at all; it needs no reference data.
+- A **guarantee line** wherever references appear, stating the isolation in
+  the product's fixed vocabulary (never history / trends / classes /
+  consistency / incidents / Driver Model). The upload role select's existing
+  one-line hint is promoted to the same visible copy.
+- A **reference stat tile** in the cohort pit-board row ("N reference laps",
+  counted from `/api/laps` rows — the counting precedent), each
+  vs-reference finding's meta gains **"ref n=K"** (`details.reference_n`,
+  already in the payload), and a compact **"References" line** names each
+  reference's driver + lap time. Lap time is already returned by
+  `/api/laps`; **driver is the one read-field addition** to that endpoint
+  (`api.py`) so the name traces to a read endpoint — render parity honored,
+  never bypassed.
+- Color grammar unchanged: references stay structurally identified (the
+  existing dotted `vs-reference` left-rule and tag chip), never a semantic
+  color — a gap is context, not a verdict (color rule 2; SPEC.md
+  decision 8).
+
+The engine is untouched; this is pure rendering of values that already
+exist (plus one read field). Full spec and the deeper R2/R3 work:
+`docs/REFERENCE-LAPS.md`.
+
 **Test consequences (stated here so no future view forgets):** the browser
 trust-gate tests hardcode their route lists (`tests/test_render_parity.py`,
 `tests/test_offline.py`) — new routes are never auto-covered. U5 adds
 `#/garage` to both. Any DOM-structure assertions that key on restyled
-markup are updated in the same change, never deleted.
+markup are updated in the same change, never deleted. The render-parity
+crawler's fixture DB gains one `role='reference'` lap (the synthetic helper
+the attribution tests already use) so the vs-reference section is actually
+exercised, not skipped as empty.
 
 ## Milestones
 
@@ -172,7 +209,7 @@ markup are updated in the same change, never deleted.
 - **U3 — Chat.** SSE progress, validated-only rendering, tool-call audit, staged/confirm flow end to end.
 - **U4 — Packaging & polish. Done (2026-07-21).** `driverdna ui` command, built assets shipped in-package — already true since U0. This pass closed the remaining gaps: the static HTML report templates migrated onto `ui/tokens.json` (`report/builder.py`'s `_TOKENS`, kept in sync by a test that reads the real JSON file; chart colors mirror the SPA's own `app.css` convention exactly — neutral fill, single max value in `--warn`); fonts self-hosted in the SPA (`@fontsource`, latin subset, the weights actually used); and offline verification became a real dynamic test (trust gate 5) — Playwright actively blocking every non-localhost request across every route, not a static grep. Report HTML determinism (byte-identical across independent renders) is now its own test, closing a gap this milestone's own text named. A broader visual "design pass" beyond color/type/offline was not separately re-audited — U1–U3 already built the SPA against this document's rules directly.
 
-- **U5 — "Pit wall" restyle (design language v2; specced 2026-07-22, not yet built).** Tokens delta + condensed display face self-hosted; shell/tab bar + wordmark; button system; stat tiles; Garage view (view 8); empty-state kit; per-view application (home, cohort, corner, finding, laps, config, chat, upload). Done when: all five trust gates green with `#/garage` added to both hardcoded route lists; `_TOKENS` byte-match green; built SPA ships in-package; owner reviews the built result against `docs/ui-redesign-mockup.html` and accepts or amends here.
+- **U5 — "Pit wall" restyle (design language v2; specced 2026-07-22, not yet built).** Tokens delta + condensed display face self-hosted; shell/tab bar + wordmark; button system; stat tiles; Garage view (view 8); empty-state kit; **reference-lap visibility (REFERENCE-LAPS.md R1: the N=0 vs-reference direction state + button, the guarantee line, the reference stat tile, "ref n=K" on gap findings, and the "References" line over the one `/api/laps` driver-field addition)**; per-view application (home, cohort, corner, finding, laps, config, chat, upload). Done when: all five trust gates green with `#/garage` added to both hardcoded route lists and one `role='reference'` lap in the crawler fixture so the vs-reference section is exercised; `_TOKENS` byte-match green; built SPA ships in-package; owner reviews the built result against `docs/ui-redesign-mockup.html` and accepts or amends here.
 - **U6 — Cockpit actions ("more buttons", half two; specced 2026-07-22, not yet built).** Two write endpoints wrapping existing audited paths under decision 3's discipline (effects identical to the CLI equivalent, tested): `POST /api/sync` (wraps `sync_driver`; `GARAGE61_TOKEN` stays env-only — an absent token is a directive error state, **never an input field**; secrets never transit the browser) and `POST /api/cohorts/{slug}/rebuild-map` (wraps the A22 in-place refreeze; behind its own explicit, distinct confirm control per decision 5, because it rewrites frozen geometry). Each button renders the engine's own result verbatim (sync counts; rebuild report including cleared-stale-phase notices). A button appears only when its endpoint exists — the UI never shows a dead control.
 
 Strict order; a milestone begins only when the prior one's gates pass.

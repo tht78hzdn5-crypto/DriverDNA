@@ -91,6 +91,12 @@ can't fetch them. The doc gives the owner-runnable recipe (Garage61 web
 export → `import --role reference`), six gaps, and a design-stage R-track
 (R0 feed-and-pin → R1 visibility → R2 identity/depth → R3 curation) with
 open decisions flagged, not picked. Nothing built; awaiting owner reaction.
+Same-day follow-up (owner asked to make references easier to see/understand
+and put it in the UI plan): R1 fleshed into a see-&-understand layer and
+folded into U5 — N=0 vs-reference direction state + button, isolation
+guarantee line, reference stat tile, "ref n=K" on gap findings, and a
+"References" line (driver + lap time) over one read-field addition (`driver`
+on `/api/laps`). Mockup updated to show it; still spec-only.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`

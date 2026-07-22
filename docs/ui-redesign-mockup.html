@@ -142,6 +142,14 @@ h2 { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.0
   color: var(--dim); margin: 0 0 0.55rem; }
 .source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
 .source-section.vs-self { border-left-style: solid; }
+.source-section.vs-reference { border-left-style: dotted; }
+/* Reference isolation guarantee — structural (dim + line), never a semantic
+   color: a gap is context, not a verdict. */
+.guarantee { color: var(--dim); font-size: 0.74rem; margin: 0.4rem 0 0.2rem;
+  border-left: 2px solid var(--line); padding-left: 0.5rem; }
+.ref-line { color: var(--dim); font-size: 0.76rem; margin-top: 0.5rem; }
+.ref-line b { color: var(--text); font-weight: 500; }
+.ref-empty { color: var(--dim); font-size: 0.82rem; margin: 0.2rem 0 0.7rem; }
 .src-tag { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--dim); border: 1px solid var(--line); padding: 0.05rem 0.35rem; margin-right: 0.5rem; }
 .finding { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem 0.55rem; }
@@ -271,6 +279,44 @@ h2 { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.0
           </div>
           <div class="reason">needs 2 sessions — progress: 1 of 2</div>
         </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="sample-label">Reference laps — made visible &amp; explained (REFERENCE-LAPS.md R1, folded into U5)</div>
+  <div class="grid">
+    <!-- Cohort with references present: a reference pit-board tile, the -->
+    <!-- vs-reference section with per-finding ref-n and a "who" line. -->
+    <section class="panel">
+      <div class="context">
+        <span class="crumb">Garage / <b>GR86 @ Spa-Francorchamps</b></span>
+      </div>
+      <div class="tiles" style="margin-bottom: 0.9rem;">
+        <div class="tile"><div class="v">11</div><div class="k">Your laps</div></div>
+        <div class="tile"><div class="v">3</div><div class="k">Reference laps</div><div class="s">context only</div></div>
+        <div class="tile"><div class="v">1</div><div class="k">Findings shown</div></div>
+      </div>
+      <div class="source-section vs-reference">
+        <p class="eyebrow"><span class="src-tag">vs-reference</span>gap to reference — context, not recoverable time</p>
+        <div class="guarantee">Reference laps never enter your history, trends, classes, consistency, incidents, or Driver Model.</div>
+        <div class="finding">
+          <div class="head">
+            <span class="desc">T8 entry: gap to reference +0.34 s</span>
+            <span class="val num">+0.34 s</span>
+          </div>
+          <div class="meta num">your n=9 · ref n=3 · best-vs-best +0.21 s</div>
+        </div>
+        <div class="ref-line">References: <b>J. Doe</b> <span class="num">1:52.4</span> · <b>A. Ng</b> <span class="num">1:52.9</span> · <b>J. Doe</b> <span class="num">1:53.1</span></div>
+      </div>
+    </section>
+
+    <!-- Same section at N=0: a designed primary state, not a blank -->
+    <section class="panel">
+      <div class="source-section vs-reference">
+        <p class="eyebrow"><span class="src-tag">vs-reference</span>gap to reference</p>
+        <div class="ref-empty">No reference laps yet. Add a faster driver's lap as a
+        reference for gap context — it never enters your history, trends, or scores.</div>
+        <button class="btn-primary">Import a reference lap</button>
       </div>
     </section>
   </div>

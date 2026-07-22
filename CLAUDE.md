@@ -308,8 +308,11 @@ from the real fixtures and reviewed.
   but has never fired — the DB holds zero reference laps since `sync`
   structurally can't fetch them. Doc: owner-runnable recipe, six gaps,
   design-stage R-track (R0 feed-and-pin gate → R1 visibility → R2
-  identity/depth → R3 curation), open decisions flagged. Awaiting owner
-  reaction.
+  identity/depth → R3 curation), open decisions flagged. R1 (see &
+  understand) is folded into U5 per UI-SPEC.md "Reference-lap visibility":
+  N=0 direction state + button, isolation guarantee line, reference stat
+  tile, "ref n=K" on gap findings, "References" line over one read-field
+  addition (`driver` on `/api/laps`). Awaiting owner reaction.
 
 Update this section as milestones complete.
 

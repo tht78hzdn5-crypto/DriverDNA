@@ -275,6 +275,19 @@ in `CLAUDE.md`). Newest first.
   (no references in Driver Model/trends/classes/consistency/incidents, no
   "recoverable time", no auto-sync, no blending). Nothing built; awaiting
   owner reaction, M7 precedent.
+  *Follow-up same day (owner: "make the reference lap easier to see and
+  understand and incorporate that into the ui plan"):* R1 fleshed into a
+  "see & understand" layer and **folded into U5** (UI-SPEC.md
+  "Reference-lap visibility"). Split by data dependency: R1a
+  discoverability (N=0 vs-reference direction state + import button, the
+  isolation guarantee line, upload help — needs no data, isn't R0-gated,
+  and is what leads the owner to R0) and R1b legibility (reference stat
+  tile, "ref n=K" on gap findings from the payload, a "References" line
+  naming driver + lap time). One read-field addition only: `driver` on
+  `/api/laps` (`api.py`) so the name traces to a read endpoint — render
+  parity honored, engine untouched. Mockup updated to show both states
+  (`docs/ui-redesign-mockup.html`). Crawler fixture gains one
+  `role='reference'` lap so the section is exercised.
 - **2026-07-22 — UI design language v2 ("pit wall") specced, owner-directed.**
   Owner asked for a better UI design: keep the color scheme; more simplicity,
   more buttons, a small tinge of personality; iRacing's UI/promotional
