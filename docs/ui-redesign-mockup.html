@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DriverDNA — design language v2 ("pit wall") mockup</title>
+<style>
+/* ------------------------------------------------------------------ */
+/* DriverDNA design language v2 ("pit wall") — static mockup.          */
+/* Self-contained, no external requests, dark-only (a product          */
+/* commitment, not an omission — UI-SPEC.md design language).          */
+/* Every color below is ui/tokens.json verbatim; nothing new.          */
+/* The display face falls back to system condensed cuts here — the     */
+/* built SPA self-hosts IBM Plex Sans Condensed (latin, 600/700).      */
+/* EVERY NUMBER ON THIS PAGE IS A PLACEHOLDER, NOT ENGINE OUTPUT.      */
+/* ------------------------------------------------------------------ */
+:root {
+  --base: #101318; --panel: #171B22; --raised: #1F242D; --line: #2A303A;
+  --text: #E8EAED; --dim: #8C93A0;
+  --best: #B48CFF; --ok: #3ECF8E; --warn: #E8A13C; --bad: #E5484D;
+  --accent: #6EA8D8;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --display: 'IBM Plex Sans Condensed', 'Roboto Condensed', 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  --chamfer: 10px; --chamfer-s: 8px;
+}
+* { box-sizing: border-box; }
+html { background: var(--base); }
+body {
+  margin: 0; background: var(--base); color: var(--text);
+  font-family: var(--sans); font-size: 15px; line-height: 1.45;
+}
+.wrap { max-width: 64rem; margin: 0 auto; padding: 0 1rem 4rem; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Structure labels: the one place the display face speaks. */
+.disp {
+  font-family: var(--display); text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 600;
+}
+
+/* Mockup banner — part of this document, NOT part of the product UI. */
+.mock-banner {
+  border: 1px solid var(--warn); color: var(--warn); background: var(--panel);
+  font-size: 0.78rem; padding: 0.55rem 0.8rem; margin: 1rem 0 1.4rem;
+}
+.mock-banner b { letter-spacing: 0.08em; }
+.mock-note {
+  color: var(--dim); font-size: 0.75rem; margin: 2.2rem 0 0;
+  border-top: 1px solid var(--line); padding-top: 0.8rem;
+}
+.sample-label {
+  color: var(--dim); font-size: 0.7rem; letter-spacing: 0.12em;
+  text-transform: uppercase; margin: 2rem 0 0.6rem; font-family: var(--display);
+}
+
+/* --- Shell: fixed tab bar, wordmark + helix/racing-line mark -------- */
+.topbar {
+  display: flex; align-items: center; gap: 1.4rem;
+  padding: 0.7rem 0 0; border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.7rem; }
+.brand .word { font-family: var(--display); font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.08em; color: var(--text); }
+.brand .word b { color: var(--accent); font-weight: 700; }
+.tabs { display: flex; gap: 0.2rem; overflow-x: auto; }
+.tab {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.8rem; color: var(--dim);
+  padding: 0.35rem 0.75rem 0.85rem; border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); text-decoration: none; }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* --- View title row + action buttons ------------------------------- */
+.viewhead {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0 1rem;
+}
+h1 { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 1.35rem; font-weight: 700; margin: 0; }
+h2 { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.85rem; font-weight: 600; margin: 0 0 0.6rem; }
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* --- Buttons: three tiers + confirm; chamfered; inset focus ring ---- */
+.btn, .btn-primary {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.8rem; cursor: pointer;
+  min-height: 2.5rem; padding: 0.55rem 1.1rem; border: 1px solid var(--line);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-s)) 0, 100% var(--chamfer-s), 100% 100%, 0 100%);
+  transition: border-color 120ms, color 120ms, background 120ms;
+}
+.btn-primary { background: var(--accent); color: var(--base); border-color: var(--accent); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn { background: var(--raised); color: var(--text); }
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small { min-height: 0; padding: 0.25rem 0.6rem; font-size: 0.72rem; }
+.btn.confirm { border-color: var(--ok); color: var(--ok); }
+.btn.confirm:hover:not(:disabled) { background: rgba(62, 207, 142, 0.1); }
+.btn:focus-visible, .btn-primary:focus-visible {
+  outline: none; box-shadow: inset 0 0 0 2px var(--accent);
+}
+.btn.confirm:focus-visible { box-shadow: inset 0 0 0 2px var(--ok); }
+
+/* --- Panels: chamfered top-right, otherwise the quiet grammar ------- */
+.grid { display: flex; flex-direction: column; gap: 1.1rem; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 0.9rem 1rem 1rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+
+/* --- Stat tiles ("pit board") --------------------------------------- */
+.tiles { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.tile {
+  background: var(--panel); border: 1px solid var(--line); padding: 0.7rem 0.85rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.tile .v { font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 1.6rem; line-height: 1.15; }
+.tile .k { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.68rem; color: var(--dim); margin-top: 0.2rem; }
+.tile .s { color: var(--dim); font-size: 0.7rem; margin-top: 0.15rem; }
+
+/* --- Context strip (cohort-scoped nav, replaces shape-shifting nav) - */
+.context {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  font-size: 0.8rem; color: var(--dim); margin: -0.4rem 0 1rem;
+}
+.context .crumb b { color: var(--text); font-weight: 500; }
+
+/* --- Findings: unchanged grammar, restyled headers ------------------ */
+.eyebrow { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--dim); margin: 0 0 0.55rem; }
+.source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
+.source-section.vs-self { border-left-style: solid; }
+.src-tag { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim); border: 1px solid var(--line); padding: 0.05rem 0.35rem; margin-right: 0.5rem; }
+.finding { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem 0.55rem; }
+.finding:first-of-type { border-top: 0; }
+.finding .head { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
+.finding .desc { font-size: 0.86rem; }
+.finding .val { font-size: 0.95rem; white-space: nowrap; }
+.finding .meta { color: var(--dim); font-size: 0.74rem; margin-top: 0.15rem; }
+.finding.suppressed .desc, .finding.suppressed .val { color: var(--dim); }
+.reason { color: var(--dim); font-size: 0.74rem; }
+.reason::before { content: "▸ "; color: var(--warn); }
+
+/* --- Coaching headline card ----------------------------------------- */
+.coach-headline {
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  background: var(--raised); padding: 0.8rem 0.9rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.coach-say { font-size: 1.05rem; font-weight: 500; line-height: 1.4; }
+.coach-why { color: var(--dim); font-size: 0.82rem; margin-top: 0.4rem; }
+.chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.55rem; }
+.chip { font-size: 0.68rem; color: var(--dim); border: 1px solid var(--line);
+  padding: 0.12rem 0.45rem; background: var(--raised); }
+
+/* --- Garage cards ---------------------------------------------------- */
+.cardlist { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.card {
+  border: 1px solid var(--line); background: var(--raised); padding: 0.7rem 0.8rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+  color: var(--text); display: block;
+}
+.card:hover { border-color: var(--accent); text-decoration: none; }
+.card .cohort-name { font-family: var(--display); text-transform: uppercase;
+  letter-spacing: 0.05em; font-weight: 600; font-size: 0.9rem; }
+.card .sub { color: var(--dim); font-size: 0.74rem; margin-top: 0.2rem; }
+
+/* --- Empty state: checkered ribbon + direction + CTA ----------------- */
+.empty { text-align: left; }
+.checker {
+  height: 8px; margin-bottom: 0.8rem;
+  background: repeating-conic-gradient(var(--line) 0% 25%, var(--raised) 0% 50%);
+  background-size: 16px 16px;
+}
+.empty p { margin: 0 0 0.7rem; color: var(--dim); font-size: 0.88rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="mock-banner"><b>DESIGN MOCKUP</b> — design language v2 ("pit wall"),
+  UI-SPEC.md, 2026-07-22. Every number, finding, and coaching line on this page is a
+  <b>placeholder</b> illustrating layout — none of it is engine output.</div>
+
+  <!-- Shell: constant six-tab bar; wordmark + helix/racing-line mark -->
+  <header class="topbar">
+    <span class="brand">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <polyline points="2,2 9,6 16,10 9,14 2,16" fill="none" stroke="#6EA8D8" stroke-width="1.6" stroke-linejoin="round"/>
+        <polyline points="16,2 9,6 2,10 9,14 16,16" fill="none" stroke="#8C93A0" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span class="word">DRIVER<b>DNA</b></span>
+    </span>
+    <nav class="tabs">
+      <a class="tab active" href="#">Driver</a>
+      <a class="tab" href="#">Model</a>
+      <a class="tab" href="#">Garage</a>
+      <a class="tab" href="#">Chat</a>
+      <a class="tab" href="#">Import</a>
+      <a class="tab" href="#">Config</a>
+    </nav>
+  </header>
+
+  <!-- View title + action row ("an action is a button") -->
+  <div class="viewhead">
+    <h1>Driver</h1>
+    <div class="actions">
+      <button class="btn">Ask the coach</button>
+      <button class="btn-primary">Import laps</button>
+    </div>
+  </div>
+
+  <!-- Pit-board stat tiles (values = payload or rendered-item counts) -->
+  <div class="tiles">
+    <div class="tile"><div class="v">2</div><div class="k">Cohorts</div></div>
+    <div class="tile"><div class="v">3</div><div class="k">Rollups shown</div></div>
+    <div class="tile"><div class="v">4</div><div class="k">Gated</div><div class="s">reasons stated below</div></div>
+  </div>
+
+  <div class="sample-label">Cohort view — context strip &amp; coaching headline</div>
+  <div class="grid">
+    <section class="panel">
+      <div class="context">
+        <span class="crumb">Garage / <b>GR86 @ Spa-Francorchamps</b></span>
+        <span style="flex:1"></span>
+        <button class="btn small">Laps</button>
+        <button class="btn small">Chat about this cohort</button>
+      </div>
+      <div class="coach-headline">
+        <div class="coach-say">Brake a car-length later into T8 and release in one motion.</div>
+        <div class="coach-why">Placeholder coaching copy — the real card renders the engine's
+        eligible principle verbatim, exactly as today.</div>
+        <div class="chips">
+          <span class="chip">braking</span>
+          <span class="chip num">T8</span>
+          <span class="chip num">0.31 s</span>
+          <span class="chip num dim">n=9</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Findings keep their exact grammar; only headers/buttons restyle -->
+    <section class="panel">
+      <h2>Findings</h2>
+      <div class="source-section vs-self">
+        <p class="eyebrow"><span class="src-tag">vs-self</span>your faster laps vs your slower laps</p>
+        <div class="finding">
+          <div class="head">
+            <span class="desc"><a href="#">Late brake release, T8 entry</a></span>
+            <span class="val num">0.31 s</span>
+          </div>
+          <div class="meta num">n=9 · spread 0.08</div>
+        </div>
+        <div class="finding suppressed">
+          <div class="head">
+            <span class="desc">Exit throttle timing, T12</span>
+            <span class="val num">0.12 s</span>
+          </div>
+          <div class="reason">needs 2 sessions — progress: 1 of 2</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="sample-label">Garage — the cohort index as its own destination (view 8)</div>
+  <div class="cardlist">
+    <a class="card" href="#">
+      <div class="cohort-name">GR86 @ Spa-Francorchamps</div>
+      <div class="sub">your cohort · laps &amp; sessions on the cohort page</div>
+    </a>
+    <a class="card" href="#">
+      <div class="cohort-name">Mustang GT4 @ Summit Point</div>
+      <div class="sub">your cohort · laps &amp; sessions on the cohort page</div>
+    </a>
+  </div>
+
+  <div class="sample-label">Empty state — checkered ribbon, direction, a real button</div>
+  <section class="panel empty">
+    <div class="checker" aria-hidden="true"></div>
+    <p>Nothing in the garage yet — bring your first laps in. Export CSVs from
+    Garage61 and import them here; car and track are read from the filename.</p>
+    <button class="btn-primary">Import laps</button>
+  </section>
+
+  <div class="sample-label">Button system — three tiers + confirm (unchanged semantics)</div>
+  <section class="panel">
+    <div class="actions">
+      <button class="btn-primary">Primary action</button>
+      <button class="btn">Secondary</button>
+      <button class="btn small">Inline</button>
+      <button class="btn confirm">Confirm change</button>
+      <button class="btn" disabled>Disabled</button>
+    </div>
+  </section>
+
+  <p class="mock-note">Palette: <span class="num">ui/tokens.json</span> verbatim — no new
+  colors (button ink on the accent fill reuses <span class="num">--base</span>). Display
+  face: IBM Plex Sans Condensed, self-hosted in the built SPA (this static mockup falls
+  back to your system's condensed cut). The cohort track map is deliberately absent here:
+  it stays the product's one bold element, unchanged by v2. Spec:
+  <span class="num">docs/UI-SPEC.md</span> § "Design language v2 — pit wall"; boundaries
+  (no license-letter grades, no alarm red, no decorative motion) are binding.</p>
+
+</div>
+</body>
+</html>

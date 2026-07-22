@@ -34,6 +34,7 @@ Write (wrappers only, each returning the audit record it created):
 5. **Chat.** Grounded session per decision 4/5. Evidence IDs in responses are links into views 3–4. Staged proposals render as a distinct card; `Confirm change` is its own labeled action.
 6. **Config.** Snapshot with per-key documentation, edits flowing through propose/apply, and `config_history` as the audit view with revert.
 7. **Laps.** Import/session listing with quality flags surfaced (clipped pedals, GPS-degraded, outlier screens) — the data-quality conscience of the instrument. **Import itself is `#/upload` (built 2026-07-21)**: file picker, car/track/role/date/session fields, and the engine's own per-file report (matched corners, admitted, class changes, duplicate detection) rendered back verbatim — no CLI required, including for the very first lap ever imported. Car/track are optional: left blank, each file's own car/track is auto-detected from the newer Garage61 export filename shape (`docs/garage61-api.md`), each file landing in its own resolved cohort; a file that can't be resolved either way is rejected up front, listed by name.
+8. **Garage (v2, 2026-07-22 — specced, builds with U5).** The cohort index as its own destination: a card grid over the existing `GET /api/cohorts` (car @ track, driver), click-through to each cohort. Driver home stops doubling as the cohort list and becomes purely the rollup (see "Design language v2"). No new endpoint; render-parity-clean by construction.
 
 ## Design language and tokens
 
@@ -49,13 +50,119 @@ Ground it in the subject: this is a measurement instrument for motorsport, and t
 
 **Tokens (defaults; tunable in one place):** ground in layered dark neutrals — base `#101318`, panel `#171B22`, raised `#1F242D`, line `#2A303A`; text `#E8EAED` primary / `#8C93A0` dim. Semantic: purple `#B48CFF`, green `#3ECF8E`, amber `#E8A13C`, red `#E5484D`. Interactive accent: muted steel `#6EA8D8`, used sparingly. Dark-only in v1; the token layer keeps a light theme possible, not promised.
 
-**Typography:** every figure set in a monospaced face with tabular numerals (IBM Plex Mono, bundled) — a number is never proportional; UI text in a neutral grotesk (IBM Plex Sans, bundled); no decorative display face. Data tables run timing-screen dense; interactive controls keep full hit areas.
+**Typography:** every figure set in a monospaced face with tabular numerals (IBM Plex Mono, bundled) — a number is never proportional; UI text in a neutral grotesk (IBM Plex Sans, bundled); no decorative display face *(amended by v2, 2026-07-22: one functional condensed display face for structure labels only — see "Design language v2"; body text and data remain Sans/Mono only, so the original intent, no typographic editorializing about numbers, survives verbatim)*. Data tables run timing-screen dense; interactive controls keep full hit areas.
 
 **Motion:** functional only — state transitions ≤ 150 ms, no chart entrance animation, `prefers-reduced-motion` honored.
 
 **States:** gated/suppressed items keep full structure at reduced emphasis with their reason line — legible, never faded to invisibility. Annotated findings sit in their own labeled group, measurement visible. A staged config proposal renders as an amber-ruled card (attention semantics) until confirmed or discarded.
 
 **Copy:** the product's fixed vocabulary — findings, gates, evidence, sources, staged, confirmed — one name per concept everywhere. Errors and empty states give direction, not mood. Quality floor without announcement: visible keyboard focus, readable at laptop and phone widths.
+
+## Design language v2 — "pit wall" (owner-directed, 2026-07-22)
+
+Owner directive: keep the palette; add simplicity, more buttons, and a small
+tinge of personality; the reference register is iRacing's UI and promotional
+language. v2 is a **presentation amendment**: the section above remains the
+base grammar and stays binding except where this section explicitly amends
+it. Mockup with labeled placeholder numbers: `docs/ui-redesign-mockup.html`.
+
+**Untouched, stated so nobody re-litigates it:** all eleven color values in
+`ui/tokens.json`; the three color-grammar rules (purple/green/amber
+semantics, red never driver pace; source identity structural, never color;
+one quiet interaction accent); mono tabular numerals for every figure;
+suppression/annotation rendering; motion rules; table density; dark-only;
+all five trust gates; the static reports' current appearance (reports
+inherit token *additions* through the `_TOKENS` mirror test but are not
+restyled this pass).
+
+**Type ramp (the personality core; amends the base typography clause).**
+One display face: **IBM Plex Sans Condensed** (self-hosted via
+`@fontsource`, latin subset, weights 600/700 only — U4's subsetting
+discipline), added to tokens as `font.display`. Used exclusively for
+*structure labels*: wordmark, view titles, section headers, nav tabs,
+button labels, stat-tile captions — always uppercase, `letter-spacing:
+0.06em`. Never body text, never a measurement. Same Plex superfamily, so
+the instrument still reads as one voice. (`font.display` lands in
+`report/builder.py`'s `_TOKENS` mirror too — the byte-match test enforces
+it; reports simply don't reference it yet.)
+
+**Shape: the chamfer.** One rule: an emphasized element cuts its top-right
+corner at 45° via `clip-path` — panels and stat tiles 10px, buttons 8px;
+chips, inputs, and table cells stay rectangular. This is the single
+iRacing-vernacular tell in the geometry; everything else stays
+hairline-bordered and flat. Because `clip-path` clips outlines, chamfered
+elements take keyboard focus as an **inset** ring (`box-shadow: inset 0 0 0
+2px var(--accent)`) — the visible-focus floor is non-negotiable.
+
+**Buttons ("more buttons", half one: prominence).** A real system, three
+tiers plus the existing confirm:
+
+- `btn-primary` — filled `--accent`, label ink is `--base` (reusing the
+  base token; no new color), chamfered, display-face uppercase, min-height
+  2.5rem. At most one per view section.
+- `btn` (secondary) — the current quiet raised/bordered style, chamfered,
+  display-face label.
+- `btn small` — unchanged, for inline/dense contexts.
+- `btn confirm` — unchanged green-outlined semantics; still never a default
+  action, still visually distinct (decision 5).
+
+Binding rule: **an action is a button; navigation to an entity is a link or
+card.** Every control that currently renders an action as a text link
+(import CTAs, "+ more principles", chat send, annotate/propose/apply/
+revert) becomes a system button. Hit areas ≥ 2.5rem.
+
+**Shell and navigation (simplicity, half one).** The topbar becomes a fixed
+tab bar that never changes shape with context: wordmark left — `DRIVER DNA`
+in the display face, `DNA` in `--accent`, beside an 18px inline-SVG mark
+(two interleaved polylines: a DNA half-twist that reads equally as two
+racing lines through a chicane; drawn once in the shell, zero image assets)
+— then six constant tabs: **Driver · Model · Garage · Chat · Import ·
+Config**. The active tab carries a 2px `--accent` underline, the one "kerb
+stripe" in the chrome. Contextual jumps (a cohort's laps/chat) leave the
+global nav and become a **context strip** under the view title: breadcrumb
+plus secondary buttons scoped to the entity. Narrow widths: tabs scroll
+horizontally; no hamburger.
+
+**Stat tiles ("pit board").** Views open with a row of tiles: a large mono
+figure (~1.6rem, tabular) over a display-face caption. Tile values come
+only from the payload/read endpoints or are counts of rendered payload
+items (the existing `shownCount` precedent — counting, never computing).
+Driver home: cohorts · rollups shown · gated. Cohort: laps · sessions ·
+findings shown · suppressed (promoting the existing chips). Corner drill:
+the phase deltas vs baseline.
+
+**Personality (the "small tinge" — a bounded kit, not a license).** Exactly
+four elements, plus a boundary:
+
+1. The wordmark + helix/racing-line mark (above).
+2. The kerb-stripe active-tab underline.
+3. Empty states open with an 8px checkered ribbon (CSS
+   `repeating-conic-gradient` in `--raised`/`--line` — dim, structural, no
+   new color) above the existing direction-first copy, plus a real CTA
+   button. Empty states remain a primary designed state.
+4. Register: motorsport idiom is allowed in *state* copy only (empty,
+   success, progress), at most one idiom per screen — "Nothing in the
+   garage yet — bring your first laps in."; upload success: "In the
+   garage." Never in measurement copy, gate reasons, or any sentence
+   carrying a number.
+
+Boundary (binding): **no license-class letter cosplay** on scores or
+confidence — a letter on a score is a grade, an opaque blend by another
+name; no alarm-red flourishes (color rule 1 stands); no decorative motion
+(motion rules stand); no texture or carbon-fiber imagery (image assets stay
+at zero).
+
+**Tokens delta.** `font.display` (above) plus a new top-level `shape` group
+(`chamfer`, `chamferSmall`) consumed by generalizing `main.jsx`'s injection
+loop from color-only to every token group. `_TOKENS` mirrors the `color` +
+`font` merges only, so `shape` never touches the reports; the
+`font.display` addition does, one line, test-enforced.
+
+**Test consequences (stated here so no future view forgets):** the browser
+trust-gate tests hardcode their route lists (`tests/test_render_parity.py`,
+`tests/test_offline.py`) — new routes are never auto-covered. U5 adds
+`#/garage` to both. Any DOM-structure assertions that key on restyled
+markup are updated in the same change, never deleted.
 
 ## Milestones
 
@@ -64,6 +171,9 @@ Ground it in the subject: this is a measurement instrument for motorsport, and t
 - **U2 — Writes.** Annotations and config panel through the gated paths; audit visible in-UI.
 - **U3 — Chat.** SSE progress, validated-only rendering, tool-call audit, staged/confirm flow end to end.
 - **U4 — Packaging & polish. Done (2026-07-21).** `driverdna ui` command, built assets shipped in-package — already true since U0. This pass closed the remaining gaps: the static HTML report templates migrated onto `ui/tokens.json` (`report/builder.py`'s `_TOKENS`, kept in sync by a test that reads the real JSON file; chart colors mirror the SPA's own `app.css` convention exactly — neutral fill, single max value in `--warn`); fonts self-hosted in the SPA (`@fontsource`, latin subset, the weights actually used); and offline verification became a real dynamic test (trust gate 5) — Playwright actively blocking every non-localhost request across every route, not a static grep. Report HTML determinism (byte-identical across independent renders) is now its own test, closing a gap this milestone's own text named. A broader visual "design pass" beyond color/type/offline was not separately re-audited — U1–U3 already built the SPA against this document's rules directly.
+
+- **U5 — "Pit wall" restyle (design language v2; specced 2026-07-22, not yet built).** Tokens delta + condensed display face self-hosted; shell/tab bar + wordmark; button system; stat tiles; Garage view (view 8); empty-state kit; per-view application (home, cohort, corner, finding, laps, config, chat, upload). Done when: all five trust gates green with `#/garage` added to both hardcoded route lists; `_TOKENS` byte-match green; built SPA ships in-package; owner reviews the built result against `docs/ui-redesign-mockup.html` and accepts or amends here.
+- **U6 — Cockpit actions ("more buttons", half two; specced 2026-07-22, not yet built).** Two write endpoints wrapping existing audited paths under decision 3's discipline (effects identical to the CLI equivalent, tested): `POST /api/sync` (wraps `sync_driver`; `GARAGE61_TOKEN` stays env-only — an absent token is a directive error state, **never an input field**; secrets never transit the browser) and `POST /api/cohorts/{slug}/rebuild-map` (wraps the A22 in-place refreeze; behind its own explicit, distinct confirm control per decision 5, because it rewrites frozen geometry). Each button renders the engine's own result verbatim (sync counts; rebuild report including cleared-stale-phase notices). A button appears only when its endpoint exists — the UI never shows a dead control.
 
 Strict order; a milestone begins only when the prior one's gates pass.
 
@@ -109,3 +219,14 @@ rationale), then U3 (2026-07-20 — UI plumbing over the already-mock-tested
 measurement claim; the same reasoning covers U4, which is packaging). The
 blind acceptance test remains the trust gate for the *engine's findings*,
 still pending the owner's independent multi-session Spa data.
+
+**Owner amendment (2026-07-22):** design language v2 ("pit wall") adopted at
+spec stage — owner directive: keep the palette; add simplicity, more
+buttons, and a small tinge of personality, with iRacing's UI/promotional
+language as the register reference. Adds view 8 (Garage), milestones U5–U6,
+and amends the base typography clause (one functional condensed display
+face for structure labels). Colors, color grammar, trust gates, and the
+philosophy are untouched. Mockup: `docs/ui-redesign-mockup.html`
+(placeholder numbers, labeled as such). Build follows the standing
+discipline: U5 begins on the owner's go, U6 only after U5's gates pass.
+Full record: PROJECT-BRIEF.md decision log, 2026-07-22.

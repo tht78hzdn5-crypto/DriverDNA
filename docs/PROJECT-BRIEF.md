@@ -252,6 +252,38 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-22 — UI design language v2 ("pit wall") specced, owner-directed.**
+  Owner asked for a better UI design: keep the color scheme; more simplicity,
+  more buttons, a small tinge of personality; iRacing's UI/promotional
+  language as the reference register. Specced as an amendment
+  (`docs/UI-SPEC.md`, "Design language v2"), not a rewrite: all eleven token
+  colors, the three color-grammar rules, structural source-tag identity, the
+  mono-numeral rule, suppression rendering, motion rules, and all five trust
+  gates are explicitly unchanged. What v2 adds: an IBM Plex Sans **Condensed**
+  display face for structure labels only — this amends the base section's "no
+  decorative display face" clause, and the recorded reason is that the
+  clause's intent (no typographic editorializing about *numbers*) survives
+  verbatim while structure labels gain a voice from the same Plex
+  superfamily; a single top-right 45° chamfer as the one geometric tell; a
+  three-tier button system plus the rule "an action is a button, navigation
+  is a link"; a constant six-tab shell (contextual links move to a per-view
+  context strip); a **Garage** view (view 8 — the cohort index over the
+  existing `GET /api/cohorts`, no new endpoint; driver home stops doubling as
+  the cohort list); pit-board stat tiles (payload values or rendered-item
+  counts only, the `shownCount` precedent); and a bounded four-element
+  personality kit with binding boundaries — no license-class letter cosplay
+  on scores (a letter on a score is a grade, an opaque blend by another
+  name), no alarm red, no decorative motion, idiom in state copy only. New
+  milestones: **U5** (restyle; `#/garage` added to both hardcoded browser
+  route lists) and **U6** (cockpit actions: `POST /api/sync` +
+  `POST /api/cohorts/{slug}/rebuild-map`, both CLI-effect-parity tested;
+  `GARAGE61_TOKEN` stays env-only, never an input field; rebuild-map behind
+  its own explicit confirm since it rewrites frozen geometry). Checked
+  against the philosophy: no principle touched; #6's anti-blend line is
+  guarded explicitly by the license-letter ban. Spec-first per the M7
+  precedent — build awaits owner go. Mockup with labeled placeholder
+  numbers: `docs/ui-redesign-mockup.html`. Delivered on session branch
+  `claude/driverdna-ui-redesign-j6riya`.
 - **2026-07-21 — `rebuild-map`: in-place refreeze of a frozen corner map from
   its full lap set (SPEC.md A22), the last of the owner's E→F→G arc.** Corner
   maps + canonical phase windows freeze from a cohort's first laps (M1) and

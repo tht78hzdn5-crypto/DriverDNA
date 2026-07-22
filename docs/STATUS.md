@@ -1,7 +1,10 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-21.** Branch `main` (commits land here directly as of
-today — the feature-branch/PR flow used earlier this session is retired).
+**Snapshot date: 2026-07-22.** Branch `main` (commits land here directly as of
+2026-07-21 — the feature-branch/PR flow used earlier that session is retired;
+this snapshot's UI-v2 spec is the one exception, delivered on the
+session-designated branch `claude/driverdna-ui-redesign-j6riya`, awaiting
+owner merge).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -65,6 +68,20 @@ retention can't be honestly re-measured, so its stale phase times are
 cleared and reported, never left silently outdated. Deterministic and
 idempotent; new geometry still enters only through the existing audited
 admission path. Closes the A17-deferred corner-map refreeze gap.
+**UI design language v2 ("pit wall") specced (2026-07-22)**: owner-directed
+redesign — palette kept byte-for-byte, more simplicity, a real button
+system, and a bounded personality kit, with iRacing's UI/promo language as
+the register reference. `docs/UI-SPEC.md` gains a "Design language v2"
+section, view 8 (Garage — cohort index over the existing `/api/cohorts`),
+and milestones **U5** (restyle) / **U6** (cockpit actions: `POST /api/sync`
++ `POST /api/cohorts/{slug}/rebuild-map`, CLI-effect parity, token
+env-only); the base "no decorative display face" clause is amended (one
+condensed Plex face, structure labels only, never data). Color grammar,
+trust gates, and philosophy untouched; explicit boundaries recorded (no
+license-letter grades on scores, no alarm red, no decorative motion). Spec
++ labeled-placeholder mockup only (`docs/ui-redesign-mockup.html`) — build
+awaits owner go, per the M7 spec-first precedent. Full record:
+PROJECT-BRIEF.md decision log.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
