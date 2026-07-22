@@ -82,6 +82,24 @@ license-letter grades on scores, no alarm red, no decorative motion). Spec
 + labeled-placeholder mockup only (`docs/ui-redesign-mockup.html`) — build
 awaits owner go, per the M7 spec-first precedent. Full record:
 PROJECT-BRIEF.md decision log.
+**U5 "pit wall" restyle built (2026-07-22, design language v2)**: the
+owner-directed redesign is live in the SPA. `ui/tokens.json` gains
+`font.display` (self-hosted IBM Plex Sans Condensed, 600/700 latin, offline
+intact) and a `shape` group; a condensed display face now carries structure
+labels only (wordmark, tabs, titles, buttons, tile captions), never data. A
+single top-right chamfer is the one geometric tell; a real three-tier button
+system replaced text-link actions; a constant six-tab shell (Driver · Model ·
+Garage · Chat · Import · Config) with a per-view context strip replaced the
+shape-shifting nav; a new **Garage** view (view 8) is the cohort index and
+driver home is now purely the rollup + pit-board stat tiles. Reference-lap
+visibility folded in (R1): reference tile + panel, isolation guarantee line,
+"ref n=K" on gap findings, a "References" line (driver + lap time) over one
+read-field addition (`driver` on `/api/laps`), and the N=0 direction state.
+Copy trimmed throughout after the owner flagged the first mockup "very wordy"
+(binding "Copy density" rule now in UI-SPEC.md). Colours, colour grammar,
+and all five trust gates unchanged; `_TOKENS` byte-match green; built SPA
+reships in-package; suite green. Milestone **U6** (cockpit actions: sync +
+rebuild-map buttons) remains specced, not built.
 **Reference-lap survey + plan written (2026-07-22, `docs/REFERENCE-LAPS.md`)**:
 owner-requested. The machinery exists and is tested (role column,
 query-surface isolation, shared corner maps, `reference_envelope` →

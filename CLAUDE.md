@@ -284,22 +284,27 @@ from the real fixtures and reviewed.
   idempotent (verified against the two real Spa/GR86 cohorts). Reuses
   `_freeze_windows_for_admitted`'s exact mechanism, generalized to every
   corner. Closes the A17-deferred refreeze gap.
-- **UI design language v2 ("pit wall"): specced, not built (2026-07-22)** —
-  owner-directed redesign recorded in UI-SPEC.md §"Design language v2":
-  palette and color grammar untouched; adds a condensed Plex display face
-  (structure labels only — amends the "no decorative display face" clause),
-  a top-right-chamfer shape rule, a three-tier button system ("an action is
-  a button, navigation is a link"), a constant six-tab shell with a per-view
-  context strip, a Garage view (cohort index over the existing
-  `/api/cohorts`), pit-board stat tiles, and a bounded personality kit with
-  binding boundaries (no license-letter grades on scores, no alarm red, no
-  decorative motion, idiom in state copy only). New milestones U5 (restyle;
-  `#/garage` added to both hardcoded browser-test route lists) and U6
-  (cockpit actions: `POST /api/sync` + `POST /api/cohorts/{slug}/rebuild-map`,
-  CLI-effect parity, `GARAGE61_TOKEN` env-only — never an input field).
-  Mockup: docs/ui-redesign-mockup.html (placeholder numbers, labeled). Build
-  awaits owner go (M7 spec-first precedent). Record: PROJECT-BRIEF.md
-  decision log + STATUS.md.
+- **UI design language v2 ("pit wall"): U5 built (2026-07-22)** —
+  owner-directed redesign, spec in UI-SPEC.md §"Design language v2", now
+  live in the SPA. Palette and colour grammar untouched; a condensed Plex
+  display face carries structure labels only (self-hosted 600/700, offline
+  intact), one top-right chamfer is the geometric tell, a three-tier button
+  system replaced text-link actions ("an action is a button, navigation is a
+  link"), a constant six-tab shell (Driver · Model · Garage · Chat · Import ·
+  Config) with a per-view context strip replaced the shape-shifting nav, a
+  new Garage view (view 8) is the cohort index over the existing
+  `/api/cohorts`, and driver home is now the rollup + pit-board stat tiles.
+  Reference-lap visibility folded in (R1): tile + panel, guarantee line,
+  "ref n=K" on gap findings, a "References" line over one read-field
+  addition (`driver` on `/api/laps`), N=0 direction state. Copy trimmed per
+  the owner's "very wordy" note (binding "Copy density" rule in UI-SPEC.md).
+  `_TOKENS` byte-match green; five trust gates green; built SPA reships
+  in-package. `#/garage` added to the offline route list only (no
+  measurement to parity-crawl, like `#/upload`); no reference lap seeded
+  into the shared fixture (parity-clean by construction). **U6** (cockpit
+  actions: `POST /api/sync` + `POST /api/cohorts/{slug}/rebuild-map`,
+  CLI-effect parity, `GARAGE61_TOKEN` env-only — never an input field)
+  remains specced, not built. Mockup: docs/ui-redesign-mockup.html.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

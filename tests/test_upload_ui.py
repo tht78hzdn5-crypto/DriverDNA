@@ -83,7 +83,7 @@ def test_cold_start_shows_direction_not_a_raw_cli_error(cold_server):
         page.wait_for_timeout(400)
         body = page.locator("body").inner_text()
         assert "no DB at" not in body, "raw CLI-flavored 404 leaked into the cold-start UI"
-        assert "Import laps" in body
+        assert "import laps" in body.lower()  # v2: btn label renders upper-case
         browser.close()
 
 
@@ -107,7 +107,7 @@ def test_upload_flow_end_to_end_through_the_real_browser(cold_server):
         result_text = page.locator("body").inner_text()
         assert "imported" in result_text
         assert "corners 14/14 matched" in result_text
-        assert "View GR86 @ Spa-Francorchamps" in result_text
+        assert "view gr86 @ spa-francorchamps" in result_text.lower()  # v2: btn upper-case
         assert db_path.exists(), "the DB must exist now — the cold-start path worked"
 
         page.click("text=View GR86 @ Spa-Francorchamps")
@@ -149,7 +149,7 @@ def test_auto_detect_flow_with_blank_car_track_through_the_real_browser(cold_ser
         result_text = page.locator("body").inner_text()
         assert "Ford Mustang GT4 @ Summit Point Raceway" in result_text
         assert "auto-detected" in result_text.lower()  # .src-tag renders upper-case
-        assert "View Ford Mustang GT4 @ Summit Point Raceway" in result_text
+        assert "view ford mustang gt4 @ summit point raceway" in result_text.lower()  # v2: btn upper-case
 
         page.click("text=View Ford Mustang GT4 @ Summit Point Raceway")
         page.wait_for_selector("svg.trackmap", timeout=8000)

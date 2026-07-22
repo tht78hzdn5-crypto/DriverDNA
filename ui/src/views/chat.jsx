@@ -139,10 +139,7 @@ export default function Chat({ slug }) {
       <section className="panel">
         <p className="eyebrow">Chat</p>
         <h1>{cohort ? `${cohort.car} @ ${cohort.track}` : slug}</h1>
-        <div className="sub">
-          Grounded in your deterministic findings — every claim cites evidence
-          or is labeled a hypothesis. "Insufficient data" is a valid answer.
-        </div>
+        <div className="sub">Grounded in your findings — every claim cites evidence.</div>
       </section>
 
       {error && <div className="error">{error}</div>}
@@ -150,8 +147,7 @@ export default function Chat({ slug }) {
       <section className="panel chat-log">
         {turns.length === 0 && !progress && (
           <div className="dim" style={{ fontSize: "0.82rem" }}>
-            Ask about a finding, challenge an interpretation, or ask what to
-            focus on next.
+            Ask about a finding, or what to focus on next.
           </div>
         )}
         {turns.map((t, i) => (

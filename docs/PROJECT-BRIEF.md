@@ -252,6 +252,40 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-22 — U5 "pit wall" restyle built (design language v2).** Executed
+  the v2 spec on the owner's go. Token layer: `ui/tokens.json` gains
+  `font.display` (IBM Plex Sans Condensed, self-hosted 600/700 latin —
+  bundled, offline intact) and a `shape` group (chamfer sizes); `main.jsx`
+  generalized from colour-only to inject every token group as a CSS var;
+  `report/builder.py`'s `_TOKENS` mirror gains `display` so the byte-match
+  test stays green (reports don't reference it yet — SPA-only, like the
+  bundled fonts). Shell: a constant six-tab bar (Driver · Model · Garage ·
+  Chat · Import · Config) with the DriverDNA wordmark + a helix/racing-line
+  inline-SVG mark; cohort-scoped nav moved to a per-view context strip
+  (`ContextStrip`). New **Garage** view (view 8) over the existing
+  `/api/cohorts`; driver home is now purely the rollup + pit-board stat
+  tiles. Button system (chamfered, condensed-uppercase labels, inset focus
+  ring): `btn-primary`/`btn`/`btn small`/`btn confirm`, and every action
+  that was a text link is now a button. Reference-lap visibility folded in
+  (R1): a "Reference laps" cohort tile + panel, the isolation guarantee
+  line, "ref n=K" on vs-reference findings, a "References" line naming
+  driver + lap time over the one read-field addition (`driver` on
+  `/api/laps`), and the N=0 direction state. Copy trimmed throughout per the
+  owner's "very wordy" note (the explanatory `.sub` paragraphs cut to one
+  line or a `title` tooltip; measurement copy and gate reasons kept verbatim).
+  Colours, colour grammar, and all five trust gates unchanged. Two
+  route-list details resolved at build (flagged in UI-SPEC U5): `#/garage`
+  added to the offline route list only (no measurement to parity-crawl,
+  like `#/upload`); no `role='reference'` lap seeded into the shared
+  `tests/fixtures/` DB (reference figures are parity-clean by construction;
+  seeding would perturb determinism/report-snapshot tests). Built SPA
+  reships in-package; suite green. Mockup: `docs/ui-redesign-mockup.html`.
+- **2026-07-22 — UI copy flagged "very wordy" (owner).** Recorded as binding
+  copy guidance in UI-SPEC.md ("Copy density"): the instrument speaks in
+  labels, not paragraphs (iRacing/timing-screen register) — captions ≤ 3
+  words, state lines one sentence, explanatory sub-paragraphs cut to a line
+  or a tooltip; measurement copy and gate reasons keep their exact words.
+  Acted on in the U5 build above, not just filed.
 - **2026-07-22 — Reference-lap survey + R-track plan written
   (`docs/REFERENCE-LAPS.md`), owner-requested.** Owner asked for "a schema or
   a plan on incorporating reference laps — one may exist but i haven't seen

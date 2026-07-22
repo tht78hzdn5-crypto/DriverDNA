@@ -131,6 +131,19 @@ Driver home: cohorts · rollups shown · gated. Cohort: laps · sessions ·
 findings shown · suppressed (promoting the existing chips). Corner drill:
 the phase deltas vs baseline.
 
+**Copy density (owner feedback 2026-07-22 on the first mockup: "very
+wordy").** Binding for U5 and after: the instrument speaks in labels, not
+paragraphs — the iRacing/timing-screen register. Rules: a caption or tile
+label is ≤ 3 words; an empty/state line is one sentence, not two; the
+explanatory sub-paragraphs that currently sit under headings (`.sub` blocks
+on cohort, config, chat, upload, model) are cut to a single short line or
+dropped — the philosophy is shown by structure (evidence one tap away,
+sources separated), not narrated in prose every screen. Measurement copy
+and gate reasons keep their exact words (accuracy over brevity there); this
+trims *chrome*, never a number or a stated reason. When a longer
+explanation is genuinely useful, it goes in a `title=` tooltip or the
+finding/evidence view, not inline on every render.
+
 **Personality (the "small tinge" — a bounded kit, not a license).** Exactly
 four elements, plus a boundary:
 
@@ -196,10 +209,13 @@ exist (plus one read field). Full spec and the deeper R2/R3 work:
 trust-gate tests hardcode their route lists (`tests/test_render_parity.py`,
 `tests/test_offline.py`) — new routes are never auto-covered. U5 adds
 `#/garage` to both. Any DOM-structure assertions that key on restyled
-markup are updated in the same change, never deleted. The render-parity
-crawler's fixture DB gains one `role='reference'` lap (the synthetic helper
-the attribution tests already use) so the vs-reference section is actually
-exercised, not skipped as empty.
+markup are updated in the same change, never deleted. `#/garage` goes to
+the offline route list only (it renders no measurement; the render-parity
+gate requires a `.num` per route, so garage is excluded there exactly as
+`#/upload` is). The shared `tests/fixtures/` DB is **not** given a
+`role='reference'` lap — the reference figures are parity-clean by
+construction (integer counts + pooled `/api/laps` lap times), and seeding
+the shared fixture would perturb the determinism and report-snapshot tests.
 
 ## Milestones
 
@@ -209,7 +225,7 @@ exercised, not skipped as empty.
 - **U3 — Chat.** SSE progress, validated-only rendering, tool-call audit, staged/confirm flow end to end.
 - **U4 — Packaging & polish. Done (2026-07-21).** `driverdna ui` command, built assets shipped in-package — already true since U0. This pass closed the remaining gaps: the static HTML report templates migrated onto `ui/tokens.json` (`report/builder.py`'s `_TOKENS`, kept in sync by a test that reads the real JSON file; chart colors mirror the SPA's own `app.css` convention exactly — neutral fill, single max value in `--warn`); fonts self-hosted in the SPA (`@fontsource`, latin subset, the weights actually used); and offline verification became a real dynamic test (trust gate 5) — Playwright actively blocking every non-localhost request across every route, not a static grep. Report HTML determinism (byte-identical across independent renders) is now its own test, closing a gap this milestone's own text named. A broader visual "design pass" beyond color/type/offline was not separately re-audited — U1–U3 already built the SPA against this document's rules directly.
 
-- **U5 — "Pit wall" restyle (design language v2; specced 2026-07-22, not yet built).** Tokens delta + condensed display face self-hosted; shell/tab bar + wordmark; button system; stat tiles; Garage view (view 8); empty-state kit; **reference-lap visibility (REFERENCE-LAPS.md R1: the N=0 vs-reference direction state + button, the guarantee line, the reference stat tile, "ref n=K" on gap findings, and the "References" line over the one `/api/laps` driver-field addition)**; per-view application (home, cohort, corner, finding, laps, config, chat, upload). Done when: all five trust gates green with `#/garage` added to both hardcoded route lists and one `role='reference'` lap in the crawler fixture so the vs-reference section is exercised; `_TOKENS` byte-match green; built SPA ships in-package; owner reviews the built result against `docs/ui-redesign-mockup.html` and accepts or amends here.
+- **U5 — "Pit wall" restyle (design language v2; specced 2026-07-22, not yet built).** Tokens delta + condensed display face self-hosted; shell/tab bar + wordmark; button system; stat tiles; Garage view (view 8); empty-state kit; **reference-lap visibility (REFERENCE-LAPS.md R1: the N=0 vs-reference direction state + button, the guarantee line, the reference stat tile, "ref n=K" on gap findings, and the "References" line over the one `/api/laps` driver-field addition)**; per-view application (home, cohort, corner, finding, laps, config, chat, upload). Done when: all five trust gates green; `_TOKENS` byte-match green; built SPA ships in-package; owner reviews the built result against `docs/ui-redesign-mockup.html` and accepts or amends here. **Built 2026-07-22** — see PROJECT-BRIEF.md. Two route-list details resolved at build time and flagged (not the "both lists" the plan first assumed): `#/garage` is added to the **offline** route list only — it renders no measurement, and the render-parity gate's own `wait_for_selector('.num')` requires one, so garage is excluded from that crawl for the same reason `#/upload` already is. The reference-visibility figures are parity-clean by construction (counts and `ref n=K` are integers, out of the fractional gate's scope; reference lap times trace to `/api/laps`, which the crawler already pools), so **no `role='reference'` lap is forced into the shared `tests/fixtures/` DB** — doing so would perturb unrelated determinism and report-snapshot tests; the crawler exercises the N=0 reference state, and the populated path shares the same pooled-endpoint reads.
 - **U6 — Cockpit actions ("more buttons", half two; specced 2026-07-22, not yet built).** Two write endpoints wrapping existing audited paths under decision 3's discipline (effects identical to the CLI equivalent, tested): `POST /api/sync` (wraps `sync_driver`; `GARAGE61_TOKEN` stays env-only — an absent token is a directive error state, **never an input field**; secrets never transit the browser) and `POST /api/cohorts/{slug}/rebuild-map` (wraps the A22 in-place refreeze; behind its own explicit, distinct confirm control per decision 5, because it rewrites frozen geometry). Each button renders the engine's own result verbatim (sync counts; rebuild report including cleared-stale-phase notices). A button appears only when its endpoint exists — the UI never shows a dead control.
 
 Strict order; a milestone begins only when the prior one's gates pass.

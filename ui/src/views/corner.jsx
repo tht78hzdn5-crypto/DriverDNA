@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
-import { Loading, useFetch } from "../app.jsx";
+import { ContextStrip, Loading, useFetch } from "../app.jsx";
 
 // Corner drill (UI-SPEC view 3): phase baselines with their labels intact
 // (robust primary, single-best labeled), metric summaries, and a live
@@ -25,7 +25,7 @@ export default function CornerDrill({ slug, cornerId }) {
     <div className="grid">
       <section className="panel">
         <h1>{cornerId} <span className="dim">· {corner?.class || "unclassified"} · apex {fmt(corner?.apex_pct, 1)}% lap</span></h1>
-        <div className="sub"><a href={`#/cohort/${slug}`}>← cohort</a></div>
+        <ContextStrip slug={slug} here="" />
       </section>
 
       <section className="panel">
@@ -61,10 +61,9 @@ export default function CornerDrill({ slug, cornerId }) {
       </section>
 
       <section className="panel">
-        <p className="eyebrow">Metric distribution — live from the DB (self laps only)</p>
-        <select value={metric} onChange={(e) => setMetric(e.target.value)}
-                style={{ background: "var(--raised)", color: "var(--text)",
-                         border: "1px solid var(--line)", padding: "0.3rem" }}>
+        <p className="eyebrow">Metric distribution — self laps only</p>
+        <select className="in" style={{ width: "auto" }} value={metric}
+                onChange={(e) => setMetric(e.target.value)}>
           {Object.keys(p.metric_definitions).map((name) => (
             <option key={name} value={name}>{name}</option>
           ))}

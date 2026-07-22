@@ -135,10 +135,7 @@ export default function DriverModel() {
       <section className="panel pyramid-panel">
         <p className="eyebrow">The pyramid — foundations at the base, higher-order skills toward the peak</p>
         <Pyramid beliefs={beliefs} />
-        <div className="sub">
-          Height is layout, not a ranking: each tier is scored on its own evidence, and
-          nothing is blended into an overall. Fill darkens with the score.
-        </div>
+        <div className="sub">Height is layout, not a ranking — nothing is blended into an overall.</div>
       </section>
 
       <section className="panel">

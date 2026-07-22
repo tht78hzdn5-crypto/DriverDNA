@@ -1,7 +1,7 @@
 import React from "react";
 import { get } from "../api.js";
 import { lapTime } from "../format.js";
-import { Loading, useFetch } from "../app.jsx";
+import { ContextStrip, Loading, useFetch } from "../app.jsx";
 
 // Laps (UI-SPEC view 7): the data-quality conscience — every flag surfaced.
 export default function Laps({ slug }) {
@@ -12,7 +12,8 @@ export default function Laps({ slug }) {
     <div className="grid">
       <section className="panel">
         <h1>Laps</h1>
-        <div className="sub"><a href={`#/cohort/${slug}`}>← cohort</a> · red marks are data quality, never driving · incidents (spins/offs) are driving events, detailed on the cohort page</div>
+        <ContextStrip slug={slug} here="laps" />
+        <div className="sub" style={{ marginTop: "0.5rem" }}>Red marks data quality, never driving.</div>
       </section>
       <section className="panel">
         <div className="scroll-x">
@@ -23,7 +24,9 @@ export default function Laps({ slug }) {
               {laps.data.map((lap) => (
                 <tr key={lap.lap_pk}>
                   <td className="num">{lap.lap_id || `#${lap.lap_pk}`}</td>
-                  <td className="dim">{lap.role}</td>
+                  <td>{lap.role === "reference"
+                    ? <span className="src-tag">reference</span>
+                    : <span className="dim">self</span>}</td>
                   <td className="dim num">{lap.session_key || "—"}</td>
                   <td className="right num">{lapTime(lap.duration_s)}</td>
                   <td>

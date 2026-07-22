@@ -1,7 +1,7 @@
 import React from "react";
 import { get } from "../api.js";
 import { fmt, lapTime } from "../format.js";
-import { Loading, useFetch } from "../app.jsx";
+import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
   CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, SourceSections,
 } from "./shared.jsx";
@@ -47,10 +47,37 @@ function TrackMap({ trace, corners, perCornerLoss, slug }) {
   );
 }
 
+// Reference laps (v2): context made visible. Isolation stated once; the "who"
+// named. Zero references is a designed direction state, not a blank.
+function ReferenceLaps({ refLaps }) {
+  return (
+    <section className="panel">
+      <p className="eyebrow">Reference laps</p>
+      <div className="guarantee">Context only — never enters your history, trends, or scores.</div>
+      {refLaps.length === 0 ? (
+        <div className="empty">
+          <div className="ref-empty">No reference laps yet — add a faster driver's lap for gap context.</div>
+          <a className="btn-primary" href="#/upload">Import a reference lap</a>
+        </div>
+      ) : (
+        <div className="ref-line">
+          {refLaps.map((l, i) => (
+            <span key={l.lap_pk}>
+              {i > 0 && " · "}
+              <b>{l.driver}</b> <span className="num">{lapTime(l.duration_s)}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Cohort({ slug }) {
   const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug]);
   const corners = useFetch(() => get(`/api/cohorts/${slug}/corners`), [slug]);
   const trace = useFetch(() => get(`/api/cohorts/${slug}/track-trace`).catch(() => null), [slug]);
+  const laps = useFetch(() => get(`/api/laps?cohort=${slug}`).catch(() => []), [slug]);
   if (!payload.data || !corners.data) return <Loading error={payload.error || corners.error} />;
 
   const p = payload.data;
@@ -58,28 +85,34 @@ export default function Cohort({ slug }) {
   const perCornerLoss = p.cumulative_loss.per_corner_total || {};
   const shownCount = p.findings.filter((f) => f.shown && !f.annotation).length;
   const suppressedCount = p.findings.filter((f) => !f.shown).length;
+  const refLaps = (laps.data || []).filter((l) => l.role === "reference");
 
   return (
     <div className="grid">
       <section className="panel">
         <h1>{c.car} @ {c.track}</h1>
-        <div className="chips">
-          <span className="chip num">{c.n_laps} laps</span>
-          <span className="chip num">{c.n_sessions} session{c.n_sessions === 1 ? "" : "s"}</span>
-          <span className="chip num">{shownCount} findings shown</span>
-          <span className="chip num">{suppressedCount} suppressed, reasons stated</span>
-        </div>
+        <ContextStrip slug={slug} here="cohort" />
       </section>
+
+      <div className="tiles">
+        <div className="tile"><div className="v num">{c.n_laps}</div><div className="k">Laps</div></div>
+        <div className="tile"><div className="v num">{c.n_sessions}</div><div className="k">Sessions</div></div>
+        <div className="tile"><div className="v num">{shownCount}</div><div className="k">Findings shown</div></div>
+        <div className="tile"><div className="v num">{suppressedCount}</div><div className="k">Suppressed</div>
+          <div className="s">reasons stated</div></div>
+        <div className="tile"><div className="v num">{refLaps.length}</div><div className="k">Reference laps</div>
+          <div className="s">context only</div></div>
+      </div>
 
       {trace.data && (
         <section className="panel">
-          <p className="eyebrow">Your line — lap {trace.data.lap_id} · markers at frozen apexes · amber = highest attributed loss</p>
+          <p className="eyebrow">Your racing line · amber marks highest attributed loss</p>
           <TrackMap trace={trace.data} corners={corners.data} perCornerLoss={perCornerLoss} slug={slug} />
         </section>
       )}
 
       <section className="panel">
-        <p className="eyebrow">Coaching — what to work on next, in plain language</p>
+        <p className="eyebrow">Coaching — what to work on next</p>
         <CoachingHeadline
           headline={p.coaching.headline} headline_reason={p.coaching.headline_reason}
           silent_count={p.coaching.silent_count} slug={slug}
@@ -94,10 +127,6 @@ export default function Cohort({ slug }) {
             <CoachingSelfChecks items={p.coaching.self_checks} />
           </>
         )}
-        <div className="sub">
-          Deterministically eligible and ranked from your measurements
-          (docs/COACHING.md) — the wording explains, it never invents a number.
-        </div>
       </section>
 
       <section className="panel">
@@ -118,9 +147,11 @@ export default function Cohort({ slug }) {
         <SourceSections findings={p.findings} slug={slug} />
       </section>
 
+      <ReferenceLaps refLaps={refLaps} />
+
       {p.incidents && p.incidents.n > 0 && (
         <section className="panel">
-          <p className="eyebrow">Incidents — spins, offs, near-stops · single events, not traits</p>
+          <p className="eyebrow">Incidents — single events, not traits</p>
           {p.incidents.events.map((e) => (
             <div key={e.incident_id}
                  className={`finding ${e.classification === "unclassified" ? "suppressed" : ""}`}>
@@ -138,7 +169,6 @@ export default function Cohort({ slug }) {
               <div className="reason">{e.rationale}</div>
             </div>
           ))}
-          <div className="sub">{p.incidents.note}</div>
         </section>
       )}
 
@@ -178,7 +208,6 @@ export default function Cohort({ slug }) {
             </tbody>
           </table>
         </div>
-        <div className="sub">Not measured, never inferred: {p.unavailable_fundamentals[0]}; full list in the report.</div>
       </section>
     </div>
   );

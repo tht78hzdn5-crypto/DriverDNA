@@ -175,7 +175,7 @@ def create_app(
         with open_db() as db:
             c = resolve(db, cohort)
             rows = db.conn.execute(
-                """SELECT lap_pk, lap_id, role, duration_s, session_key,
+                """SELECT lap_pk, lap_id, driver, role, duration_s, session_key,
                           quality_flags,
                           EXISTS(SELECT 1 FROM lap_samples s
                                  WHERE s.lap_pk = laps.lap_pk) AS raw_retained
@@ -187,6 +187,7 @@ def create_app(
                 {
                     "lap_pk": r["lap_pk"],
                     "lap_id": r["lap_id"],
+                    "driver": r["driver"],
                     "role": r["role"],
                     "duration_s": r["duration_s"],
                     "session_key": r["session_key"],

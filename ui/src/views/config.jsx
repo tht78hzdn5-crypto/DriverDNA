@@ -79,11 +79,7 @@ export default function Config() {
     <div className="grid">
       <section className="panel">
         <h1>Configuration</h1>
-        <div className="sub">
-          Every threshold with its documented default. Changes go through the
-          same versioned, reversible path the CLI and chat use — nothing retunes
-          silently.
-        </div>
+        <div className="sub">Every threshold with its default. Changes are versioned and reversible.</div>
       </section>
 
       {staged && (
@@ -149,9 +145,7 @@ export default function Config() {
       <section className="panel">
         <p className="eyebrow">Change history — auditable, reversible</p>
         {history.data.length === 0 ? (
-          <div className="dim" style={{ fontSize: "0.82rem" }}>
-            No changes yet. Every applied change is recorded here.
-          </div>
+          <div className="dim" style={{ fontSize: "0.82rem" }}>No changes yet.</div>
         ) : (
           <div className="scroll-x">
             <table>

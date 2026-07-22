@@ -95,6 +95,7 @@ def test_app_loads_and_operates_with_non_localhost_network_blocked(server):
 
     routes = [
         "/#/",
+        "/#/garage",  # v2 view 8: the cohort index as its own destination
         f"/#/cohort/{slug}",
         f"/#/corner/{slug}/C01",
         f"/#/finding/{slug}/{quote(finding_id, safe='')}",

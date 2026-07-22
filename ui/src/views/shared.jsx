@@ -20,6 +20,9 @@ export function FindingRow({ finding, slug }) {
       <div className="meta num">
         n={finding.n}
         {finding.spread !== null && <> · spread {fmt(finding.spread)}</>}
+        {finding.source === "vs-reference" && finding.details?.reference_n != null && (
+          <> · ref n={finding.details.reference_n}</>
+        )}
         {finding.annotation && (
           <> · {finding.annotation.status} by you — measurement kept</>
         )}

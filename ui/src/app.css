@@ -1,5 +1,8 @@
 /* Styles derive from tokens.json via CSS custom properties (main.jsx).
-   Dark timing-screen world, committed (UI-SPEC design language). */
+   Dark timing-screen world; v2 "pit wall" design language (UI-SPEC.md
+   "Design language v2"): condensed display face for structure labels, one
+   top-right chamfer as the geometric tell, a real button system, pit-board
+   stat tiles. Colours and colour grammar are unchanged from v1. */
 
 * { box-sizing: border-box; }
 html { background: var(--base); }
@@ -7,51 +10,137 @@ body {
   margin: 0; background: var(--base); color: var(--text);
   font-family: var(--sans); line-height: 1.45; font-size: 15px;
 }
-#root { max-width: 64rem; margin: 0 auto; padding: 1rem 1rem 4rem; }
+#root { max-width: 64rem; margin: 0 auto; padding: 0 1rem 4rem; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .dim { color: var(--dim); }
+
+/* Structure labels — the one place the condensed display face speaks:
+   uppercase, tracked, never body text or a measurement. */
 .eyebrow {
-  font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--dim); margin: 0 0 0.55rem;
+  font-family: var(--display); font-size: 0.72rem; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--dim); margin: 0 0 0.55rem; font-weight: 600;
 }
 
+/* --- Shell: fixed six-tab bar, wordmark + helix/racing-line mark --------- */
 .topbar {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 1rem; padding: 0.4rem 0 1rem; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 1.4rem;
+  padding: 0.7rem 0 0; margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line); flex-wrap: wrap;
 }
-.topbar .brand { font-weight: 600; letter-spacing: 0.02em; color: var(--text); }
-.topbar nav { display: flex; gap: 0.9rem; font-size: 0.82rem; }
+.brand { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.7rem; }
+.brand:hover { text-decoration: none; }
+.brand .mark { display: block; }
+.brand .word {
+  font-family: var(--display); font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.08em; color: var(--text); text-transform: uppercase;
+}
+.brand .word b { color: var(--accent); font-weight: 700; }
+.topbar nav { display: flex; gap: 0.15rem; overflow-x: auto; }
+.tab {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.82rem; color: var(--dim);
+  padding: 0.3rem 0.7rem 0.85rem; border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); text-decoration: none; }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
 
+/* --- View head + context strip ----------------------------------------- */
 .grid { display: flex; flex-direction: column; gap: 1.1rem; }
+h1 {
+  font-family: var(--display); font-size: 1.5rem; margin: 0 0 0.15rem;
+  font-weight: 700; letter-spacing: 0.01em; text-wrap: balance;
+}
+h2 {
+  font-family: var(--display); font-size: 1rem; margin: 0 0 0.5rem;
+  font-weight: 600; letter-spacing: 0.01em;
+}
+.sub { color: var(--dim); font-size: 0.8rem; }
+/* Cohort-scoped nav lives here, under the title, not in the global tabs. */
+.context {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  font-size: 0.8rem; color: var(--dim); margin-top: 0.5rem;
+}
+.context .crumb b { color: var(--text); font-weight: 500; }
+.context .spacer { flex: 1; }
+
 .panel {
   background: var(--panel); border: 1px solid var(--line);
-  border-radius: 3px; padding: 0.9rem 1rem 1rem;
+  padding: 0.9rem 1rem 1rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
 }
-h1 { font-size: 1.05rem; margin: 0 0 0.2rem; font-weight: 600; text-wrap: balance; }
-h2 { font-size: 0.92rem; margin: 0 0 0.5rem; font-weight: 600; }
-.sub { color: var(--dim); font-size: 0.8rem; }
 
+/* --- Stat tiles ("pit board") ------------------------------------------ */
+.tiles { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); }
+.tile {
+  background: var(--panel); border: 1px solid var(--line); padding: 0.7rem 0.85rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.tile .v { font-size: 1.6rem; line-height: 1.15; }
+.tile .k {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.68rem; color: var(--dim); margin-top: 0.2rem;
+}
+.tile .s { color: var(--dim); font-size: 0.7rem; margin-top: 0.15rem; }
+
+/* --- Chips ------------------------------------------------------------- */
 .chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .chip {
   font-size: 0.68rem; color: var(--dim); border: 1px solid var(--line);
   border-radius: 2px; padding: 0.12rem 0.45rem; background: var(--raised);
 }
 
+/* --- Tables ------------------------------------------------------------ */
 table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
 .scroll-x { overflow-x: auto; }
 th, td { border-top: 1px solid var(--line); padding: 0.4rem 0.5rem; text-align: left; }
 th {
-  border-top: 0; color: var(--dim); font-weight: 500; font-size: 0.68rem;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  border-top: 0; color: var(--dim); font-weight: 600; font-size: 0.66rem;
+  letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--display);
 }
 td.right, th.right { text-align: right; }
 
-/* Source sections: identity is structural, never a verdict color (rule 2). */
+/* --- Buttons: three tiers + confirm; chamfered; inset focus ring -------- */
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; align-items: center; }
+.btn, .btn-primary {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 600; font-size: 0.8rem; cursor: pointer; line-height: 1.1;
+  min-height: 2.5rem; padding: 0.5rem 1.1rem; border: 1px solid var(--line);
+  color: var(--text); background: var(--raised);
+  clip-path: polygon(0 0, calc(100% - var(--chamferSmall)) 0, 100% var(--chamferSmall), 100% 100%, 0 100%);
+  transition: border-color 120ms, color 120ms, background 120ms;
+}
+.btn-primary { background: var(--accent); color: var(--base); border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); text-decoration: none; }
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.btn:disabled, .btn-primary:disabled { opacity: 0.45; cursor: default; }
+.btn.small { min-height: 0; padding: 0.28rem 0.6rem; font-size: 0.72rem; }
+.btn.confirm { border-color: var(--ok); color: var(--ok); background: var(--raised); }
+.btn.confirm:hover:not(:disabled) { background: rgba(62, 207, 142, 0.1); }
+.btn:focus-visible, .btn-primary:focus-visible {
+  outline: none; box-shadow: inset 0 0 0 2px var(--accent);
+}
+.btn.confirm:focus-visible { box-shadow: inset 0 0 0 2px var(--ok); }
+/* Anchor styled as a button keeps button ink, not link blue. */
+a.btn, a.btn-primary { display: inline-flex; align-items: center; }
+a.btn-primary { color: var(--base); }
+
+/* --- Empty-state kit: checkered ribbon + direction + a real CTA --------- */
+.empty .checker {
+  height: 8px; margin-bottom: 0.8rem;
+  background: repeating-conic-gradient(var(--line) 0% 25%, var(--raised) 0% 50%);
+  background-size: 16px 16px;
+}
+.empty p { margin: 0 0 0.7rem; color: var(--dim); font-size: 0.88rem; }
+
+/* --- Source sections: identity is structural, never a verdict colour ---- */
 .source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
 .source-section.vs-self { border-left-style: solid; }
 .source-section.vs-principle { border-left-style: dashed; }
@@ -59,7 +148,7 @@ td.right, th.right { text-align: right; }
 .src-tag {
   font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
-  padding: 0.05rem 0.35rem; margin-right: 0.5rem;
+  padding: 0.05rem 0.35rem; margin-right: 0.5rem; font-family: var(--display);
 }
 
 .finding { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem 0.55rem; }
@@ -71,6 +160,15 @@ td.right, th.right { text-align: right; }
 .finding.suppressed .desc, .finding.suppressed .val { color: var(--dim); }
 .reason { color: var(--dim); font-size: 0.74rem; }
 .reason::before { content: "▸ "; color: var(--warn); }
+
+/* --- Reference laps (v2): context made visible, isolation stated once --- */
+.guarantee {
+  color: var(--dim); font-size: 0.74rem; margin: 0.15rem 0 0.4rem;
+  border-left: 2px solid var(--line); padding-left: 0.5rem;
+}
+.ref-line { color: var(--dim); font-size: 0.78rem; margin-top: 0.5rem; }
+.ref-line b { color: var(--text); font-weight: 500; }
+.ref-empty { color: var(--dim); font-size: 0.84rem; margin: 0.1rem 0 0.7rem; }
 
 .gauge .lbl { display: flex; justify-content: space-between; color: var(--dim); font-size: 0.68rem; margin-bottom: 0.2rem; }
 .track { height: 4px; background: var(--raised); border-radius: 2px; overflow: hidden; }
@@ -92,24 +190,20 @@ td.right, th.right { text-align: right; }
 .trackmap .marker.hot { fill: var(--warn); stroke: var(--warn); }
 .trackmap text { fill: var(--dim); font-family: var(--mono); font-size: 3.2px; }
 
-.cardlist { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
-.card { border: 1px solid var(--line); background: var(--raised); border-radius: 2px; padding: 0.6rem 0.7rem; }
+.cardlist { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.card {
+  border: 1px solid var(--line); background: var(--raised); padding: 0.7rem 0.8rem;
+  color: var(--text); display: block;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.card:hover { border-color: var(--accent); text-decoration: none; }
+.card .cohort-name {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 600; font-size: 0.92rem;
+}
 .error { border-left: 3px solid var(--bad); padding-left: 0.8rem; color: var(--dim); font-size: 0.85rem; }
 
-/* Writes (U2): controls look interactive; confirm is distinct; staged =
-   amber (attention), never a data color. */
-.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
-.btn {
-  font: inherit; font-size: 0.82rem; color: var(--text); background: var(--raised);
-  border: 1px solid var(--line); border-radius: 2px; padding: 0.35rem 0.7rem;
-  cursor: pointer;
-}
-.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.btn:disabled { opacity: 0.45; cursor: default; }
-.btn.small { padding: 0.15rem 0.5rem; font-size: 0.74rem; }
-.btn.confirm { border-color: var(--ok); color: var(--ok); }
-.btn.confirm:hover:not(:disabled) { background: rgba(62, 207, 142, 0.1); }
-
+/* --- Writes (U2): staged = amber (attention), never a data colour ------- */
 .staged { border-left: 3px solid var(--warn); }
 .staged-row { display: flex; justify-content: space-between; gap: 1rem;
               align-items: baseline; flex-wrap: wrap; font-size: 0.92rem; }
@@ -124,14 +218,11 @@ td.right, th.right { text-align: right; }
 .in {
   font: inherit; font-family: var(--mono); font-size: 0.82rem; color: var(--text);
   background: var(--base); border: 1px solid var(--line); border-radius: 2px;
-  padding: 0.3rem 0.5rem; width: 8rem;
+  padding: 0.4rem 0.5rem; width: 8rem; min-height: 2.4rem;
 }
 .in:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* Chat (U3): text never streams — a bubble appears whole, once validated
-   (or an error card replaces it). Driver/assistant distinguished by
-   alignment + tone, never by a data color (rule 2 stays a findings-only
-   convention). */
+/* --- Chat (U3): text never streams — bubble appears whole, once validated */
 .chat-log {
   display: flex; flex-direction: column; gap: 0.7rem;
   max-height: 32rem; overflow-y: auto;
@@ -151,11 +242,7 @@ td.right, th.right { text-align: right; }
 .chat-input { display: flex; gap: 0.5rem; }
 .chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }
 
-/* Driver Model pyramid (M6). The one bold element on the tab; everything
-   else stays quiet. Score magnitude uses a neutral steel-grey fill whose
-   opacity tracks the score — never a semantic hue (no alarm colour on
-   driving). no_signal tiers are an empty dashed outline; proxy tiers carry
-   a dashed edge to mark the softer signal. */
+/* --- Driver Model pyramid (M6) — the one bold element on that tab ------- */
 .pyramid-panel { text-align: center; }
 .pyramid { width: 100%; max-width: 30rem; height: auto; display: block; margin: 0.5rem auto 0.4rem; }
 .pyramid .tier { stroke: var(--line); stroke-width: 0.5; stroke-linejoin: round; }
@@ -166,9 +253,6 @@ td.right, th.right { text-align: right; }
 .pyramid .t-score { fill: var(--text); font-family: var(--mono); font-size: 3.8px;
   text-anchor: middle; font-variant-numeric: tabular-nums; }
 
-/* Fundamentals meter list. Neutral score bar (data colour, not warn), quiet
-   trend arrows (direction from the glyph, never green/red — that would
-   editorialize about driving). */
 .fbar { border-top: 1px solid var(--line); padding: 0.55rem 0.1rem; }
 .fbar:first-of-type { border-top: 0; }
 .fbar-head { display: flex; align-items: baseline; gap: 0.5rem; }
@@ -179,12 +263,11 @@ td.right, th.right { text-align: right; }
 .fbar-meta { color: var(--dim); font-size: 0.74rem; }
 .fbar.off .fbar-name, .fbar.off .fbar-score { color: var(--dim); }
 
-/* Coaching cards — surfacing the grounded coaching layer (M7). The headline
-   is the product's clearest "do this next"; secondary principles are quieter;
-   self-checks (no_signal) are labelled hypotheses with no score, ever. */
+/* --- Coaching cards (M7) ----------------------------------------------- */
 .coach-headline {
   border: 1px solid var(--line); border-left: 3px solid var(--accent);
-  background: var(--raised); border-radius: 3px; padding: 0.8rem 0.9rem;
+  background: var(--raised); padding: 0.8rem 0.9rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
 }
 .coach-say { font-size: 1.05rem; font-weight: 500; line-height: 1.4; }
 .coach-why { color: var(--dim); font-size: 0.82rem; margin-top: 0.4rem; line-height: 1.5; }
@@ -195,9 +278,11 @@ td.right, th.right { text-align: right; }
 .coach-item .coach-say { font-size: 0.9rem; font-weight: 500; }
 .coach-item .coach-why { margin-top: 0.25rem; }
 
-/* Upload view (view 7: import). A plain form, same visual language as
-   Config's cfg-edit rows -- inputs on var(--base), quiet borders. */
+/* --- Upload form (view 7) ---------------------------------------------- */
 .upload-field { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 9rem; }
-.upload-label { font-size: 0.74rem; color: var(--dim); }
+.upload-label {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 600; font-size: 0.7rem; color: var(--dim);
+}
 .upload-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .upload-field input[type="file"] { font-size: 0.82rem; color: var(--text); }

@@ -33,6 +33,10 @@ _TOKENS = {
     "warn": "#E8A13C", "bad": "#E5484D", "accent": "#6EA8D8",
     "mono": "'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
     "sans": "'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+    # v2 display face (structure labels only). Present so the byte-match test
+    # stays green with ui/tokens.json; the static reports don't reference it
+    # yet (SPA-only, like the bundled fonts).
+    "display": "'IBM Plex Sans Condensed', 'Roboto Condensed', 'Archivo Narrow', 'Arial Narrow', var(--sans)",
 }
 
 # The SPA's own default chart-bar fill (app.css `.lossrow .bar i`) — one

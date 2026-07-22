@@ -5,23 +5,27 @@ import App from "./app.jsx";
 import "./app.css";
 
 // Self-hosted (UI-SPEC decision 8: "all assets, incl. fonts, bundled at
-// build time; no CDN"). Only the weights app.css actually sets: 400
-// (default), 500 (.th), 600 (h1/h2/.brand) for Sans; 400 for Mono. Latin
-// subset only — every string in this UI is English/numeric, and the
-// unsubsetted import ships ~46 cyrillic/greek/vietnamese/etc. font files
-// nothing here ever renders.
+// build time; no CDN"). Only the weights app.css actually sets. Latin
+// subset only — every string in this UI is English/numeric.
+//   Sans: 400 (default), 500 (.th/meters), 600 (titles/brand)
+//   Mono: 400 (every figure)
+//   Sans Condensed (v2 display face): 600/700 — structure labels only
 import "@fontsource/ibm-plex-sans/latin-400.css";
 import "@fontsource/ibm-plex-sans/latin-500.css";
 import "@fontsource/ibm-plex-sans/latin-600.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-sans-condensed/latin-600.css";
+import "@fontsource/ibm-plex-sans-condensed/latin-700.css";
 
 // tokens.json is the single visual source of truth (UI-SPEC): inject every
-// token as a CSS custom property so the stylesheet derives from it.
+// token — colour, font, and now shape (v2) — as a CSS custom property so the
+// stylesheet derives from it. Generalized from colour-only: one loop over
+// every group, `--<key>` for each value.
 const root = document.documentElement;
-for (const [name, value] of Object.entries(tokens.color)) {
-  root.style.setProperty(`--${name}`, value);
+for (const group of Object.values(tokens)) {
+  for (const [name, value] of Object.entries(group)) {
+    root.style.setProperty(`--${name}`, value);
+  }
 }
-root.style.setProperty("--mono", tokens.font.mono);
-root.style.setProperty("--sans", tokens.font.sans);
 
 createRoot(document.getElementById("root")).render(<App />);
