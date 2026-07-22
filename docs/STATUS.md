@@ -82,6 +82,15 @@ license-letter grades on scores, no alarm red, no decorative motion). Spec
 + labeled-placeholder mockup only (`docs/ui-redesign-mockup.html`) — build
 awaits owner go, per the M7 spec-first precedent. Full record:
 PROJECT-BRIEF.md decision log.
+**Reference-lap survey + plan written (2026-07-22, `docs/REFERENCE-LAPS.md`)**:
+owner-requested. The machinery exists and is tested (role column,
+query-surface isolation, shared corner maps, `reference_envelope` →
+`vs_reference_findings` → payload/UI, manual import only per M0b) but has
+never fired because the DB holds zero reference laps — `sync` structurally
+can't fetch them. The doc gives the owner-runnable recipe (Garage61 web
+export → `import --role reference`), six gaps, and a design-stage R-track
+(R0 feed-and-pin → R1 visibility → R2 identity/depth → R3 curation) with
+open decisions flagged, not picked. Nothing built; awaiting owner reaction.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`

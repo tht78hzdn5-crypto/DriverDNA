@@ -300,6 +300,16 @@ from the real fixtures and reviewed.
   Mockup: docs/ui-redesign-mockup.html (placeholder numbers, labeled). Build
   awaits owner go (M7 spec-first precedent). Record: PROJECT-BRIEF.md
   decision log + STATUS.md.
+- **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
+  `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
+  is tested (role column, query-surface isolation, shared (car,track)
+  corner maps, `reference_envelope`/`vs_reference_findings` through
+  payload/report/UI; manual `import --role reference` only, per M0b/A16)
+  but has never fired — the DB holds zero reference laps since `sync`
+  structurally can't fetch them. Doc: owner-runnable recipe, six gaps,
+  design-stage R-track (R0 feed-and-pin gate → R1 visibility → R2
+  identity/depth → R3 curation), open decisions flagged. Awaiting owner
+  reaction.
 
 Update this section as milestones complete.
 

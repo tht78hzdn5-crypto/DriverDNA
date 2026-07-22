@@ -252,6 +252,29 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-22 — Reference-lap survey + R-track plan written
+  (`docs/REFERENCE-LAPS.md`), owner-requested.** Owner asked for "a schema or
+  a plan on incorporating reference laps — one may exist but i haven't seen
+  it." Both halves true, so the doc does both: a cited survey showing the
+  machinery is built and tested (role column + CHECK, query-surface
+  isolation, shared `(car,track)` corner maps so gaps join on the owner's
+  own corner identities, `reference_envelope` + `vs_reference_findings`
+  through payload/report/UI, manual-import-only per M0b/A16) and the
+  structural reason it has never fired: the owner's DB contains zero
+  reference laps — `sync` can't fetch them and none was ever imported, so
+  every vs-reference path is correctly silent. Doc includes the
+  owner-runnable recipe (Garage61 web export → `import --role reference` →
+  the vs-reference section appears; a live re-observation of trust
+  condition 3), six honest gaps (invisibility, envelope opacity,
+  undifferentiated pool, no curation, sourcing friction, no drill-level
+  reference depth), and a design-stage **R-track**: R0 (owner feeds one
+  real reference lap; gate for everything else) → R1 (visibility, UI-only)
+  → R2 (reference identity/depth; label semantics deliberately left open)
+  → R3 (curation; option A, an audited annotations-style exclusion,
+  recommended over B, no mechanism). Non-goals restated as binding
+  (no references in Driver Model/trends/classes/consistency/incidents, no
+  "recoverable time", no auto-sync, no blending). Nothing built; awaiting
+  owner reaction, M7 precedent.
 - **2026-07-22 — UI design language v2 ("pit wall") specced, owner-directed.**
   Owner asked for a better UI design: keep the color scheme; more simplicity,
   more buttons, a small tinge of personality; iRacing's UI/promotional
