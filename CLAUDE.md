@@ -343,6 +343,10 @@ Update this section as milestones complete.
 - Install: `python3 -m pip install -e ".[dev]"`
 - Test: `python3 -m pytest`
 - CLI: `driverdna --help`
+- The owner runs the CLI from a local Windows shell. Any command block given to
+  them must be PowerShell-ready: full paths (not relative to some assumed cwd),
+  and no bash-only syntax (`&&` chaining, `$(...)`, POSIX env-var syntax).
+  `;` chains commands in PowerShell; `$env:NAME` reads/sets an env var.
 
 ## Testing rules
 
