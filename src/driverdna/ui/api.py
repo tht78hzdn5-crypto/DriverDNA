@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -28,6 +29,7 @@ from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.db import Database
+from driverdna.store import missing_reason
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -63,8 +65,15 @@ class ChatMessageBody(BaseModel):
     text: str
 
 
+#: Bounds on live chat sessions. Each one pins a database connection for its
+#: lifetime, so these are what stop abandoned browser tabs from exhausting a
+#: hosted store's connection limit. Kept comfortably below any sane pool size.
+MAX_CHAT_SESSIONS = 8
+CHAT_SESSION_TTL_S = 60 * 60
+
+
 def create_app(
-    db_path: Path,
+    db_path: Path | str,
     config_path: Path,
     *,
     chat_provider_factory: Callable[[], ChatProvider] | None = None,
@@ -86,8 +95,13 @@ def create_app(
         return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
 
     def open_db(*, check_same_thread: bool = True) -> Database:
-        if not db_path.exists():
-            raise HTTPException(404, detail=f"no DB at {db_path} — run `driverdna import` first")
+        # A hosted store has no file to stat and creates its schema on
+        # connect, so "not there yet" is reported by `missing_reason` only
+        # for the SQLite case; an empty hosted store surfaces as the normal
+        # no-cohorts empty state instead.
+        reason = missing_reason(db_path)
+        if reason:
+            raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
         return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:
@@ -150,18 +164,27 @@ def create_app(
         — the outline the cohort view draws (UI-SPEC view 2)."""
         with open_db() as db:
             cohort = resolve(db, slug)
+            # Raw blobs live on local disk, so "which lap still has one" is a
+            # filesystem question, not a join. Walk newest-first and take the
+            # first lap whose trace is actually readable here.
             rows = db.conn.execute(
                 """SELECT l.lap_pk, l.lap_id FROM laps l
-                   JOIN lap_samples s ON s.lap_pk = l.lap_pk
                    WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
-                   ORDER BY l.lap_pk DESC LIMIT 1""",
+                   ORDER BY l.lap_pk DESC""",
                 (cohort["driver"], cohort["car"], cohort["track"]),
             ).fetchall()
-            if not rows:
+            arrays = None
+            chosen = None
+            for row in rows:
+                arrays = db.load_lap_arrays(int(row["lap_pk"]))
+                if arrays is not None:
+                    chosen = row
+                    break
+            if arrays is None:
                 raise HTTPException(
                     404, detail="no raw lap within retention for this cohort"
                 )
-            arrays = db.load_lap_arrays(int(rows[0]["lap_pk"]))
+            rows = [chosen]
             step = max(1, len(arrays["lat"]) // TRACE_POINTS)
             return {
                 "lap_id": rows[0]["lap_id"],
@@ -176,9 +199,7 @@ def create_app(
             c = resolve(db, cohort)
             rows = db.conn.execute(
                 """SELECT lap_pk, lap_id, role, duration_s, session_key,
-                          quality_flags,
-                          EXISTS(SELECT 1 FROM lap_samples s
-                                 WHERE s.lap_pk = laps.lap_pk) AS raw_retained
+                          quality_flags
                    FROM laps WHERE car=? AND track=? ORDER BY lap_pk""",
                 (c["car"], c["track"]),
             ).fetchall()
@@ -192,7 +213,10 @@ def create_app(
                     "session_key": r["session_key"],
                     "quality_flags": json.loads(r["quality_flags"]),
                     "incidents": incident_counts.get(r["lap_pk"], 0),
-                    "raw_retained": bool(r["raw_retained"]),
+                    # A filesystem check, not a row check: a lap imported on
+                    # another machine has every summary row here and no blob,
+                    # which reads the same as "evicted by retention".
+                    "raw_retained": db.has_raw(int(r["lap_pk"])),
                 }
                 for r in rows
             ]
@@ -411,9 +435,37 @@ def create_app(
     # A ChatSession is stateful (in-memory conversation + staged proposals,
     # UI-SPEC decision 5) and keeps its own DB connection open for the
     # session's lifetime — unlike every other endpoint's per-request
-    # `with open_db() as db:`. This is a deliberate, scoped deviation: a
-    # local, single-user tool (philosophy #8) doesn't need session eviction
-    # machinery for what is, in practice, a handful of concurrent sessions.
+    # `with open_db() as db:`.
+    #
+    # That deviation used to come with "a local, single-user tool doesn't need
+    # session eviction machinery". Against a local file that was true: an
+    # abandoned browser tab leaked a file handle. Against a hosted store it is
+    # not — every live session pins a server connection, and enough abandoned
+    # tabs exhaust the connection limit and take out every other endpoint. So
+    # sessions are now bounded and idle-expired; an evicted session's next
+    # request gets the existing 404 "unknown chat session", which the SPA
+    # already handles.
+
+    def _evict_chat_sessions() -> None:
+        now = time.monotonic()
+        for sid, entry in list(chat_sessions.items()):
+            if now - entry["touched"] > CHAT_SESSION_TTL_S:
+                _close_chat_session(sid)
+        while len(chat_sessions) > MAX_CHAT_SESSIONS:
+            oldest = min(chat_sessions, key=lambda s: chat_sessions[s]["touched"])
+            _close_chat_session(oldest)
+
+    def _close_chat_session(session_id: str) -> None:
+        entry = chat_sessions.pop(session_id, None)
+        if entry is not None:
+            entry["db"].close()
+
+    def _touch_chat_session(session_id: str) -> dict[str, Any]:
+        entry = chat_sessions.get(session_id)
+        if entry is None:
+            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
+        entry["touched"] = time.monotonic()
+        return entry
 
     @app.post("/api/chat/sessions")
     def create_chat_session(body: ChatCreateBody) -> dict[str, Any]:
@@ -439,7 +491,10 @@ def create_app(
         except Exception:
             db.close()
             raise
-        chat_sessions[session_id] = {"session": session, "db": db}
+        chat_sessions[session_id] = {
+            "session": session, "db": db, "touched": time.monotonic(),
+        }
+        _evict_chat_sessions()
         return {
             "session_id": session_id,
             "cohort": body.cohort,
@@ -447,10 +502,7 @@ def create_app(
         }
 
     def _get_session(session_id: str) -> ChatSession:
-        entry = chat_sessions.get(session_id)
-        if entry is None:
-            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
-        return entry["session"]
+        return _touch_chat_session(session_id)["session"]
 
     @app.post("/api/chat/sessions/{session_id}/messages")
     def chat_message(session_id: str, body: ChatMessageBody) -> StreamingResponse:

@@ -83,9 +83,13 @@ def vs_self_findings(
     windows_by_corner: dict[str, PhaseWindows], config: DriverDNAConfig,
 ) -> list[Finding]:
     laps = db.conn.execute(
+        # `, lap_pk` is a correctness tie-break, not tidiness: the tercile
+        # split below slices `laps[:third]` / `laps[-third:]` out of this
+        # order, so laps sharing a duration would otherwise land in the fast
+        # or slow group by whatever order storage happened to return.
         """SELECT lap_pk, duration_s, session_key FROM laps
            WHERE role='self' AND driver=? AND car=? AND track=?
-           ORDER BY duration_s""",
+           ORDER BY duration_s, lap_pk""",
         (driver, car, track),
     ).fetchall()
     n_laps = len(laps)

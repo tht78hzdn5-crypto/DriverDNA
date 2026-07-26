@@ -171,12 +171,18 @@ doc, not this one, as the number of record.
   numpy handle years of one driver's data with orders of magnitude to spare
   (a lap ≈ 6k rows; raw blobs are windowed anyway; compact rows are tiny).
   Import cost ~1–2 s/lap, report generation sub-second.
-- **If it ever became multi-user** (explicitly out of v1 scope): the compact
-  relational schema ports to a server DB (Postgres) largely as-is; blob
-  storage moves to object storage; ingest becomes a queued job; the
-  deterministic payload becomes an API response; per-user cohort keys add a
-  tenant column. The philosophy constraints (no blending, gates, evidence
-  IDs) are architecture-independent and must survive any port.
+- **The Postgres port described here has since happened, for the
+  single-user case only** (2026-07-26, SPEC.md A23). What was done: the
+  compact relational schema ports as-is behind a dialect shim, and the
+  deterministic payload is unchanged. What was **not** done, and stays out of
+  scope: object storage for blobs (they went to local disk instead, which is
+  cheaper and keeps the transactional guarantee), queued ingest, the payload
+  as a public API, and per-user tenant keys. Multi-user remains excluded.
+  Measured on the fixture corpus: 12 laps are ~10 MB of raw blobs against
+  ~564 KB of compact rows, so keeping blobs local moves ~95% of the bytes off
+  the wire and puts a 500 MB free tier out of reach until several thousand
+  laps. The philosophy constraints (no blending, gates, evidence IDs) are
+  architecture-independent and survived the port unchanged.
 - **The real scaling axis is trust**: keep the determinism byte-diff, the
   trust-gate tests, and the amendment discipline in SPEC.md as the suite any
   refactor must pass.
@@ -251,6 +257,69 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
+
+- **2026-07-26 — the store moves to a hosted Supabase Postgres; SQLite stays a
+  first-class backend; raw blobs stay local (SPEC.md A23).** The owner asked
+  what the current DB solution was, having spun up a Supabase project and
+  suspected it was unused. It was: `sqlite3` appeared in exactly one module,
+  and the only mention of Postgres anywhere was the aspirational paragraph in
+  this file's own Scaling section. Asked to migrate fully, and told the
+  trade-offs, the owner chose a **dual-backend** shim over Postgres-only and
+  **blobs on local disk** over either `bytea` or Supabase Storage.
+
+  *Why dual-backend rather than Postgres-only.* The test suite is this
+  project's constitution in executable form, and the standing rule is that it
+  needs no secrets and no live services. Postgres-only would have turned
+  `git clone && pytest` into a project requiring a running server — a real
+  loss of auditability, which philosophy #8 ranks above generality. It also
+  keeps a rollback path: a free-tier project pauses after 7 days idle, and an
+  instrument that cannot open its own data because a hosted service is asleep
+  is a worse instrument. Cost, stated plainly: schema changes are now written
+  once and translated, and the parity tests are what keep that honest.
+
+  *Why blobs on disk.* Rejected `bytea` (a lap is ~830 KB here; at the default
+  retention of 100/cohort across 25 cohorts that is ~1 GB, twice the free
+  tier, and one `rebuild-map` would pull ~1 GB of egress because the pipeline
+  loops `load_lap_arrays` over every observation). Rejected Supabase Storage
+  (a second remote system with no shared transaction, so a committed row
+  delete with a failed object delete leaves the two silently divergent —
+  exactly the class of inconsistency philosophy #7 forbids). Local disk keeps
+  the transactional guarantee and costs nothing. The trade-off is real and
+  accepted: a lap's raw trace is readable only on the machine that imported
+  it. That degrades into the *existing, already-tested* "evicted by retention"
+  path — `load_lap_arrays` has always returned None there, the track-trace
+  view 404s, the pipeline skips re-measurement — so findings, trends, scores
+  and reports are unaffected.
+
+  *What the migration surfaced.* Four pre-existing defects, all invisible on
+  SQLite because it satisfied them by accident: `corner_positions` had no
+  `ORDER BY` while its dict order decided which corner an incident was
+  labelled with (and `rebuild-map` reshuffles those rows); the vs-self tercile
+  split had no tie-break while slicing fast/slow groups out of that order;
+  `AND 0` relied on int-as-boolean coercion on the M6 trend path; and
+  `store_incidents` passed numpy int64 sample indices to sqlite3 unadapted, so
+  three INTEGER columns held raw little-endian BLOBs. Also found: psycopg3's
+  `with conn:` *closes* the connection where sqlite3's does not, which across
+  19 such blocks would have been silent and catastrophic — caught by testing
+  the assumption rather than reading the docs. And `docs/coaching-report.md`
+  had been stale since the A18 ranker fix, so the artifact byte-diff gate was
+  quietly meaningless until it was regenerated first.
+
+  *Security, decided rather than assumed.* Supabase auto-exposes `public` over
+  PostgREST using an anon key that ships in every project, so tables there
+  would have published the driver's telemetry and chat transcripts to an
+  unauthenticated endpoint — while README.md advertised the opposite. Tables
+  live in a `driverdna` schema and carry RLS with zero policies; proven by a
+  role standing in for `anon` with an explicit SELECT grant reading zero rows.
+
+  *The proof.* The same fixture corpus imported into either backend produces
+  byte-identical metrics, attribution, incidents, coaching and driver-model
+  artifacts, and a `store-copy` of a populated SQLite store into Postgres
+  reports all 15 tables checksum-identical with the artifacts still
+  byte-identical afterwards. An earlier cross-backend run *did* differ — which
+  turned out to be the harness dropping the manifest's `session_key`, not the
+  backend. Recorded because it is exactly the sort of false positive that
+  would otherwise discredit a real one.
 
 - **2026-07-21 — `rebuild-map`: in-place refreeze of a frozen corner map from
   its full lap set (SPEC.md A22), the last of the owner's E→F→G arc.** Corner

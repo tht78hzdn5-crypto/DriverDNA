@@ -28,6 +28,29 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def _store(db_path: str | None) -> str:
+    """Resolve `--db` against the environment. See store.resolve_store for
+    why there is deliberately no bare DATABASE_URL fallback."""
+    from driverdna.store import resolve_store
+
+    return resolve_store(db_path)
+
+
+def _require_store(db_path: str | None) -> str:
+    """Same, but for commands that read an existing store rather than create
+    one. A missing SQLite file is reported by path; a hosted store has no
+    file to stat, so it reports connection trouble instead — never the raw
+    URL, which carries the password."""
+    from driverdna.store import missing_reason
+
+    target = _store(db_path)
+    reason = missing_reason(target)
+    if reason:
+        typer.echo(f"error: {reason} — run `driverdna import` first")
+        raise typer.Exit(code=2)
+    return target
+
+
 def _validate_lap_date(value: str) -> str:
     """YYYY-MM-DD or a full ISO8601 timestamp — the same `lap_date` shape
     `sync` writes from the API's `startTime`. Rejected loudly on a
@@ -57,7 +80,11 @@ def import_cmd(
     directory: Path = typer.Argument(
         ..., help="Directory of Garage61 CSV exports (manifest.toml used if present)."
     ),
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     driver: str = typer.Option("owner", help="Driver label when no manifest."),
     car: str = typer.Option(None, help="Car label (required without manifest)."),
     track: str = typer.Option(None, help="Track label (required without manifest)."),
@@ -134,7 +161,7 @@ def import_cmd(
                 )
                 raise typer.Exit(code=2)
 
-    with Database.open(db_path) as db:
+    with Database.open(_store(db_path)) as db:
         for job in jobs:
             path = job.pop("path")
             auto_detected = job.pop("_auto_detected", False)
@@ -170,7 +197,11 @@ def import_cmd(
 
 @app.command()
 def sync(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     driver: str = typer.Option("owner", help="Driver label."),
     car: str = typer.Option(None, help="Restrict to one car (by Garage61 name)."),
     track: str = typer.Option(None, help="Restrict to one track (by Garage61 name)."),
@@ -190,7 +221,7 @@ def sync(
         typer.echo(f"error: {e}")
         raise typer.Exit(code=2) from None
 
-    with Database.open(db_path) as db:
+    with Database.open(_store(db_path)) as db:
         summaries = sync_driver(db, client, driver=driver, config=config, car=car, track=track)
         if not summaries:
             typer.echo("no cohorts found (nothing driven yet, or --car/--track matched none)")
@@ -215,7 +246,11 @@ def sync(
 
 @app.command()
 def metrics(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out: Path = typer.Option(
         Path("docs/metrics-report.md"), help="Where to write the report."
     ),
@@ -224,9 +259,7 @@ def metrics(
     from driverdna.db import Database
     from driverdna.metrics.report import build_metrics_report
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     with Database.open(db_path) as db:
         out.write_text(build_metrics_report(db))
     typer.echo(f"wrote {out}")
@@ -234,7 +267,11 @@ def metrics(
 
 @app.command()
 def model(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out: Path = typer.Option(
         Path("docs/driver-model-report.md"), help="Where to write the report."
     ),
@@ -244,9 +281,7 @@ def model(
     from driverdna.db import Database
     from driverdna.model.report import build_model_report
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     config = load_config()
     with Database.open(db_path) as db:
         out.write_text(build_model_report(db, config))
@@ -255,7 +290,11 @@ def model(
 
 @app.command()
 def coaching(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out: Path = typer.Option(
         Path("docs/coaching-report.md"), help="Where to write the report."
     ),
@@ -265,9 +304,7 @@ def coaching(
     from driverdna.config import load_config
     from driverdna.db import Database
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     config = load_config()
     with Database.open(db_path) as db:
         out.write_text(build_coaching_report(db, config))
@@ -276,7 +313,11 @@ def coaching(
 
 @app.command()
 def coach(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     cohort: str = typer.Option(
         None, help="Cohort as 'car:track' (defaults to the only cohort)."
     ),
@@ -301,9 +342,7 @@ def coach(
     from driverdna.db import Database
     from driverdna.report.payload import list_cohorts, to_normalized_json
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
 
     config = load_config()
     with Database.open(db_path) as db:
@@ -349,7 +388,11 @@ def coach(
 
 @app.command()
 def ui(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     config_path: Path = typer.Option(
         Path("driverdna.toml"), "--config", help="TOML config file."
     ),
@@ -368,7 +411,7 @@ def ui(
         )
         raise typer.Exit(code=2) from None
 
-    application = create_app(db_path, config_path)
+    application = create_app(_store(db_path), config_path)
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
         application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
@@ -481,7 +524,11 @@ def _try_open_browser(url: str) -> None:
 
 @app.command()
 def chat(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     cohort: str = typer.Option(
         None, help="Cohort as 'car:track' (defaults to the only cohort)."
     ),
@@ -498,9 +545,7 @@ def chat(
     from driverdna.db import Database
     from driverdna.report.payload import list_cohorts
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     config = load_config(config_path)
     with Database.open(db_path) as db:
         cohorts = list_cohorts(db)
@@ -561,15 +606,17 @@ def chat(
 
 @app.command()
 def history(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
 ) -> None:
     """Show cohorts, coach runs, and config changes on record."""
     from driverdna.db import Database
     from driverdna.report.payload import list_cohorts
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     with Database.open(db_path) as db:
         for c in list_cohorts(db):
             n = db.conn.execute(
@@ -600,7 +647,11 @@ def history(
 
 @app.command()
 def report(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out_dir: Path = typer.Option(Path("reports"), help="Output directory."),
     cohort: str = typer.Option(
         None, help="Restrict to one cohort as 'car:track' (default: all)."
@@ -624,9 +675,7 @@ def report(
         to_normalized_json,
     )
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
 
     def slug(text: str) -> str:
         return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-").lower()
@@ -657,7 +706,11 @@ def report(
 
 @app.command()
 def attribution(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out: Path = typer.Option(
         Path("docs/attribution-report.md"), help="Where to write the report."
     ),
@@ -667,9 +720,7 @@ def attribution(
     from driverdna.config import load_config
     from driverdna.db import Database
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     with Database.open(db_path) as db:
         out.write_text(build_attribution_report(db, load_config()))
     typer.echo(f"wrote {out}")
@@ -677,7 +728,11 @@ def attribution(
 
 @app.command()
 def incidents(
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     out: Path = typer.Option(
         Path("docs/incidents-report.md"), help="Where to write the report."
     ),
@@ -686,9 +741,7 @@ def incidents(
     from driverdna.db import Database
     from driverdna.incidents.report import build_incidents_report
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     with Database.open(db_path) as db:
         out.write_text(build_incidents_report(db))
     typer.echo(f"wrote {out}")
@@ -715,7 +768,11 @@ def corners(
 def rebuild_map(
     car: str = typer.Option(..., help="Car label of the cohort to rebuild."),
     track: str = typer.Option(..., help="Track label of the cohort to rebuild."),
-    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
     driver: str = typer.Option("owner", help="Driver whose classes are re-derived."),
 ) -> None:
     """In-place refreeze of a cohort's frozen corner map from its full lap set.
@@ -731,9 +788,7 @@ def rebuild_map(
     from driverdna.db import Database
     from driverdna.pipeline import rebuild_cohort_map
 
-    if not db_path.exists():
-        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
-        raise typer.Exit(code=2)
+    db_path = _require_store(db_path)
     config = load_config()
     with Database.open(db_path) as db:
         result = rebuild_cohort_map(
@@ -764,6 +819,91 @@ def rebuild_map(
             f"blobs were evicted past retention and can't be re-measured against the "
             f"new windows. The laps' identity, metrics, and detectors are unchanged."
         )
+
+
+@app.command("store-copy")
+def store_copy(
+    source: str = typer.Option(..., "--from", help="Source store (path or URL)."),
+    target: str = typer.Option(..., "--to", help="Target store (path or URL)."),
+) -> None:
+    """Copy a store's compact rows into another, in either direction.
+
+    Primary keys are preserved exactly, because evidence IDs are those
+    numbers — renumbering would invalidate every stored finding, annotation
+    and citation. Raw lap blobs are not copied: they live on local disk, and
+    a machine without them reports the raw trace as unavailable, the same
+    state retention already produces.
+
+    Refuses a non-empty target rather than merging. Prints a per-table
+    checksum comparison; identical checksums are the proof the copy is
+    faithful, and the one that catches a float truncated by a wrong column
+    type at the row level rather than months later in a report.
+    """
+    from driverdna.db import Database
+    from driverdna.migrate import compare, copy_store, repaired_int_columns
+    from driverdna.store import describe
+
+    src = _require_store(source)
+    with Database.open(src) as source_db, Database.open(target) as target_db:
+        try:
+            counts = copy_store(source_db, target_db)
+        except ValueError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+
+        typer.echo(f"copied {describe(src)} -> {describe(target)}")
+        for table, n in counts.items():
+            if n:
+                typer.echo(f"  {table}: {n}")
+
+        for column, n in sorted(repaired_int_columns.items()):
+            typer.echo(
+                f"  repaired {n} value(s) in {column}: stored as a BLOB by an "
+                "older build, written back as an integer"
+            )
+
+        differing = compare(source_db, target_db)
+
+    if differing:
+        typer.echo(f"MISMATCH in: {', '.join(differing)}")
+        typer.echo("the copy is NOT faithful — do not cut over")
+        raise typer.Exit(code=1)
+    typer.echo(f"verified: all {len(counts)} tables checksum-identical")
+    typer.echo("raw lap blobs are local and were not copied")
+
+
+@app.command("migrate-blobs")
+def migrate_blobs(
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+    blob_root: Path = typer.Option(
+        None, "--blobs",
+        help="Where raw lap blobs live. Defaults to <db>.blobs/ (or DRIVERDNA_BLOB_ROOT).",
+    ),
+) -> None:
+    """Move raw lap blobs out of the database and onto local disk.
+
+    Raw samples used to be stored inside the database; they now live beside
+    it. Opening an older database keeps reading them in place, so this is
+    safe to defer — run it once to complete the move and reclaim the space.
+    Idempotent: rows are removed only after their file exists.
+    """
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+
+    with Database.open(db_path, blob_root=blob_root) as db:
+        moved = db.drain_legacy_blobs()
+
+    if moved == 0:
+        typer.echo("nothing to move — raw blobs already live on disk")
+    else:
+        store = blob_root or f"{db_path}.blobs"
+        typer.echo(f"moved {moved} raw lap blob(s) to {store}")
+        typer.echo("run `VACUUM` on the DB to reclaim the freed space")
 
 
 @app.command("schema-report")

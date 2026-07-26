@@ -32,7 +32,10 @@ from typing import Any
 
 import numpy as np
 
+from driverdna.blobs import BlobStore, MemoryBlobStore, open_blob_store
 from driverdna.config import IdentityConfig
+from driverdna.sql import to_pg, to_pg_migrations
+from driverdna.store import is_postgres_url, redact_dsn
 from driverdna.corners.identity import CornerIdentity, CornerMap, _gps_ok, _meters
 from driverdna.corners.segmenter import CornerSpan, Landmarks
 from driverdna.ingest.parser import TelemetryLap
@@ -233,6 +236,16 @@ MIGRATIONS: tuple[str, ...] = (
     );
     CREATE INDEX idx_incidents_lap ON incidents(lap_pk);
     """,
+    # 006 — raw blobs move out of the database and onto local disk (see
+    # blobs.py for why). A rename, deliberately not a DROP: an existing
+    # database still holds real telemetry here, and losing it would mean
+    # re-importing from source CSVs to recover. `driverdna migrate-blobs`
+    # drains this table onto disk and empties it; until then
+    # `load_lap_arrays` falls back to it, so an un-migrated database keeps
+    # working exactly as before.
+    """
+    ALTER TABLE lap_samples RENAME TO lap_samples_legacy;
+    """,
 )
 
 
@@ -264,7 +277,9 @@ def _lap_pk_filter(lap_pks: frozenset[int] | None) -> tuple[str, list[int]]:
     if lap_pks is None:
         return "", []
     if not lap_pks:
-        return " AND 0", []
+        # `AND 1=0`, not `AND 0`: a bare integer is not a boolean outside
+        # SQLite, and this fragment is on the M6 trend path (an empty bucket).
+        return " AND 1=0", []
     ordered = sorted(lap_pks)
     return f" AND l.lap_pk IN ({','.join('?' * len(ordered))})", ordered
 
@@ -291,23 +306,230 @@ def landmarks_from_json(text: str) -> Landmarks:
     return Landmarks(**data)
 
 
+class _Conn:
+    """Connection proxy: one SQL dialect in, either backend out.
+
+    Exists so the ~28 call sites outside this module that reach through
+    `db.conn.execute(...)` keep working untouched. `db.conn` was already a
+    de-facto public API across a dozen modules; this makes it an explicit one
+    and confines the dialect difference to a single object.
+
+    The context-manager mapping is the part that matters. sqlite3's
+    `Connection.__exit__` commits and leaves the connection open; psycopg3's
+    commits and **closes** it. There are 19 `with self.conn:` blocks below, so
+    delegating naively would close the connection after the first write and
+    fail everything after it. Postgres therefore maps `with conn:` onto
+    `conn.transaction()`, which has sqlite3's semantics.
+    """
+
+    def __init__(self, raw, dialect: "_Dialect"):
+        self._raw = raw
+        self._dialect = dialect
+        self._tx = None
+
+    # --- statement execution ---
+    def execute(self, sql: str, params=None):
+        sql = self._dialect.sql(sql)
+        return self._raw.execute(sql, params) if params is not None else self._raw.execute(sql)
+
+    def executemany(self, sql: str, seq):
+        return self._dialect.many(self._raw, self._dialect.sql(sql), list(seq))
+
+    def executescript(self, script: str):
+        return self._dialect.script(self._raw, script)
+
+    # --- transactions ---
+    def __enter__(self):
+        if self._dialect.autocommit:
+            self._tx = self._raw.transaction()
+            self._tx.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        if self._tx is not None:
+            tx, self._tx = self._tx, None
+            return tx.__exit__(*exc)
+        return self._raw.__exit__(*exc)
+
+    def commit(self) -> None:
+        self._raw.commit()
+
+    def rollback(self) -> None:
+        self._raw.rollback()
+
+    def close(self) -> None:
+        self._raw.close()
+
+    @property
+    def closed(self) -> bool:
+        return bool(getattr(self._raw, "closed", False))
+
+    @property
+    def raw(self):
+        return self._raw
+
+
+class _Dialect:
+    """What differs between the two backends, and nothing more."""
+
+    name = "sqlite"
+    autocommit = False
+
+    def sql(self, sql: str) -> str:
+        return sql
+
+    def script(self, raw, script: str):
+        return raw.executescript(script)
+
+    def many(self, raw, sql: str, seq):
+        return raw.executemany(sql, seq)
+
+    def table_exists_sql(self) -> str:
+        return "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+
+    def migrations(self) -> tuple[str, ...]:
+        return MIGRATIONS
+
+
+class _PostgresDialect(_Dialect):
+    name = "postgres"
+    # Reads sit outside a transaction and writes inside an explicit one —
+    # sqlite3's model. It also keeps connections out of "idle in
+    # transaction", which a pooled remote store punishes.
+    autocommit = True
+
+    def sql(self, sql: str) -> str:
+        return to_pg(sql)
+
+    def script(self, raw, script: str):
+        # psycopg runs a multi-statement string in one execute when there are
+        # no placeholders; wrap it so a migration applies all-or-nothing.
+        with raw.transaction():
+            return raw.execute(script)
+
+    def many(self, raw, sql: str, seq):
+        # psycopg puts executemany on the cursor, not the connection.
+        with raw.cursor() as cur:
+            cur.executemany(sql, seq)
+        return cur
+
+    def table_exists_sql(self) -> str:
+        return (
+            "SELECT tablename AS name FROM pg_tables "
+            "WHERE tablename=? AND schemaname = ANY(current_schemas(false))"
+        )
+
+    def migrations(self) -> tuple[str, ...]:
+        return to_pg_migrations(MIGRATIONS)
+
+
+_SQLITE = _Dialect()
+_POSTGRES = _PostgresDialect()
+
+#: Tables live here, never in `public`.
+#:
+#: Supabase automatically exposes everything in `public` over PostgREST, so a
+#: table sitting there without row-level security is readable at
+#: https://<project>.supabase.co/rest/v1/<table> by anyone holding the anon
+#: key — and that key ships in every Supabase project. `laps`,
+#: `chat_transcripts` and `driver_beliefs` in `public` would mean the driver's
+#: telemetry and coaching conversations were published to an unauthenticated
+#: HTTP endpoint. PostgREST does not expose non-`public` schemas by default,
+#: so the namespace alone closes it; RLS below is the second layer.
+PG_SCHEMA = "driverdna"
+
+_DEFAULT_SEARCH_PATHS = {'"$user", public', '"$user",public', "public"}
+
+
+def _namespace_postgres(conn) -> None:
+    """Put this connection in the `driverdna` schema.
+
+    Skipped when the DSN already selects a schema — the test harness gives
+    each test its own — so an explicit choice is never overridden.
+    """
+    current = conn.execute("SHOW search_path").fetchone()["search_path"]
+    if current.strip() not in _DEFAULT_SEARCH_PATHS:
+        return
+    conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{PG_SCHEMA}"')
+    conn.execute(f'SET search_path TO "{PG_SCHEMA}"')
+
+
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
 
-    def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
+    def __init__(
+        self,
+        conn,
+        blobs: BlobStore | None = None,
+        dialect: _Dialect | None = None,
+    ):
+        self.dialect = dialect or _SQLITE
+        self.conn = conn if isinstance(conn, _Conn) else _Conn(conn, self.dialect)
+        self.blobs = blobs if blobs is not None else MemoryBlobStore()
+        if self.dialect is _SQLITE:
+            conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA foreign_keys = ON")
         self._migrate()
 
     @classmethod
-    def open(cls, path: Path | str = ":memory:", *, check_same_thread: bool = True) -> "Database":
+    def open(
+        cls,
+        path: Path | str = ":memory:",
+        *,
+        check_same_thread: bool = True,
+        blob_root: Path | str | None = None,
+    ) -> "Database":
         """`check_same_thread=False` is for long-lived connections handed
         across a thread pool (e.g. the UI's per-chat-session connection,
         UI-SPEC decision 5) — sequential access from different threads over
         the connection's life, never truly concurrent, so this is safe;
-        every other caller keeps the default thread-affine connection."""
-        return cls(sqlite3.connect(str(path), check_same_thread=check_same_thread))
+        every other caller keeps the default thread-affine connection.
+
+        `blob_root` overrides where raw lap blobs are kept; by default they
+        sit beside the database (see `blobs.default_blob_root`), so no two
+        databases can collide on a lap_pk-keyed filename.
+
+        `path` may also be a `postgresql://` URL, which selects the Postgres
+        backend. Raw blobs stay on local disk either way — only the queryable
+        rows move.
+        """
+        blobs = open_blob_store(path, blob_root)
+        if is_postgres_url(path):
+            conn = cls._connect_postgres(str(path))
+            _namespace_postgres(conn)
+            database = cls(conn, blobs, _POSTGRES)
+            database._harden_postgres()
+            return database
+        return cls(
+            sqlite3.connect(str(path), check_same_thread=check_same_thread),
+            blobs,
+            _SQLITE,
+        )
+
+    @staticmethod
+    def _connect_postgres(dsn: str):
+        """Imported lazily so a SQLite-only install never needs psycopg —
+        the same treatment `anthropic` gets in coach/provider.py."""
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ModuleNotFoundError as exc:  # pragma: no cover - install hint
+            raise RuntimeError(
+                "Postgres support needs psycopg: pip install 'driverdna[pg]'"
+            ) from exc
+
+        try:
+            return psycopg.connect(
+                dsn,
+                autocommit=True,
+                row_factory=dict_row,
+                # psycopg's automatic statement preparation breaks behind a
+                # transaction-mode pooler (Supabase port 6543). Off by
+                # default so moving between poolers cannot surprise us.
+                prepare_threshold=None,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
     def close(self) -> None:
         self.conn.close()
@@ -319,15 +541,58 @@ class Database:
         self.close()
 
     def _migrate(self) -> None:
+        migrations = self.dialect.migrations()
         with self.conn:
             self.conn.execute(
                 "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
             )
             row = self.conn.execute("SELECT MAX(version) v FROM schema_version").fetchone()
             current = row["v"] or 0
-            for i, script in enumerate(MIGRATIONS[current:], start=current + 1):
-                self.conn.executescript(script)
+            if current >= len(migrations):
+                return
+        # Each migration is its own transaction: `executescript` commits on
+        # SQLite, and on Postgres the dialect wraps the script itself, so the
+        # version row is recorded alongside rather than inside that block.
+        for i, script in enumerate(migrations[current:], start=current + 1):
+            self.conn.executescript(script)
+            with self.conn:
                 self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
+
+    def _harden_postgres(self) -> None:
+        """Enable row-level security, with no policies, on every table.
+
+        The second layer behind the `driverdna` namespace. RLS with zero
+        policies denies every role except the table owner (which this
+        connection is) and superusers — so if a future change ever exposed
+        these tables through PostgREST, Supabase's `anon` and `authenticated`
+        roles would still read nothing rather than everything.
+
+        Runs on connect, so it costs one catalogue query in the steady state
+        and issues ALTERs only for tables that are actually unprotected —
+        `Database.open` happens per request in the UI, and 17 unconditional
+        ALTERs there would be a real cost for no work.
+        """
+        rows = self.conn.execute(
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = current_schema() AND NOT rowsecurity
+               ORDER BY tablename"""
+        ).fetchall()
+        for row in rows:
+            table = row["tablename"]
+            self.conn.execute(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY')
+
+    def _insert_returning(self, sql: str, params: tuple, pk_col: str) -> int:
+        """Run an INSERT and return the affected row's primary key.
+
+        `RETURNING` rather than `cursor.lastrowid` for two reasons: it is the
+        portable spelling, and it is the *correct* one for an upsert —
+        `lastrowid` is only meaningful on the INSERT path, so an
+        `ON CONFLICT ... DO UPDATE` that takes the UPDATE path leaves it
+        holding a stale value. Requires SQLite >= 3.35 (2021); the project
+        already requires Python >= 3.11.
+        """
+        row = self.conn.execute(f"{sql} RETURNING {pk_col}", params).fetchone()
+        return int(row[pk_col])
 
     @property
     def schema_version(self) -> int:
@@ -379,7 +644,7 @@ class Database:
             sort_keys=True,
         )
         with self.conn:
-            cur = self.conn.execute(
+            lap_pk = self._insert_returning(
                 """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
                                      session_key, run_index, n_samples, duration_s,
                                      imported_at, quality_flags, content_hash, lap_date)
@@ -389,43 +654,115 @@ class Database:
                     session_key, run_index, lap.n_samples, lap.duration_s, imported_at,
                     flags, content_hash, lap_date,
                 ),
+                "lap_pk",
             )
-            lap_pk = int(cur.lastrowid)
-            self.conn.execute(
-                "INSERT INTO lap_samples (lap_pk, fmt, data) VALUES (?, 'npz-v1', ?)",
-                (lap_pk, _lap_blob(lap)),
-            )
+        # Outside the transaction: the blob is a file now, so it cannot join
+        # the row's atomicity. Written after the commit so a failed insert can
+        # never leave an orphan blob; a failed write after a committed row is
+        # simply a lap whose raw trace is unavailable — the state retention
+        # produces anyway, and which every reader already handles.
+        self.blobs.put(lap_pk, _lap_blob(lap))
         return lap_pk, "imported"
 
     def load_lap_arrays(self, lap_pk: int) -> dict[str, np.ndarray] | None:
-        row = self.conn.execute(
-            "SELECT data FROM lap_samples WHERE lap_pk = ?", (lap_pk,)
-        ).fetchone()
-        if row is None:
+        """Raw samples for a lap, or None when they are not available here.
+
+        None is a normal answer, not an error: the blob may have been evicted
+        by retention, or the lap may have been imported on another machine.
+        Callers already degrade honestly on it.
+        """
+        data = self.blobs.get(lap_pk)
+        if data is None:
+            data = self._legacy_blob(lap_pk)
+        if data is None:
             return None
-        with np.load(io.BytesIO(row["data"])) as npz:
+        with np.load(io.BytesIO(data)) as npz:
             return {name: npz[name] for name in npz.files}
+
+    def _legacy_blob(self, lap_pk: int) -> bytes | None:
+        """Read a blob still sitting in the pre-migration-006 `lap_samples`
+        table. Kept so upgrading never silently loses raw traces; `driverdna
+        migrate-blobs` drains it and the fallback then costs nothing."""
+        if not self._has_legacy_blobs():
+            return None
+        row = self.conn.execute(
+            "SELECT data FROM lap_samples_legacy WHERE lap_pk = ?", (lap_pk,)
+        ).fetchone()
+        return row["data"] if row is not None else None
+
+    def _has_legacy_blobs(self) -> bool:
+        if getattr(self, "_legacy_checked", None) is None:
+            row = self.conn.execute(
+                self.dialect.table_exists_sql(), ("lap_samples_legacy",)
+            ).fetchone()
+            self._legacy_checked = row is not None
+        return bool(self._legacy_checked)
+
+    def has_raw(self, lap_pk: int) -> bool:
+        """Whether this lap's raw trace is readable on this machine."""
+        return self.blobs.has(lap_pk) or self._legacy_blob(lap_pk) is not None
 
     def enforce_retention(self, keep: int) -> int:
         """Evict raw blobs beyond the newest `keep` laps per cohort.
 
-        Only lap_samples rows are deleted; laps, observations, metrics, and
-        detector rows — everything trends are built from — are untouched.
-        Returns the number of blobs evicted.
+        Only blobs are removed; laps, observations, metrics, and detector
+        rows — everything trends are built from — are untouched. Returns the
+        number of blobs evicted.
+
+        The eviction set is still chosen by the same per-cohort ranking, but
+        applied to the blob store rather than to a table, so the filesystem
+        is the single source of truth for what raw data exists and no pointer
+        row can drift out of step with it.
         """
+        held = self.blobs.lap_pks()
+        if self._has_legacy_blobs():
+            held |= {
+                int(r["lap_pk"])
+                for r in self.conn.execute("SELECT lap_pk FROM lap_samples_legacy")
+            }
+        if not held:
+            return 0
+
+        seen: dict[tuple[str, str, str], int] = {}
+        evicted = 0
+        for r in self.conn.execute(
+            """SELECT lap_pk, driver, car, track FROM laps
+               ORDER BY driver, car, track, lap_pk DESC"""
+        ):
+            lap_pk = int(r["lap_pk"])
+            if lap_pk not in held:
+                continue
+            cohort = (r["driver"], r["car"], r["track"])
+            seen[cohort] = seen.get(cohort, 0) + 1
+            if seen[cohort] > keep:
+                self.blobs.delete(lap_pk)
+                if self._has_legacy_blobs():
+                    with self.conn:
+                        self.conn.execute(
+                            "DELETE FROM lap_samples_legacy WHERE lap_pk = ?", (lap_pk,)
+                        )
+                evicted += 1
+        return evicted
+
+    def drain_legacy_blobs(self) -> int:
+        """Move any pre-migration-006 blobs out of the database and onto disk.
+
+        Idempotent, and non-destructive until every blob has been written:
+        rows are deleted only after their file exists.
+        """
+        if not self._has_legacy_blobs():
+            return 0
+        moved = 0
+        for r in self.conn.execute(
+            "SELECT lap_pk, data FROM lap_samples_legacy ORDER BY lap_pk"
+        ).fetchall():
+            lap_pk = int(r["lap_pk"])
+            if not self.blobs.has(lap_pk):
+                self.blobs.put(lap_pk, r["data"])
+            moved += 1
         with self.conn:
-            cur = self.conn.execute(
-                """DELETE FROM lap_samples WHERE lap_pk IN (
-                       SELECT lap_pk FROM (
-                           SELECT l.lap_pk,
-                                  ROW_NUMBER() OVER (
-                                      PARTITION BY l.driver, l.car, l.track
-                                      ORDER BY l.lap_pk DESC) AS rn
-                           FROM laps l JOIN lap_samples s ON s.lap_pk = l.lap_pk
-                       ) WHERE rn > ?)""",
-                (keep,),
-            )
-        return cur.rowcount
+            self.conn.execute("DELETE FROM lap_samples_legacy")
+        return moved
 
     # --- corner maps -------------------------------------------------------
 
@@ -437,12 +774,12 @@ class Database:
         laps from other drivers share the owner's corner identities; gap
         analysis joins on them."""
         with self.conn:
-            cur = self.conn.execute(
+            map_pk = self._insert_returning(
                 """INSERT INTO corner_maps (car, track, built_from_n_laps)
                    VALUES (?, ?, ?)""",
                 (car, track, built_from_n_laps),
+                "map_pk",
             )
-            map_pk = int(cur.lastrowid)
             for c in corner_map.corners:
                 self.conn.execute(
                     """INSERT INTO corners (map_pk, corner_id, lat, lon, lap_dist,
@@ -545,7 +882,7 @@ class Database:
     ) -> int:
         apex = span.landmarks.apex
         with self.conn:
-            cur = self.conn.execute(
+            obs_pk = self._insert_returning(
                 """INSERT INTO corner_observations
                    (lap_pk, corner_pk, span_start, span_end, landmarks,
                     landmark_positions, apex_lat, apex_lon, apex_lap_dist,
@@ -558,8 +895,8 @@ class Database:
                     float(lap.lat[apex]), float(lap.lon[apex]),
                     float(lap.lap_dist[apex]) % 1.0, span.min_speed(lap),
                 ),
+                "obs_pk",
             )
-            obs_pk = int(cur.lastrowid)
             self.conn.executemany(
                 "INSERT INTO metric_values (obs_pk, name, value) VALUES (?, ?, ?)",
                 [(obs_pk, name, value) for name, value in sorted(metrics.items())],
@@ -605,9 +942,14 @@ class Database:
     ) -> None:
         with self.conn:
             self.conn.execute(
-                """INSERT OR REPLACE INTO corner_windows
+                """INSERT INTO corner_windows
                    (corner_pk, entry_start, turn_in, apex, exit_end)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (corner_pk) DO UPDATE SET
+                       entry_start = excluded.entry_start,
+                       turn_in     = excluded.turn_in,
+                       apex        = excluded.apex,
+                       exit_end    = excluded.exit_end""",
                 (corner_pk, entry_start, turn_in, apex, exit_end),
             )
 
@@ -629,7 +971,8 @@ class Database:
     def store_phase_times(self, obs_pk: int, times: dict[str, float]) -> None:
         with self.conn:
             self.conn.executemany(
-                "INSERT OR REPLACE INTO phase_times (obs_pk, phase, time_s) VALUES (?, ?, ?)",
+                """INSERT INTO phase_times (obs_pk, phase, time_s) VALUES (?, ?, ?)
+                   ON CONFLICT (obs_pk, phase) DO UPDATE SET time_s = excluded.time_s""",
                 [(obs_pk, phase, t) for phase, t in sorted(times.items())],
             )
 
@@ -746,10 +1089,17 @@ class Database:
         if loaded is None:
             return {}
         map_pk, _ = loaded
+        # ORDER BY is load-bearing, not cosmetic: `_corner_at` picks the
+        # nearest corner with `min()`, which returns the *first* minimum, so
+        # on a distance tie the label is decided by row order — and that
+        # label is persisted into incidents.corner_id. Ordering by corner_id
+        # makes the tie-break stated rather than inherited from storage
+        # (`corner_classes` below already does this).
         return {
             r["corner_id"]: float(r["lap_dist"])
             for r in self.conn.execute(
-                "SELECT corner_id, lap_dist FROM corners WHERE map_pk=?", (map_pk,)
+                "SELECT corner_id, lap_dist FROM corners WHERE map_pk=? ORDER BY corner_id",
+                (map_pk,),
             )
         }
 
@@ -757,7 +1107,16 @@ class Database:
 
     def store_incidents(self, lap_pk: int, incidents: list) -> None:
         """Persist detected incidents for one lap. Deterministic order
-        (by span start) so two imports produce identical rows."""
+        (by span start) so two imports produce identical rows.
+
+        The sample indices are cast to plain `int` deliberately. They arrive
+        as numpy int64 from array arithmetic, and sqlite3 has no adapter for
+        that type — it stored the raw little-endian bytes into an INTEGER
+        column instead, which SQLite's dynamic typing accepts silently. That
+        left `span_start`/`span_end`/`onset` holding BLOBs, which sort after
+        every integer (so `ORDER BY i.span_start` was subtly wrong) and which
+        a strictly-typed store rejects outright.
+        """
         with self.conn:
             for inc in sorted(incidents, key=lambda i: i.span_start):
                 self.conn.execute(
@@ -767,8 +1126,10 @@ class Database:
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         lap_pk, "+".join(inc.kinds), inc.classification, inc.confidence,
-                        inc.corner_id, inc.span_start, inc.span_end, inc.onset,
-                        inc.min_speed_kmh, inc.peak_yaw_rate, inc.rationale,
+                        inc.corner_id, int(inc.span_start), int(inc.span_end),
+                        int(inc.onset),
+                        float(inc.min_speed_kmh), float(inc.peak_yaw_rate),
+                        inc.rationale,
                         json.dumps(inc.detail, sort_keys=True),
                     ),
                 )
@@ -869,7 +1230,7 @@ class Database:
                     continue
                 corner_id = f"C{next_num:02d}"
                 next_num += 1
-                cur = self.conn.execute(
+                new_pk = self._insert_returning(
                     """INSERT INTO corners (map_pk, corner_id, lat, lon, lap_dist,
                                             n_build_observations)
                        VALUES (?, ?, ?, ?, ?, ?)""",
@@ -878,8 +1239,8 @@ class Database:
                      float(np.median([r["apex_lon"] for r in cl["obs"]])),
                      float(np.median([r["apex_lap_dist"] for r in cl["obs"]])),
                      len(cl["obs"])),
+                    "corner_pk",
                 )
-                new_pk = int(cur.lastrowid)
                 self.conn.executemany(
                     "UPDATE corner_observations SET corner_pk=? WHERE obs_pk=?",
                     [(new_pk, r["obs_pk"]) for r in cl["obs"]],
@@ -895,15 +1256,15 @@ class Database:
         created_at: str | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO coach_outputs
                    (driver, car, track, payload_version, prompt_version, model,
                     output_json, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (driver, car, track, payload_version, prompt_version, model,
                  output_json, created_at),
+                "output_pk",
             )
-        return int(cur.lastrowid)
 
     def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
@@ -927,14 +1288,24 @@ class Database:
         created_at: str | None = None,
     ) -> int:
         """Record driver intent about a finding. Suppresses it from priority
-        framing; the underlying measurement is never deleted."""
+        framing; the underlying measurement is never deleted.
+
+        Re-annotating a finding updates the existing row in place. The older
+        `INSERT OR REPLACE` deleted and reinserted it, silently renumbering
+        `annotation_pk`; keeping the pk stable is both portable and closer to
+        what "the measurement is never deleted" already promises.
+        """
         with self.conn:
-            cur = self.conn.execute(
-                """INSERT OR REPLACE INTO finding_annotations
-                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)""",
+            return self._insert_returning(
+                """INSERT INTO finding_annotations
+                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)
+                   ON CONFLICT (finding_id) DO UPDATE SET
+                       status     = excluded.status,
+                       note       = excluded.note,
+                       created_at = excluded.created_at""",
                 (finding_id, status, note, created_at),
+                "annotation_pk",
             )
-        return int(cur.lastrowid)
 
     def annotations(self) -> dict[str, dict[str, Any]]:
         return {
@@ -957,7 +1328,7 @@ class Database:
         effects: dict[str, Any] | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO chat_transcripts
                    (session_id, bundle_version, role, content, evidence_cited, effects)
                    VALUES (?, ?, ?, ?, ?, ?)""",
@@ -966,8 +1337,8 @@ class Database:
                     json.dumps(evidence_cited or [], sort_keys=True),
                     json.dumps(effects or {}, sort_keys=True),
                 ),
+                "turn_pk",
             )
-        return int(cur.lastrowid)
 
     def chat_session_turns(self, session_id: str) -> list[dict[str, Any]]:
         return [
@@ -990,12 +1361,12 @@ class Database:
         note: str | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO config_history (key, old_value, new_value, source, note)
                    VALUES (?, ?, ?, ?, ?)""",
                 (key, old_value, new_value, source, note),
+                "change_pk",
             )
-        return int(cur.lastrowid)
 
     # --- driver model (M6) ---------------------------------------------------
 

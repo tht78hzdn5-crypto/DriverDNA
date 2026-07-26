@@ -22,10 +22,16 @@ dependencies = [
 # upload endpoint) requires it at runtime; a clean install-time dependency,
 # not a vendored parser.
 ui = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9"]
+# pg: the hosted-Postgres backend. Optional on purpose — SQLite remains a
+# first-class backend, so a local-only install needs no database driver and
+# `pip install -e .` is unchanged.
+pg = ["psycopg[binary]>=3.1", "psycopg-pool>=3.2"]
 # playwright is optional: the render-parity test skips if it or Chromium is
-# absent. httpx ships with fastapi's test client.
+# absent. httpx ships with fastapi's test client. psycopg is here so the
+# dual-backend tests can run; they skip when no local Postgres is configured.
 dev = ["pytest>=8", "fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.27",
-       "playwright>=1.40", "python-multipart>=0.0.9"]
+       "playwright>=1.40", "python-multipart>=0.0.9",
+       "psycopg[binary]>=3.1", "psycopg-pool>=3.2"]
 
 [project.scripts]
 driverdna = "driverdna.cli:app"
