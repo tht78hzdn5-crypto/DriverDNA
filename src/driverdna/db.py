@@ -1107,7 +1107,16 @@ class Database:
 
     def store_incidents(self, lap_pk: int, incidents: list) -> None:
         """Persist detected incidents for one lap. Deterministic order
-        (by span start) so two imports produce identical rows."""
+        (by span start) so two imports produce identical rows.
+
+        The sample indices are cast to plain `int` deliberately. They arrive
+        as numpy int64 from array arithmetic, and sqlite3 has no adapter for
+        that type — it stored the raw little-endian bytes into an INTEGER
+        column instead, which SQLite's dynamic typing accepts silently. That
+        left `span_start`/`span_end`/`onset` holding BLOBs, which sort after
+        every integer (so `ORDER BY i.span_start` was subtly wrong) and which
+        a strictly-typed store rejects outright.
+        """
         with self.conn:
             for inc in sorted(incidents, key=lambda i: i.span_start):
                 self.conn.execute(
@@ -1117,8 +1126,10 @@ class Database:
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         lap_pk, "+".join(inc.kinds), inc.classification, inc.confidence,
-                        inc.corner_id, inc.span_start, inc.span_end, inc.onset,
-                        inc.min_speed_kmh, inc.peak_yaw_rate, inc.rationale,
+                        inc.corner_id, int(inc.span_start), int(inc.span_end),
+                        int(inc.onset),
+                        float(inc.min_speed_kmh), float(inc.peak_yaw_rate),
+                        inc.rationale,
                         json.dumps(inc.detail, sort_keys=True),
                     ),
                 )

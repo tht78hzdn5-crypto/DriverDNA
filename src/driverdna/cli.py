@@ -821,6 +821,57 @@ def rebuild_map(
         )
 
 
+@app.command("store-copy")
+def store_copy(
+    source: str = typer.Option(..., "--from", help="Source store (path or URL)."),
+    target: str = typer.Option(..., "--to", help="Target store (path or URL)."),
+) -> None:
+    """Copy a store's compact rows into another, in either direction.
+
+    Primary keys are preserved exactly, because evidence IDs are those
+    numbers — renumbering would invalidate every stored finding, annotation
+    and citation. Raw lap blobs are not copied: they live on local disk, and
+    a machine without them reports the raw trace as unavailable, the same
+    state retention already produces.
+
+    Refuses a non-empty target rather than merging. Prints a per-table
+    checksum comparison; identical checksums are the proof the copy is
+    faithful, and the one that catches a float truncated by a wrong column
+    type at the row level rather than months later in a report.
+    """
+    from driverdna.db import Database
+    from driverdna.migrate import compare, copy_store, repaired_int_columns
+    from driverdna.store import describe
+
+    src = _require_store(source)
+    with Database.open(src) as source_db, Database.open(target) as target_db:
+        try:
+            counts = copy_store(source_db, target_db)
+        except ValueError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+
+        typer.echo(f"copied {describe(src)} -> {describe(target)}")
+        for table, n in counts.items():
+            if n:
+                typer.echo(f"  {table}: {n}")
+
+        for column, n in sorted(repaired_int_columns.items()):
+            typer.echo(
+                f"  repaired {n} value(s) in {column}: stored as a BLOB by an "
+                "older build, written back as an integer"
+            )
+
+        differing = compare(source_db, target_db)
+
+    if differing:
+        typer.echo(f"MISMATCH in: {', '.join(differing)}")
+        typer.echo("the copy is NOT faithful — do not cut over")
+        raise typer.Exit(code=1)
+    typer.echo(f"verified: all {len(counts)} tables checksum-identical")
+    typer.echo("raw lap blobs are local and were not copied")
+
+
 @app.command("migrate-blobs")
 def migrate_blobs(
     db_path: str = typer.Option(
