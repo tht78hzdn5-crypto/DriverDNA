@@ -19,8 +19,11 @@ constitution wins over convenience.
 - "Insufficient data" over guessing, always. Every finding carries N, spread,
   source tag, and evidence IDs.
 - Reference laps never enter self history, trends, or consistency statistics.
-- Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`) are env-only: never persisted,
-  printed, or logged.
+- Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`, `DRIVERDNA_DATABASE_URL`) are
+  env-only: never persisted, printed, or logged. The database URL carries a
+  password, so it is redacted before any connection error reaches a message, a
+  log, or an HTTP body — and there is deliberately no bare `DATABASE_URL`
+  fallback.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
 - Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
@@ -284,6 +287,25 @@ from the real fixtures and reviewed.
   idempotent (verified against the two real Spa/GR86 cohorts). Reuses
   `_freeze_windows_for_admitted`'s exact mechanism, generalized to every
   corner. Closes the A17-deferred refreeze gap.
+
+- **Store moved to hosted Postgres (2026-07-26, SPEC.md A23)** — the primary
+  store may now be a private, single-tenant Supabase Postgres; **SQLite stays a
+  first-class, fully tested backend** (and the offline/rollback path). One set
+  of SQL, translated per dialect by `sql.py`; `db.py` gained a connection proxy
+  so the ~28 external `db.conn.execute` sites are untouched. Raw lap blobs
+  moved out of the database onto **local disk** (`blobs.py`) — measured at ~95%
+  of the bytes — so the hosted store holds only compact rows. Two
+  silent-corruption risks are mechanically guarded: `REAL`→`DOUBLE PRECISION`
+  (Postgres `REAL` is float4 and would have truncated every metric) and every
+  text column `COLLATE "C"` (Supabase's en_US.UTF-8 collation would have
+  reordered every report). Tables live in a `driverdna` schema with RLS and
+  zero policies, because Supabase auto-exposes `public` over PostgREST.
+  `driverdna store-copy` migrates in either direction preserving primary keys
+  (evidence IDs *are* those numbers) with a per-table checksum proof;
+  `driverdna migrate-blobs` completes the blob move for an older database.
+  Equivalence is tested, not claimed: the same corpus in either backend
+  produces byte-identical artifacts. Four latent bugs were found and fixed on
+  the way — see A23 and PROJECT-BRIEF.md's decision log.
 
 Update this section as milestones complete.
 

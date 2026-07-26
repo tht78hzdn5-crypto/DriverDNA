@@ -1,12 +1,41 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-21.** Branch `main` (commits land here directly as of
-today — the feature-branch/PR flow used earlier this session is retired).
+**Snapshot date: 2026-07-26.** Branch
+`claude/driverdna-db-solution-pbanez` (the storage migration; `main` remains
+the default landing branch for ordinary work).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
 and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
+
+**Storage (2026-07-26, SPEC.md A23).** The primary store may now be a private,
+single-tenant Supabase Postgres; SQLite remains a first-class, fully tested
+backend and the offline/rollback path. Verified counts for this change:
+
+| Check | Result |
+| --- | --- |
+| Test suite, no Postgres present (a clean `git clone`) | **565 passed, 13 skipped** |
+| Test suite, against a local Postgres 16 | **578 passed, 0 skipped** |
+| Committed `docs/*-report.md` after every phase | **byte-identical** |
+| Cross-backend artifacts (same 12 fixture laps, SQLite vs Postgres) | **5/5 byte-identical** |
+| `store-copy` SQLite → Postgres, per-table checksums | **15/15 identical** |
+| Artifacts regenerated from the copied store | **5/5 byte-identical** |
+| Tables in the hosted store | **17, all in `driverdna`, 0 in `public`** |
+| Row-level security | **17/17 enabled, 0 policies (deny-all)** |
+| `anon`-equivalent role with explicit SELECT grant | **reads 0 rows** |
+| text columns without `COLLATE "C"` | **0** |
+| float4 columns (would truncate metrics) | **0** |
+| Fixture corpus: raw blobs vs compact rows | **~10 MB vs ~564 KB (12 laps)** |
+| Migrations | **6** (006 renames `lap_samples`, non-destructively) |
+
+Four latent defects were found and fixed during the port, all invisible on
+SQLite because it satisfied them by accident: an unordered `corner_positions`
+deciding which corner an incident was labelled with; the vs-self tercile split
+lacking a tie-break; `AND 0` relying on int-as-boolean coercion; and incident
+sample indices stored as BLOBs in INTEGER columns. Separately,
+`docs/coaching-report.md` was found stale since the A18 ranker fix and
+regenerated first, so the artifact byte-diff gate would mean something.
 
 **One line:** the deterministic engine (M0a–M7) is complete and verified; the
 full UI-SPEC.md milestone track (U0–U4) is built, including the chat view

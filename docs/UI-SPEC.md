@@ -73,7 +73,11 @@ Strict order; a milestone begins only when the prior one's gates pass.
 2. Gate visibility: on a fixture DB with known suppressions, every suppressed finding appears with its reason; the count of gate-suppressed items is always on screen where findings show.
 3. Confirm discipline: an unconfirmed proposal changes nothing (e2e); a confirmed one writes through `ConfigStore` with a history entry and is revertible from the UI.
 4. Validation before display: a mocked provider response citing an unknown evidence ID never renders; the UI shows the surfaced error instead.
-5. Offline: the app fully loads and operates with all non-localhost network blocked.
+5. Offline, stated as two claims since **SPEC.md A23** (2026-07-26) made the single one untrue:
+   - **5a — browser level (unchanged, and still what `tests/test_offline.py` verifies).** The SPA itself makes no non-localhost request on any route: no CDN, no font host, no telemetry, no analytics. Playwright actively aborts every non-local request across every route and the app still loads and operates.
+   - **5b — process level (narrowed).** With a SQLite store (`--db <path>`) the server makes no outbound connection at all, and the whole instrument is offline exactly as before. With `DRIVERDNA_DATABASE_URL` set, the server's only non-localhost dependency is the configured store — plus the AI provider when `coach`/`chat` is actually invoked, which was always true.
+
+   Recorded deliberately: gate 5's Playwright test intercepts *browser* traffic, so it passes unchanged after A23 and would **not** have caught the backend gaining a network dependency. It passes correctly rather than vacuously — but the scope of what it proves is 5a, not 5b, and that distinction is written down here rather than left to be rediscovered.
 
 ## Out of scope
 
