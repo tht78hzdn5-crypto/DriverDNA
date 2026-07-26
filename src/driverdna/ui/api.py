@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -62,6 +63,13 @@ class ChatCreateBody(BaseModel):
 
 class ChatMessageBody(BaseModel):
     text: str
+
+
+#: Bounds on live chat sessions. Each one pins a database connection for its
+#: lifetime, so these are what stop abandoned browser tabs from exhausting a
+#: hosted store's connection limit. Kept comfortably below any sane pool size.
+MAX_CHAT_SESSIONS = 8
+CHAT_SESSION_TTL_S = 60 * 60
 
 
 def create_app(
@@ -427,9 +435,37 @@ def create_app(
     # A ChatSession is stateful (in-memory conversation + staged proposals,
     # UI-SPEC decision 5) and keeps its own DB connection open for the
     # session's lifetime — unlike every other endpoint's per-request
-    # `with open_db() as db:`. This is a deliberate, scoped deviation: a
-    # local, single-user tool (philosophy #8) doesn't need session eviction
-    # machinery for what is, in practice, a handful of concurrent sessions.
+    # `with open_db() as db:`.
+    #
+    # That deviation used to come with "a local, single-user tool doesn't need
+    # session eviction machinery". Against a local file that was true: an
+    # abandoned browser tab leaked a file handle. Against a hosted store it is
+    # not — every live session pins a server connection, and enough abandoned
+    # tabs exhaust the connection limit and take out every other endpoint. So
+    # sessions are now bounded and idle-expired; an evicted session's next
+    # request gets the existing 404 "unknown chat session", which the SPA
+    # already handles.
+
+    def _evict_chat_sessions() -> None:
+        now = time.monotonic()
+        for sid, entry in list(chat_sessions.items()):
+            if now - entry["touched"] > CHAT_SESSION_TTL_S:
+                _close_chat_session(sid)
+        while len(chat_sessions) > MAX_CHAT_SESSIONS:
+            oldest = min(chat_sessions, key=lambda s: chat_sessions[s]["touched"])
+            _close_chat_session(oldest)
+
+    def _close_chat_session(session_id: str) -> None:
+        entry = chat_sessions.pop(session_id, None)
+        if entry is not None:
+            entry["db"].close()
+
+    def _touch_chat_session(session_id: str) -> dict[str, Any]:
+        entry = chat_sessions.get(session_id)
+        if entry is None:
+            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
+        entry["touched"] = time.monotonic()
+        return entry
 
     @app.post("/api/chat/sessions")
     def create_chat_session(body: ChatCreateBody) -> dict[str, Any]:
@@ -455,7 +491,10 @@ def create_app(
         except Exception:
             db.close()
             raise
-        chat_sessions[session_id] = {"session": session, "db": db}
+        chat_sessions[session_id] = {
+            "session": session, "db": db, "touched": time.monotonic(),
+        }
+        _evict_chat_sessions()
         return {
             "session_id": session_id,
             "cohort": body.cohort,
@@ -463,10 +502,7 @@ def create_app(
         }
 
     def _get_session(session_id: str) -> ChatSession:
-        entry = chat_sessions.get(session_id)
-        if entry is None:
-            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
-        return entry["session"]
+        return _touch_chat_session(session_id)["session"]
 
     @app.post("/api/chat/sessions/{session_id}/messages")
     def chat_message(session_id: str, body: ChatMessageBody) -> StreamingResponse:

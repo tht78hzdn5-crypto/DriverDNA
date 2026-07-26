@@ -426,6 +426,33 @@ class _PostgresDialect(_Dialect):
 _SQLITE = _Dialect()
 _POSTGRES = _PostgresDialect()
 
+#: Tables live here, never in `public`.
+#:
+#: Supabase automatically exposes everything in `public` over PostgREST, so a
+#: table sitting there without row-level security is readable at
+#: https://<project>.supabase.co/rest/v1/<table> by anyone holding the anon
+#: key — and that key ships in every Supabase project. `laps`,
+#: `chat_transcripts` and `driver_beliefs` in `public` would mean the driver's
+#: telemetry and coaching conversations were published to an unauthenticated
+#: HTTP endpoint. PostgREST does not expose non-`public` schemas by default,
+#: so the namespace alone closes it; RLS below is the second layer.
+PG_SCHEMA = "driverdna"
+
+_DEFAULT_SEARCH_PATHS = {'"$user", public', '"$user",public', "public"}
+
+
+def _namespace_postgres(conn) -> None:
+    """Put this connection in the `driverdna` schema.
+
+    Skipped when the DSN already selects a schema — the test harness gives
+    each test its own — so an explicit choice is never overridden.
+    """
+    current = conn.execute("SHOW search_path").fetchone()["search_path"]
+    if current.strip() not in _DEFAULT_SEARCH_PATHS:
+        return
+    conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{PG_SCHEMA}"')
+    conn.execute(f'SET search_path TO "{PG_SCHEMA}"')
+
 
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
@@ -468,7 +495,11 @@ class Database:
         """
         blobs = open_blob_store(path, blob_root)
         if is_postgres_url(path):
-            return cls(cls._connect_postgres(str(path)), blobs, _POSTGRES)
+            conn = cls._connect_postgres(str(path))
+            _namespace_postgres(conn)
+            database = cls(conn, blobs, _POSTGRES)
+            database._harden_postgres()
+            return database
         return cls(
             sqlite3.connect(str(path), check_same_thread=check_same_thread),
             blobs,
@@ -526,6 +557,29 @@ class Database:
             self.conn.executescript(script)
             with self.conn:
                 self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
+
+    def _harden_postgres(self) -> None:
+        """Enable row-level security, with no policies, on every table.
+
+        The second layer behind the `driverdna` namespace. RLS with zero
+        policies denies every role except the table owner (which this
+        connection is) and superusers — so if a future change ever exposed
+        these tables through PostgREST, Supabase's `anon` and `authenticated`
+        roles would still read nothing rather than everything.
+
+        Runs on connect, so it costs one catalogue query in the steady state
+        and issues ALTERs only for tables that are actually unprotected —
+        `Database.open` happens per request in the UI, and 17 unconditional
+        ALTERs there would be a real cost for no work.
+        """
+        rows = self.conn.execute(
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = current_schema() AND NOT rowsecurity
+               ORDER BY tablename"""
+        ).fetchall()
+        for row in rows:
+            table = row["tablename"]
+            self.conn.execute(f'ALTER TABLE "{table}" ENABLE ROW LEVEL SECURITY')
 
     def _insert_returning(self, sql: str, params: tuple, pk_col: str) -> int:
         """Run an INSERT and return the affected row's primary key.

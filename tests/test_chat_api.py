@@ -173,3 +173,68 @@ def test_confirm_unknown_index_404s(env):
     client.post(f"/api/chat/sessions/{session_id}/messages", json={"text": "hi"})
     resp = client.post(f"/api/chat/sessions/{session_id}/confirm/1")
     assert resp.status_code == 404
+
+
+# --- session lifetime (Postgres port) ---------------------------------------
+
+
+def _is_unknown_session(resp) -> bool:
+    """`confirm` returns 404 both for an unknown session and for a valid
+    session with no staged proposal at that index, so the two are told apart
+    by the detail rather than the status."""
+    return resp.status_code == 404 and "unknown chat session" in resp.json()["detail"]
+
+
+def _probe(client, session_id):
+    return client.post(f"/api/chat/sessions/{session_id}/confirm/0")
+
+
+def test_sessions_are_bounded_and_evicted_oldest_first(env, monkeypatch):
+    """Each live session pins a database connection for its lifetime.
+
+    Against a local file an abandoned browser tab leaked a file handle;
+    against a hosted store it pins a server connection, and enough of them
+    exhaust the connection limit and take out every other endpoint. So the
+    map is bounded, and the oldest session goes first.
+    """
+    from driverdna.ui import api as api_module
+
+    monkeypatch.setattr(api_module, "MAX_CHAT_SESSIONS", 2)
+    client = make_client(env, [])
+
+    first = create_session(client)
+    second = create_session(client)
+    third = create_session(client)
+
+    assert _is_unknown_session(_probe(client, first)), "oldest should be evicted"
+    for sid in (second, third):
+        assert not _is_unknown_session(_probe(client, sid)), "survivor was evicted"
+
+
+def test_idle_sessions_expire(env, monkeypatch):
+    """An abandoned tab must not hold its connection forever."""
+    from driverdna.ui import api as api_module
+
+    monkeypatch.setattr(api_module, "CHAT_SESSION_TTL_S", -1)  # everything is stale
+    client = make_client(env, [])
+
+    stale = create_session(client)
+    create_session(client)  # triggers the sweep
+
+    assert _is_unknown_session(_probe(client, stale))
+
+
+def test_an_active_session_is_not_evicted_by_age(env, monkeypatch):
+    """Eviction is by *idle* time — using a session must keep it alive, or a
+    long conversation would drop out from under the driver."""
+    from driverdna.ui import api as api_module
+
+    monkeypatch.setattr(api_module, "MAX_CHAT_SESSIONS", 2)
+    client = make_client(env, [])
+
+    keep = create_session(client)
+    create_session(client)
+    _probe(client, keep)          # touch it, making it the most recent
+    create_session(client)        # forces an eviction
+
+    assert not _is_unknown_session(_probe(client, keep))
