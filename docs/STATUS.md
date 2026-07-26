@@ -1,10 +1,10 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-22.** Branch `main` (commits land here directly as of
+**Snapshot date: 2026-07-26.** Branch `main` (commits land here directly as of
 2026-07-21 — the feature-branch/PR flow used earlier that session is retired;
-this snapshot's UI-v2 spec is the one exception, delivered on the
+this snapshot's UI-v2 work is the one exception, delivered on the
 session-designated branch `claude/driverdna-ui-redesign-j6riya`, awaiting
-owner merge).
+owner merge: U5 restyle, then U6 cockpit actions below).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -99,7 +99,7 @@ Copy trimmed throughout after the owner flagged the first mockup "very wordy"
 (binding "Copy density" rule now in UI-SPEC.md). Colours, colour grammar,
 and all five trust gates unchanged; `_TOKENS` byte-match green; built SPA
 reships in-package; suite green. Milestone **U6** (cockpit actions: sync +
-rebuild-map buttons) remains specced, not built.
+rebuild-map buttons) followed once U5's gates passed — see below.
 **Reference-lap survey + plan written (2026-07-22, `docs/REFERENCE-LAPS.md`)**:
 owner-requested. The machinery exists and is tested (role column,
 query-surface isolation, shared corner maps, `reference_envelope` →
@@ -126,14 +126,28 @@ sync twice more was fully idempotent (0 new laps, 25 total unchanged), and
 `driverdna report` ran clean on the API-sourced laps. Reference laps stay
 on the manual `import` path per M0b's finding (other-drivers' laps return
 `403 forbidden_lap`) — confirmed again live: every synced lap is `role='self'`.
+**U6 "cockpit actions" built (2026-07-26)**: the write-side half of design
+language v2. `POST /api/sync` (wraps `sync_driver`, constructing
+`Garage61Client()` straight from `GARAGE61_TOKEN` — never from the request)
+and `POST /api/cohorts/{slug}/rebuild-map` (wraps the A22 in-place refreeze)
+are both pure wrappers, decision-3 style; CLI-effect parity against
+`driverdna sync` / `driverdna rebuild-map` is a mocked-client / two-copies-
+of-one-fixture-cohort test respectively, plus a dedicated test proving an
+unset `GARAGE61_TOKEN` returns HTTP 400 and writes nothing. UI: a
+`btn-primary` **Sync** on driver home (missing-token state renders as
+guidance text, never an input field) and a `btn small` **Rebuild map** in
+the cohort context strip behind its own client-side confirm/cancel gate,
+rendering the rebuild report including the cleared-stale-phase notice. All
+five trust gates green; no route-list changes needed. Full record:
+PROJECT-BRIEF.md's decision log.
 
-## Verified counts (2026-07-21)
+## Verified counts (2026-07-21; tests re-verified 2026-07-26)
 
 Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **534** (35 test files) | `python3 -m pytest` |
+| Tests passing | **530** (37 test files) — up from 518 before U6; adds `test_cockpit_api.py` (10) + `test_cockpit_ui.py` (2) | `python3 -m pytest` |
 | Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |

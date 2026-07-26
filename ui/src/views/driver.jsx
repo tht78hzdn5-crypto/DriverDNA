@@ -1,5 +1,5 @@
-import React from "react";
-import { get } from "../api.js";
+import React, { useState } from "react";
+import { get, send } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
 import { LossBars } from "./shared.jsx";
@@ -9,10 +9,86 @@ import { LossBars } from "./shared.jsx";
 // A cold start (no DB yet — the only realistic failure on this local tool)
 // routes to the same "import to get started" direction, not a raw CLI error.
 const NO_DB = "no DB at"; // matches api.py's open_db() 404 detail exactly
+const NO_TOKEN = "GARAGE61_TOKEN"; // matches Garage61Client's own RuntimeError text
+
+// Sync (U6): a wrapper over sync_driver, nothing computed here — every
+// figure below is the endpoint's own response, replayed verbatim. The
+// missing-token state is guidance, never an input field (decision: secrets
+// stay env-only, never transit the browser).
+function SyncPanel({ onSynced }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null); // list[CohortSync] verbatim
+  const [error, setError] = useState(null);
+  const noToken = (error || "").includes(NO_TOKEN);
+
+  async function runSync() {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const r = await send("POST", "/api/sync");
+      setResult(r);
+      onSynced();
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel">
+      <p className="eyebrow">Sync</p>
+      <div className="actions" style={{ marginTop: 0 }}>
+        <button className="btn-primary" disabled={busy} onClick={runSync}>
+          {busy ? "Syncing…" : "Sync"}
+        </button>
+        <a className="btn" href="#/garage">Open garage</a>
+        <a className="btn" href="#/model">Driver model</a>
+      </div>
+
+      {noToken && <div className="reason" style={{ marginTop: "0.6rem" }}>Set GARAGE61_TOKEN to sync.</div>}
+      {error && !noToken && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
+
+      {result && (
+        result.length === 0 ? (
+          <div className="dim" style={{ fontSize: "0.82rem", marginTop: "0.6rem" }}>
+            No cohorts found — nothing driven yet, or the filter matched none.
+          </div>
+        ) : (
+          <div style={{ marginTop: "0.6rem" }}>
+            {result.map((s) => (
+              <div key={`${s.car}::${s.track}`} className="finding">
+                <div className="head">
+                  <span className="desc">{s.car} @ {s.track}</span>
+                  <span className="val num">{s.laps_new} new</span>
+                </div>
+                <div className="meta num">
+                  {s.laps_seen} seen
+                  {s.laps_skipped.length > 0 && <> · {s.laps_skipped.length} skipped</>}
+                </div>
+                {s.laps_skipped.map((sk) => (
+                  <div key={sk.lap_id} className="reason">skipped {sk.lap_id}: {sk.reason}</div>
+                ))}
+                {s.results.filter((r) => r.admitted.length > 0 || r.class_changes.length > 0).map((r) => (
+                  <div key={r.lap_pk} className="reason">
+                    {r.admitted.length > 0 && <>admitted to map: {r.admitted.join(", ")} </>}
+                    {r.class_changes.map((c) => `${c.corner_id}: ${c.old} → ${c.new}`).join("; ")}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </section>
+  );
+}
 
 export default function DriverHome() {
-  const driver = useFetch(() => get("/api/driver"), []);
-  const cohorts = useFetch(() => get("/api/cohorts"), []);
+  const [reload, setReload] = useState(0);
+  const driver = useFetch(() => get("/api/driver"), [reload]);
+  const cohorts = useFetch(() => get("/api/cohorts"), [reload]);
   const coldStart = (driver.error || "").includes(NO_DB) || (cohorts.error || "").includes(NO_DB);
   if (!coldStart && (driver.error || cohorts.error)) {
     return <Loading error={driver.error || cohorts.error} />;
@@ -70,12 +146,7 @@ export default function DriverHome() {
         ))}
       </section>
 
-      <section className="panel">
-        <div className="actions" style={{ marginTop: 0 }}>
-          <a className="btn" href="#/garage">Open garage</a>
-          <a className="btn" href="#/model">Driver model</a>
-        </div>
-      </section>
+      <SyncPanel onSynced={() => setReload((n) => n + 1)} />
     </div>
   );
 }

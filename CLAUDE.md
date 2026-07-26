@@ -301,10 +301,36 @@ from the real fixtures and reviewed.
   `_TOKENS` byte-match green; five trust gates green; built SPA reships
   in-package. `#/garage` added to the offline route list only (no
   measurement to parity-crawl, like `#/upload`); no reference lap seeded
-  into the shared fixture (parity-clean by construction). **U6** (cockpit
-  actions: `POST /api/sync` + `POST /api/cohorts/{slug}/rebuild-map`,
-  CLI-effect parity, `GARAGE61_TOKEN` env-only — never an input field)
-  remains specced, not built. Mockup: docs/ui-redesign-mockup.html.
+  into the shared fixture (parity-clean by construction). Mockup:
+  docs/ui-redesign-mockup.html.
+- **UI design language v2: U6 "cockpit actions" built (2026-07-26)** — the
+  write-side half, unblocked once U5's gates passed. `POST /api/sync` wraps
+  `sync_driver`, constructing `Garage61Client()` straight from
+  `GARAGE61_TOKEN` (never from the request); `POST /api/cohorts/{slug}/
+  rebuild-map` resolves the slug and wraps `rebuild_cohort_map` (the A22
+  in-place refreeze), 404ing on an unknown slug or a resolvable cohort with
+  no frozen map. Both are pure wrappers (no business logic in `api.py`),
+  proven byte-identical to the CLI: `tests/test_cockpit_api.py` syncs a
+  mocked `Garage61Client` (canned lap listing + CSV bytes, never live/a real
+  token) through the endpoint and `driverdna sync` to independent fresh DBs
+  and diffs the lap/observation/sync-state rows; a real fixture cohort is
+  copied to two DBs, rebuilt via the endpoint and `driverdna rebuild-map`,
+  and the `corners`/`corner_windows`/`phase_times` rows diffed; a dedicated
+  test proves an unset `GARAGE61_TOKEN` returns HTTP 400 and never opens the
+  DB. UI: a `btn-primary` **Sync** on driver home (missing-token state is a
+  `.reason` guidance line, never an input field — the secret never transits
+  the browser) and a `btn small` **Rebuild map** in the cohort context strip
+  behind a client-side confirm/cancel gate, rendering the rebuild report
+  (per-corner shift/window/re-measured/cleared, admitted, class changes, the
+  cleared-stale-phase notice) and refetching the payload afterward. Four
+  implementation-time decisions flagged in UI-SPEC.md's U6 section (details
+  left open by its seven conditions, not changes to them): both endpoints
+  require a pre-existing DB like every write endpoint but `/api/laps/upload`;
+  the missing-token error is HTTP 400 specifically; `/api/sync` returns a
+  bare `list[CohortSync]` rather than an upload-style `{results, evicted}`
+  wrapper; Sync lives on driver home only, not duplicated onto Garage. Five
+  trust gates green, no route-list changes needed; suite 518 → 530 (12 new
+  tests, `test_cockpit_api.py` + `test_cockpit_ui.py`).
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

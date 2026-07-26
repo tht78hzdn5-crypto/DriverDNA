@@ -252,6 +252,56 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-26 — U6 "cockpit actions" built (`POST /api/sync` +
+  `POST /api/cohorts/{slug}/rebuild-map`).** The second, write-side half of
+  design language v2, unblocked once U5's gates went green. Both endpoints
+  are pure wrappers per decision 3 — no business logic in `api.py`: `/api/sync`
+  constructs `Garage61Client()` straight from the environment (`GARAGE61_TOKEN`)
+  and calls `sync_driver` verbatim, never reading a token from the request
+  body; `/api/cohorts/{slug}/rebuild-map` resolves the slug via the existing
+  `resolve()` and calls `rebuild_cohort_map` (the A22 in-place refreeze),
+  404ing both on an unknown slug and on a resolvable cohort with no frozen
+  map yet — mirroring `driverdna rebuild-map`'s exit-2 in both cases.
+  CLI-effect parity (decision 3's binding condition) proven directly in
+  `tests/test_cockpit_api.py`: a mocked `Garage61Client` (canned lap listing +
+  CSV bytes, never a live API or a real token) is synced through both the
+  endpoint and `driverdna sync` to independent fresh DBs, asserting identical
+  lap/corner-observation/sync-state rows; separately, one real fixture
+  cohort (GR86 @ Spa-Francorchamps) is imported once, copied to two DB
+  files, rebuilt via the endpoint and via `driverdna rebuild-map`, asserting
+  identical `corners`/`corner_windows`/`phase_times` rows. A dedicated test
+  proves the token stays env-only: `GARAGE61_TOKEN` unset returns HTTP 400
+  with the client's own actionable message and the DB is never even opened.
+  10 API tests plus 2 browser-driven tests (`tests/test_cockpit_ui.py`,
+  mirroring `test_upload_ui.py`'s convention) — suite 518 → 530, all green.
+  UI, v2 button system: a `btn-primary` **Sync** on driver home renders each
+  cohort's seen/new/skipped/admitted/class-change lines verbatim (a `.reason`
+  guidance line — "Set GARAGE61_TOKEN to sync." — replaces the button's
+  output when the token is absent, never an input field, so the secret never
+  transits the browser); a `btn small` **Rebuild map** in the cohort context
+  strip opens a client-side confirm/cancel gate (decision 5 — the same
+  non-default-action discipline as the config panel's staged card, just
+  without server-side staging, since a map rebuild has no engine-level
+  "propose" step to mirror), then renders the rebuild report as a per-corner
+  table (centroid shift, window changed, laps re-measured, laps cleared)
+  plus the admitted/class-change/cleared-stale-phase notices, and triggers a
+  payload refetch afterward since corner geometry, classes, and loss figures
+  can move. Four implementation-time decisions flagged in UI-SPEC.md's U6
+  section (details the spec's seven conditions left open, not changes to
+  them): both endpoints require a pre-existing DB via the same `open_db()`
+  helper every write endpoint but `/api/laps/upload` uses (upload remains the
+  sole cold-start exception); the missing-token error is HTTP 400 specifically
+  (in the required 4xx range, chosen over 422 — reserved for an invalid
+  request body, which this isn't — and over the 503 already used elsewhere
+  in this file for a missing `ANTHROPIC_API_KEY`); `/api/sync` returns a bare
+  `list[CohortSync]` per condition 1's literal wording rather than an
+  upload-style `{results, evicted}` wrapper (retention eviction still runs
+  for parity, just isn't separately echoed); Sync lives on driver home only,
+  not duplicated onto Garage. All five trust gates green; no route-list
+  changes needed (both buttons live on already-covered routes, and their
+  result panels render only after a click, so the static crawlers never see
+  them — the same reasoning that already excludes `#/upload`). `npm run
+  build` ships the updated SPA bundle in-package.
 - **2026-07-22 — U5 "pit wall" restyle built (design language v2).** Executed
   the v2 spec on the owner's go. Token layer: `ui/tokens.json` gains
   `font.display` (IBM Plex Sans Condensed, self-hosted 600/700 latin —

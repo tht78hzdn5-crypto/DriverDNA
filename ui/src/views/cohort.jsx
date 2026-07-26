@@ -1,5 +1,5 @@
-import React from "react";
-import { get } from "../api.js";
+import React, { useState } from "react";
+import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
@@ -73,11 +73,100 @@ function ReferenceLaps({ refLaps }) {
   );
 }
 
+// Rebuild map (U6): rewrites frozen geometry, so it sits behind its own
+// explicit confirm (decision 5) — same non-default-action discipline as the
+// config panel's staged card, one click to stage the intent, a distinct
+// second click (`btn confirm`) to actually act.
+function RebuildMapReport({ phase, result, error, onConfirm, onCancel, busy }) {
+  if (phase === "idle") return null;
+  return (
+    <>
+      {phase === "confirm" && (
+        <section className="panel staged">
+          <p className="eyebrow">Rebuild map — confirm to proceed</p>
+          <div className="sub" style={{ marginTop: 0 }}>
+            Re-derives every corner's centroid and canonical window from this
+            cohort's full lap set. Corner IDs never change — evidence stays valid.
+          </div>
+          <div className="actions">
+            <button className="btn confirm" disabled={busy} onClick={onConfirm}>
+              {busy ? "Rebuilding…" : "Confirm rebuild"}
+            </button>
+            <button className="btn" disabled={busy} onClick={onCancel}>Cancel</button>
+          </div>
+        </section>
+      )}
+
+      {error && <div className="error">{error}</div>}
+
+      {phase === "done" && result && (
+        <section className="panel">
+          <p className="eyebrow">Rebuild report — {result.car} @ {result.track}</p>
+          <div className="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>corner</th><th className="right">shift</th><th>window</th>
+                  <th className="right">re-measured</th><th className="right">cleared</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.corners.map((c) => (
+                  <tr key={c.corner_id}>
+                    <td>{c.corner_id}</td>
+                    <td className="right num">
+                      {c.centroid_shift_m === null ? "GPS-degraded" : `${fmt(c.centroid_shift_m, 1)} m`}
+                    </td>
+                    <td className="dim">{c.window_changed ? "shifted" : "unchanged"}</td>
+                    <td className="right num">{c.laps_remeasured}</td>
+                    <td className="right num">{c.laps_cleared.length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {result.admitted.length > 0 && (
+            <div className="sub">admitted new corners: {result.admitted.join(", ")}</div>
+          )}
+          {result.class_changes.length > 0 && (
+            <div className="reason">
+              {result.class_changes.map((c) => `${c.corner_id}: ${c.old} → ${c.new}`).join("; ")}
+              {" "}— surfaced, never silent
+            </div>
+          )}
+          {result.total_cleared > 0 && (
+            <div className="reason" style={{ marginTop: "0.4rem" }}>
+              {result.total_cleared} phase-time record(s) cleared — their raw blobs were
+              evicted past retention and can't be re-measured against the new windows.
+              Lap identity, metrics, and detectors are unchanged.
+            </div>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
 export default function Cohort({ slug }) {
-  const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug]);
-  const corners = useFetch(() => get(`/api/cohorts/${slug}/corners`), [slug]);
+  const [reload, setReload] = useState(0);
+  const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug, reload]);
+  const corners = useFetch(() => get(`/api/cohorts/${slug}/corners`), [slug, reload]);
   const trace = useFetch(() => get(`/api/cohorts/${slug}/track-trace`).catch(() => null), [slug]);
-  const laps = useFetch(() => get(`/api/laps?cohort=${slug}`).catch(() => []), [slug]);
+  const laps = useFetch(() => get(`/api/laps?cohort=${slug}`).catch(() => []), [slug, reload]);
+
+  const [rebuild, setRebuild] = useState({ phase: "idle", result: null, error: null, busy: false });
+
+  async function confirmRebuild() {
+    setRebuild((s) => ({ ...s, busy: true, error: null }));
+    try {
+      const result = await send("POST", `/api/cohorts/${slug}/rebuild-map`);
+      setRebuild({ phase: "done", result, error: null, busy: false });
+      setReload((n) => n + 1); // corner geometry/classes/loss may have moved
+    } catch (e) {
+      setRebuild((s) => ({ ...s, busy: false, error: String(e.message || e) }));
+    }
+  }
+
   if (!payload.data || !corners.data) return <Loading error={payload.error || corners.error} />;
 
   const p = payload.data;
@@ -91,8 +180,21 @@ export default function Cohort({ slug }) {
     <div className="grid">
       <section className="panel">
         <h1>{c.car} @ {c.track}</h1>
-        <ContextStrip slug={slug} here="cohort" />
+        <ContextStrip slug={slug} here="cohort">
+          <button
+            className="btn small" disabled={rebuild.busy}
+            onClick={() => setRebuild((s) => ({ ...s, phase: "confirm" }))}
+          >
+            Rebuild map
+          </button>
+        </ContextStrip>
       </section>
+
+      <RebuildMapReport
+        phase={rebuild.phase} result={rebuild.result} error={rebuild.error} busy={rebuild.busy}
+        onConfirm={confirmRebuild}
+        onCancel={() => setRebuild({ phase: "idle", result: null, error: null, busy: false })}
+      />
 
       <div className="tiles">
         <div className="tile"><div className="v num">{c.n_laps}</div><div className="k">Laps</div></div>
