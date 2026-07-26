@@ -272,6 +272,15 @@ from the real fixtures and reviewed.
   auto-detecting, so a future rename never strands the driver. Errors name
   the missing field per file. Verified end-to-end on the owner's real
   filename, CLI and browser.
+- **Re-download suffix, corrected against real evidence (2026-07-26, SPEC.md
+  A25)** — A24 stripped a browser re-download's `(1)` suffix assuming a
+  leading space (`" (1)"`), never actually observed. The owner's own next
+  re-download on Windows produced `...(1).csv` with **no space**, and the
+  parser rejected it — the same "could not resolve car/track" error A24 was
+  meant to close. Fixed by making the space optional; both spellings parse
+  now, only the no-space one is confirmed against a real file. Recorded
+  because it's the same mistake A24 itself warned against: an unverified
+  guess presented as if observed.
 - **`consistency` scoring fixed: per-unit CV normalization, `dm-v2`
   (2026-07-21, SPEC.md A21)** — the M6 "Known v1 limitation" note's own
   diagnosis (cross-cohort raw-magnitude pooling) was investigated before

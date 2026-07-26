@@ -75,7 +75,7 @@ _FILENAME_RE = re.compile(r"Garage_61_([A-Za-z0-9]+)\.csv$")
 # Lazy-group regexes absorb a surplus delimiter at a different point per shape,
 # which is exactly how that divergence would happen; an explicit field count
 # has no backtracking to diverge.
-_RE_DOWNLOAD_SUFFIX_RE = re.compile(r" \(\d+\)$")  # a browser re-download: "… (1).csv"
+_RE_DOWNLOAD_SUFFIX_RE = re.compile(r" ?\(\d+\)$")  # a browser re-download: "…(1).csv" or "… (1).csv"
 _LAPTIME_RE = re.compile(r"^\d+\.\d+\.\d+$")  # M.SS.mmm
 _LAP_ID_RE = re.compile(r"^[A-Za-z0-9]+$")
 _FIELD_COUNT = 5  # driver, car, track, laptime, lap_id
@@ -111,9 +111,14 @@ def parse_garage61_filename(name: str) -> dict[str, str] | None:
     --car/--track. "Insufficient data over guessing" (SPEC.md A24)."""
     if not name.endswith(".csv"):
         return None
-    # Stripped before anything else so a re-download's " (1)" can never leak
-    # into lap_id. The copy still lands as a content-hash duplicate at import,
-    # which is the honest report: it is the same telemetry under a new name.
+    # Stripped before anything else so a re-download's "(1)" can never leak
+    # into lap_id. Observed on the owner's own Windows machine 2026-07-26
+    # with NO space before the parenthesis -- the space-separated form was
+    # only ever assumed, never seen; both are accepted since either could
+    # recur (A13's own caution about filename metadata: store, don't assume
+    # persistence of an unconfirmed shape). The copy still lands as a
+    # content-hash duplicate at import, which is the honest report: it is
+    # the same telemetry under a new name.
     stem = _RE_DOWNLOAD_SUFFIX_RE.sub("", name[: -len(".csv")])
     for shape in _FILENAME_SHAPES:
         if not stem.startswith(shape.prefix):

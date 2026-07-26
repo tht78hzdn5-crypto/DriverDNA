@@ -1227,3 +1227,31 @@ Accepted at owner plan review; rationale recorded in the review:
   claim. Harmless with a single project; the workaround today is to set
   `DRIVERDNA_BLOB_ROOT` per project. A real fix keys the root on a hash of
   the full DSN and migrates existing blobs.
+
+- **A25** (2026-07-26, owner-reported): **A24's re-download suffix handling
+  was itself an unverified guess, and the guess was wrong.** A24 recorded
+  "a browser re-download's ` (1)` suffix is stripped before splitting" as if
+  observed; it was not — no re-download had actually happened yet, only a
+  space-separated form was assumed by analogy to common desktop conventions.
+  The owner's own next re-download, on their own Windows machine, produced
+  `...PDABVEREMJ(1).csv` — **no space** before the parenthesis — and
+  `parse_garage61_filename` returned `None` for it, reproducing the exact
+  "could not resolve car/track" rejection A24 was supposed to have closed.
+
+  `_RE_DOWNLOAD_SUFFIX_RE` widened from `r" \(\d+\)$"` to `r" ?\(\d+\)$"` —
+  the leading space is now optional, so both spellings strip cleanly before
+  the five-field split. Nothing else about A24's design changes: the suffix
+  is still stripped before splitting (never enters `lap_id`), and a
+  re-downloaded copy still lands as a content-hash duplicate at import.
+
+  The corrected instinct A24 already stated, misapplied to itself: "store,
+  don't depend on the shape persisting... inventing it would be guessing
+  past the evidence." A24's own re-download handling was exactly that kind
+  of invention, just not caught before it shipped, because no test used real
+  observed evidence for that one line — every suffix test at the time used
+  the same assumed, unconfirmed spelling. Both spellings are now tested
+  explicitly, one labeled as the real observed case
+  (`test_new_filename_format_handles_re_download_suffix_without_space`,
+  `test_hyphen_filename_shape_handles_re_download_suffix_without_space`) and
+  one as the still-unconfirmed original guess, kept only because it costs
+  nothing to also accept.

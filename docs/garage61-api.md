@@ -330,12 +330,20 @@ so they produce byte-identical car/track — those strings are cohort keys, and
 two spellings of one car must not split a cohort in two. A filename carrying
 the delimiter *inside* a field (a track named `Spa - Francorchamps`) is
 refused rather than split on a guess, since the ambiguity would land in the
-cohort key where a wrong value is invisible. A browser re-download's ` (1)`
+cohort key where a wrong value is invisible. A browser re-download's `(1)`
 suffix is stripped before the fields are split, so it never enters `lap_id`;
 the copy then lands as a content-hash duplicate at import, which is the
 honest report. Safari's `-1` re-download form is deliberately **not**
 handled — it was not observed here, and inventing it would be guessing past
 the evidence; such a file falls into the loud, itemized error instead.
+
+**Corrected 2026-07-26 (SPEC.md A25)**: the previous paragraph's `(1)`
+handling was itself an unverified guess — no real re-download had happened
+yet, and a leading space before the parenthesis was assumed by analogy, not
+observed. The owner's own next re-download, on their own Windows machine,
+produced `...PDABVEREMJ(1).csv` with **no space**, and the parser rejected
+it. Both spellings (with and without the leading space) are now accepted;
+only the no-space form is confirmed against a real file.
 
 ## Rate limits
 

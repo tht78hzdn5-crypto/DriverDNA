@@ -239,13 +239,27 @@ def test_new_filename_format_extracts_car_track_and_lap_id():
     }
 
 
-def test_new_filename_format_handles_re_download_suffix():
-    """A browser re-download appends " (1)" before .csv. It is stripped before
+def test_new_filename_format_handles_re_download_suffix_with_space():
+    """A browser re-download appends "(1)" before .csv. It is stripped before
     the fields are split, so it can never leak into lap_id — the copy then
     lands as a content-hash duplicate at import, which is the honest report."""
     detected = parse_garage61_filename(
         "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
         "01.31.115__01KY31T54KGGQ351PDABVEREMJ1 (1).csv"
+    )
+    assert detected is not None
+    assert detected["car"] == "Ford Mustang GT4"
+    assert detected["lap_id"] == "01KY31T54KGGQ351PDABVEREMJ1"
+
+
+def test_new_filename_format_handles_re_download_suffix_without_space():
+    """Real evidence beats the assumption above: the owner's own Windows
+    machine produced this exact shape (no space before the parenthesis) on a
+    real re-download, 2026-07-26 — the space-separated form above was only
+    ever assumed, never observed. Both are accepted since either could recur."""
+    detected = parse_garage61_filename(
+        "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+        "01.31.115__01KY31T54KGGQ351PDABVEREMJ1(1).csv"
     )
     assert detected is not None
     assert detected["car"] == "Ford Mustang GT4"
@@ -302,7 +316,19 @@ def test_both_filename_shapes_give_byte_identical_car_track():
     assert underscore["track"] == hyphen["track"] == "Summit Point Raceway"
 
 
-def test_hyphen_filename_shape_handles_re_download_suffix():
+def test_hyphen_filename_shape_handles_re_download_suffix_without_space():
+    """The real, owner-reported failure (2026-07-26): a Windows re-download of
+    this exact hyphen-shape filename came back with no space before the
+    parenthesis, and `parse_garage61_filename` returned None for it — every
+    committed test up to that point used the space-separated form, which was
+    only ever assumed. Both forms are accepted now."""
+    detected = parse_garage61_filename(HYPHEN_SHAPE.replace(".csv", "(1).csv"))
+    assert detected is not None
+    assert detected["car"] == "Ford Mustang GT4"
+    assert detected["lap_id"] == "01KY31T54KGGQ351PDAGJDTZJM"
+
+
+def test_hyphen_filename_shape_handles_re_download_suffix_with_space():
     detected = parse_garage61_filename(HYPHEN_SHAPE.replace(".csv", " (1).csv"))
     assert detected is not None
     assert detected["car"] == "Ford Mustang GT4"
