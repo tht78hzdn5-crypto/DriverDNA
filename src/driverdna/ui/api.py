@@ -150,18 +150,27 @@ def create_app(
         — the outline the cohort view draws (UI-SPEC view 2)."""
         with open_db() as db:
             cohort = resolve(db, slug)
+            # Raw blobs live on local disk, so "which lap still has one" is a
+            # filesystem question, not a join. Walk newest-first and take the
+            # first lap whose trace is actually readable here.
             rows = db.conn.execute(
                 """SELECT l.lap_pk, l.lap_id FROM laps l
-                   JOIN lap_samples s ON s.lap_pk = l.lap_pk
                    WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
-                   ORDER BY l.lap_pk DESC LIMIT 1""",
+                   ORDER BY l.lap_pk DESC""",
                 (cohort["driver"], cohort["car"], cohort["track"]),
             ).fetchall()
-            if not rows:
+            arrays = None
+            chosen = None
+            for row in rows:
+                arrays = db.load_lap_arrays(int(row["lap_pk"]))
+                if arrays is not None:
+                    chosen = row
+                    break
+            if arrays is None:
                 raise HTTPException(
                     404, detail="no raw lap within retention for this cohort"
                 )
-            arrays = db.load_lap_arrays(int(rows[0]["lap_pk"]))
+            rows = [chosen]
             step = max(1, len(arrays["lat"]) // TRACE_POINTS)
             return {
                 "lap_id": rows[0]["lap_id"],
@@ -176,9 +185,7 @@ def create_app(
             c = resolve(db, cohort)
             rows = db.conn.execute(
                 """SELECT lap_pk, lap_id, role, duration_s, session_key,
-                          quality_flags,
-                          EXISTS(SELECT 1 FROM lap_samples s
-                                 WHERE s.lap_pk = laps.lap_pk) AS raw_retained
+                          quality_flags
                    FROM laps WHERE car=? AND track=? ORDER BY lap_pk""",
                 (c["car"], c["track"]),
             ).fetchall()
@@ -192,7 +199,10 @@ def create_app(
                     "session_key": r["session_key"],
                     "quality_flags": json.loads(r["quality_flags"]),
                     "incidents": incident_counts.get(r["lap_pk"], 0),
-                    "raw_retained": bool(r["raw_retained"]),
+                    # A filesystem check, not a row check: a lap imported on
+                    # another machine has every summary row here and no blob,
+                    # which reads the same as "evicted by retention".
+                    "raw_retained": db.has_raw(int(r["lap_pk"])),
                 }
                 for r in rows
             ]

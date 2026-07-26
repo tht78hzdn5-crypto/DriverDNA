@@ -32,6 +32,7 @@ from typing import Any
 
 import numpy as np
 
+from driverdna.blobs import BlobStore, MemoryBlobStore, open_blob_store
 from driverdna.config import IdentityConfig
 from driverdna.corners.identity import CornerIdentity, CornerMap, _gps_ok, _meters
 from driverdna.corners.segmenter import CornerSpan, Landmarks
@@ -233,6 +234,16 @@ MIGRATIONS: tuple[str, ...] = (
     );
     CREATE INDEX idx_incidents_lap ON incidents(lap_pk);
     """,
+    # 006 — raw blobs move out of the database and onto local disk (see
+    # blobs.py for why). A rename, deliberately not a DROP: an existing
+    # database still holds real telemetry here, and losing it would mean
+    # re-importing from source CSVs to recover. `driverdna migrate-blobs`
+    # drains this table onto disk and empties it; until then
+    # `load_lap_arrays` falls back to it, so an un-migrated database keeps
+    # working exactly as before.
+    """
+    ALTER TABLE lap_samples RENAME TO lap_samples_legacy;
+    """,
 )
 
 
@@ -296,20 +307,35 @@ def landmarks_from_json(text: str) -> Landmarks:
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
 
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, blobs: BlobStore | None = None):
         self.conn = conn
+        self.blobs = blobs if blobs is not None else MemoryBlobStore()
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         self._migrate()
 
     @classmethod
-    def open(cls, path: Path | str = ":memory:", *, check_same_thread: bool = True) -> "Database":
+    def open(
+        cls,
+        path: Path | str = ":memory:",
+        *,
+        check_same_thread: bool = True,
+        blob_root: Path | str | None = None,
+    ) -> "Database":
         """`check_same_thread=False` is for long-lived connections handed
         across a thread pool (e.g. the UI's per-chat-session connection,
         UI-SPEC decision 5) — sequential access from different threads over
         the connection's life, never truly concurrent, so this is safe;
-        every other caller keeps the default thread-affine connection."""
-        return cls(sqlite3.connect(str(path), check_same_thread=check_same_thread))
+        every other caller keeps the default thread-affine connection.
+
+        `blob_root` overrides where raw lap blobs are kept; by default they
+        sit beside the database (see `blobs.default_blob_root`), so no two
+        databases can collide on a lap_pk-keyed filename.
+        """
+        return cls(
+            sqlite3.connect(str(path), check_same_thread=check_same_thread),
+            open_blob_store(path, blob_root),
+        )
 
     def close(self) -> None:
         self.conn.close()
@@ -406,41 +432,114 @@ class Database:
                 ),
                 "lap_pk",
             )
-            self.conn.execute(
-                "INSERT INTO lap_samples (lap_pk, fmt, data) VALUES (?, 'npz-v1', ?)",
-                (lap_pk, _lap_blob(lap)),
-            )
+        # Outside the transaction: the blob is a file now, so it cannot join
+        # the row's atomicity. Written after the commit so a failed insert can
+        # never leave an orphan blob; a failed write after a committed row is
+        # simply a lap whose raw trace is unavailable — the state retention
+        # produces anyway, and which every reader already handles.
+        self.blobs.put(lap_pk, _lap_blob(lap))
         return lap_pk, "imported"
 
     def load_lap_arrays(self, lap_pk: int) -> dict[str, np.ndarray] | None:
-        row = self.conn.execute(
-            "SELECT data FROM lap_samples WHERE lap_pk = ?", (lap_pk,)
-        ).fetchone()
-        if row is None:
+        """Raw samples for a lap, or None when they are not available here.
+
+        None is a normal answer, not an error: the blob may have been evicted
+        by retention, or the lap may have been imported on another machine.
+        Callers already degrade honestly on it.
+        """
+        data = self.blobs.get(lap_pk)
+        if data is None:
+            data = self._legacy_blob(lap_pk)
+        if data is None:
             return None
-        with np.load(io.BytesIO(row["data"])) as npz:
+        with np.load(io.BytesIO(data)) as npz:
             return {name: npz[name] for name in npz.files}
+
+    def _legacy_blob(self, lap_pk: int) -> bytes | None:
+        """Read a blob still sitting in the pre-migration-006 `lap_samples`
+        table. Kept so upgrading never silently loses raw traces; `driverdna
+        migrate-blobs` drains it and the fallback then costs nothing."""
+        if not self._has_legacy_blobs():
+            return None
+        row = self.conn.execute(
+            "SELECT data FROM lap_samples_legacy WHERE lap_pk = ?", (lap_pk,)
+        ).fetchone()
+        return row["data"] if row is not None else None
+
+    def _has_legacy_blobs(self) -> bool:
+        if getattr(self, "_legacy_checked", None) is None:
+            row = self.conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='lap_samples_legacy'"
+            ).fetchone()
+            self._legacy_checked = row is not None
+        return bool(self._legacy_checked)
+
+    def has_raw(self, lap_pk: int) -> bool:
+        """Whether this lap's raw trace is readable on this machine."""
+        return self.blobs.has(lap_pk) or self._legacy_blob(lap_pk) is not None
 
     def enforce_retention(self, keep: int) -> int:
         """Evict raw blobs beyond the newest `keep` laps per cohort.
 
-        Only lap_samples rows are deleted; laps, observations, metrics, and
-        detector rows — everything trends are built from — are untouched.
-        Returns the number of blobs evicted.
+        Only blobs are removed; laps, observations, metrics, and detector
+        rows — everything trends are built from — are untouched. Returns the
+        number of blobs evicted.
+
+        The eviction set is still chosen by the same per-cohort ranking, but
+        applied to the blob store rather than to a table, so the filesystem
+        is the single source of truth for what raw data exists and no pointer
+        row can drift out of step with it.
         """
+        held = self.blobs.lap_pks()
+        if self._has_legacy_blobs():
+            held |= {
+                int(r["lap_pk"])
+                for r in self.conn.execute("SELECT lap_pk FROM lap_samples_legacy")
+            }
+        if not held:
+            return 0
+
+        seen: dict[tuple[str, str, str], int] = {}
+        evicted = 0
+        for r in self.conn.execute(
+            """SELECT lap_pk, driver, car, track FROM laps
+               ORDER BY driver, car, track, lap_pk DESC"""
+        ):
+            lap_pk = int(r["lap_pk"])
+            if lap_pk not in held:
+                continue
+            cohort = (r["driver"], r["car"], r["track"])
+            seen[cohort] = seen.get(cohort, 0) + 1
+            if seen[cohort] > keep:
+                self.blobs.delete(lap_pk)
+                if self._has_legacy_blobs():
+                    with self.conn:
+                        self.conn.execute(
+                            "DELETE FROM lap_samples_legacy WHERE lap_pk = ?", (lap_pk,)
+                        )
+                evicted += 1
+        return evicted
+
+    def drain_legacy_blobs(self) -> int:
+        """Move any pre-migration-006 blobs out of the database and onto disk.
+
+        Idempotent, and non-destructive until every blob has been written:
+        rows are deleted only after their file exists.
+        """
+        if not self._has_legacy_blobs():
+            return 0
+        moved = 0
+        for r in self.conn.execute(
+            "SELECT lap_pk, data FROM lap_samples_legacy ORDER BY lap_pk"
+        ).fetchall():
+            lap_pk = int(r["lap_pk"])
+            if not self.blobs.has(lap_pk):
+                self.blobs.put(lap_pk, r["data"])
+            moved += 1
         with self.conn:
-            cur = self.conn.execute(
-                """DELETE FROM lap_samples WHERE lap_pk IN (
-                       SELECT lap_pk FROM (
-                           SELECT l.lap_pk,
-                                  ROW_NUMBER() OVER (
-                                      PARTITION BY l.driver, l.car, l.track
-                                      ORDER BY l.lap_pk DESC) AS rn
-                           FROM laps l JOIN lap_samples s ON s.lap_pk = l.lap_pk
-                       ) ranked WHERE rn > ?)""",
-                (keep,),
-            )
-        return cur.rowcount
+            self.conn.execute("DELETE FROM lap_samples_legacy")
+        return moved
 
     # --- corner maps -------------------------------------------------------
 

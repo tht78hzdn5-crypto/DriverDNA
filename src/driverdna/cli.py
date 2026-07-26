@@ -766,6 +766,38 @@ def rebuild_map(
         )
 
 
+@app.command("migrate-blobs")
+def migrate_blobs(
+    db_path: Path = typer.Option(Path("driverdna.db"), "--db", help="SQLite DB path."),
+    blob_root: Path = typer.Option(
+        None, "--blobs",
+        help="Where raw lap blobs live. Defaults to <db>.blobs/ (or DRIVERDNA_BLOB_ROOT).",
+    ),
+) -> None:
+    """Move raw lap blobs out of the database and onto local disk.
+
+    Raw samples used to be stored inside the database; they now live beside
+    it. Opening an older database keeps reading them in place, so this is
+    safe to defer — run it once to complete the move and reclaim the space.
+    Idempotent: rows are removed only after their file exists.
+    """
+    from driverdna.db import Database
+
+    if not db_path.exists():
+        typer.echo(f"error: no DB at {db_path} — run `driverdna import` first")
+        raise typer.Exit(2)
+
+    with Database.open(db_path, blob_root=blob_root) as db:
+        moved = db.drain_legacy_blobs()
+
+    if moved == 0:
+        typer.echo("nothing to move — raw blobs already live on disk")
+    else:
+        store = blob_root or f"{db_path}.blobs"
+        typer.echo(f"moved {moved} raw lap blob(s) to {store}")
+        typer.echo("run `VACUUM` on the DB to reclaim the freed space")
+
+
 @app.command("schema-report")
 def schema_report(
     fixtures_dir: Path = typer.Option(

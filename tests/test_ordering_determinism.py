@@ -148,16 +148,80 @@ def test_no_lap_pk_filter_is_unrestricted(db):
     assert _lap_pk_filter(None) == ("", [])
 
 
-def test_retention_derived_table_is_aliased(db):
-    """`enforce_retention`'s subquery must carry an alias — a bare
-    `FROM (SELECT ...)` is a syntax error outside SQLite. Executing the real
-    path is the check; an unaliased derived table would still run here, so
-    this also asserts the alias textually."""
-    source = inspect.getsource(Database.enforce_retention)
-    assert ") ranked WHERE rn >" in source
+def test_no_unaliased_derived_tables(db):
+    """A bare `FROM (SELECT ...)` is a syntax error outside SQLite.
 
-    # The path still works and still evicts nothing from an empty DB.
-    assert db.enforce_retention(keep=10) == 0
+    `enforce_retention` was the only one and no longer uses a derived table
+    at all, so this currently guards the future rather than the present: it
+    fails if one is reintroduced without an alias. Kept deliberately — the
+    defect is invisible on the backend the tests run on.
+    """
+    import re
+
+    from driverdna import db as db_module
+
+    source = inspect.getsource(db_module)
+    for match in re.finditer(r"FROM\s*\(\s*SELECT", source, re.IGNORECASE):
+        depth, i = 0, match.end() - len("SELECT") - 1
+        while i < len(source):  # walk to the matching close paren
+            if source[i] == "(":
+                depth += 1
+            elif source[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        trailing = source[i + 1:i + 40].strip()
+        assert trailing and re.match(r"^[A-Za-z_]\w*", trailing), (
+            f"derived table needs an alias, got: {trailing!r}"
+        )
+        assert not re.match(
+            r"^(WHERE|ORDER|GROUP|LIMIT|HAVING|ON|JOIN|UNION)\b", trailing, re.IGNORECASE
+        ), f"derived table is unaliased: {trailing!r}"
+
+
+def test_retention_partitions_per_cohort(db):
+    """Retention keeps the newest N *per cohort*, so a busy cohort can never
+    evict a quiet one's only lap. test_db.py covers eviction within a single
+    cohort; this covers the partitioning, which the rewrite moved out of SQL
+    (`ROW_NUMBER() OVER (PARTITION BY ...)`) and into the store walk."""
+    from synth import run_synthetic_lap, track_lap
+
+    busy = {"driver": "owner", "car": "TestCar", "track": "SynthRing"}
+    quiet = {"driver": "owner", "car": "TestCar", "track": "OtherRing"}
+
+    busy_pks = [
+        run_synthetic_lap(db, track_lap(src=f"busy{i}.csv"), **busy).lap_pk
+        for i in range(3)
+    ]
+    quiet_pks = [run_synthetic_lap(db, track_lap(src="quiet0.csv"), **quiet).lap_pk]
+
+    assert all(db.has_raw(pk) for pk in busy_pks + quiet_pks)
+
+    assert db.enforce_retention(keep=1) == 2  # two from the busy cohort only
+    assert [db.has_raw(pk) for pk in busy_pks] == [False, False, True]
+    assert db.has_raw(quiet_pks[0]) is True  # the quiet cohort is untouched
+
+    assert db.enforce_retention(keep=1) == 0  # idempotent
+
+    # Summaries survive everywhere — the whole point of blob-only eviction.
+    assert db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"] == 4
+    assert db.load_lap_arrays(busy_pks[0]) is None  # honestly unavailable
+
+
+def test_has_raw_tracks_the_blob_store(db):
+    """`raw_retained` in the UI is now a filesystem question. A lap whose
+    blob is gone — evicted here, or imported on another machine — must report
+    False while keeping every summary row."""
+    from synth import run_synthetic_lap, track_lap
+
+    lap_pk = run_synthetic_lap(db, track_lap(src="one.csv")).lap_pk
+    assert db.has_raw(lap_pk) is True
+
+    assert db.blobs.delete(lap_pk) is True
+    assert db.has_raw(lap_pk) is False
+    assert db.load_lap_arrays(lap_pk) is None
+    assert db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"] == 1
 
 
 def test_annotation_pk_is_stable_across_reannotation(db):
