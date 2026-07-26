@@ -37,6 +37,17 @@ sample indices stored as BLOBs in INTEGER columns. Separately,
 `docs/coaching-report.md` was found stale since the A18 ranker fix and
 regenerated first, so the artifact byte-diff gate would mean something.
 
+**Cutover to Supabase, owner-verified on real data (2026-07-26).** The owner
+ran the migration against their actual synced history (not the fixture
+corpus this repo's own tests use) and confirmed equivalence independently:
+`driverdna report` against `driverdna.db` and against the Supabase connection
+URL, diffed file-for-file across every generated Markdown report — zero
+differences. `DRIVERDNA_DATABASE_URL` (session pooler) is now the owner's
+normal path; `driverdna.db` is retained as the offline rollback, per A23.
+This is corroborating, on the owner's own data, on top of the automated
+cross-backend and checksum tests already in the suite — the fixture-based
+proof and the real-data proof are two different things and both now hold.
+
 **One line:** the deterministic engine (M0a–M7) is complete and verified; the
 full UI-SPEC.md milestone track (U0–U4) is built, including the chat view
 and the report/SPA visual unification. M6 trend now computes real
