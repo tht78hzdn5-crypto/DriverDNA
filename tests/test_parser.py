@@ -240,11 +240,12 @@ def test_new_filename_format_extracts_car_track_and_lap_id():
 
 
 def test_new_filename_format_handles_re_download_suffix():
-    """A browser re-download appends a digit before .csv (seen in practice);
-    the ULID capture is permissive enough to still resolve car/track."""
+    """A browser re-download appends " (1)" before .csv. It is stripped before
+    the fields are split, so it can never leak into lap_id — the copy then
+    lands as a content-hash duplicate at import, which is the honest report."""
     detected = parse_garage61_filename(
         "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
-        "01.31.115__01KY31T54KGGQ351PDABVEREMJ1.csv"
+        "01.31.115__01KY31T54KGGQ351PDABVEREMJ1 (1).csv"
     )
     assert detected is not None
     assert detected["car"] == "Ford Mustang GT4"
@@ -268,3 +269,62 @@ def test_parse_lap_uses_new_format_for_lap_id(tmp_path):
     )
     lap = parse_lap(dest)
     assert lap.lap_id == "01KY31T54KGGQ351PDAMC7M6ER"
+
+
+# --- a second newer shape, observed 2026-07-26: the same five fields, but
+# " - " delimited with literal spaces inside each field (SPEC.md A24). -----
+
+
+HYPHEN_SHAPE = (
+    "Garage 61 - Benjamin Richards - Ford Mustang GT4 - Summit Point Raceway - "
+    "01.27.017 - 01KY31T54KGGQ351PDAGJDTZJM.csv"
+)
+
+
+def test_hyphen_filename_shape_extracts_car_track_and_lap_id():
+    assert parse_garage61_filename(HYPHEN_SHAPE) == {
+        "car": "Ford Mustang GT4",
+        "track": "Summit Point Raceway",
+        "lap_id": "01KY31T54KGGQ351PDAGJDTZJM",
+    }
+
+
+def test_both_filename_shapes_give_byte_identical_car_track():
+    """car/track are cohort keys: the same lap spelled either way must produce
+    the same strings, or one cohort silently splits into two. The underscore
+    shape decodes _ to space; the hyphen shape's fields already carry spaces."""
+    underscore = parse_garage61_filename(
+        "Garage_61__Benjamin_Richards__Ford_Mustang_GT4__Summit_Point_Raceway__"
+        "01.26.602__01KY31T54KGGQ351PDAMC7M6ER.csv"
+    )
+    hyphen = parse_garage61_filename(HYPHEN_SHAPE)
+    assert underscore["car"] == hyphen["car"] == "Ford Mustang GT4"
+    assert underscore["track"] == hyphen["track"] == "Summit Point Raceway"
+
+
+def test_hyphen_filename_shape_handles_re_download_suffix():
+    detected = parse_garage61_filename(HYPHEN_SHAPE.replace(".csv", " (1).csv"))
+    assert detected is not None
+    assert detected["car"] == "Ford Mustang GT4"
+    assert detected["lap_id"] == "01KY31T54KGGQ351PDAGJDTZJM"
+
+
+def test_delimiter_inside_a_field_is_refused_never_a_guessed_cohort():
+    """A surplus delimiter makes car-vs-track genuinely ambiguous, and the
+    ambiguity would land in the cohort key — invisible if guessed wrong. The
+    file is refused so the driver supplies --car/--track instead."""
+    assert parse_garage61_filename(
+        "Garage 61 - Ben - GR86 - Spa - Francorchamps - 01.27.017 - "
+        "01KY31T54KGGQ351PDAGJDTZJM.csv"
+    ) is None
+
+
+def test_hyphen_shape_requires_every_field_to_be_stated():
+    assert parse_garage61_filename("Garage 61 - HKWPXX.csv") is None
+    # Five fields, but no laptime and no plausible id in the last two.
+    assert parse_garage61_filename("Garage 61 - a - b - c - d - e.csv") is None
+
+
+def test_parse_lap_uses_hyphen_shape_for_lap_id(tmp_path):
+    lap = parse_lap(write_csv(tmp_path / HYPHEN_SHAPE))
+    assert lap.lap_id == "01KY31T54KGGQ351PDAGJDTZJM"

@@ -298,11 +298,44 @@ for whoever next has a live `GARAGE61_TOKEN` and a lap in this filename
 shape, not assumed.
 
 **Built on this (2026-07-21)**: `ingest/parser.py`'s `parse_garage61_filename`
-auto-detects car/track (and the trailing ID, used as `lap_id`) from this
-shape — `driverdna import` (no `--car`/`--track`) and the UI's `#/upload`
-(blank car/track fields) both use it, per-file, falling back loudly (never
-silently) to requiring explicit car/track for files that don't match either
-filename shape.
+auto-detects car/track (and the trailing ID, used as `lap_id`) from either
+newer shape — `driverdna import` (no `--car`/`--track`) and the UI's
+`#/upload` (blank car/track fields) both use it, per-file, falling back
+loudly (never silently) to requiring explicit car/track for files that don't
+match either filename shape.
+
+## A third manual-download filename shape (observed 2026-07-26)
+
+A Ford Mustang GT4 / Summit Point Raceway lap downloaded by the owner from
+the browser arrived as:
+
+```
+Garage 61 - Benjamin Richards - Ford Mustang GT4 - Summit Point Raceway - 01.27.017 - 01KY31T54KGGQ351PDAGJDTZJM.csv
+```
+
+Same five fields as the 2026-07-21 shape, but ` - ` delimited with a literal
+space in `Garage 61`, and with real spaces inside each field instead of the
+underscore word-separator. That is now three filename shapes from one
+account, which is the evidence for treating filename-derived metadata as
+observed rather than contracted (A13) — the CSV column content was again
+unaffected.
+
+Its trailing ID is again 26 characters starting `01K...`, carrying the same
+**observed, not verified** ULID caveat as the section above — still not
+confirmed against a live call.
+
+**Built on this (2026-07-26, SPEC.md A24)**: both newer shapes go through one
+splitter parameterized by prefix/delimiter/underscore-decoding, specifically
+so they produce byte-identical car/track — those strings are cohort keys, and
+two spellings of one car must not split a cohort in two. A filename carrying
+the delimiter *inside* a field (a track named `Spa - Francorchamps`) is
+refused rather than split on a guess, since the ambiguity would land in the
+cohort key where a wrong value is invisible. A browser re-download's ` (1)`
+suffix is stripped before the fields are split, so it never enters `lap_id`;
+the copy then lands as a content-hash duplicate at import, which is the
+honest report. Safari's `-1` re-download form is deliberately **not**
+handled — it was not observed here, and inventing it would be guessing past
+the evidence; such a file falls into the loud, itemized error instead.
 
 ## Rate limits
 

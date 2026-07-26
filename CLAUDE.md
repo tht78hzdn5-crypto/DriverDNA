@@ -255,6 +255,23 @@ from the real fixtures and reviewed.
   both. One flagged, unverified observation in `docs/garage61-api.md`: the
   new filename's trailing ID structurally matches the API's own ULID shape,
   unlike the old short code — untested against a live call.
+- **Second export filename shape + working one-field override (2026-07-26,
+  SPEC.md A24)** — Garage61 renamed its browser downloads again, to
+  `Garage 61 - <driver> - <car> - <track> - <laptime> - <id>.csv` (` - `
+  delimited, literal spaces in fields). That broke import on both surfaces:
+  auto-detect returned nothing, so `#/upload` 422'd before the DB was
+  touched. Both newer shapes now go through **one splitter** parameterized by
+  prefix/delimiter/underscore-decoding — chosen because car/track are cohort
+  keys and per-shape regexes absorb a surplus delimiter at different points,
+  which is exactly how one cohort would silently become two (tested
+  directly). A delimiter *inside* a field is refused, not guessed
+  (philosophy: insufficient data over guessing); a re-download's ` (1)` is
+  stripped before splitting so it never enters `lap_id`. Separately,
+  `--car`/`--track` (and the `#/upload` boxes) are now **independently**
+  optional: a given field applies to every file, a blank one keeps
+  auto-detecting, so a future rename never strands the driver. Errors name
+  the missing field per file. Verified end-to-end on the owner's real
+  filename, CLI and browser.
 - **`consistency` scoring fixed: per-unit CV normalization, `dm-v2`
   (2026-07-21, SPEC.md A21)** — the M6 "Known v1 limitation" note's own
   diagnosis (cross-cohort raw-magnitude pooling) was investigated before

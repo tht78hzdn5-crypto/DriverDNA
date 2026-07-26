@@ -1,13 +1,36 @@
 # DriverDNA — Status & Decision Log
 
 **Snapshot date: 2026-07-26.** Branch
-`claude/driverdna-db-solution-pbanez` (the storage migration; `main` remains
-the default landing branch for ordinary work).
+`claude/import-functionality-shell-bug-e6aa14` (the A24 import fix, on top of
+the A23 storage migration from `claude/driverdna-db-solution-pbanez`; `main`
+remains the default landing branch for ordinary work).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
 and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
+
+**Import unblocked (2026-07-26, SPEC.md A24).** Garage61 renamed its browser
+exports a second time, to `Garage 61 - <driver> - <car> - <track> - <laptime> -
+<id>.csv`; the parser accepted only the 2026-07-21 double-underscore shape, so
+`driverdna import` and `#/upload` both refused real laps. Not an A23 regression
+— the rejection happens in a filename-only loop, before the store is opened.
+Both newer shapes now go through one splitter, deliberately shared so the same
+lap spelled either way yields byte-identical `car`/`track` (they are cohort
+keys; two spellings would silently split a cohort). A delimiter *inside* a
+field is refused rather than guessed. `--car`/`--track` and the `#/upload`
+boxes are now independently optional — a given field applies to every file, a
+blank one keeps auto-detecting — so the manual escape hatch that the docs
+already promised actually exists. Verified against the owner's real filename,
+CLI and browser.
+
+| Check | Result |
+| --- | --- |
+| Owner's real filename, `driverdna import` with no flags | **imported**, car/track + ULID auto-detected |
+| Both filename shapes into one store | **1 cohort**, not 2 |
+| `--car` alone, track auto-detected per file | **imported**, note names only the detected field |
+| `--car` alone + undetectable filename | **exit 2**, names the missing field, no DB created |
+| Re-downloaded ` (1).csv` copy | reported **DUPLICATE**, 1 lap row, `lap_id` free of the suffix |
 
 **Storage (2026-07-26, SPEC.md A23).** The primary store may now be a private,
 single-tenant Supabase Postgres; SQLite remains a first-class, fully tested
@@ -112,7 +135,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **534** (35 test files) | `python3 -m pytest` |
+| Tests passing | **591 of 592** (40 test files). The one failure, `test_offline.py::test_app_loads_and_operates_with_non_localhost_network_blocked`, is **pre-existing** — it fails identically on a clean tree with no local changes (Playwright times out waiting for `svg.trackmap`); untouched by A24 and not yet investigated. | `python3 -m pytest` |
 | Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |

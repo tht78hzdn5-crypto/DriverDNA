@@ -58,35 +58,76 @@ class ParseError(ValueError):
 
 _FILENAME_RE = re.compile(r"Garage_61_([A-Za-z0-9]+)\.csv$")
 
-# A newer Garage61 export filename shape embeds driver/car/track/laptime/
-# lap-id directly, double-underscore delimited:
-#   Garage_61__<driver>__<car>__<track>__<M.SS.mmm laptime>__<ULID>.csv
-# unlike the older Garage_61_<ID>.csv form, which carries only an opaque ID.
-# Store, don't depend on the shape persisting (A13's own caution about
-# filename-derived metadata) -- parse_garage61_filename() below is optional,
-# additive, and every caller falls back to an explicit --car/--track or
-# manifest entry when it returns None, never guesses past that.
-_NEW_FILENAME_RE = re.compile(
-    r"^Garage_61__(?P<driver>[^_].*?)__(?P<car>.+?)__(?P<track>.+?)__"
-    r"(?P<laptime>\d+\.\d+\.\d+)__(?P<lap_id>[A-Za-z0-9]+)\.csv$"
+# Two newer Garage61 export filename shapes embed driver/car/track/laptime/
+# lap-id directly, unlike the older Garage_61_<ID>.csv form which carries only
+# an opaque ID:
+#   Garage_61__<driver>__<car>__<track>__<M.SS.mmm>__<ULID>.csv   (2026-07-21)
+#   Garage 61 - <driver> - <car> - <track> - <M.SS.mmm> - <ULID>.csv (2026-07-26)
+# Both were seen from the same account. Store, don't depend on the shape
+# persisting (A13's own caution about filename-derived metadata) --
+# parse_garage61_filename() below is optional, additive, and every caller falls
+# back to an explicit --car/--track or manifest entry when it returns None,
+# never guesses past that.
+#
+# One splitter, parameterized per shape, deliberately -- not a regex per shape.
+# car/track are cohort keys, so the same lap under either spelling must yield a
+# byte-identical string or the driver's laps silently split into two cohorts.
+# Lazy-group regexes absorb a surplus delimiter at a different point per shape,
+# which is exactly how that divergence would happen; an explicit field count
+# has no backtracking to diverge.
+_RE_DOWNLOAD_SUFFIX_RE = re.compile(r" \(\d+\)$")  # a browser re-download: "… (1).csv"
+_LAPTIME_RE = re.compile(r"^\d+\.\d+\.\d+$")  # M.SS.mmm
+_LAP_ID_RE = re.compile(r"^[A-Za-z0-9]+$")
+_FIELD_COUNT = 5  # driver, car, track, laptime, lap_id
+
+
+@dataclass(frozen=True)
+class _FilenameShape:
+    prefix: str
+    delimiter: str
+    # Underscores within a field are the export tool's own word-separator, not
+    # data -- decoded to spaces for a human-readable label. The hyphen shape's
+    # fields already carry literal spaces, so decoding there would corrupt them.
+    decode_underscores: bool
+
+
+_FILENAME_SHAPES = (
+    _FilenameShape("Garage_61__", "__", True),
+    _FilenameShape("Garage 61 - ", " - ", False),
 )
 
 
 def parse_garage61_filename(name: str) -> dict[str, str] | None:
-    """Car/track (and lap_id) auto-detected from the newer Garage61 export
-    filename shape. Underscores within a field are the export tool's own
-    word-separator, not data -- decoded to spaces for a human-readable
-    label. Returns None for the older Garage_61_<ID>.csv form or anything
-    else that doesn't match, so callers can fall back to an explicit
-    --car/--track or manifest entry."""
-    m = _NEW_FILENAME_RE.match(name)
-    if not m:
+    """Car/track (and lap_id) auto-detected from either newer Garage61 export
+    filename shape. Returns None for the older Garage_61_<ID>.csv form, or
+    anything else that doesn't state all five fields exactly, so callers can
+    fall back to an explicit --car/--track or manifest entry.
+
+    A filename carrying the delimiter *inside* a field (a track named
+    "Spa - Francorchamps", a driver display name with " - ") is refused, not
+    split on a guess: with a surplus delimiter, car-vs-track is genuinely
+    ambiguous, and the ambiguity lands in the cohort key -- where a wrong
+    value is invisible but a refusal is loud and the driver can supply
+    --car/--track. "Insufficient data over guessing" (SPEC.md A24)."""
+    if not name.endswith(".csv"):
         return None
-    return {
-        "car": m.group("car").replace("_", " "),
-        "track": m.group("track").replace("_", " "),
-        "lap_id": m.group("lap_id"),
-    }
+    # Stripped before anything else so a re-download's " (1)" can never leak
+    # into lap_id. The copy still lands as a content-hash duplicate at import,
+    # which is the honest report: it is the same telemetry under a new name.
+    stem = _RE_DOWNLOAD_SUFFIX_RE.sub("", name[: -len(".csv")])
+    for shape in _FILENAME_SHAPES:
+        if not stem.startswith(shape.prefix):
+            continue
+        parts = stem[len(shape.prefix):].split(shape.delimiter)
+        if len(parts) != _FIELD_COUNT or not all(parts):
+            continue
+        _driver, car, track, laptime, lap_id = parts
+        if not _LAPTIME_RE.match(laptime) or not _LAP_ID_RE.match(lap_id):
+            continue
+        if shape.decode_underscores:
+            car, track = car.replace("_", " "), track.replace("_", " ")
+        return {"car": car, "track": track, "lap_id": lap_id}
+    return None
 
 # A LapDistPct drop larger than this between consecutive samples is a
 # start/finish crossing. A single lap has 0 or 1 crossings depending on where

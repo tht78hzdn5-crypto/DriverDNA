@@ -261,12 +261,16 @@ def create_app(
         path — a driver can go from nothing to a populated cockpit without
         ever touching the CLI.
 
-        `car`/`track` are optional: when both are omitted, each file's own
-        car/track is auto-detected from the newer Garage61 export filename
-        shape (`ingest/parser.py`'s `parse_garage61_filename`) — mirrors
-        `driverdna import`'s own per-file auto-detect. A file that can't be
-        resolved (old filename shape, no car/track given) is rejected before
-        anything is imported, listed by name — never silently skipped."""
+        `car`/`track` are independently optional, and either one on its own is
+        a working manual override: a field that is given applies to every file,
+        a field that is blank is auto-detected per file from either newer
+        Garage61 export filename shape (`ingest/parser.py`'s
+        `parse_garage61_filename`) — mirrors `driverdna import`'s own per-file
+        auto-detect. So a future filename rename never strands the driver:
+        filling just the box the filename no longer states is enough. A file
+        still missing a field after that (old filename shape, nothing given) is
+        rejected before anything is imported, listed by name with the field it
+        is missing — never silently skipped."""
         if role not in ("self", "reference"):
             raise HTTPException(422, detail="role must be self or reference")
         if date is not None:
@@ -275,30 +279,46 @@ def create_app(
         from driverdna.ingest.parser import parse_garage61_filename
         from driverdna.pipeline import import_lap_file
 
-        explicit = bool(car and track)
-        resolved: list[tuple[UploadFile, str, str]] = []  # (upload, car, track)
+        car = (car or "").strip() or None
+        track = (track or "").strip() or None
+        # (upload, car, track, auto_detected)
+        resolved: list[tuple[UploadFile, str, str, bool]] = []
         unresolved: list[str] = []
         for upload in files:
-            if explicit:
-                resolved.append((upload, car, track))  # type: ignore[arg-type]
-                continue
-            detected = parse_garage61_filename(upload.filename or "")
+            file_car, file_track = car, track
+            detected = (
+                parse_garage61_filename(upload.filename or "")
+                if file_car is None or file_track is None
+                else None
+            )
             if detected:
-                resolved.append((upload, detected["car"], detected["track"]))
-            else:
-                unresolved.append(upload.filename or "(unnamed file)")
+                file_car = file_car or detected["car"]
+                file_track = file_track or detected["track"]
+            if file_car is None or file_track is None:
+                missing = " and ".join(
+                    n for n, v in (("car", file_car), ("track", file_track)) if v is None
+                )
+                unresolved.append(
+                    f"{upload.filename or '(unnamed file)'} (missing {missing})"
+                )
+                continue
+            resolved.append((upload, file_car, file_track, detected is not None))
         if unresolved:
             raise HTTPException(
                 422,
-                detail="car/track not given and could not be auto-detected from "
-                f"filename for: {', '.join(unresolved)}",
+                detail="could not resolve car/track for: "
+                f"{', '.join(unresolved)}. Auto-detect reads a Garage61 export "
+                "filename shaped 'Garage 61 - <driver> - <car> - <track> - "
+                "<laptime> - <id>.csv' or 'Garage_61__<driver>__<car>__<track>__"
+                "<laptime>__<id>.csv'; otherwise fill in the missing field, "
+                "which is then applied to every file.",
             )
 
         config = load_config(config_path)
         results: list[dict[str, Any]] = []
         with tempfile.TemporaryDirectory() as tmp:
             with Database.open(db_path) as db:
-                for upload, file_car, file_track in resolved:
+                for upload, file_car, file_track, auto_detected in resolved:
                     # Original filename preserved (not a random temp name):
                     # parse_lap's Garage61 lap-ID regex reads it, same as a
                     # real directory import.
@@ -313,7 +333,11 @@ def create_app(
                         "filename": upload.filename,
                         "car": file_car,
                         "track": file_track,
-                        "auto_detected": not explicit,
+                        # True when this file's car and/or track came from its
+                        # filename -- with a one-field override, part of the
+                        # pair can be given and the rest detected. The resolved
+                        # car/track above are what was actually used.
+                        "auto_detected": auto_detected,
                         "status": result.status,
                         "lap_pk": result.lap_pk,
                         "corners_matched": matched,

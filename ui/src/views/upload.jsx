@@ -91,11 +91,13 @@ export default function Upload() {
               </label>
             </div>
             <div className="sub" style={{ marginTop: 0 }}>
-              Leave car/track blank to auto-detect from Garage61's newer export
-              filenames (each file can land in a different cohort); provide either
-              one to apply it to every file instead — required for the older
-              <code> Garage_61_&lt;id&gt;.csv</code> filename shape, which carries no
-              car/track.
+              Leave both blank to auto-detect each file's car and track from its
+              Garage61 export filename, so one upload can span cohorts. Fill
+              either box on its own to apply that value to every file while the
+              other keeps auto-detecting — the escape hatch when Garage61
+              changes its filenames again. The older
+              <code> Garage_61_&lt;id&gt;.csv</code> shape carries neither, so it
+              needs both.
             </div>
             <div className="upload-row">
               <label className="upload-field">

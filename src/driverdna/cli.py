@@ -86,8 +86,12 @@ def import_cmd(
              "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
     ),
     driver: str = typer.Option("owner", help="Driver label when no manifest."),
-    car: str = typer.Option(None, help="Car label (required without manifest)."),
-    track: str = typer.Option(None, help="Track label (required without manifest)."),
+    car: str = typer.Option(
+        None, help="Car label. Omit to auto-detect from each Garage61 export "
+                   "filename; give it to apply one car to every file."),
+    track: str = typer.Option(
+        None, help="Track label. Omit to auto-detect from each Garage61 export "
+                   "filename; give it to apply one track to every file."),
     role: str = typer.Option("self", help="Lap role: self or reference."),
     date: str = typer.Option(
         None, "--date",
@@ -124,52 +128,75 @@ def import_cmd(
         ]
     else:
         csv_files = sorted(directory.glob("*.csv"))
-        if car and track:
-            jobs = [
-                {"path": p, "driver": driver, "car": car, "track": track, "role": role,
-                 "lap_date": date}
-                for p in csv_files
-            ]
-        else:
-            # No manifest, no (complete) --car/--track: try auto-detecting
-            # each file from the newer Garage61 export filename shape
-            # (Garage_61__<driver>__<car>__<track>__<laptime>__<id>.csv,
-            # ingest/parser.py's parse_garage61_filename). Never guessed past
-            # what the filename actually states — a file that doesn't match
-            # is a loud, itemized error, nothing partially imported.
-            jobs = []
-            unresolved: list[str] = []
-            for p in csv_files:
-                detected = parse_garage61_filename(p.name)
-                if detected:
-                    jobs.append({
-                        "path": p, "driver": driver, "car": detected["car"],
-                        "track": detected["track"], "role": role, "lap_date": date,
-                        "_auto_detected": True,
-                    })
-                else:
-                    unresolved.append(p.name)
-            if not csv_files or unresolved:
-                detail = (
-                    f" (could not auto-detect car/track from {len(unresolved)} "
-                    f"filename(s): {', '.join(unresolved[:5])}"
-                    f"{', ...' if len(unresolved) > 5 else ''})"
-                ) if unresolved else ""
-                typer.echo(
-                    "error: --car and --track are required without a manifest.toml"
-                    + detail
+        car = car.strip() if car else None
+        track = track.strip() if track else None
+        # No manifest: --car/--track are independently optional and either one
+        # on its own is a working manual override. A flag that is given applies
+        # to every file; a flag that is omitted is auto-detected per file from
+        # either newer Garage61 export filename shape (ingest/parser.py's
+        # parse_garage61_filename). So a future filename rename never strands
+        # the driver — passing just the flag the filename no longer states is
+        # enough. Never guessed past what the filename actually states: a file
+        # still missing a field is a loud, itemized error naming that field,
+        # nothing partially imported.
+        jobs = []
+        unresolved: list[str] = []
+        for p in csv_files:
+            file_car, file_track = car, track
+            detected = (
+                parse_garage61_filename(p.name)
+                if file_car is None or file_track is None
+                else None
+            )
+            if detected:
+                file_car = file_car or detected["car"]
+                file_track = file_track or detected["track"]
+            if file_car is None or file_track is None:
+                missing = " and ".join(
+                    n for n, v in (("car", file_car), ("track", file_track)) if v is None
                 )
-                raise typer.Exit(code=2)
+                unresolved.append(f"{p.name} (missing {missing})")
+                continue
+            jobs.append({
+                "path": p, "driver": driver, "car": file_car, "track": file_track,
+                "role": role, "lap_date": date,
+                # Only the fields that actually came from the filename, so the
+                # per-file note never calls a value the driver typed "detected".
+                "_detected": () if detected is None else tuple(
+                    n for n, given in (("car", car), ("track", track)) if given is None
+                ),
+            })
+        if not csv_files:
+            typer.echo(f"error: no .csv files in {directory}")
+            raise typer.Exit(code=2)
+        if unresolved:
+            typer.echo(
+                f"error: could not resolve car/track for {len(unresolved)} "
+                f"file(s): {', '.join(unresolved[:5])}"
+                f"{', ...' if len(unresolved) > 5 else ''}\n"
+                "  auto-detect reads a Garage61 export filename shaped\n"
+                "  'Garage 61 - <driver> - <car> - <track> - <laptime> - <id>.csv' or\n"
+                "  'Garage_61__<driver>__<car>__<track>__<laptime>__<id>.csv'\n"
+                "  otherwise pass the missing field (--car/--track); it then "
+                "applies to every file"
+            )
+            raise typer.Exit(code=2)
 
     with Database.open(_store(db_path)) as db:
         for job in jobs:
             path = job.pop("path")
-            auto_detected = job.pop("_auto_detected", False)
+            detected = job.pop("_detected", ())
             result = import_lap_file(db, path, config=config, **job)
-            detected_note = (
-                f" (auto-detected from filename: {job['car']} @ {job['track']})"
-                if auto_detected else ""
-            )
+            if detected == ("car", "track"):
+                detected_note = (
+                    f" (auto-detected from filename: {job['car']} @ {job['track']})"
+                )
+            elif detected:
+                detected_note = (
+                    f" ({detected[0]} auto-detected from filename: {job[detected[0]]})"
+                )
+            else:
+                detected_note = ""
             if result.status == "exists":
                 typer.echo(f"{path.name}: already imported, skipped")
                 continue
