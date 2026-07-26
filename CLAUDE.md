@@ -19,8 +19,9 @@ constitution wins over convenience.
 - "Insufficient data" over guessing, always. Every finding carries N, spread,
   source tag, and evidence IDs.
 - Reference laps never enter self history, trends, or consistency statistics.
-- Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`) are env-only: never persisted,
-  printed, or logged.
+- Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`, and — once DEPLOY-SPEC's
+  tracks P/H are built — `GEMINI_API_KEY`, `DRIVERDNA_ACCESS_TOKEN`) are
+  env-only: never persisted, printed, or logged.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
 - Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
@@ -285,6 +286,22 @@ from the real fixtures and reviewed.
   `_freeze_windows_for_admitted`'s exact mechanism, generalized to every
   corner. Closes the A17-deferred refreeze gap.
 
+- **Deployment / mobile / Gemini: design adopted, NOTHING BUILT
+  (2026-07-26, SPEC.md A23)** — `docs/DEPLOY-SPEC.md`. A17's *v1-only*
+  deferrals met both revisit conditions, so authentication, hosted
+  deployment and a mobile app are in scope, plus a second AI provider.
+  Owner decisions: Oracle Cloud Always Free VM; **Gemini free tier**, with
+  the stated tradeoff that Google uses free-tier content to improve their
+  models; mobile = read + chat subset; PWA, not a native shell. Philosophy
+  #8 refined, bounded mechanically: **single-tenant — no user table, no
+  registration, no tenant column, no second identity.** Auth is a lock on
+  one driver's own door; a second real user is productization and needs its
+  own owner decision. Trust gate 5 restated as **same-origin only**; the
+  service worker rule is **cache the shell, never the numbers**. Build
+  order: P1 (Gemini) → H1 (auth + fail-closed bind) → U5 (responsive/PWA)
+  → H2/H3 (VM, tunnel, ops). Treat every line of it as plan, not
+  capability, until this entry says otherwise.
+
 Update this section as milestones complete.
 
 ## UI layer (docs/UI-SPEC.md)
@@ -298,6 +315,10 @@ Update this section as milestones complete.
   engine's blind acceptance test has run (owner may amend this gate).
 - Node is a build-time dependency only; the built SPA ships in the package
   static dir; API tests never require node. Localhost only; fully offline.
+  (Both are revisited by A23 / `docs/DEPLOY-SPEC.md` — designed, not built:
+  a served origin replaces "localhost only", and the offline guarantee is
+  restated as **same-origin only**, zero third-party requests. Until that
+  build lands, the rule above stands as written.)
 
 ## Commands
 

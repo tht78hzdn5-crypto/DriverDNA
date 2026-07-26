@@ -252,6 +252,56 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-26 — The A17 deferrals revisited: deployment, mobile, and Gemini
+  (SPEC.md A23; design in `docs/DEPLOY-SPEC.md`, build not started).** A17
+  had parked "authentication and multi-user, hosted deployment, mobile app"
+  as *v1-only* deferrals, revisitable post-M6 and post-blind-test. Both
+  conditions are met, so the owner revisited them together with a fourth,
+  independent question: replacing Claude with Gemini for the AI layer.
+  Four forks were surfaced before any design work; all four were owner-
+  decided, each with the rejected alternatives recorded:
+  1. **Where the engine runs → an Oracle Cloud Always Free VM.** Rejected:
+     home machine + tunnel (data never leaves, but the PC must be awake);
+     free PaaS (Render's free tier has no persistent disk and sleeps, so
+     the SQLite DB would be destroyed on every restart — it would have
+     forced a Postgres migration nobody wants for one driver; Azure Static
+     Web Apps can serve the SPA but cannot run a scipy/SQLite engine, so it
+     doesn't solve the hard half). Note the free A1 allocation was halved
+     on 2026-06-15 (2 OCPU / 12 GB now) — still ample.
+  2. **Gemini free tier, with the tradeoff stated rather than discovered.**
+     Google's own pricing page draws the line explicitly: free-tier content
+     *is* used to improve their products, paid-tier content is not. The
+     owner accepted this for personal driving telemetry after being told.
+     What leaves the machine is enumerated in DEPLOY-SPEC ("Data exposure");
+     `include_raw_traces` stays off, so raw channels don't go. Rejected:
+     paid tier, and pluggable-with-Claude-default — though the provider
+     seam is built either way, so reverting is a one-key config change
+     through the audited path.
+  3. **Mobile scope: read + chat subset**, not full parity — the phone is
+     for checking the model and asking questions away from the sim, and
+     forcing dense evidence tables onto 390px would have cost real work for
+     a view nobody uses standing up. The rest stays reachable and legible.
+  4. **PWA, not a native shell.** Same home-screen result for nothing;
+     Capacitor's iOS path needs a $99/yr Apple account.
+  **Philosophy #8 is the principle this refines**, and the refinement is
+  bounded mechanically rather than by good intentions: DriverDNA stays
+  **single-tenant** — auth is a lock on one driver's own door, with no user
+  table, no registration, no tenant column and no second identity. A second
+  real user is productization and needs its own decision; A23 says so in
+  terms, so this can't be cited as precedent later.
+  Two knock-ons were recorded at decision time rather than left to be found
+  during the build: **trust gate 5** ("all non-localhost network blocked")
+  becomes **same-origin only** — the property it protects is unchanged, but
+  the literal wording goes false the moment the app has a hostname, and a
+  guarantee that can't be tested honestly is worse than no guarantee; and
+  the service worker gets one binding rule, **cache the shell, never the
+  numbers**, because a stale cached finding shown offline with no cue is
+  precisely the failure this project exists to prevent.
+  Sequencing (P1 Gemini → H1 auth → U5 mobile → H2/H3 deploy) puts every
+  security-surface change before any exposure, and lets the whole mobile
+  experience be validated over a real HTTPS origin from the owner's own
+  machine before a single cloud resource exists.
+
 - **2026-07-21 — `rebuild-map`: in-place refreeze of a frozen corner map from
   its full lap set (SPEC.md A22), the last of the owner's E→F→G arc.** Corner
   maps + canonical phase windows freeze from a cohort's first laps (M1) and

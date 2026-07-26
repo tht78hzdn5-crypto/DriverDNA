@@ -1,7 +1,8 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-21.** Branch `main` (commits land here directly as of
-today — the feature-branch/PR flow used earlier this session is retired).
+**Snapshot date: 2026-07-26.** Branch `main` (commits land here directly —
+the feature-branch/PR flow used earlier is retired), except the DEPLOY-SPEC
+design work noted below, raised on `claude/driverdna-mobile-infra-plan-ropahu`.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -65,6 +66,23 @@ retention can't be honestly re-measured, so its stale phase times are
 cleared and reported, never left silently outdated. Deterministic and
 idempotent; new geometry still enters only through the existing audited
 admission path. Closes the A17-deferred corner-map refreeze gap.
+**Deployment / mobile / Gemini: design adopted, build NOT started
+(2026-07-26, SPEC.md A23, `docs/DEPLOY-SPEC.md`)** — the first work in this
+repo whose status is "designed, nothing built", so read it as a plan, not a
+capability. A17's *v1-only* deferrals (authentication, hosted deployment,
+mobile app) met both revisit conditions (M6/M7 built; blind test run) and
+were revisited with a fourth, independent question: Gemini in place of
+Claude. Four owner decisions — Oracle Cloud Always Free VM; Gemini's free
+tier with the training-data tradeoff explicitly accepted; mobile scoped to a
+read + chat subset; a PWA rather than a native shell. Philosophy #8 is
+refined and the refinement is bounded mechanically: **single-tenant, no user
+table, no second identity** — auth is a lock on one driver's door, not a
+user system. Two knock-ons recorded with the decision: trust gate 5 is
+restated from "no non-localhost requests" to **same-origin only** (same
+property, testable once the app has a hostname), and the service worker gets
+one binding rule, **cache the shell, never the numbers**. Build order:
+P1 (Gemini) → H1 (auth, fail-closed bind) → U5 (responsive + PWA) →
+H2/H3 (VM, tunnel, timers, backups, runbook).
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`

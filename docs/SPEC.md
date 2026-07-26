@@ -1057,3 +1057,42 @@ Accepted at owner plan review; rationale recorded in the review:
      hysteresis-sticky, self-only. Deterministic and idempotent (a second
      rebuild of the same data is a no-op — verified by test). Full record in
      PROJECT-BRIEF.md's decision log.
+- **A23** (2026-07-26, the A17 deferrals revisited — deployment, mobile and a
+  second AI provider): A17 split UI-SPEC's out-of-scope list into permanent
+  exclusions and *v1-only deferrals*, the latter revisitable "post-M6,
+  post-blind-test". Both conditions are now met (M6/M7 built; the Spa blind
+  test ran 2026-07-21, A18), so the owner revisited three deferred items —
+  **authentication, hosted deployment, and a mobile app** — plus one item
+  that was never deferred, only unbuilt: a second AI provider. Design
+  adopted in **`docs/DEPLOY-SPEC.md`**; build not started. Four owner
+  decisions, each with its rejected alternative recorded there: host on an
+  Oracle Cloud Always Free VM; use Gemini's **free** tier with the stated
+  tradeoff that Google's pricing page says free-tier content *is* used to
+  improve their products (paid tier is not); mobile scope is a read + chat
+  subset; ship a PWA rather than a native shell.
+  **Refines philosophy #8** ("personal instrument, not a product"), which
+  A17 had already refined to "personal instrument *first*". The refinement
+  is bounded mechanically, not by intention: **DriverDNA stays
+  single-tenant** — no user table, no registration, no tenant column, no
+  second identity; auth is a lock on one driver's own door, and the `driver`
+  string on a lap row remains unrelated to who is logged in. A future second
+  real user is productization, needing its own owner decision and its own
+  amendment; A23 is explicitly not precedent for it. A17's permanent
+  exclusions (no measurement editing, no client-side computation, no blended
+  scores, no setup advice) are untouched.
+  Two knock-on corrections recorded with the decision rather than left to be
+  discovered: (1) **UI-SPEC principle 8 / trust gate 5** currently read
+  "fully offline / all non-localhost network blocked"; served from a
+  hostname that literal wording becomes false while the property it protects
+  is unchanged, so it is restated as **same-origin only** (zero third-party
+  requests; CDNs, fonts, analytics and telemetry stay categorically
+  forbidden) and the Playwright test changes from blocking non-localhost to
+  blocking non-same-origin — a wording correction to keep an existing
+  guarantee testable, not a relaxation. (2) A hosted always-on box makes
+  **automatic AI refresh** tempting; it stays out of scope, restated in
+  DEPLOY-SPEC — coach and chat remain on-demand only. This spec's own
+  "hosted sync" exclusion is also untouched: laps still come from Garage61
+  via `sync`, and DriverDNA does not become a sync service for anyone.
+  New env-only secrets arriving with the build (same non-negotiable as
+  `GARAGE61_TOKEN`/`ANTHROPIC_API_KEY` — never persisted, printed or
+  logged): `GEMINI_API_KEY`, `DRIVERDNA_ACCESS_TOKEN`.
