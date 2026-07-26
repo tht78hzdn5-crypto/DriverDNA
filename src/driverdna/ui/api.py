@@ -28,6 +28,7 @@ from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.db import Database
+from driverdna.store import missing_reason
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -64,7 +65,7 @@ class ChatMessageBody(BaseModel):
 
 
 def create_app(
-    db_path: Path,
+    db_path: Path | str,
     config_path: Path,
     *,
     chat_provider_factory: Callable[[], ChatProvider] | None = None,
@@ -86,8 +87,13 @@ def create_app(
         return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
 
     def open_db(*, check_same_thread: bool = True) -> Database:
-        if not db_path.exists():
-            raise HTTPException(404, detail=f"no DB at {db_path} — run `driverdna import` first")
+        # A hosted store has no file to stat and creates its schema on
+        # connect, so "not there yet" is reported by `missing_reason` only
+        # for the SQLite case; an empty hosted store surfaces as the normal
+        # no-cohorts empty state instead.
+        reason = missing_reason(db_path)
+        if reason:
+            raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
         return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:

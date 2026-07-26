@@ -34,6 +34,8 @@ import numpy as np
 
 from driverdna.blobs import BlobStore, MemoryBlobStore, open_blob_store
 from driverdna.config import IdentityConfig
+from driverdna.sql import to_pg, to_pg_migrations
+from driverdna.store import is_postgres_url, redact_dsn
 from driverdna.corners.identity import CornerIdentity, CornerMap, _gps_ok, _meters
 from driverdna.corners.segmenter import CornerSpan, Landmarks
 from driverdna.ingest.parser import TelemetryLap
@@ -304,14 +306,142 @@ def landmarks_from_json(text: str) -> Landmarks:
     return Landmarks(**data)
 
 
+class _Conn:
+    """Connection proxy: one SQL dialect in, either backend out.
+
+    Exists so the ~28 call sites outside this module that reach through
+    `db.conn.execute(...)` keep working untouched. `db.conn` was already a
+    de-facto public API across a dozen modules; this makes it an explicit one
+    and confines the dialect difference to a single object.
+
+    The context-manager mapping is the part that matters. sqlite3's
+    `Connection.__exit__` commits and leaves the connection open; psycopg3's
+    commits and **closes** it. There are 19 `with self.conn:` blocks below, so
+    delegating naively would close the connection after the first write and
+    fail everything after it. Postgres therefore maps `with conn:` onto
+    `conn.transaction()`, which has sqlite3's semantics.
+    """
+
+    def __init__(self, raw, dialect: "_Dialect"):
+        self._raw = raw
+        self._dialect = dialect
+        self._tx = None
+
+    # --- statement execution ---
+    def execute(self, sql: str, params=None):
+        sql = self._dialect.sql(sql)
+        return self._raw.execute(sql, params) if params is not None else self._raw.execute(sql)
+
+    def executemany(self, sql: str, seq):
+        return self._dialect.many(self._raw, self._dialect.sql(sql), list(seq))
+
+    def executescript(self, script: str):
+        return self._dialect.script(self._raw, script)
+
+    # --- transactions ---
+    def __enter__(self):
+        if self._dialect.autocommit:
+            self._tx = self._raw.transaction()
+            self._tx.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        if self._tx is not None:
+            tx, self._tx = self._tx, None
+            return tx.__exit__(*exc)
+        return self._raw.__exit__(*exc)
+
+    def commit(self) -> None:
+        self._raw.commit()
+
+    def rollback(self) -> None:
+        self._raw.rollback()
+
+    def close(self) -> None:
+        self._raw.close()
+
+    @property
+    def closed(self) -> bool:
+        return bool(getattr(self._raw, "closed", False))
+
+    @property
+    def raw(self):
+        return self._raw
+
+
+class _Dialect:
+    """What differs between the two backends, and nothing more."""
+
+    name = "sqlite"
+    autocommit = False
+
+    def sql(self, sql: str) -> str:
+        return sql
+
+    def script(self, raw, script: str):
+        return raw.executescript(script)
+
+    def many(self, raw, sql: str, seq):
+        return raw.executemany(sql, seq)
+
+    def table_exists_sql(self) -> str:
+        return "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+
+    def migrations(self) -> tuple[str, ...]:
+        return MIGRATIONS
+
+
+class _PostgresDialect(_Dialect):
+    name = "postgres"
+    # Reads sit outside a transaction and writes inside an explicit one —
+    # sqlite3's model. It also keeps connections out of "idle in
+    # transaction", which a pooled remote store punishes.
+    autocommit = True
+
+    def sql(self, sql: str) -> str:
+        return to_pg(sql)
+
+    def script(self, raw, script: str):
+        # psycopg runs a multi-statement string in one execute when there are
+        # no placeholders; wrap it so a migration applies all-or-nothing.
+        with raw.transaction():
+            return raw.execute(script)
+
+    def many(self, raw, sql: str, seq):
+        # psycopg puts executemany on the cursor, not the connection.
+        with raw.cursor() as cur:
+            cur.executemany(sql, seq)
+        return cur
+
+    def table_exists_sql(self) -> str:
+        return (
+            "SELECT tablename AS name FROM pg_tables "
+            "WHERE tablename=? AND schemaname = ANY(current_schemas(false))"
+        )
+
+    def migrations(self) -> tuple[str, ...]:
+        return to_pg_migrations(MIGRATIONS)
+
+
+_SQLITE = _Dialect()
+_POSTGRES = _PostgresDialect()
+
+
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
 
-    def __init__(self, conn: sqlite3.Connection, blobs: BlobStore | None = None):
-        self.conn = conn
+    def __init__(
+        self,
+        conn,
+        blobs: BlobStore | None = None,
+        dialect: _Dialect | None = None,
+    ):
+        self.dialect = dialect or _SQLITE
+        self.conn = conn if isinstance(conn, _Conn) else _Conn(conn, self.dialect)
         self.blobs = blobs if blobs is not None else MemoryBlobStore()
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
+        if self.dialect is _SQLITE:
+            conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA foreign_keys = ON")
         self._migrate()
 
     @classmethod
@@ -331,11 +461,44 @@ class Database:
         `blob_root` overrides where raw lap blobs are kept; by default they
         sit beside the database (see `blobs.default_blob_root`), so no two
         databases can collide on a lap_pk-keyed filename.
+
+        `path` may also be a `postgresql://` URL, which selects the Postgres
+        backend. Raw blobs stay on local disk either way — only the queryable
+        rows move.
         """
+        blobs = open_blob_store(path, blob_root)
+        if is_postgres_url(path):
+            return cls(cls._connect_postgres(str(path)), blobs, _POSTGRES)
         return cls(
             sqlite3.connect(str(path), check_same_thread=check_same_thread),
-            open_blob_store(path, blob_root),
+            blobs,
+            _SQLITE,
         )
+
+    @staticmethod
+    def _connect_postgres(dsn: str):
+        """Imported lazily so a SQLite-only install never needs psycopg —
+        the same treatment `anthropic` gets in coach/provider.py."""
+        try:
+            import psycopg
+            from psycopg.rows import dict_row
+        except ModuleNotFoundError as exc:  # pragma: no cover - install hint
+            raise RuntimeError(
+                "Postgres support needs psycopg: pip install 'driverdna[pg]'"
+            ) from exc
+
+        try:
+            return psycopg.connect(
+                dsn,
+                autocommit=True,
+                row_factory=dict_row,
+                # psycopg's automatic statement preparation breaks behind a
+                # transaction-mode pooler (Supabase port 6543). Off by
+                # default so moving between poolers cannot surprise us.
+                prepare_threshold=None,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
     def close(self) -> None:
         self.conn.close()
@@ -347,14 +510,21 @@ class Database:
         self.close()
 
     def _migrate(self) -> None:
+        migrations = self.dialect.migrations()
         with self.conn:
             self.conn.execute(
                 "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
             )
             row = self.conn.execute("SELECT MAX(version) v FROM schema_version").fetchone()
             current = row["v"] or 0
-            for i, script in enumerate(MIGRATIONS[current:], start=current + 1):
-                self.conn.executescript(script)
+            if current >= len(migrations):
+                return
+        # Each migration is its own transaction: `executescript` commits on
+        # SQLite, and on Postgres the dialect wraps the script itself, so the
+        # version row is recorded alongside rather than inside that block.
+        for i, script in enumerate(migrations[current:], start=current + 1):
+            self.conn.executescript(script)
+            with self.conn:
                 self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
 
     def _insert_returning(self, sql: str, params: tuple, pk_col: str) -> int:
@@ -469,8 +639,7 @@ class Database:
     def _has_legacy_blobs(self) -> bool:
         if getattr(self, "_legacy_checked", None) is None:
             row = self.conn.execute(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='table' AND name='lap_samples_legacy'"
+                self.dialect.table_exists_sql(), ("lap_samples_legacy",)
             ).fetchone()
             self._legacy_checked = row is not None
         return bool(self._legacy_checked)
