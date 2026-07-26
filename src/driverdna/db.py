@@ -264,7 +264,9 @@ def _lap_pk_filter(lap_pks: frozenset[int] | None) -> tuple[str, list[int]]:
     if lap_pks is None:
         return "", []
     if not lap_pks:
-        return " AND 0", []
+        # `AND 1=0`, not `AND 0`: a bare integer is not a boolean outside
+        # SQLite, and this fragment is on the M6 trend path (an empty bucket).
+        return " AND 1=0", []
     ordered = sorted(lap_pks)
     return f" AND l.lap_pk IN ({','.join('?' * len(ordered))})", ordered
 
@@ -329,6 +331,19 @@ class Database:
                 self.conn.executescript(script)
                 self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
 
+    def _insert_returning(self, sql: str, params: tuple, pk_col: str) -> int:
+        """Run an INSERT and return the affected row's primary key.
+
+        `RETURNING` rather than `cursor.lastrowid` for two reasons: it is the
+        portable spelling, and it is the *correct* one for an upsert —
+        `lastrowid` is only meaningful on the INSERT path, so an
+        `ON CONFLICT ... DO UPDATE` that takes the UPDATE path leaves it
+        holding a stale value. Requires SQLite >= 3.35 (2021); the project
+        already requires Python >= 3.11.
+        """
+        row = self.conn.execute(f"{sql} RETURNING {pk_col}", params).fetchone()
+        return int(row[pk_col])
+
     @property
     def schema_version(self) -> int:
         row = self.conn.execute("SELECT MAX(version) v FROM schema_version").fetchone()
@@ -379,7 +394,7 @@ class Database:
             sort_keys=True,
         )
         with self.conn:
-            cur = self.conn.execute(
+            lap_pk = self._insert_returning(
                 """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
                                      session_key, run_index, n_samples, duration_s,
                                      imported_at, quality_flags, content_hash, lap_date)
@@ -389,8 +404,8 @@ class Database:
                     session_key, run_index, lap.n_samples, lap.duration_s, imported_at,
                     flags, content_hash, lap_date,
                 ),
+                "lap_pk",
             )
-            lap_pk = int(cur.lastrowid)
             self.conn.execute(
                 "INSERT INTO lap_samples (lap_pk, fmt, data) VALUES (?, 'npz-v1', ?)",
                 (lap_pk, _lap_blob(lap)),
@@ -422,7 +437,7 @@ class Database:
                                       PARTITION BY l.driver, l.car, l.track
                                       ORDER BY l.lap_pk DESC) AS rn
                            FROM laps l JOIN lap_samples s ON s.lap_pk = l.lap_pk
-                       ) WHERE rn > ?)""",
+                       ) ranked WHERE rn > ?)""",
                 (keep,),
             )
         return cur.rowcount
@@ -437,12 +452,12 @@ class Database:
         laps from other drivers share the owner's corner identities; gap
         analysis joins on them."""
         with self.conn:
-            cur = self.conn.execute(
+            map_pk = self._insert_returning(
                 """INSERT INTO corner_maps (car, track, built_from_n_laps)
                    VALUES (?, ?, ?)""",
                 (car, track, built_from_n_laps),
+                "map_pk",
             )
-            map_pk = int(cur.lastrowid)
             for c in corner_map.corners:
                 self.conn.execute(
                     """INSERT INTO corners (map_pk, corner_id, lat, lon, lap_dist,
@@ -545,7 +560,7 @@ class Database:
     ) -> int:
         apex = span.landmarks.apex
         with self.conn:
-            cur = self.conn.execute(
+            obs_pk = self._insert_returning(
                 """INSERT INTO corner_observations
                    (lap_pk, corner_pk, span_start, span_end, landmarks,
                     landmark_positions, apex_lat, apex_lon, apex_lap_dist,
@@ -558,8 +573,8 @@ class Database:
                     float(lap.lat[apex]), float(lap.lon[apex]),
                     float(lap.lap_dist[apex]) % 1.0, span.min_speed(lap),
                 ),
+                "obs_pk",
             )
-            obs_pk = int(cur.lastrowid)
             self.conn.executemany(
                 "INSERT INTO metric_values (obs_pk, name, value) VALUES (?, ?, ?)",
                 [(obs_pk, name, value) for name, value in sorted(metrics.items())],
@@ -605,9 +620,14 @@ class Database:
     ) -> None:
         with self.conn:
             self.conn.execute(
-                """INSERT OR REPLACE INTO corner_windows
+                """INSERT INTO corner_windows
                    (corner_pk, entry_start, turn_in, apex, exit_end)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (corner_pk) DO UPDATE SET
+                       entry_start = excluded.entry_start,
+                       turn_in     = excluded.turn_in,
+                       apex        = excluded.apex,
+                       exit_end    = excluded.exit_end""",
                 (corner_pk, entry_start, turn_in, apex, exit_end),
             )
 
@@ -629,7 +649,8 @@ class Database:
     def store_phase_times(self, obs_pk: int, times: dict[str, float]) -> None:
         with self.conn:
             self.conn.executemany(
-                "INSERT OR REPLACE INTO phase_times (obs_pk, phase, time_s) VALUES (?, ?, ?)",
+                """INSERT INTO phase_times (obs_pk, phase, time_s) VALUES (?, ?, ?)
+                   ON CONFLICT (obs_pk, phase) DO UPDATE SET time_s = excluded.time_s""",
                 [(obs_pk, phase, t) for phase, t in sorted(times.items())],
             )
 
@@ -746,10 +767,17 @@ class Database:
         if loaded is None:
             return {}
         map_pk, _ = loaded
+        # ORDER BY is load-bearing, not cosmetic: `_corner_at` picks the
+        # nearest corner with `min()`, which returns the *first* minimum, so
+        # on a distance tie the label is decided by row order — and that
+        # label is persisted into incidents.corner_id. Ordering by corner_id
+        # makes the tie-break stated rather than inherited from storage
+        # (`corner_classes` below already does this).
         return {
             r["corner_id"]: float(r["lap_dist"])
             for r in self.conn.execute(
-                "SELECT corner_id, lap_dist FROM corners WHERE map_pk=?", (map_pk,)
+                "SELECT corner_id, lap_dist FROM corners WHERE map_pk=? ORDER BY corner_id",
+                (map_pk,),
             )
         }
 
@@ -869,7 +897,7 @@ class Database:
                     continue
                 corner_id = f"C{next_num:02d}"
                 next_num += 1
-                cur = self.conn.execute(
+                new_pk = self._insert_returning(
                     """INSERT INTO corners (map_pk, corner_id, lat, lon, lap_dist,
                                             n_build_observations)
                        VALUES (?, ?, ?, ?, ?, ?)""",
@@ -878,8 +906,8 @@ class Database:
                      float(np.median([r["apex_lon"] for r in cl["obs"]])),
                      float(np.median([r["apex_lap_dist"] for r in cl["obs"]])),
                      len(cl["obs"])),
+                    "corner_pk",
                 )
-                new_pk = int(cur.lastrowid)
                 self.conn.executemany(
                     "UPDATE corner_observations SET corner_pk=? WHERE obs_pk=?",
                     [(new_pk, r["obs_pk"]) for r in cl["obs"]],
@@ -895,15 +923,15 @@ class Database:
         created_at: str | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO coach_outputs
                    (driver, car, track, payload_version, prompt_version, model,
                     output_json, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (driver, car, track, payload_version, prompt_version, model,
                  output_json, created_at),
+                "output_pk",
             )
-        return int(cur.lastrowid)
 
     def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
@@ -927,14 +955,24 @@ class Database:
         created_at: str | None = None,
     ) -> int:
         """Record driver intent about a finding. Suppresses it from priority
-        framing; the underlying measurement is never deleted."""
+        framing; the underlying measurement is never deleted.
+
+        Re-annotating a finding updates the existing row in place. The older
+        `INSERT OR REPLACE` deleted and reinserted it, silently renumbering
+        `annotation_pk`; keeping the pk stable is both portable and closer to
+        what "the measurement is never deleted" already promises.
+        """
         with self.conn:
-            cur = self.conn.execute(
-                """INSERT OR REPLACE INTO finding_annotations
-                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)""",
+            return self._insert_returning(
+                """INSERT INTO finding_annotations
+                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)
+                   ON CONFLICT (finding_id) DO UPDATE SET
+                       status     = excluded.status,
+                       note       = excluded.note,
+                       created_at = excluded.created_at""",
                 (finding_id, status, note, created_at),
+                "annotation_pk",
             )
-        return int(cur.lastrowid)
 
     def annotations(self) -> dict[str, dict[str, Any]]:
         return {
@@ -957,7 +995,7 @@ class Database:
         effects: dict[str, Any] | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO chat_transcripts
                    (session_id, bundle_version, role, content, evidence_cited, effects)
                    VALUES (?, ?, ?, ?, ?, ?)""",
@@ -966,8 +1004,8 @@ class Database:
                     json.dumps(evidence_cited or [], sort_keys=True),
                     json.dumps(effects or {}, sort_keys=True),
                 ),
+                "turn_pk",
             )
-        return int(cur.lastrowid)
 
     def chat_session_turns(self, session_id: str) -> list[dict[str, Any]]:
         return [
@@ -990,12 +1028,12 @@ class Database:
         note: str | None = None,
     ) -> int:
         with self.conn:
-            cur = self.conn.execute(
+            return self._insert_returning(
                 """INSERT INTO config_history (key, old_value, new_value, source, note)
                    VALUES (?, ?, ?, ?, ?)""",
                 (key, old_value, new_value, source, note),
+                "change_pk",
             )
-        return int(cur.lastrowid)
 
     # --- driver model (M6) ---------------------------------------------------
 
