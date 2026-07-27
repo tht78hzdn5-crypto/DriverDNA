@@ -159,7 +159,10 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 
 `.github/workflows/tests.yml` runs the full suite on every push and on pull
 requests to `main`, across Python 3.11 and 3.12, with a Postgres service
-container so the dual-backend tests actually execute.
+container so the dual-backend tests actually execute. A follow-up step fails the
+job if any test skipped for "no local Postgres configured" — otherwise a
+container that never came up would leave every A23 guard skipped and the job
+still green, which is the exact silent-coverage loss the container prevents.
 
 It does **not** install Chromium, so the two UI-SPEC trust-gate tests
 (`tests/test_render_parity.py`, `tests/test_offline.py`) skip in CI. Those are

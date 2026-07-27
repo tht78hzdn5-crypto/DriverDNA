@@ -37,7 +37,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U driverdna -d driverdna_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -61,4 +61,29 @@ jobs:
         # the gate green-by-default and therefore worth trusting — but it means
         # green CI is NOT proof the browser trust gates hold. The owner runs
         # those locally. See AGENTS.md, "What CI does and does not cover".
-        run: python -m pytest -q
+        #
+        # No extra -q: pyproject's addopts already sets it, and -qq suppresses
+        # the "N passed, M skipped" summary line — which is the one line you
+        # actually read off a gate. -rs lists skip reasons for the same reason.
+        #
+        # `set -o pipefail` is load-bearing: the runner's default shell is
+        # `bash -e`, without pipefail, so `pytest | tee` would exit with tee's
+        # status and a failing suite would report green.
+        run: |
+          set -o pipefail
+          python -m pytest -rs | tee pytest-output.txt
+
+      # A green run is not proof the Postgres backend was exercised: if the
+      # service container never came up, every dual-backend test would skip and
+      # the job would still pass. That is precisely the silent-coverage-loss
+      # this container exists to prevent, so assert it did not happen.
+      - name: Confirm the Postgres backend actually ran
+        run: |
+          if grep -q "no local Postgres configured" pytest-output.txt; then
+            echo "::error::Postgres-gated tests SKIPPED — the service container"
+            echo "::error::was not reachable, so A23's dual-backend guards"
+            echo "::error::(COLLATE \"C\", DOUBLE PRECISION, RLS) did not run."
+            grep -c "no local Postgres configured" pytest-output.txt
+            exit 1
+          fi
+          echo "Postgres backend exercised: no backend-configuration skips."
