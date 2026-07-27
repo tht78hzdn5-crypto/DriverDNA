@@ -17,6 +17,14 @@ out/
 .env
 .env.*
 
+# AI agent tooling — the rule/settings files below are committed on purpose
+# (AGENTS.md, .agents/rules/, .gemini/settings.json); only the scratch each
+# tool writes beside them is ignored.
+.gemini/*
+!.gemini/settings.json
+.antigravity/
+.agents/cache/
+
 # OS noise
 .DS_Store
 ui/node_modules/

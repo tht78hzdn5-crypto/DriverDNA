@@ -256,7 +256,66 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 ## Decision log (append-only)
 
 Durable record of forks and their resolutions (per the Decision-discipline rule
-in `CLAUDE.md`). Newest first.
+in `AGENTS.md`). Newest first.
+
+- **2026-07-27 — the build rules became portable and CI became a real gate,
+  because more than one agent now works here (SPEC.md A29).** The owner uses
+  Gemini CLI and Antigravity during Claude Code usage-limit windows, with
+  unrestricted scope, and asked how to keep the three from working against
+  each other.
+
+  *The real problem was not wiring, it was enforcement.* Pointing another tool
+  at the docs is a settings file. The risk is a capable model violating an
+  invariant — "the engine is the only source of numbers", reference-lap
+  isolation, insufficient-data-over-guessing — while writing code that looks
+  entirely reasonable. This project's own answer to that is philosophy #9,
+  "designed to be distrusted": enforce mechanically, don't ask nicely. So the
+  work is two-thirds tests and CI, one-third documentation.
+
+  *Fork: where do the rules live?* Rejected: copy them into `GEMINI.md` and an
+  Antigravity rule (three copies, guaranteed drift); rejected: leave
+  `CLAUDE.md` as the source (25,908 chars, and Antigravity silently refuses a
+  rules file over 12,000 — the rules would simply never arrive). Chosen: one
+  portable `AGENTS.md`, imported by `CLAUDE.md` via `@AGENTS.md`, loaded by
+  Gemini CLI through `.gemini/settings.json`, and mirrored — only its
+  non-negotiables — into `.agents/rules/driverdna.md` because Antigravity's
+  docs do not promise a root `AGENTS.md` is read at all.
+
+  *That one mirror is pinned, not trusted*, by `tests/test_agent_contract.py`,
+  reusing the `ui/tokens.json` ↔ `_TOKENS` parity pattern. Both the drift guard
+  and the settings guard were made to fail deliberately before the file was
+  accepted. A third guard came from asking what drift *cannot* catch: an agent
+  tidying a rule out of **both** copies keeps the mirror consistent, so the
+  block's load-bearing clauses are anchor-asserted separately. That negative
+  control was run and observed.
+
+  *There was no test CI at all.* Every invariant in this project is enforced by
+  pytest and nothing else — no linter, no formatter, no type checker — and
+  nothing ran it on push. `tests.yml` now runs the suite on every push and PR
+  across Python 3.11/3.12, with a Postgres service container so the A23
+  dual-backend guards (`COLLATE "C"`, `DOUBLE PRECISION`, RLS) actually execute
+  instead of skipping. Given unrestricted scope over `sql.py` and `db.py`, that
+  container is the highest-value part of this change: those defects are
+  invisible on SQLite by construction.
+
+  *Flagged, not silently accepted — branch protection cannot tell the agents
+  apart.* The agreed rule is "Claude Code commits to `main`; the others branch
+  and merge on green". GitHub cannot enforce that, because all three tools push
+  as the owner's single identity: protecting `main` blocks Claude Code too, and
+  an admin bypass hands the same bypass to everyone. So the branch rule is a
+  convention backed by *detection* (push-triggered CI on every branch including
+  `main`), not by prevention. Two ways to close it if the convention proves
+  insufficient — protect `main` for everyone and accept a PR per Claude change,
+  or a repo-local `.githooks/pre-push` keyed on the `Agent:` commit trailer,
+  which is the only mechanism that keys on the agent rather than the identity.
+  Neither was adopted now; the owner chose to keep Claude Code on `main`.
+
+  *Also fixed:* `.github/workflows/gemini-assistant.yml` had never once worked.
+  It pinned `run-gemini-cli@v1`; no `v1` tag exists (the action is pre-1.0).
+  Its only run — the owner's issue #4, "gemini test" — failed in six seconds on
+  `Unable to resolve action`, which is why nothing ever replied. Repinned to
+  `v0.1.22` and gated on the repository owner, since the job holds
+  `contents: write` and is driven by issue-comment text.
 
 - **2026-07-27 — the `/laps` "personal-best endpoint" finding was wrong; it
   was a parameter default (SPEC.md A28).** The owner emailed Garage61 asking

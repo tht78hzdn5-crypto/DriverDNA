@@ -1,0 +1,89 @@
+name: Tests
+
+# The merge gate. More than one agent works on this repository (see AGENTS.md),
+# and every invariant this project has — determinism, the source contract,
+# reference-lap isolation, the grounding validator — is enforced by pytest and
+# nothing else: there is no linter, formatter or type checker. So the suite has
+# to run on every push, not just when someone remembers.
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    services:
+      # The dual-backend tests only activate when DRIVERDNA_TEST_DATABASE_URL
+      # points at a local instance (tests/conftest.py refuses a remote host,
+      # since each test DROPs its schema CASCADE). Without this service they
+      # would silently skip, and a change to db.py/sql.py/store.py could break
+      # the Postgres backend with every SQLite test still green.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: driverdna
+          POSTGRES_PASSWORD: driverdna
+          POSTGRES_DB: driverdna_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U driverdna -d driverdna_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Test
+        env:
+          DRIVERDNA_TEST_DATABASE_URL: postgresql://driverdna:driverdna@localhost:5432/driverdna_test
+        # Chromium is deliberately not installed, so the two UI-SPEC trust-gate
+        # tests (test_render_parity.py, test_offline.py) skip here. That keeps
+        # the gate green-by-default and therefore worth trusting — but it means
+        # green CI is NOT proof the browser trust gates hold. The owner runs
+        # those locally. See AGENTS.md, "What CI does and does not cover".
+        #
+        # No extra -q: pyproject's addopts already sets it, and -qq suppresses
+        # the "N passed, M skipped" summary line — which is the one line you
+        # actually read off a gate. -rs lists skip reasons for the same reason.
+        #
+        # `set -o pipefail` is load-bearing: the runner's default shell is
+        # `bash -e`, without pipefail, so `pytest | tee` would exit with tee's
+        # status and a failing suite would report green.
+        run: |
+          set -o pipefail
+          python -m pytest -rs | tee pytest-output.txt
+
+      # A green run is not proof the Postgres backend was exercised: if the
+      # service container never came up, every dual-backend test would skip and
+      # the job would still pass. That is precisely the silent-coverage-loss
+      # this container exists to prevent, so assert it did not happen.
+      - name: Confirm the Postgres backend actually ran
+        run: |
+          if grep -q "no local Postgres configured" pytest-output.txt; then
+            echo "::error::Postgres-gated tests SKIPPED — the service container"
+            echo "::error::was not reachable, so A23's dual-backend guards"
+            echo "::error::(COLLATE \"C\", DOUBLE PRECISION, RLS) did not run."
+            grep -c "no local Postgres configured" pytest-output.txt
+            exit 1
+          fi
+          echo "Postgres backend exercised: no backend-configuration skips."
