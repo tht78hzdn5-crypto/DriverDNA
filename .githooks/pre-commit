@@ -1,0 +1,22 @@
+#!/bin/sh
+# .githooks/pre-commit — run pytest before allowing a commit.
+#
+# Opt in:  git config core.hooksPath .githooks
+# Opt out: git config --unset core.hooksPath
+#
+# Stops on first failure (-x) for speed; --tb=short keeps output readable.
+# If you need to bypass for a docs-only commit: git commit --no-verify
+
+echo "pre-commit: running pytest..."
+python -m pytest --tb=short -q -x
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "pre-commit: tests failed (exit $status). Commit aborted."
+  echo "Bypass with: git commit --no-verify"
+  exit 1
+fi
+
+echo "pre-commit: all tests passed."
+exit 0

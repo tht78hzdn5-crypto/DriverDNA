@@ -87,3 +87,21 @@ jobs:
             exit 1
           fi
           echo "Postgres backend exercised: no backend-configuration skips."
+
+      # Beck-style "AI cheating" detector (TDD guardrail, 2026-07-27).
+      # If a push modifies files under tests/ but touches nothing under
+      # driverdna/ (the source package), that is suspicious: it may mean an
+      # agent modified tests to fit broken code instead of fixing the code.
+      # This is a WARNING, not a failure — legitimate test-only commits
+      # (refactoring helpers, adding coverage) are allowed but flagged.
+      - name: Warn if tests changed without source changes
+        if: github.event_name == 'push'
+        run: |
+          # Compare this push's commits against the parent.
+          changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+          test_changes=$(echo "$changed_files" | grep -c '^tests/' || true)
+          src_changes=$(echo "$changed_files" | grep -c '^driverdna/' || true)
+
+          if [ "$test_changes" -gt 0 ] && [ "$src_changes" -eq 0 ]; then
+            echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
+          fi
