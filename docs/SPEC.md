@@ -1334,3 +1334,69 @@ Accepted at owner plan review; rationale recorded in the review:
   re-import under the intended label, chosen by the driver. This is
   "insufficient data over guessing" applied to metadata rather than
   measurements.
+
+- **A28** (2026-07-27, owner-directed): **the build rules become portable, and
+  CI becomes a real gate, because more than one agent now works on this
+  repository.** The owner uses Gemini CLI and Google Antigravity during Claude
+  Code usage-limit windows, with unrestricted scope.
+
+  **Refines philosophy #8** ("personal instrument, not a product — simplicity
+  and auditability outrank generality"), named here per the decision-discipline
+  rule. A multi-agent working agreement is process surface #8 would normally
+  argue against. It earns its place on *auditability*: the risk being managed
+  is a second model violating an invariant while writing plausible-looking
+  code, and the answer chosen is the same one #9 ("designed to be distrusted")
+  already prescribes — mechanical enforcement, not more prose. Still one
+  driver's instrument, one owner, one repository; no collaboration workflow
+  beyond what a single owner switching tools requires.
+
+  **`AGENTS.md` is the single source of the build rules** (non-negotiables,
+  decision discipline, build order, commands, testing rules, working
+  agreement). It exists as a separate file for a concrete reason: Antigravity
+  silently refuses a rules file over 12,000 characters and `CLAUDE.md` was
+  25,908. `CLAUDE.md` now imports it via `@AGENTS.md` and keeps only its
+  "Current status" changelog and UI-layer notes; `.gemini/settings.json` sets
+  `context.fileName` so Gemini CLI loads it; `.agents/rules/driverdna.md`
+  mirrors the non-negotiables for Antigravity, whose docs do not promise that a
+  root `AGENTS.md` is read at all.
+
+  **The one duplication is pinned, not trusted.** That mirrored block is
+  delimited by `shared:non-negotiables` markers and asserted byte-identical by
+  `tests/test_agent_contract.py` — the same reasoning as the `ui/tokens.json` ↔
+  `report/builder.py` `_TOKENS` parity test. The same file also fails if
+  `AGENTS.md` outgrows the 12,000-character cap, if `.gemini/settings.json`
+  stops naming `AGENTS.md`, or if `CLAUDE.md` restates the rules instead of
+  importing them. Both failure modes were induced deliberately and observed to
+  fail before the file was accepted.
+
+  **`.github/workflows/tests.yml` runs the suite on every push and on pull
+  requests to `main`**, across Python 3.11 and 3.12, with a Postgres service
+  container wired to `DRIVERDNA_TEST_DATABASE_URL` so the dual-backend tests
+  execute rather than skip. Until now there was no test CI at all: every
+  invariant in this project is enforced by pytest and nothing else — no linter,
+  no formatter, no type checker — and nothing ran it on push.
+
+  **Stated limitation, not papered over:** CI does not install Chromium, so the
+  two UI-SPEC trust-gate tests (`test_render_parity.py`, `test_offline.py`)
+  skip there, which also means the known pre-existing `test_offline` failure
+  does not turn CI red. Chosen so the gate is green-by-default and therefore
+  worth trusting, but it means green CI is not evidence the browser trust gates
+  hold. Recorded in `AGENTS.md` so no agent claims otherwise. Installing
+  Chromium in a separate non-blocking job is the honest next step.
+
+  **Branch discipline:** Claude Code continues to commit directly to `main`
+  (the 2026-07-21 owner instruction stands); Gemini CLI and Antigravity work on
+  `gemini/*` and `antigravity/*` branches and merge only on green CI. Known
+  asymmetry, recorded rather than worked around: CI gates merges, so a direct
+  push to `main` can still break it and a branch cut afterwards inherits the
+  breakage — push-triggered CI makes that visible within a minute rather than
+  preventing it.
+
+  **Also fixed here:** `.github/workflows/gemini-assistant.yml` had never
+  worked. It pinned `google-github-actions/run-gemini-cli@v1`, and no `v1` tag
+  exists — the action is pre-1.0 (latest `v0.1.22`). Its only run, the owner's
+  issue #4, failed in six seconds with `Unable to resolve action ... unable to
+  find version 'v1'`, which is why nothing ever replied. Repinned to the exact
+  version (not the `v0` major, which still accepts breaking changes) and gated
+  on `github.event.sender.login == github.repository_owner`, since the job
+  holds `contents: write`.

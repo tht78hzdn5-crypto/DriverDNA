@@ -1,9 +1,10 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-26.** Branch `main`, following the merge of the A24/
-A25 import fix (originally developed on `claude/import-functionality-shell-
-bug-e6aa14`, on top of the A23 storage migration from
-`claude/driverdna-db-solution-pbanez`).
+**Snapshot date: 2026-07-27.** Branch `claude/multi-ai-integration-y6txzf`,
+adding the multi-agent contract and the first test CI (A28). Previous snapshot
+was 2026-07-26 on `main`, following the merge of the A24/A25 import fix
+(originally developed on `claude/import-functionality-shell-bug-e6aa14`, on top
+of the A23 storage migration from `claude/driverdna-db-solution-pbanez`).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -25,6 +26,29 @@ behind every baseline, trend and consistency number.
 `cohorts.find_label_drift` now reports that at the end of `import` and in
 `history` — reported, never merged, and deliberately silent on two *different*
 variants, which are distinct cohorts by the spec's own rule.
+
+**Three agents, one contract (2026-07-27, SPEC.md A28).** The owner now also
+uses Gemini CLI and Antigravity, with unrestricted scope, during Claude Code
+usage-limit windows. `AGENTS.md` is the single portable source of the build
+rules — imported by `CLAUDE.md` via `@AGENTS.md`, loaded by Gemini CLI through
+`.gemini/settings.json`, and non-negotiables-mirrored into
+`.agents/rules/driverdna.md` for Antigravity, which caps a rules file at 12,000
+characters (`CLAUDE.md` is 25,908, which is why extraction was necessary rather
+than cosmetic). `tests/test_agent_contract.py` pins the mirror byte-for-byte and
+the anchors of each non-negotiable separately, so neither drift nor quiet
+deletion passes.
+
+**And CI exists now.** Until this snapshot nothing ran the suite on push: every
+invariant here is enforced by pytest and nothing else — no linter, no formatter,
+no type checker. `.github/workflows/tests.yml` runs it on every push and on PRs
+to `main`, on Python 3.11 and 3.12, with a Postgres service container so the A23
+dual-backend guards execute rather than skip. **Honest limits:** CI does not
+install Chromium, so UI-SPEC trust gates 1 and 5 (`test_render_parity.py`,
+`test_offline.py`) skip there — green CI is not evidence those hold, and the
+known `test_offline` failure stays invisible to it. And branch protection cannot
+enforce "Claude Code on `main`, other agents via PR", because all three tools
+push as the owner's one GitHub identity; the branch rule is convention backed by
+push-triggered detection, not prevention. Both are recorded in `AGENTS.md`.
 
 | Check | Result |
 | --- | --- |
@@ -162,6 +186,20 @@ sync twice more was fully idempotent (0 new laps, 25 total unchanged), and
 `driverdna report` ran clean on the API-sourced laps. Reference laps stay
 on the manual `import` path per M0b's finding (other-drivers' laps return
 `403 forbidden_lap`) — confirmed again live: every synced lap is `role='self'`.
+
+## Verified counts (2026-07-27)
+
+Reproduced on this date. Only the rows below were re-measured; everything in the
+2026-07-21 table that follows is carried forward unchanged.
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests | **608 passed, 13 skipped, 0 failed** of 621 collected, in 3m12s (42 test files) | `python3 -m pytest` |
+| — of which new | **8**, `tests/test_agent_contract.py` (the multi-agent contract, A28) | `python3 -m pytest tests/test_agent_contract.py` |
+| Skips | 13, all browser tests — Chromium absent on this machine, so `test_render_parity.py` / `test_offline.py` / `test_upload_ui.py` skip by their own `pytestmark`. **This is also why the known `test_offline` failure does not appear in this run**; it is unresolved, not fixed. | see the 2026-07-21 row below |
+| `AGENTS.md` | **9,992 chars** (budget 11,000; Antigravity's silent cliff 12,000) | `python3 -c "print(len(open('AGENTS.md').read()))"` |
+| `.agents/rules/driverdna.md` | **2,572 chars** | same, on that path |
+| Commits | **not re-measured** — this working copy is a shallow clone, where `git rev-list --count HEAD` reads 62 and understates the truth. Left at the 2026-07-21 figure rather than writing a wrong number. | `git rev-parse --is-shallow-repository` |
 
 ## Verified counts (2026-07-21)
 

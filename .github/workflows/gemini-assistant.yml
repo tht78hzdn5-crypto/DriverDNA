@@ -13,14 +13,24 @@ permissions:
 
 jobs:
   gemini:
-    # Runs whenever `@gemini-cli` is mentioned in an issue or PR comment
-    if: contains(github.event.comment.body, '@gemini-cli') || contains(github.event.issue.body, '@gemini-cli')
+    # Runs whenever `@gemini-cli` is mentioned in an issue or PR comment, and
+    # only for the repository owner — the job holds `contents: write`, and the
+    # owner gate costs one line. (The repo is private with no forks today, so
+    # this is belt-and-braces rather than a live exposure.)
+    if: >-
+      github.event.sender.login == github.repository_owner &&
+      (contains(github.event.comment.body, '@gemini-cli') ||
+       contains(github.event.issue.body, '@gemini-cli'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Run Gemini CLI Action
-        uses: google-github-actions/run-gemini-cli@v1
+        # Pinned to an exact version, not a major tag: this action is pre-1.0,
+        # so `v0` still accepts breaking changes. There is no `v1` tag — the
+        # original `@v1` pin here is why the first run of this workflow failed
+        # with "Unable to resolve action ... unable to find version `v1`".
+        uses: google-github-actions/run-gemini-cli@v0.1.22
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}

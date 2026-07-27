@@ -1,64 +1,20 @@
 # DriverDNA — build rules
 
-Personal racing-telemetry instrument for one driver. The constitution (the *why*)
-is **docs/ARCHITECTURE_VISION.md**: DriverDNA measures the driver, not the lap —
-the persistent Driver Model is the product. The engine spec (the *how*) is
-**docs/SPEC.md** — read both before changing anything. The philosophy (nine
-principles, owner-confirmed, refined by A14) is binding; when in doubt, the
-constitution wins over convenience.
+Personal racing-telemetry instrument for one driver. The binding build rules for
+every agent — non-negotiables, decision discipline, build order, commands,
+testing rules, and the multi-agent working agreement — live in `AGENTS.md` and
+are imported here rather than restated:
 
-## Non-negotiables
+@AGENTS.md
 
-- The deterministic engine is the only source of numbers, **including scores**.
-  AI (coach/chat) explains scores and prioritizes practice; it never produces or
-  adjusts a number.
-- Sources stay separately inspectable. Composite **scores are allowed but only
-  deterministic, versioned, and confidence-qualified** — Score + Confidence +
-  Evidence Count, always decomposable to the sources; never opaque, never
-  AI-generated (A14 / ARCHITECTURE_VISION.md).
-- "Insufficient data" over guessing, always. Every finding carries N, spread,
-  source tag, and evidence IDs.
-- Reference laps never enter self history, trends, or consistency statistics.
-- Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`, `DRIVERDNA_DATABASE_URL`) are
-  env-only: never persisted, printed, or logged. The database URL carries a
-  password, so it is redacted before any connection error reaches a message, a
-  log, or an HTTP body — and there is deliberately no bare `DATABASE_URL`
-  fallback.
-- Every threshold lives in config with a documented default; all parameter changes
-  flow through ConfigStore, versioned and reversible.
-- Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
-  quality-flagged with counts.
+They are a separate file because they have to be portable: Gemini CLI and
+Antigravity also work on this repository, and Antigravity silently refuses a
+rules file over 12,000 characters, which this file exceeds. One copy, no drift —
+`tests/test_agent_contract.py` enforces both halves of that.
 
-## Decision discipline (standing rule)
-
-When a decision is made — especially one Claude Code surfaced as a fork (scoring
-approach, M7 adoption, a threshold default) — the pick **and its reason** are
-recorded in the durable docs at decision time, never left only in chat:
-
-- The resolution goes in `docs/SPEC.md` (amendment log) and/or
-  `docs/PROJECT-BRIEF.md` (Decision log), dated.
-- If the decision touches the **nine philosophy points** or the **out-of-scope
-  list**, the record must *name the principle or item it refines and why*, in
-  the same edit — flagged at decision time, not left to be caught later. A14
-  (scores refine philosophy #4) is the model.
-- `docs/STATUS.md` is the single dated snapshot; verified counts (tests, laps,
-  sessions, findings, commits) live there so they can be checked over time.
-
-## Build order (strict)
-
-M0a (contract lock) → M1 (parse/segment/identify/classify) → M2
-(metrics/detectors/persistence) → M3 (attribution/ranking) → M4 (reports +
-one-shot coach) → M5 (interactive chat) → M6 (Driver Model — deterministic,
-versioned scoring; the constitution's center of gravity, additive over M1–M5)
-→ M7 (Coaching Intelligence — grounded coaching ontology; docs/COACHING.md,
-design stage).
-
-M0b (Garage61 API probe) floats: it requires `GARAGE61_TOKEN` and gates only the
-`sync` feature — but no code may assume API behavior before M0b documents it.
-
-Do not begin a milestone until the prior milestone's done-criteria (in the spec)
-pass. Every milestone ends with tests green AND its inspectable artifact generated
-from the real fixtures and reviewed.
+What follows is Claude-Code-facing and specific to this repository's history:
+where the build actually stands, and the UI layer's own rules. `docs/STATUS.md`
+is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
 
 ## Current status
 
@@ -371,24 +327,6 @@ Update this section as milestones complete.
 - Node is a build-time dependency only; the built SPA ships in the package
   static dir; API tests never require node. Localhost only; fully offline.
 
-## Commands
+## Commands and testing rules
 
-- Install: `python3 -m pip install -e ".[dev]"`
-- Test: `python3 -m pytest`
-- CLI: `driverdna --help`
-- The owner runs the CLI from a local Windows shell. Any command block given to
-  them must be PowerShell-ready: full paths (not relative to some assumed cwd),
-  and no bash-only syntax (`&&` chaining, `$(...)`, POSIX env-var syntax).
-  `;` chains commands in PowerShell; `$env:NAME` reads/sets an env var.
-
-## Testing rules
-
-- Provider (coach/chat) tests use the mocked provider only; tests never call live
-  APIs and never require secrets.
-- Determinism is tested mechanically: run the pipeline twice, byte-diff the
-  normalized JSON (sorted keys, fixed float precision, no wall-clock timestamps).
-- The fixture CSVs in `tests/fixtures/` are the regression anchor for the source
-  contract; synthetic traces cover landmark shapes, double-apex handling, and
-  detector edge cases.
-- API capabilities are documented from observed behavior (docs/garage61-api.md),
-  never assumed.
+See `AGENTS.md` — imported at the top of this file.
