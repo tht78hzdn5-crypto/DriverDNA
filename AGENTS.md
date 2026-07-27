@@ -100,6 +100,19 @@ The engine and UI milestone tracks are both complete — see `CLAUDE.md`'s
   `DRIVERDNA_TEST_DATABASE_URL` points at a *local* instance; browser tests skip
   when Playwright or Chromium is absent.
 
+## Development workflow (TDD)
+
+New features and bug fixes follow Red → Green → Refactor:
+
+1. **Red:** write a failing test first. Run the suite; confirm it fails for the
+   expected reason and no existing test broke.
+2. **Green:** write minimum code to pass. Never modify test files during this
+   step — fix the test in Red first, then return to Green.
+3. **Refactor:** clean up with all tests green.
+
+Exempt: docs-only, config-only, and unmerged spike work. The rule prevents an
+agent from writing both the answer and the grading rubric in one thought.
+
 ## Multi-agent working agreement
 
 More than one agent works on this repository, one at a time, usually because
