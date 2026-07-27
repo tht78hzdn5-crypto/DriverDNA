@@ -276,6 +276,25 @@ owner (post-M6, post-blind-test).** Authentication and multi-user, hosted
 deployment, mobile app, Tauri/Electron packaging (deferred, not designed
 against). Any revisit keeps the permanent list above intact.
 
+**Revisited 2026-07-26 (SPEC.md A23).** Both conditions are met, so three of
+those four moved into scope under `docs/DEPLOY-SPEC.md` (design adopted,
+build not started): **authentication** (single-driver only — *multi-user
+stays permanently excluded*, and A23 is explicitly not precedent for it),
+**hosted deployment** (Oracle Cloud Always Free VM, reached over an
+outbound-only tunnel), and a **mobile app** (a PWA over this same SPA — read
++ chat subset). Tauri/Electron packaging stays deferred; a native shell is
+excluded outright for the mobile track. The permanent list above is intact.
+
+Principle 8 and trust gate 5 are restated by the same amendment: the
+guarantee is **same-origin only** — the SPA makes zero third-party requests,
+every asset and every byte of data coming from the app's own origin. CDNs,
+fonts, analytics and telemetry remain categorically forbidden; the gate-5
+Playwright test changes from blocking all non-localhost requests to blocking
+all non-same-origin ones. Fully-offline operation remains true for the
+local `driverdna ui` path; the served path additionally caches only the
+static shell — **never an `/api/*` response**, since a stale cached finding
+is a wrong number shown as a current one.
+
 ## Setup notes
 
 Lives at `docs/UI-SPEC.md`; add the amendment reference in `docs/SPEC.md` and a UI section to `CLAUDE.md` build rules (node at build time only; `npm run build` emits into the package static dir; API tests never require node). Build order U0 → U4 after the engine's blind acceptance test has been run — rendering an unvalidated instrument beautifully is polish in the wrong place.

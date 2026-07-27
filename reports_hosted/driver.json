@@ -1,0 +1,129 @@
+{
+ "cohorts": [
+  {
+   "car": "GR86",
+   "driver": "owner",
+   "lap_delta_s": [
+    15.3667,
+    1.2333,
+    4.6,
+    2.7167,
+    10.1333,
+    10.9167,
+    5.7167,
+    3.7,
+    21.15,
+    2.0167,
+    0.0
+   ],
+   "lap_durations_s": [
+    186.5167,
+    172.3833,
+    175.75,
+    173.8667,
+    181.2833,
+    182.0667,
+    176.8667,
+    174.85,
+    192.3,
+    173.1667,
+    171.15
+   ],
+   "n_laps": 11,
+   "n_sessions": 6,
+   "track": "Spa-Francorchamps"
+  }
+ ],
+ "cross_track_rollups": [
+  {
+   "car": "GR86",
+   "class": "fast",
+   "gate_reason": "insufficient data: 1 track(s) < 2",
+   "loss_s": 0.0919,
+   "n_tracks": 1,
+   "shown": false
+  },
+  {
+   "car": "GR86",
+   "class": "medium",
+   "gate_reason": "insufficient data: 1 track(s) < 2",
+   "loss_s": 0.955,
+   "n_tracks": 1,
+   "shown": false
+  },
+  {
+   "car": "GR86",
+   "class": "slow",
+   "gate_reason": "insufficient data: 1 track(s) < 2",
+   "loss_s": 1.332,
+   "n_tracks": 1,
+   "shown": false
+  }
+ ],
+ "driver_model": {
+  "beliefs": {
+   "braking": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 81.22,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "commitment": {
+    "confidence": 0.5,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 63.23,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "consistency": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 34.71,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "corner_exit": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 66.65,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "rotation": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 56.8,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "vehicle_management": {
+    "confidence": 0.5,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 0.0,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "vision": {
+    "confidence": 0.0,
+    "evidence_count": 0,
+    "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
+    "score": null,
+    "signal_status": "no_signal",
+    "trend": "unavailable"
+   }
+  },
+  "driver": "owner",
+  "note": "model estimate, not a measurement of truth \u2014 confidence and evidence count say how much to trust it; more laps (more sessions, tracks, cars) sharpen it",
+  "scoring_model_version": "dm-v2",
+  "taxonomy_version": "pyramid-v1"
+ },
+ "note": "cross-car claims are computed but never reported in v1",
+ "payload_version": 4
+}

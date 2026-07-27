@@ -1,0 +1,6766 @@
+{
+ "caveats": [
+  "lap validity has no source channel: statistical outlier screening with counts, never silent exclusion"
+ ],
+ "coaching": {
+  "headline": {
+   "coaching_expression": "Settle the entry, then one committed input to the apex.",
+   "coaching_principle_id": "cp.turn_in.one_commitment",
+   "corner_id": "C01",
+   "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+   "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+   "evidence_ids": [
+    "obs:1",
+    "obs:30",
+    "obs:45",
+    "obs:73",
+    "obs:117"
+   ],
+   "fundamental": "rotation",
+   "gap_band": "major",
+   "magnitude": 0.4401,
+   "magnitude_kind": "seconds_lost",
+   "n": 10,
+   "signal_status": "measured",
+   "technique": "turn_in",
+   "thin_evidence": false
+  },
+  "headline_reason": null,
+  "ontology_version": "coach-onto-v1",
+  "secondary": [
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C09",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:9",
+     "obs:24",
+     "obs:38",
+     "obs:53",
+     "obs:68",
+     "obs:83",
+     "obs:99",
+     "obs:112",
+     "obs:125",
+     "obs:138",
+     "obs:152"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.6123,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 198,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C15",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:15",
+     "obs:29",
+     "obs:44",
+     "obs:58",
+     "obs:72",
+     "obs:88",
+     "obs:103",
+     "obs:116",
+     "obs:129",
+     "obs:142",
+     "obs:156"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5759,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 198,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C16",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:28",
+     "obs:43",
+     "obs:57",
+     "obs:87",
+     "obs:102",
+     "obs:115",
+     "obs:128",
+     "obs:141",
+     "obs:155"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5403,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 111,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C17",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:22",
+     "obs:36",
+     "obs:66",
+     "obs:81",
+     "obs:96",
+     "obs:110",
+     "obs:123",
+     "obs:136"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5314,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 122,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C02",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:2",
+     "obs:17",
+     "obs:31",
+     "obs:46",
+     "obs:60",
+     "obs:75",
+     "obs:106",
+     "obs:118",
+     "obs:131",
+     "obs:145"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5299,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 104,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C03",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:3",
+     "obs:18",
+     "obs:32",
+     "obs:47",
+     "obs:61",
+     "obs:76",
+     "obs:92",
+     "obs:107",
+     "obs:119",
+     "obs:146"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5134,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 180,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C01",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:1",
+     "obs:16",
+     "obs:30",
+     "obs:45",
+     "obs:59",
+     "obs:73",
+     "obs:89",
+     "obs:105",
+     "obs:117",
+     "obs:130",
+     "obs:144"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "major",
+    "magnitude": 0.5107,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 184,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C07",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:7",
+     "obs:51",
+     "obs:65",
+     "obs:150"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.4945,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 72,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C08",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:8",
+     "obs:23",
+     "obs:37",
+     "obs:52",
+     "obs:67",
+     "obs:82",
+     "obs:98",
+     "obs:111",
+     "obs:137",
+     "obs:151"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.4907,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 180,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C04",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:4",
+     "obs:19",
+     "obs:33",
+     "obs:48",
+     "obs:77",
+     "obs:93",
+     "obs:132",
+     "obs:147"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.4402,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 129,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "corner_id": "C01",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "evidence_ids": [
+     "obs:1",
+     "obs:45",
+     "obs:59",
+     "obs:73",
+     "obs:89",
+     "obs:117"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "major",
+    "magnitude": 0.4401,
+    "magnitude_kind": "seconds_lost",
+    "n": 10,
+    "signal_status": "measured",
+    "technique": "coasting",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
+    "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "corner_id": "C01",
+    "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
+    "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "evidence_ids": [
+     "obs:1",
+     "obs:16",
+     "obs:30",
+     "obs:45",
+     "obs:59",
+     "obs:73",
+     "obs:89",
+     "obs:105",
+     "obs:117",
+     "obs:130",
+     "obs:144"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "major",
+    "magnitude": 0.4401,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "rotation_efficiency",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C05",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:5",
+     "obs:20",
+     "obs:34",
+     "obs:49",
+     "obs:62",
+     "obs:78",
+     "obs:94",
+     "obs:108",
+     "obs:121",
+     "obs:133",
+     "obs:148"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.4325,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 198,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C18",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:25",
+     "obs:39",
+     "obs:69",
+     "obs:113",
+     "obs:126",
+     "obs:139",
+     "obs:153"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.3985,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 51,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C06",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:6",
+     "obs:21",
+     "obs:35",
+     "obs:50",
+     "obs:64",
+     "obs:79",
+     "obs:95",
+     "obs:109",
+     "obs:122",
+     "obs:134",
+     "obs:149"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.37,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 187,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C10",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:10",
+     "obs:54",
+     "obs:84",
+     "obs:100"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "notable",
+    "magnitude": 0.3308,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 54,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "corner_id": "C14",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "evidence_ids": [
+     "obs:14",
+     "obs:71"
+    ],
+    "fundamental": "consistency",
+    "gap_band": "moderate",
+    "magnitude": 0.1973,
+    "magnitude_kind": "coefficient_of_variation",
+    "n": 28,
+    "signal_status": "measured",
+    "technique": "repeatability",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "corner_id": "C03",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "evidence_ids": [
+     "obs:32",
+     "obs:47",
+     "obs:61",
+     "obs:76",
+     "obs:92",
+     "obs:119",
+     "obs:146"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.148,
+    "magnitude_kind": "seconds_lost",
+    "n": 10,
+    "signal_status": "measured",
+    "technique": "coasting",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "corner_id": "C03",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "evidence_ids": [
+     "obs:18",
+     "obs:32",
+     "obs:47",
+     "obs:61",
+     "obs:107"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.148,
+    "magnitude_kind": "seconds_lost",
+    "n": 10,
+    "signal_status": "measured",
+    "technique": "turn_in",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "corner_id": "C15",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "evidence_ids": [
+     "obs:15",
+     "obs:29",
+     "obs:44",
+     "obs:58",
+     "obs:72",
+     "obs:88",
+     "obs:103",
+     "obs:116",
+     "obs:129",
+     "obs:142",
+     "obs:156"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.1351,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "coasting",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "corner_id": "C15",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "evidence_ids": [
+     "obs:29",
+     "obs:44",
+     "obs:116",
+     "obs:129",
+     "obs:142",
+     "obs:156"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.1351,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "turn_in",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "corner_id": "C15",
+    "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "evidence_ids": [
+     "obs:15",
+     "obs:29",
+     "obs:44",
+     "obs:58",
+     "obs:72",
+     "obs:103",
+     "obs:129"
+    ],
+    "fundamental": "braking",
+    "gap_band": "moderate",
+    "magnitude": 0.102,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "pedal_overlap",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "corner_id": "C17",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "evidence_ids": [
+     "obs:36",
+     "obs:110",
+     "obs:123"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.1002,
+    "magnitude_kind": "seconds_lost",
+    "n": 6,
+    "signal_status": "measured",
+    "technique": "coasting",
+    "thin_evidence": true
+   },
+   {
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "corner_id": "C17",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "evidence_ids": [
+     "obs:22",
+     "obs:36",
+     "obs:96",
+     "obs:110",
+     "obs:123"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.1002,
+    "magnitude_kind": "seconds_lost",
+    "n": 6,
+    "signal_status": "measured",
+    "technique": "turn_in",
+    "thin_evidence": true
+   },
+   {
+    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "corner_id": "C01",
+    "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "evidence_ids": [
+     "obs:1",
+     "obs:30",
+     "obs:59",
+     "obs:73",
+     "obs:89",
+     "obs:105"
+    ],
+    "fundamental": "braking",
+    "gap_band": "moderate",
+    "magnitude": 0.0855,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "pedal_overlap",
+    "thin_evidence": false
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "corner_id": "C05",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "evidence_ids": [
+     "obs:5",
+     "obs:20",
+     "obs:34",
+     "obs:49",
+     "obs:62",
+     "obs:78",
+     "obs:94",
+     "obs:108",
+     "obs:121",
+     "obs:148"
+    ],
+    "fundamental": "rotation",
+    "gap_band": "moderate",
+    "magnitude": 0.0553,
+    "magnitude_kind": "seconds_lost",
+    "n": 11,
+    "signal_status": "measured",
+    "technique": "coasting",
+    "thin_evidence": false
+   }
+  ],
+  "self_checks": [
+   {
+    "coaching_principle_id": "cp.eye_line.look_further",
+    "corner_id": null,
+    "driving_principle": "Where the eyes point is where the hands steer toward. Looking at the apex instead of through it tends to produce a line that arrives at the apex correctly and has nowhere good to go after it.",
+    "evidence_ids": [],
+    "fundamental": "vision",
+    "gap_band": null,
+    "magnitude": null,
+    "magnitude_kind": null,
+    "n": 0,
+    "self_check": {
+     "basis": "Where the eyes point is where the hands tend to steer toward; there is no eye-tracking channel in the telemetry, so this can never be measured, only self-tested.",
+     "instruction": "Say out loud where you're looking the instant you turn in. If you can't answer before you're already at the apex, you're looking too late.",
+     "label": "coaching hypothesis, not a measurement \u2014 we can't see your eyes"
+    },
+    "signal_status": "no_signal",
+    "technique": "eye_line",
+    "thin_evidence": false
+   }
+  ],
+  "silent_count": 11
+ },
+ "cohort": {
+  "car": "GR86",
+  "driver": "owner",
+  "lap_delta_s": [
+   15.3667,
+   1.2333,
+   4.6,
+   2.7167,
+   10.1333,
+   10.9167,
+   5.7167,
+   3.7,
+   21.15,
+   2.0167,
+   0.0
+  ],
+  "lap_durations_s": [
+   186.5167,
+   172.3833,
+   175.75,
+   173.8667,
+   181.2833,
+   182.0667,
+   176.8667,
+   174.85,
+   192.3,
+   173.1667,
+   171.15
+  ],
+  "n_laps": 11,
+  "n_sessions": 6,
+  "track": "Spa-Francorchamps"
+ },
+ "corner_map": [
+  {
+   "apex_pct": 6.02,
+   "class": "slow",
+   "corner_id": "C01",
+   "windows": {
+    "apex": 0.060169,
+    "entry_start": 0.042078,
+    "exit_end": 0.060169,
+    "turn_in": 0.04866
+   }
+  },
+  {
+   "apex_pct": 19.29,
+   "class": "fast",
+   "corner_id": "C02",
+   "windows": {
+    "apex": 0.192875,
+    "entry_start": 0.184088,
+    "exit_end": 0.192979,
+    "turn_in": 0.155115
+   }
+  },
+  {
+   "apex_pct": 35.11,
+   "class": "medium",
+   "corner_id": "C03",
+   "windows": {
+    "apex": 0.351084,
+    "entry_start": 0.335459,
+    "exit_end": 0.35188,
+    "turn_in": 0.34134
+   }
+  },
+  {
+   "apex_pct": 38.22,
+   "class": "medium",
+   "corner_id": "C04",
+   "windows": {
+    "apex": 0.382189,
+    "entry_start": 0.365875,
+    "exit_end": 0.385578,
+    "turn_in": 0.360774
+   }
+  },
+  {
+   "apex_pct": 44.19,
+   "class": "slow",
+   "corner_id": "C05",
+   "windows": {
+    "apex": 0.441895,
+    "entry_start": 0.41392,
+    "exit_end": 0.449004,
+    "turn_in": 0.42393
+   }
+  },
+  {
+   "apex_pct": 46.56,
+   "class": "medium",
+   "corner_id": "C06",
+   "windows": {
+    "apex": 0.465601,
+    "entry_start": 0.458279,
+    "exit_end": 0.473906,
+    "turn_in": 0.462832
+   }
+  },
+  {
+   "apex_pct": 54.08,
+   "class": "medium",
+   "corner_id": "C07",
+   "windows": {
+    "apex": 0.540798,
+    "entry_start": 0.53007,
+    "exit_end": 0.590919,
+    "turn_in": 0.536839
+   }
+  },
+  {
+   "apex_pct": 64.19,
+   "class": "medium",
+   "corner_id": "C08",
+   "windows": {
+    "apex": 0.641878,
+    "entry_start": 0.620354,
+    "exit_end": 0.672082,
+    "turn_in": 0.63411
+   }
+  },
+  {
+   "apex_pct": 71.1,
+   "class": "medium",
+   "corner_id": "C09",
+   "windows": {
+    "apex": 0.710987,
+    "entry_start": 0.694325,
+    "exit_end": 0.714209,
+    "turn_in": 0.700138
+   }
+  },
+  {
+   "apex_pct": 73.84,
+   "class": "medium",
+   "corner_id": "C10",
+   "windows": {
+    "apex": 0.738392,
+    "entry_start": 0.733385,
+    "exit_end": 0.741417,
+    "turn_in": 0.727204
+   }
+  },
+  {
+   "apex_pct": 75.25,
+   "class": "fast",
+   "corner_id": "C11",
+   "windows": {
+    "apex": 0.752546,
+    "entry_start": null,
+    "exit_end": 0.752546,
+    "turn_in": 0.752546
+   }
+  },
+  {
+   "apex_pct": 79.0,
+   "class": "fast",
+   "corner_id": "C12",
+   "windows": {
+    "apex": 0.78995,
+    "entry_start": null,
+    "exit_end": 0.78995,
+    "turn_in": 0.78995
+   }
+  },
+  {
+   "apex_pct": 84.01,
+   "class": "fast",
+   "corner_id": "C13",
+   "windows": {
+    "apex": 0.840121,
+    "entry_start": null,
+    "exit_end": 0.851826,
+    "turn_in": 0.840121
+   }
+  },
+  {
+   "apex_pct": 87.9,
+   "class": "medium",
+   "corner_id": "C14",
+   "windows": {
+    "apex": 0.878962,
+    "entry_start": 0.864899,
+    "exit_end": 0.881738,
+    "turn_in": 0.877138
+   }
+  },
+  {
+   "apex_pct": 96.59,
+   "class": "slow",
+   "corner_id": "C15",
+   "windows": {
+    "apex": 0.965896,
+    "entry_start": 0.942985,
+    "exit_end": 0.975333,
+    "turn_in": 0.961732
+   }
+  },
+  {
+   "apex_pct": 89.48,
+   "class": "fast",
+   "corner_id": "C16",
+   "windows": {
+    "apex": 0.894771,
+    "entry_start": 0.87065,
+    "exit_end": 0.895887,
+    "turn_in": 0.874328
+   }
+  },
+  {
+   "apex_pct": 56.24,
+   "class": "medium",
+   "corner_id": "C17",
+   "windows": {
+    "apex": 0.562407,
+    "entry_start": 0.534247,
+    "exit_end": 0.562988,
+    "turn_in": 0.535502
+   }
+  },
+  {
+   "apex_pct": 72.57,
+   "class": "medium",
+   "corner_id": "C18",
+   "windows": {
+    "apex": 0.725748,
+    "entry_start": null,
+    "exit_end": 0.726264,
+    "turn_in": 0.725748
+   }
+  }
+ ],
+ "cumulative_loss": {
+  "by_class": {
+   "fast": 0.091899,
+   "medium": 0.954983,
+   "slow": 1.332006
+  },
+  "by_phase": {
+   "entry": 0.43943,
+   "exit": 0.796365,
+   "mid": 1.143093
+  },
+  "outliers_screened": {
+   "C01:entry": 1,
+   "C01:mid": 2,
+   "C02:exit": 2,
+   "C02:mid": 3,
+   "C03:entry": 2,
+   "C03:exit": 1,
+   "C04:exit": 1,
+   "C04:mid": 2,
+   "C05:entry": 2,
+   "C05:exit": 1,
+   "C05:mid": 1,
+   "C06:mid": 1,
+   "C08:mid": 1,
+   "C09:mid": 1,
+   "C10:exit": 1,
+   "C13:exit": 2,
+   "C15:entry": 1,
+   "C15:exit": 2,
+   "C15:mid": 1,
+   "C17:entry": 1,
+   "C17:mid": 1
+  },
+  "per_corner": {
+   "C01": {
+    "entry": 0.085533,
+    "mid": 0.440124
+   },
+   "C02": {
+    "exit": 0.000415,
+    "mid": 0.026893
+   },
+   "C03": {
+    "entry": 0.007095,
+    "exit": 0.00724,
+    "mid": 0.148015
+   },
+   "C04": {
+    "exit": 0.029315,
+    "mid": 0.013457
+   },
+   "C05": {
+    "entry": 0.077894,
+    "exit": 0.086576,
+    "mid": 0.055321
+   },
+   "C06": {
+    "entry": 0.040769,
+    "exit": 0.11851,
+    "mid": 0.019311
+   },
+   "C07": {
+    "entry": 0.005766,
+    "exit": 0.024788,
+    "mid": 0.005127
+   },
+   "C08": {
+    "entry": 0.082775,
+    "exit": 0.110331,
+    "mid": 0.038204
+   },
+   "C09": {
+    "entry": 0.031102,
+    "exit": 0.042383,
+    "mid": 0.098009
+   },
+   "C10": {
+    "exit": 0.003801,
+    "mid": 0.016828
+   },
+   "C13": {
+    "exit": 0.011597
+   },
+   "C14": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C15": {
+    "entry": 0.102002,
+    "exit": 0.34942,
+    "mid": 0.135136
+   },
+   "C16": {
+    "entry": 0.003176,
+    "exit": 0.003318,
+    "mid": 0.0465
+   },
+   "C17": {
+    "entry": 0.003317,
+    "exit": 0.006109,
+    "mid": 0.100169
+   },
+   "C18": {
+    "exit": 0.002561
+   }
+  },
+  "per_corner_phase_n": {
+   "C01": {
+    "entry": 11,
+    "mid": 11
+   },
+   "C02": {
+    "exit": 10,
+    "mid": 10
+   },
+   "C03": {
+    "entry": 10,
+    "exit": 10,
+    "mid": 10
+   },
+   "C04": {
+    "exit": 8,
+    "mid": 8
+   },
+   "C05": {
+    "entry": 11,
+    "exit": 11,
+    "mid": 11
+   },
+   "C06": {
+    "entry": 11,
+    "exit": 11,
+    "mid": 11
+   },
+   "C07": {
+    "entry": 4,
+    "exit": 4,
+    "mid": 4
+   },
+   "C08": {
+    "entry": 10,
+    "exit": 10,
+    "mid": 10
+   },
+   "C09": {
+    "entry": 11,
+    "exit": 11,
+    "mid": 11
+   },
+   "C10": {
+    "exit": 4,
+    "mid": 4
+   },
+   "C13": {
+    "exit": 11
+   },
+   "C14": {
+    "entry": 2,
+    "exit": 2,
+    "mid": 2
+   },
+   "C15": {
+    "entry": 11,
+    "exit": 11,
+    "mid": 11
+   },
+   "C16": {
+    "entry": 9,
+    "exit": 9,
+    "mid": 9
+   },
+   "C17": {
+    "entry": 8,
+    "exit": 8,
+    "mid": 8
+   },
+   "C18": {
+    "exit": 7
+   }
+  },
+  "per_corner_total": {
+   "C01": 0.525657,
+   "C02": 0.027308,
+   "C03": 0.162351,
+   "C04": 0.042771,
+   "C05": 0.21979,
+   "C06": 0.17859,
+   "C07": 0.035682,
+   "C08": 0.23131,
+   "C09": 0.171494,
+   "C10": 0.020628,
+   "C13": 0.011597,
+   "C14": 0.0,
+   "C15": 0.586559,
+   "C16": 0.052994,
+   "C17": 0.109596,
+   "C18": 0.002561
+  }
+ },
+ "driver_model": {
+  "beliefs": {
+   "braking": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 81.22,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "commitment": {
+    "confidence": 0.5,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 63.23,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "consistency": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 34.71,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "corner_exit": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 66.65,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "rotation": {
+    "confidence": 0.5133,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 56.8,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "vehicle_management": {
+    "confidence": 0.5,
+    "evidence_count": 11,
+    "insufficient_reason": null,
+    "score": 0.0,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "vision": {
+    "confidence": 0.0,
+    "evidence_count": 0,
+    "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
+    "score": null,
+    "signal_status": "no_signal",
+    "trend": "unavailable"
+   }
+  },
+  "driver": "owner",
+  "note": "model estimate, not a measurement of truth \u2014 confidence and evidence count say how much to trust it; more laps (more sessions, tracks, cars) sharpen it",
+  "scoring_model_version": "dm-v2",
+  "taxonomy_version": "pyramid-v1"
+ },
+ "findings": [
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01 entry: slower laps lose -0.079 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": -0.078987,
+    "rank_score": -0.039494,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:16",
+    "obs:30",
+    "obs:45",
+    "obs:59",
+    "obs:73",
+    "obs:89",
+    "obs:105",
+    "obs:117",
+    "obs:130",
+    "obs:144"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C01:entry:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "entry",
+   "seconds": -0.078987,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.057988,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01 mid: slower laps lose 0.821 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 6,
+    "opportunity_s": 0.821004,
+    "rank_score": 0.821004,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:16",
+    "obs:30",
+    "obs:45",
+    "obs:59",
+    "obs:73",
+    "obs:89",
+    "obs:105",
+    "obs:117",
+    "obs:130",
+    "obs:144"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C01:mid:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "mid",
+   "seconds": 0.821004,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.416307,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02 mid: slower laps lose 0.001 s here vs faster laps",
+   "details": {
+    "n_outliers": 3,
+    "n_sessions": 5,
+    "opportunity_s": 0.000653,
+    "rank_score": 0.000653,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:2",
+    "obs:17",
+    "obs:31",
+    "obs:46",
+    "obs:60",
+    "obs:75",
+    "obs:106",
+    "obs:118",
+    "obs:131",
+    "obs:145"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C02:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "mid",
+   "seconds": 0.000653,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.026732,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02 exit: slower laps lose 0.001 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 5,
+    "opportunity_s": 0.000522,
+    "rank_score": 0.000261,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:2",
+    "obs:17",
+    "obs:31",
+    "obs:46",
+    "obs:60",
+    "obs:75",
+    "obs:106",
+    "obs:118",
+    "obs:131",
+    "obs:145"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C02:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "exit",
+   "seconds": 0.000522,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.000332,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03 entry: slower laps lose -0.030 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 6,
+    "opportunity_s": -0.029598,
+    "rank_score": -0.029598,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:3",
+    "obs:18",
+    "obs:32",
+    "obs:47",
+    "obs:61",
+    "obs:76",
+    "obs:92",
+    "obs:107",
+    "obs:119",
+    "obs:146"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C03:entry:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "entry",
+   "seconds": -0.029598,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.033952,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03 mid: slower laps lose -0.116 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": -0.115929,
+    "rank_score": -0.057965,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:3",
+    "obs:18",
+    "obs:32",
+    "obs:47",
+    "obs:61",
+    "obs:76",
+    "obs:92",
+    "obs:107",
+    "obs:119",
+    "obs:146"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C03:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "mid",
+   "seconds": -0.115929,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.149838,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03 exit: slower laps lose 0.010 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": 0.010297,
+    "rank_score": 0.005149,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:3",
+    "obs:18",
+    "obs:32",
+    "obs:47",
+    "obs:61",
+    "obs:76",
+    "obs:92",
+    "obs:107",
+    "obs:119",
+    "obs:146"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C03:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "exit",
+   "seconds": 0.010297,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.006429,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04 mid: slower laps lose 0.009 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 5,
+    "opportunity_s": 0.008505,
+    "rank_score": 0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:4",
+    "obs:19",
+    "obs:33",
+    "obs:48",
+    "obs:77",
+    "obs:93",
+    "obs:132",
+    "obs:147"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C04:mid:opportunity",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "opportunity",
+   "n": 8,
+   "phase": "mid",
+   "seconds": 0.008505,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.062103,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04 exit: slower laps lose -0.019 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 5,
+    "opportunity_s": -0.018905,
+    "rank_score": -0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:4",
+    "obs:19",
+    "obs:33",
+    "obs:48",
+    "obs:77",
+    "obs:93",
+    "obs:132",
+    "obs:147"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C04:exit:opportunity",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "opportunity",
+   "n": 8,
+   "phase": "exit",
+   "seconds": -0.018905,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.031037,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05 entry: slower laps lose -0.038 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 6,
+    "opportunity_s": -0.038172,
+    "rank_score": -0.019086,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:5",
+    "obs:20",
+    "obs:34",
+    "obs:49",
+    "obs:62",
+    "obs:78",
+    "obs:94",
+    "obs:108",
+    "obs:121",
+    "obs:133",
+    "obs:148"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C05:entry:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "entry",
+   "seconds": -0.038172,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.044803,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05 mid: slower laps lose -0.059 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": -0.058738,
+    "rank_score": -0.058738,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:5",
+    "obs:20",
+    "obs:34",
+    "obs:49",
+    "obs:62",
+    "obs:78",
+    "obs:94",
+    "obs:108",
+    "obs:121",
+    "obs:133",
+    "obs:148"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C05:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "mid",
+   "seconds": -0.058738,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.058469,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05 exit: slower laps lose -0.097 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": -0.096995,
+    "rank_score": -0.048498,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:5",
+    "obs:20",
+    "obs:34",
+    "obs:49",
+    "obs:62",
+    "obs:78",
+    "obs:94",
+    "obs:108",
+    "obs:121",
+    "obs:133",
+    "obs:148"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C05:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "exit",
+   "seconds": -0.096995,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.059608,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06 entry: slower laps lose 0.064 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.064106,
+    "rank_score": 0.064106,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:6",
+    "obs:21",
+    "obs:35",
+    "obs:50",
+    "obs:64",
+    "obs:79",
+    "obs:95",
+    "obs:109",
+    "obs:122",
+    "obs:134",
+    "obs:149"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C06:entry:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "entry",
+   "seconds": 0.064106,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.033662,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06 mid: slower laps lose 0.016 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": 0.015697,
+    "rank_score": 0.007849,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:6",
+    "obs:21",
+    "obs:35",
+    "obs:50",
+    "obs:64",
+    "obs:79",
+    "obs:95",
+    "obs:109",
+    "obs:122",
+    "obs:134",
+    "obs:149"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C06:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "mid",
+   "seconds": 0.015697,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.017299,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06 exit: slower laps lose 0.091 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.091479,
+    "rank_score": 0.04574,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:6",
+    "obs:21",
+    "obs:35",
+    "obs:50",
+    "obs:64",
+    "obs:79",
+    "obs:95",
+    "obs:109",
+    "obs:122",
+    "obs:134",
+    "obs:149"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C06:exit:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "exit",
+   "seconds": 0.091479,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.072573,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07 entry: slower laps lose 0.012 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 3,
+    "opportunity_s": 0.011533,
+    "rank_score": 0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:7",
+    "obs:51",
+    "obs:65",
+    "obs:150"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C07:entry:opportunity",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "opportunity",
+   "n": 4,
+   "phase": "entry",
+   "seconds": 0.011533,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.013365,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07 mid: slower laps lose 0.025 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 3,
+    "opportunity_s": 0.025043,
+    "rank_score": 0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:7",
+    "obs:51",
+    "obs:65",
+    "obs:150"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C07:mid:opportunity",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "opportunity",
+   "n": 4,
+   "phase": "mid",
+   "seconds": 0.025043,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.019289,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07 exit: slower laps lose -0.084 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 3,
+    "opportunity_s": -0.08418,
+    "rank_score": -0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:7",
+    "obs:51",
+    "obs:65",
+    "obs:150"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C07:exit:opportunity",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "opportunity",
+   "n": 4,
+   "phase": "exit",
+   "seconds": -0.08418,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.081826,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08 entry: slower laps lose 0.061 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.060749,
+    "rank_score": 0.060749,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:8",
+    "obs:23",
+    "obs:37",
+    "obs:52",
+    "obs:67",
+    "obs:82",
+    "obs:98",
+    "obs:111",
+    "obs:137",
+    "obs:151"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C08:entry:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "entry",
+   "seconds": 0.060749,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.062816,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08 mid: slower laps lose 0.071 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": 0.070516,
+    "rank_score": 0.070516,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:8",
+    "obs:23",
+    "obs:37",
+    "obs:52",
+    "obs:67",
+    "obs:82",
+    "obs:98",
+    "obs:111",
+    "obs:137",
+    "obs:151"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C08:mid:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "mid",
+   "seconds": 0.070516,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.059644,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08 exit: slower laps lose 0.005 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.005102,
+    "rank_score": 0.002551,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:8",
+    "obs:23",
+    "obs:37",
+    "obs:52",
+    "obs:67",
+    "obs:82",
+    "obs:98",
+    "obs:111",
+    "obs:137",
+    "obs:151"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C08:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 10,
+   "phase": "exit",
+   "seconds": 0.005102,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.138919,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09 entry: slower laps lose 0.031 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.030819,
+    "rank_score": 0.01541,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:9",
+    "obs:24",
+    "obs:38",
+    "obs:53",
+    "obs:68",
+    "obs:83",
+    "obs:99",
+    "obs:112",
+    "obs:125",
+    "obs:138",
+    "obs:152"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C09:entry:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "entry",
+   "seconds": 0.030819,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.046549,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09 mid: slower laps lose -0.143 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": -0.142767,
+    "rank_score": -0.142767,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:9",
+    "obs:24",
+    "obs:38",
+    "obs:53",
+    "obs:68",
+    "obs:83",
+    "obs:99",
+    "obs:112",
+    "obs:125",
+    "obs:138",
+    "obs:152"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C09:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "mid",
+   "seconds": -0.142767,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.08868,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09 exit: slower laps lose 0.042 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 6,
+    "opportunity_s": 0.042383,
+    "rank_score": 0.042383,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:9",
+    "obs:24",
+    "obs:38",
+    "obs:53",
+    "obs:68",
+    "obs:83",
+    "obs:99",
+    "obs:112",
+    "obs:125",
+    "obs:138",
+    "obs:152"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C09:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "exit",
+   "seconds": 0.042383,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.031104,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10 mid: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 4,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:10",
+    "obs:54",
+    "obs:84",
+    "obs:100"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C10:mid:opportunity",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "opportunity",
+   "n": 4,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.037477,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 4,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:10",
+    "obs:54",
+    "obs:84",
+    "obs:100"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C10:exit:opportunity",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "opportunity",
+   "n": 4,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.005669,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C13",
+   "description": "C13 exit: slower laps lose 0.023 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 6,
+    "opportunity_s": 0.023458,
+    "rank_score": 0.011729,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:13",
+    "obs:27",
+    "obs:42",
+    "obs:56",
+    "obs:70",
+    "obs:86",
+    "obs:101",
+    "obs:114",
+    "obs:127",
+    "obs:140",
+    "obs:154"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C13:exit:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "exit",
+   "seconds": 0.023458,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.013032,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 2,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:14",
+    "obs:71"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C14:entry:opportunity",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "opportunity",
+   "n": 2,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.013243,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14 mid: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 2,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:14",
+    "obs:71"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C14:mid:opportunity",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "opportunity",
+   "n": 2,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.001087,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 2,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:14",
+    "obs:71"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C14:exit:opportunity",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "opportunity",
+   "n": 2,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.004712,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15 entry: slower laps lose 0.079 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": 0.078557,
+    "rank_score": 0.0,
+    "repeatability": 0.0
+   },
+   "evidence_ids": [
+    "obs:15",
+    "obs:29",
+    "obs:44",
+    "obs:58",
+    "obs:72",
+    "obs:88",
+    "obs:103",
+    "obs:116",
+    "obs:129",
+    "obs:142",
+    "obs:156"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C15:entry:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "entry",
+   "seconds": 0.078557,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.137081,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15 mid: slower laps lose -0.156 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 6,
+    "opportunity_s": -0.155847,
+    "rank_score": -0.155847,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:15",
+    "obs:29",
+    "obs:44",
+    "obs:58",
+    "obs:72",
+    "obs:88",
+    "obs:103",
+    "obs:116",
+    "obs:129",
+    "obs:142",
+    "obs:156"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C15:mid:opportunity",
+   "gate_reason": "no effect: faster and slower laps do not differ here",
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "mid",
+   "seconds": -0.155847,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.099443,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15 exit: slower laps lose 0.142 s here vs faster laps",
+   "details": {
+    "n_outliers": 2,
+    "n_sessions": 6,
+    "opportunity_s": 0.141876,
+    "rank_score": 0.070938,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:15",
+    "obs:29",
+    "obs:44",
+    "obs:58",
+    "obs:72",
+    "obs:88",
+    "obs:103",
+    "obs:116",
+    "obs:129",
+    "obs:142",
+    "obs:156"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C15:exit:opportunity",
+   "gate_reason": null,
+   "kind": "opportunity",
+   "n": 11,
+   "phase": "exit",
+   "seconds": 0.141876,
+   "shown": true,
+   "source": "vs-self",
+   "spread": 0.301069,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16 entry: slower laps lose 0.000 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 5,
+    "opportunity_s": 6.3e-05,
+    "rank_score": 3.1e-05,
+    "repeatability": 0.5
+   },
+   "evidence_ids": [
+    "obs:28",
+    "obs:43",
+    "obs:57",
+    "obs:87",
+    "obs:102",
+    "obs:115",
+    "obs:128",
+    "obs:141",
+    "obs:155"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C16:entry:opportunity",
+   "gate_reason": "insufficient data: 9 phase samples < 10",
+   "kind": "opportunity",
+   "n": 9,
+   "phase": "entry",
+   "seconds": 6.3e-05,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.003495,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16 mid: slower laps lose 0.099 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 5,
+    "opportunity_s": 0.099195,
+    "rank_score": 0.099195,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:28",
+    "obs:43",
+    "obs:57",
+    "obs:87",
+    "obs:102",
+    "obs:115",
+    "obs:128",
+    "obs:141",
+    "obs:155"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C16:mid:opportunity",
+   "gate_reason": "insufficient data: 9 phase samples < 10",
+   "kind": "opportunity",
+   "n": 9,
+   "phase": "mid",
+   "seconds": 0.099195,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.049522,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16 exit: slower laps lose 0.010 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 5,
+    "opportunity_s": 0.009898,
+    "rank_score": 0.009898,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:28",
+    "obs:43",
+    "obs:57",
+    "obs:87",
+    "obs:102",
+    "obs:115",
+    "obs:128",
+    "obs:141",
+    "obs:155"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C16:exit:opportunity",
+   "gate_reason": "insufficient data: 9 phase samples < 10",
+   "kind": "opportunity",
+   "n": 9,
+   "phase": "exit",
+   "seconds": 0.009898,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.004894,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17 entry: slower laps lose 0.004 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 5,
+    "opportunity_s": 0.004107,
+    "rank_score": 0.004107,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:22",
+    "obs:36",
+    "obs:66",
+    "obs:81",
+    "obs:96",
+    "obs:110",
+    "obs:123",
+    "obs:136"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C17:entry:opportunity",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "opportunity",
+   "n": 8,
+   "phase": "entry",
+   "seconds": 0.004107,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.003734,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17 mid: slower laps lose 0.242 s here vs faster laps",
+   "details": {
+    "n_outliers": 1,
+    "n_sessions": 5,
+    "opportunity_s": 0.241546,
+    "rank_score": 0.241546,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:22",
+    "obs:36",
+    "obs:66",
+    "obs:81",
+    "obs:96",
+    "obs:110",
+    "obs:123",
+    "obs:136"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C17:mid:opportunity",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "opportunity",
+   "n": 8,
+   "phase": "mid",
+   "seconds": 0.241546,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.103636,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17 exit: slower laps lose -0.007 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 5,
+    "opportunity_s": -0.006525,
+    "rank_score": -0.006525,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:22",
+    "obs:36",
+    "obs:66",
+    "obs:81",
+    "obs:96",
+    "obs:110",
+    "obs:123",
+    "obs:136"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C17:exit:opportunity",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "opportunity",
+   "n": 8,
+   "phase": "exit",
+   "seconds": -0.006525,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.008222,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C18",
+   "description": "C18 exit: slower laps lose 0.003 s here vs faster laps",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 3,
+    "opportunity_s": 0.002561,
+    "rank_score": 0.002561,
+    "repeatability": 1.0
+   },
+   "evidence_ids": [
+    "obs:25",
+    "obs:39",
+    "obs:69",
+    "obs:113",
+    "obs:126",
+    "obs:139",
+    "obs:153"
+   ],
+   "finding_id": "vs-self:GR86:Spa-Francorchamps:C18:exit:opportunity",
+   "gate_reason": "insufficient data: 7 phase samples < 10",
+   "kind": "opportunity",
+   "n": 7,
+   "phase": "exit",
+   "seconds": 0.002561,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.00269,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01: brake-release-taper on 1/10 laps. Brake release should taper through turn-in; finishing the release 0.67 s before turning in gives up the front grip and rotation the brakes were buying.",
+   "details": {
+    "trigger_rate": 0.1,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:89"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C01:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 1/10 laps",
+   "kind": "brake-release-taper",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01: coast-window on 6/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 3.63 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.6,
+    "triggered": 6
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:45",
+    "obs:59",
+    "obs:73",
+    "obs:89",
+    "obs:117"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C01:-:coast-window",
+   "gate_reason": null,
+   "kind": "coast-window",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01: one-steering-input on 5/10 laps. One committed steering input entry to apex; 3 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:30",
+    "obs:45",
+    "obs:73",
+    "obs:117"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C01:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01: throttle-brake-overlap on 6/11 laps. Throttle and brake should not work against each other; 2.40 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.545455,
+    "triggered": 6
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:30",
+    "obs:59",
+    "obs:73",
+    "obs:89",
+    "obs:105"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C01:-:throttle-brake-overlap",
+   "gate_reason": null,
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C01",
+   "description": "C01: throttle-monotonic on 4/10 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.4,
+    "triggered": 4
+   },
+   "evidence_ids": [
+    "obs:1",
+    "obs:16",
+    "obs:45",
+    "obs:89"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C01:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 4/10 laps",
+   "kind": "throttle-monotonic",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02: brake-release-taper on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C02:-:brake-release-taper",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02: coast-window on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C02:-:coast-window",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "coast-window",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02: one-steering-input on 9/10 laps. One committed steering input entry to apex; 14 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.9,
+    "triggered": 9
+   },
+   "evidence_ids": [
+    "obs:2",
+    "obs:17",
+    "obs:31",
+    "obs:46",
+    "obs:60",
+    "obs:106",
+    "obs:118",
+    "obs:131",
+    "obs:145"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C02:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02: throttle-brake-overlap on 0/10 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C02:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 0/10 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C02",
+   "description": "C02: throttle-monotonic on 0/8 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C02:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 8,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03: brake-release-taper on 0/10 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C03:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/10 laps",
+   "kind": "brake-release-taper",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03: coast-window on 7/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.67 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.7,
+    "triggered": 7
+   },
+   "evidence_ids": [
+    "obs:32",
+    "obs:47",
+    "obs:61",
+    "obs:76",
+    "obs:92",
+    "obs:119",
+    "obs:146"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C03:-:coast-window",
+   "gate_reason": null,
+   "kind": "coast-window",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03: one-steering-input on 5/10 laps. One committed steering input entry to apex; 3 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:18",
+    "obs:32",
+    "obs:47",
+    "obs:61",
+    "obs:107"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C03:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03: throttle-brake-overlap on 4/10 laps. Throttle and brake should not work against each other; 1.37 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.4,
+    "triggered": 4
+   },
+   "evidence_ids": [
+    "obs:18",
+    "obs:61",
+    "obs:76",
+    "obs:107"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C03:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 4/10 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C03",
+   "description": "C03: throttle-monotonic on 5/10 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:3",
+    "obs:18",
+    "obs:32",
+    "obs:92",
+    "obs:146"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C03:-:throttle-monotonic",
+   "gate_reason": null,
+   "kind": "throttle-monotonic",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04: brake-release-taper on 0/7 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C04:-:brake-release-taper",
+   "gate_reason": "insufficient data: 7 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 7,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04: coast-window on 2/7 laps. Between brake release and throttle pickup the car should be working, not coasting; 2.55 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.285714,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:4",
+    "obs:132"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C04:-:coast-window",
+   "gate_reason": "insufficient data: 7 phase samples < 10",
+   "kind": "coast-window",
+   "n": 7,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04: one-steering-input on 6/8 laps. One committed steering input entry to apex; 6 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.75,
+    "triggered": 6
+   },
+   "evidence_ids": [
+    "obs:4",
+    "obs:19",
+    "obs:33",
+    "obs:48",
+    "obs:93",
+    "obs:132"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C04:-:one-steering-input",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 8,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04: throttle-brake-overlap on 0/8 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C04:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 8,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C04",
+   "description": "C04: throttle-monotonic on 0/8 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C04:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 8,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05: brake-release-taper on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C05:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "brake-release-taper",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05: coast-window on 10/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 4.03 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.909091,
+    "triggered": 10
+   },
+   "evidence_ids": [
+    "obs:5",
+    "obs:20",
+    "obs:34",
+    "obs:49",
+    "obs:62",
+    "obs:78",
+    "obs:94",
+    "obs:108",
+    "obs:121",
+    "obs:148"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C05:-:coast-window",
+   "gate_reason": null,
+   "kind": "coast-window",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05: one-steering-input on 5/11 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.454545,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:5",
+    "obs:20",
+    "obs:62",
+    "obs:108",
+    "obs:121"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C05:-:one-steering-input",
+   "gate_reason": "below pattern floor: triggers on 5/11 laps",
+   "kind": "one-steering-input",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05: throttle-brake-overlap on 2/11 laps. Throttle and brake should not work against each other; 0.80 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.181818,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:20",
+    "obs:62"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C05:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 2/11 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C05",
+   "description": "C05: throttle-monotonic on 3/11 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.272727,
+    "triggered": 3
+   },
+   "evidence_ids": [
+    "obs:49",
+    "obs:108",
+    "obs:148"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C05:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 3/11 laps",
+   "kind": "throttle-monotonic",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06: brake-release-taper on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C06:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "brake-release-taper",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06: coast-window on 2/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 0.55 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.181818,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:79",
+    "obs:95"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C06:-:coast-window",
+   "gate_reason": "below pattern floor: triggers on 2/11 laps",
+   "kind": "coast-window",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06: one-steering-input on 8/11 laps. One committed steering input entry to apex; 6 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.727273,
+    "triggered": 8
+   },
+   "evidence_ids": [
+    "obs:21",
+    "obs:35",
+    "obs:50",
+    "obs:79",
+    "obs:109",
+    "obs:122",
+    "obs:134",
+    "obs:149"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C06:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06: throttle-brake-overlap on 2/11 laps. Throttle and brake should not work against each other; 1.00 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.181818,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:21",
+    "obs:64"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C06:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 2/11 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C06",
+   "description": "C06: throttle-monotonic on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C06:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "throttle-monotonic",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07: brake-release-taper on 0/4 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C07:-:brake-release-taper",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07: coast-window on 1/4 laps. Between brake release and throttle pickup the car should be working, not coasting; 2.62 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.25,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:150"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C07:-:coast-window",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "coast-window",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07: one-steering-input on 1/4 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.25,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:51"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C07:-:one-steering-input",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07: throttle-brake-overlap on 0/4 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C07:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C07",
+   "description": "C07: throttle-monotonic on 2/4 laps. Once picked up, throttle should build monotonically to full; 2 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:7",
+    "obs:51"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C07:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08: brake-release-taper on 0/10 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C08:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/10 laps",
+   "kind": "brake-release-taper",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08: coast-window on 9/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 6.68 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.9,
+    "triggered": 9
+   },
+   "evidence_ids": [
+    "obs:8",
+    "obs:23",
+    "obs:37",
+    "obs:52",
+    "obs:82",
+    "obs:98",
+    "obs:111",
+    "obs:137",
+    "obs:151"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C08:-:coast-window",
+   "gate_reason": null,
+   "kind": "coast-window",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08: one-steering-input on 7/10 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.7,
+    "triggered": 7
+   },
+   "evidence_ids": [
+    "obs:8",
+    "obs:23",
+    "obs:37",
+    "obs:52",
+    "obs:82",
+    "obs:98",
+    "obs:137"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C08:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08: throttle-brake-overlap on 1/10 laps. Throttle and brake should not work against each other; 0.93 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.1,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:23"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C08:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 1/10 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C08",
+   "description": "C08: throttle-monotonic on 1/10 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.1,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:37"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C08:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 1/10 laps",
+   "kind": "throttle-monotonic",
+   "n": 10,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09: brake-release-taper on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C09:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "brake-release-taper",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09: coast-window on 5/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.47 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.454545,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:9",
+    "obs:38",
+    "obs:53",
+    "obs:99",
+    "obs:138"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C09:-:coast-window",
+   "gate_reason": "below pattern floor: triggers on 5/11 laps",
+   "kind": "coast-window",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09: one-steering-input on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C09:-:one-steering-input",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "one-steering-input",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09: throttle-brake-overlap on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C09:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C09",
+   "description": "C09: throttle-monotonic on 4/11 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.363636,
+    "triggered": 4
+   },
+   "evidence_ids": [
+    "obs:38",
+    "obs:53",
+    "obs:83",
+    "obs:125"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C09:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 4/11 laps",
+   "kind": "throttle-monotonic",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10: brake-release-taper on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C10:-:brake-release-taper",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10: coast-window on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C10:-:coast-window",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "coast-window",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10: one-steering-input on 4/4 laps. One committed steering input entry to apex; 8 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 1.0,
+    "triggered": 4
+   },
+   "evidence_ids": [
+    "obs:10",
+    "obs:54",
+    "obs:84",
+    "obs:100"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C10:-:one-steering-input",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10: throttle-brake-overlap on 0/4 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C10:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C10",
+   "description": "C10: throttle-monotonic on 0/4 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C10:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C11",
+   "description": "C11: throttle-brake-overlap on 0/5 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C11:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 5 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 5,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C12",
+   "description": "C12: throttle-brake-overlap on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C12:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C13",
+   "description": "C13: throttle-brake-overlap on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C13:-:throttle-brake-overlap",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14: brake-release-taper on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C14:-:brake-release-taper",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14: coast-window on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C14:-:coast-window",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "coast-window",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14: one-steering-input on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C14:-:one-steering-input",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14: throttle-brake-overlap on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C14:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C14",
+   "description": "C14: throttle-monotonic on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C14:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15: brake-release-taper on 0/11 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C15:-:brake-release-taper",
+   "gate_reason": "below pattern floor: triggers on 0/11 laps",
+   "kind": "brake-release-taper",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15: coast-window on 11/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 3.83 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 1.0,
+    "triggered": 11
+   },
+   "evidence_ids": [
+    "obs:15",
+    "obs:29",
+    "obs:44",
+    "obs:58",
+    "obs:72",
+    "obs:88",
+    "obs:103",
+    "obs:116",
+    "obs:129",
+    "obs:142",
+    "obs:156"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C15:-:coast-window",
+   "gate_reason": null,
+   "kind": "coast-window",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15: one-steering-input on 6/11 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.545455,
+    "triggered": 6
+   },
+   "evidence_ids": [
+    "obs:29",
+    "obs:44",
+    "obs:116",
+    "obs:129",
+    "obs:142",
+    "obs:156"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C15:-:one-steering-input",
+   "gate_reason": null,
+   "kind": "one-steering-input",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15: throttle-brake-overlap on 7/11 laps. Throttle and brake should not work against each other; 0.83 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.636364,
+    "triggered": 7
+   },
+   "evidence_ids": [
+    "obs:15",
+    "obs:29",
+    "obs:44",
+    "obs:58",
+    "obs:72",
+    "obs:103",
+    "obs:129"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C15:-:throttle-brake-overlap",
+   "gate_reason": null,
+   "kind": "throttle-brake-overlap",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": true,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C15",
+   "description": "C15: throttle-monotonic on 1/11 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.090909,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:15"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C15:-:throttle-monotonic",
+   "gate_reason": "below pattern floor: triggers on 1/11 laps",
+   "kind": "throttle-monotonic",
+   "n": 11,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16: brake-release-taper on 0/4 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C16:-:brake-release-taper",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16: coast-window on 2/4 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.62 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 2
+   },
+   "evidence_ids": [
+    "obs:28",
+    "obs:115"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C16:-:coast-window",
+   "gate_reason": "insufficient data: 4 phase samples < 10",
+   "kind": "coast-window",
+   "n": 4,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16: one-steering-input on 6/9 laps. One committed steering input entry to apex; 3 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.666667,
+    "triggered": 6
+   },
+   "evidence_ids": [
+    "obs:28",
+    "obs:43",
+    "obs:87",
+    "obs:102",
+    "obs:115",
+    "obs:155"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C16:-:one-steering-input",
+   "gate_reason": "insufficient data: 9 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 9,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16: throttle-brake-overlap on 0/9 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C16:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 9 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 9,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C16",
+   "description": "C16: throttle-monotonic on 0/6 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C16:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 6 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 6,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17: brake-release-taper on 0/6 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C17:-:brake-release-taper",
+   "gate_reason": "insufficient data: 6 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 6,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17: coast-window on 3/6 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.97 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 0.5,
+    "triggered": 3
+   },
+   "evidence_ids": [
+    "obs:36",
+    "obs:110",
+    "obs:123"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C17:-:coast-window",
+   "gate_reason": "insufficient data: 6 phase samples < 10",
+   "kind": "coast-window",
+   "n": 6,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17: one-steering-input on 5/6 laps. One committed steering input entry to apex; 5 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+   "details": {
+    "trigger_rate": 0.833333,
+    "triggered": 5
+   },
+   "evidence_ids": [
+    "obs:22",
+    "obs:36",
+    "obs:96",
+    "obs:110",
+    "obs:123"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C17:-:one-steering-input",
+   "gate_reason": "insufficient data: 6 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 6,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17: throttle-brake-overlap on 0/8 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C17:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 8 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 8,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C17",
+   "description": "C17: throttle-monotonic on 1/6 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+   "details": {
+    "trigger_rate": 0.166667,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:36"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C17:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 6 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 6,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C18",
+   "description": "C18: brake-release-taper on 0/1 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C18:-:brake-release-taper",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C18",
+   "description": "C18: coast-window on 1/1 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.58 s with neither pedal is time the corner gives nobody.",
+   "details": {
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:126"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C18:-:coast-window",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C18",
+   "description": "C18: throttle-brake-overlap on 1/7 laps. Throttle and brake should not work against each other; 1.28 s of overlap in this corner wastes both.",
+   "details": {
+    "trigger_rate": 0.142857,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:126"
+   ],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C18:-:throttle-brake-overlap",
+   "gate_reason": "insufficient data: 7 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 7,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "annotation": null,
+   "car": "GR86",
+   "corner_id": "C18",
+   "description": "C18: throttle-monotonic on 0/2 laps. ",
+   "details": {
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:GR86:Spa-Francorchamps:C18:-:throttle-monotonic",
+   "gate_reason": "insufficient data: 2 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 2,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Spa-Francorchamps"
+  }
+ ],
+ "incidents": {
+  "events": [
+   {
+    "classification": "trail_brake_oversteer",
+    "coaching_principle_id": "cp.brake_release.finish_the_front",
+    "confidence": "high",
+    "corner_id": "C01",
+    "detail": {
+     "brake_at_onset": 0.821,
+     "duration_s": 7.083,
+     "steer_mag_deg_at_onset": 440.0,
+     "throttle_at_onset": 0.0,
+     "throttle_before": 0.0,
+     "vert_accel_dev": 2.73
+    },
+    "incident_id": "incident:4",
+    "kinds": "near_stop+off_track+spin",
+    "lap_id": "9XVJTW",
+    "lap_pk": 6,
+    "min_speed_kmh": 4.669638,
+    "peak_yaw_rate": 1.601079,
+    "rationale": "This lap: near_stop+off_track+spin at corner C01, min speed 5 km/h, peak yaw 1.60 rad/s. still braking (0.82) as the car snapped \u2014 the rear stepped out under trailing brake into the corner."
+   },
+   {
+    "classification": "power_on_oversteer",
+    "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "confidence": "medium",
+    "corner_id": "C01",
+    "detail": {
+     "brake_at_onset": 0.144,
+     "duration_s": 4.683,
+     "steer_mag_deg_at_onset": 418.2,
+     "throttle_at_onset": 0.577,
+     "throttle_before": 0.494,
+     "vert_accel_dev": 2.11
+    },
+    "incident_id": "incident:1",
+    "kinds": "near_stop+off_track+spin",
+    "lap_id": "98D9NK",
+    "lap_pk": 1,
+    "min_speed_kmh": 7.760141,
+    "peak_yaw_rate": 1.683019,
+    "rationale": "This lap: near_stop+off_track+spin at corner C01, min speed 8 km/h, peak yaw 1.68 rad/s. throttle on (0.58) while still steered when the car snapped \u2014 power overwhelmed rear grip on the way out."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C01",
+    "detail": {
+     "brake_at_onset": 0.0,
+     "duration_s": 0.8,
+     "steer_mag_deg_at_onset": 192.0,
+     "throttle_at_onset": 0.83,
+     "throttle_before": 0.697,
+     "vert_accel_dev": 1.15
+    },
+    "incident_id": "incident:2",
+    "kinds": "off_track",
+    "lap_id": "FS2F1N",
+    "lap_pk": 5,
+    "min_speed_kmh": 48.233196,
+    "peak_yaw_rate": 1.148356,
+    "rationale": "This lap: off_track at corner C01, min speed 48 km/h, peak yaw 1.15 rad/s. the input picture at onset is not clean enough to name a cause."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C01",
+    "detail": {
+     "brake_at_onset": 1.0,
+     "duration_s": 0.833,
+     "steer_mag_deg_at_onset": 179.3,
+     "throttle_at_onset": 0.095,
+     "throttle_before": 0.168,
+     "vert_accel_dev": 0.44
+    },
+    "incident_id": "incident:3",
+    "kinds": "near_stop",
+    "lap_id": "FS2F1N",
+    "lap_pk": 5,
+    "min_speed_kmh": 19.093406,
+    "peak_yaw_rate": 0.727469,
+    "rationale": "This lap: near_stop at corner C01, min speed 19 km/h, peak yaw 0.73 rad/s. the input picture at onset is not clean enough to name a cause."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C08",
+    "detail": {
+     "brake_at_onset": 0.594,
+     "duration_s": 1.733,
+     "steer_mag_deg_at_onset": 101.3,
+     "throttle_at_onset": 0.0,
+     "throttle_before": 0.0,
+     "vert_accel_dev": 0.2
+    },
+    "incident_id": "incident:5",
+    "kinds": "off_track",
+    "lap_id": "9PH9M2",
+    "lap_pk": 9,
+    "min_speed_kmh": 76.761331,
+    "peak_yaw_rate": 0.829376,
+    "rationale": "This lap: off_track at corner C08, min speed 77 km/h, peak yaw 0.83 rad/s. the input picture at onset is not clean enough to name a cause."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C08",
+    "detail": {
+     "brake_at_onset": 0.0,
+     "duration_s": 1.2,
+     "steer_mag_deg_at_onset": 18.6,
+     "throttle_at_onset": 1.0,
+     "throttle_before": 1.0,
+     "vert_accel_dev": 0.71
+    },
+    "incident_id": "incident:6",
+    "kinds": "off_track",
+    "lap_id": "9PH9M2",
+    "lap_pk": 9,
+    "min_speed_kmh": 79.711992,
+    "peak_yaw_rate": 0.367063,
+    "rationale": "This lap: off_track at corner C08, min speed 80 km/h, peak yaw 0.37 rad/s. the input picture at onset is not clean enough to name a cause."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C15",
+    "detail": {
+     "brake_at_onset": 1.0,
+     "duration_s": 4.767,
+     "steer_mag_deg_at_onset": 70.4,
+     "throttle_at_onset": 0.0,
+     "throttle_before": 0.038,
+     "vert_accel_dev": 0.36
+    },
+    "incident_id": "incident:7",
+    "kinds": "near_stop",
+    "lap_id": "9PH9M2",
+    "lap_pk": 9,
+    "min_speed_kmh": 0.004366,
+    "peak_yaw_rate": 1.3919,
+    "rationale": "This lap: near_stop at corner C15, min speed 0 km/h, peak yaw 1.39 rad/s. the input picture at onset is not clean enough to name a cause."
+   },
+   {
+    "classification": "unclassified",
+    "coaching_principle_id": null,
+    "confidence": "low",
+    "corner_id": "C15",
+    "detail": {
+     "brake_at_onset": 1.0,
+     "duration_s": 9.9,
+     "steer_mag_deg_at_onset": 143.2,
+     "throttle_at_onset": 0.0,
+     "throttle_before": 0.0,
+     "vert_accel_dev": 0.22
+    },
+    "incident_id": "incident:8",
+    "kinds": "near_stop",
+    "lap_id": "9PH9M2",
+    "lap_pk": 9,
+    "min_speed_kmh": 2.4e-05,
+    "peak_yaw_rate": 0.639625,
+    "rationale": "This lap: near_stop at corner C15, min speed 0 km/h, peak yaw 0.64 rad/s. the input picture at onset is not clean enough to name a cause."
+   }
+  ],
+  "n": 8,
+  "note": "Incidents are single events (N=1): this lap did X, decomposable to the trace. Not a driver trait, and never priced as recoverable time. An 'unclassified' incident is detected but its cause was not clean enough to name \u2014 stated, not guessed."
+ },
+ "metric_definitions": {
+  "abs_active_ratio": {
+   "description": "Share of braking time with ABS active.",
+   "unit": "fraction"
+  },
+  "apex_dist_pct": {
+   "description": "Where the minimum-speed point sits.",
+   "unit": "% lap"
+  },
+  "brake_application_rate": {
+   "description": "How fast the pedal rises from first application to peak.",
+   "unit": "fraction/s"
+  },
+  "brake_peak": {
+   "description": "Maximum brake pedal reached in the corner.",
+   "unit": "fraction"
+  },
+  "brake_point_dist_pct": {
+   "description": "Where braking for the corner begins.",
+   "unit": "% lap"
+  },
+  "brake_release_duration_s": {
+   "description": "Time taken to release the brake: from last near-peak pressure to off.",
+   "unit": "s"
+  },
+  "coast_s": {
+   "description": "Time between brake release and throttle pickup with neither pedal working.",
+   "unit": "s"
+  },
+  "exit_accel_ms2": {
+   "description": "Mean longitudinal acceleration from apex to full throttle.",
+   "unit": "m/s^2"
+  },
+  "full_throttle_dist_pct": {
+   "description": "Where sustained full throttle begins.",
+   "unit": "% lap"
+  },
+  "min_speed_kmh": {
+   "description": "Minimum corner speed at the primary apex.",
+   "unit": "km/h"
+  },
+  "steering_corrections": {
+   "description": "Steering-rate sign reversals between turn-in and apex beyond the jitter floor.",
+   "unit": "count"
+  },
+  "steering_smoothness_dps2": {
+   "description": "RMS steering acceleration turn-in to apex; lower is smoother.",
+   "unit": "deg/s^2"
+  },
+  "throttle_brake_overlap_s": {
+   "description": "Time with throttle and brake applied together.",
+   "unit": "s"
+  },
+  "throttle_modulation_count": {
+   "description": "Throttle lifts/stabs between pickup and full throttle.",
+   "unit": "count"
+  },
+  "throttle_pickup_dist_pct": {
+   "description": "Where throttle is first picked up after the corner's final lift.",
+   "unit": "% lap"
+  },
+  "trail_brake_overlap_s": {
+   "description": "Time spent braking while steering (trail braking).",
+   "unit": "s"
+  },
+  "turn_in_dist_pct": {
+   "description": "Where sustained steering for the corner begins.",
+   "unit": "% lap"
+  },
+  "yaw_peak_rate": {
+   "description": "Peak yaw rate in the corner (rotation actually achieved).",
+   "unit": "rad/s"
+  }
+ },
+ "metrics": {
+  "C01": {
+   "abs_active_ratio": {
+    "mean": 0.385178,
+    "median": 0.429181,
+    "n": 10,
+    "spread": 0.207659
+   },
+   "apex_dist_pct": {
+    "mean": 5.842632,
+    "median": 5.787956,
+    "n": 11,
+    "spread": 0.269113
+   },
+   "brake_application_rate": {
+    "mean": 1.561971,
+    "median": 1.114407,
+    "n": 10,
+    "spread": 1.027027
+   },
+   "brake_peak": {
+    "mean": 0.979495,
+    "median": 1.0,
+    "n": 10,
+    "spread": 0.049153
+   },
+   "brake_point_dist_pct": {
+    "mean": 4.12039,
+    "median": 4.133581,
+    "n": 10,
+    "spread": 0.143552
+   },
+   "brake_release_duration_s": {
+    "mean": 0.918333,
+    "median": 0.741667,
+    "n": 10,
+    "spread": 0.62807
+   },
+   "coast_s": {
+    "mean": 2.136667,
+    "median": 2.558333,
+    "n": 10,
+    "spread": 1.903032
+   },
+   "exit_accel_ms2": {
+    "mean": 1.222007,
+    "median": 1.225843,
+    "n": 7,
+    "spread": 0.468157
+   },
+   "full_throttle_dist_pct": {
+    "mean": 6.152663,
+    "median": 5.97687,
+    "n": 11,
+    "spread": 0.594153
+   },
+   "min_speed_kmh": {
+    "mean": 48.724234,
+    "median": 56.608675,
+    "n": 11,
+    "spread": 27.289578
+   },
+   "steering_corrections": {
+    "mean": 1.8,
+    "median": 1.5,
+    "n": 10,
+    "spread": 1.619328
+   },
+   "steering_smoothness_dps2": {
+    "mean": 629.417221,
+    "median": 446.2797,
+    "n": 10,
+    "spread": 374.651411
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 1.1,
+    "median": 0.8,
+    "n": 11,
+    "spread": 0.834399
+   },
+   "throttle_modulation_count": {
+    "mean": 1.0,
+    "median": 0.0,
+    "n": 10,
+    "spread": 1.885618
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 5.826408,
+    "median": 5.772267,
+    "n": 11,
+    "spread": 0.281666
+   },
+   "trail_brake_overlap_s": {
+    "mean": 2.73,
+    "median": 2.041667,
+    "n": 10,
+    "spread": 1.603272
+   },
+   "turn_in_dist_pct": {
+    "mean": 5.058787,
+    "median": 4.934006,
+    "n": 11,
+    "spread": 0.432531
+   },
+   "yaw_peak_rate": {
+    "mean": 1.015796,
+    "median": 0.9506,
+    "n": 11,
+    "spread": 0.39604
+   }
+  },
+  "C02": {
+   "abs_active_ratio": {
+    "mean": 0.427761,
+    "median": 0.427761,
+    "n": 2,
+    "spread": 0.189
+   },
+   "apex_dist_pct": {
+    "mean": 18.991716,
+    "median": 18.913136,
+    "n": 10,
+    "spread": 0.28539
+   },
+   "brake_application_rate": {
+    "mean": 0.852645,
+    "median": 0.852645,
+    "n": 2,
+    "spread": 0.349847
+   },
+   "brake_peak": {
+    "mean": 0.146849,
+    "median": 0.146849,
+    "n": 2,
+    "spread": 0.071359
+   },
+   "brake_point_dist_pct": {
+    "mean": 18.314954,
+    "median": 18.314954,
+    "n": 2,
+    "spread": 0.13275
+   },
+   "brake_release_duration_s": {
+    "mean": 0.316667,
+    "median": 0.316667,
+    "n": 2,
+    "spread": 0.329983
+   },
+   "coast_s": {
+    "mean": 0.066667,
+    "median": 0.066667,
+    "n": 2,
+    "spread": 0.070711
+   },
+   "exit_accel_ms2": {
+    "mean": 1.553599,
+    "median": 1.553599,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 17.837212,
+    "median": 18.620995,
+    "n": 10,
+    "spread": 1.848494
+   },
+   "min_speed_kmh": {
+    "mean": 168.808906,
+    "median": 169.934648,
+    "n": 10,
+    "spread": 7.046311
+   },
+   "steering_corrections": {
+    "mean": 9.2,
+    "median": 9.0,
+    "n": 10,
+    "spread": 4.184628
+   },
+   "steering_smoothness_dps2": {
+    "mean": 503.323068,
+    "median": 486.903304,
+    "n": 10,
+    "spread": 95.381041
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.001667,
+    "median": 0.0,
+    "n": 10,
+    "spread": 0.00527
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 8,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 17.639502,
+    "median": 18.46155,
+    "n": 10,
+    "spread": 1.747115
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.616667,
+    "median": 0.616667,
+    "n": 2,
+    "spread": 0.471405
+   },
+   "turn_in_dist_pct": {
+    "mean": 15.155412,
+    "median": 14.724349,
+    "n": 10,
+    "spread": 1.031989
+   },
+   "yaw_peak_rate": {
+    "mean": 0.471675,
+    "median": 0.457222,
+    "n": 10,
+    "spread": 0.062281
+   }
+  },
+  "C03": {
+   "abs_active_ratio": {
+    "mean": 0.13564,
+    "median": 0.02614,
+    "n": 10,
+    "spread": 0.222149
+   },
+   "apex_dist_pct": {
+    "mean": 35.35239,
+    "median": 35.115955,
+    "n": 10,
+    "spread": 0.912772
+   },
+   "brake_application_rate": {
+    "mean": 0.667483,
+    "median": 0.579496,
+    "n": 10,
+    "spread": 0.612517
+   },
+   "brake_peak": {
+    "mean": 0.691624,
+    "median": 0.652508,
+    "n": 10,
+    "spread": 0.193266
+   },
+   "brake_point_dist_pct": {
+    "mean": 32.296985,
+    "median": 32.265836,
+    "n": 10,
+    "spread": 0.638063
+   },
+   "brake_release_duration_s": {
+    "mean": 1.725,
+    "median": 1.233333,
+    "n": 10,
+    "spread": 1.516824
+   },
+   "coast_s": {
+    "mean": 1.716667,
+    "median": 1.183333,
+    "n": 10,
+    "spread": 1.884881
+   },
+   "exit_accel_ms2": {
+    "mean": 1.600597,
+    "median": 1.543061,
+    "n": 10,
+    "spread": 0.407848
+   },
+   "full_throttle_dist_pct": {
+    "mean": 36.319787,
+    "median": 36.158613,
+    "n": 10,
+    "spread": 1.051084
+   },
+   "min_speed_kmh": {
+    "mean": 100.328995,
+    "median": 100.373895,
+    "n": 10,
+    "spread": 4.054699
+   },
+   "steering_corrections": {
+    "mean": 3.4,
+    "median": 2.0,
+    "n": 10,
+    "spread": 4.221637
+   },
+   "steering_smoothness_dps2": {
+    "mean": 382.223412,
+    "median": 381.179517,
+    "n": 10,
+    "spread": 168.160055
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.683333,
+    "median": 0.5,
+    "n": 10,
+    "spread": 0.38881
+   },
+   "throttle_modulation_count": {
+    "mean": 0.9,
+    "median": 0.5,
+    "n": 10,
+    "spread": 1.100505
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 35.628982,
+    "median": 35.266106,
+    "n": 10,
+    "spread": 1.101511
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.703333,
+    "median": 1.766667,
+    "n": 10,
+    "spread": 0.77892
+   },
+   "turn_in_dist_pct": {
+    "mean": 33.926581,
+    "median": 33.909834,
+    "n": 10,
+    "spread": 0.125811
+   },
+   "yaw_peak_rate": {
+    "mean": 0.61198,
+    "median": 0.620067,
+    "n": 10,
+    "spread": 0.057518
+   }
+  },
+  "C04": {
+   "abs_active_ratio": {
+    "mean": 0.191673,
+    "median": 0.121212,
+    "n": 7,
+    "spread": 0.178928
+   },
+   "apex_dist_pct": {
+    "mean": 37.49125,
+    "median": 37.701224,
+    "n": 8,
+    "spread": 0.974506
+   },
+   "brake_application_rate": {
+    "mean": 0.897871,
+    "median": 0.826582,
+    "n": 7,
+    "spread": 0.488288
+   },
+   "brake_peak": {
+    "mean": 0.542527,
+    "median": 0.498868,
+    "n": 7,
+    "spread": 0.286112
+   },
+   "brake_point_dist_pct": {
+    "mean": 36.502842,
+    "median": 37.175283,
+    "n": 7,
+    "spread": 1.69712
+   },
+   "brake_release_duration_s": {
+    "mean": 0.342857,
+    "median": 0.316667,
+    "n": 7,
+    "spread": 0.158948
+   },
+   "coast_s": {
+    "mean": 1.661905,
+    "median": 0.033333,
+    "n": 7,
+    "spread": 3.370772
+   },
+   "exit_accel_ms2": {
+    "mean": 1.77513,
+    "median": 2.022795,
+    "n": 8,
+    "spread": 0.571104
+   },
+   "full_throttle_dist_pct": {
+    "mean": 38.223476,
+    "median": 38.241258,
+    "n": 8,
+    "spread": 0.265877
+   },
+   "min_speed_kmh": {
+    "mean": 106.866615,
+    "median": 105.955229,
+    "n": 8,
+    "spread": 7.556353
+   },
+   "steering_corrections": {
+    "mean": 3.0,
+    "median": 2.5,
+    "n": 8,
+    "spread": 2.44949
+   },
+   "steering_smoothness_dps2": {
+    "mean": 388.377391,
+    "median": 392.096425,
+    "n": 8,
+    "spread": 189.110347
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.208333,
+    "median": 0.175,
+    "n": 8,
+    "spread": 0.185164
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 8,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 37.830477,
+    "median": 37.729177,
+    "n": 8,
+    "spread": 0.276087
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.8,
+    "median": 0.833333,
+    "n": 7,
+    "spread": 0.161303
+   },
+   "turn_in_dist_pct": {
+    "mean": 36.440489,
+    "median": 36.864111,
+    "n": 8,
+    "spread": 1.11238
+   },
+   "yaw_peak_rate": {
+    "mean": 0.524522,
+    "median": 0.52731,
+    "n": 8,
+    "spread": 0.043767
+   }
+  },
+  "C05": {
+   "abs_active_ratio": {
+    "mean": 0.353299,
+    "median": 0.354545,
+    "n": 11,
+    "spread": 0.209436
+   },
+   "apex_dist_pct": {
+    "mean": 43.867214,
+    "median": 43.867126,
+    "n": 11,
+    "spread": 0.220346
+   },
+   "brake_application_rate": {
+    "mean": 0.872139,
+    "median": 0.767541,
+    "n": 11,
+    "spread": 0.644326
+   },
+   "brake_peak": {
+    "mean": 0.816189,
+    "median": 0.849517,
+    "n": 11,
+    "spread": 0.173434
+   },
+   "brake_point_dist_pct": {
+    "mean": 41.616051,
+    "median": 41.667506,
+    "n": 11,
+    "spread": 0.169167
+   },
+   "brake_release_duration_s": {
+    "mean": 0.724242,
+    "median": 0.516667,
+    "n": 11,
+    "spread": 0.398982
+   },
+   "coast_s": {
+    "mean": 3.389394,
+    "median": 3.466667,
+    "n": 11,
+    "spread": 1.592173
+   },
+   "exit_accel_ms2": {
+    "mean": 0.923451,
+    "median": 1.074726,
+    "n": 11,
+    "spread": 0.787635
+   },
+   "full_throttle_dist_pct": {
+    "mean": 44.762973,
+    "median": 44.996753,
+    "n": 11,
+    "spread": 0.484598
+   },
+   "min_speed_kmh": {
+    "mean": 85.929323,
+    "median": 88.358663,
+    "n": 11,
+    "spread": 7.642782
+   },
+   "steering_corrections": {
+    "mean": 1.727273,
+    "median": 1.0,
+    "n": 11,
+    "spread": 1.737292
+   },
+   "steering_smoothness_dps2": {
+    "mean": 208.236118,
+    "median": 199.850384,
+    "n": 11,
+    "spread": 69.768738
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.413636,
+    "median": 0.35,
+    "n": 11,
+    "spread": 0.255367
+   },
+   "throttle_modulation_count": {
+    "mean": 0.454545,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.8202
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 44.230234,
+    "median": 43.995282,
+    "n": 11,
+    "spread": 0.514095
+   },
+   "trail_brake_overlap_s": {
+    "mean": 2.215152,
+    "median": 2.033333,
+    "n": 11,
+    "spread": 0.913098
+   },
+   "turn_in_dist_pct": {
+    "mean": 42.338459,
+    "median": 42.36891,
+    "n": 11,
+    "spread": 0.070287
+   },
+   "yaw_peak_rate": {
+    "mean": 0.645889,
+    "median": 0.636771,
+    "n": 11,
+    "spread": 0.04585
+   }
+  },
+  "C06": {
+   "abs_active_ratio": {
+    "mean": 0.456662,
+    "median": 0.558442,
+    "n": 11,
+    "spread": 0.288391
+   },
+   "apex_dist_pct": {
+    "mean": 47.079227,
+    "median": 47.06949,
+    "n": 11,
+    "spread": 0.246255
+   },
+   "brake_application_rate": {
+    "mean": 0.588888,
+    "median": 0.534645,
+    "n": 11,
+    "spread": 0.206406
+   },
+   "brake_peak": {
+    "mean": 0.418314,
+    "median": 0.387942,
+    "n": 11,
+    "spread": 0.10295
+   },
+   "brake_point_dist_pct": {
+    "mean": 46.249797,
+    "median": 46.308014,
+    "n": 11,
+    "spread": 0.188678
+   },
+   "brake_release_duration_s": {
+    "mean": 0.415152,
+    "median": 0.45,
+    "n": 11,
+    "spread": 0.24169
+   },
+   "coast_s": {
+    "mean": 0.262121,
+    "median": 0.083333,
+    "n": 11,
+    "spread": 0.4007
+   },
+   "exit_accel_ms2": {
+    "mean": 1.267694,
+    "median": 1.368511,
+    "n": 11,
+    "spread": 0.442189
+   },
+   "full_throttle_dist_pct": {
+    "mean": 47.395366,
+    "median": 47.333267,
+    "n": 11,
+    "spread": 0.207122
+   },
+   "min_speed_kmh": {
+    "mean": 109.577777,
+    "median": 110.554045,
+    "n": 11,
+    "spread": 5.642317
+   },
+   "steering_corrections": {
+    "mean": 3.545455,
+    "median": 4.0,
+    "n": 11,
+    "spread": 2.207425
+   },
+   "steering_smoothness_dps2": {
+    "mean": 418.578372,
+    "median": 405.557137,
+    "n": 11,
+    "spread": 172.160542
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.45303,
+    "median": 0.283333,
+    "n": 11,
+    "spread": 0.485559
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 46.932644,
+    "median": 46.918154,
+    "n": 11,
+    "spread": 0.27844
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.172727,
+    "median": 1.283333,
+    "n": 11,
+    "spread": 0.445426
+   },
+   "turn_in_dist_pct": {
+    "mean": 45.854038,
+    "median": 45.771614,
+    "n": 11,
+    "spread": 0.272648
+   },
+   "yaw_peak_rate": {
+    "mean": 0.572526,
+    "median": 0.576096,
+    "n": 11,
+    "spread": 0.023014
+   }
+  },
+  "C07": {
+   "abs_active_ratio": {
+    "mean": 0.083947,
+    "median": 0.034091,
+    "n": 4,
+    "spread": 0.126588
+   },
+   "apex_dist_pct": {
+    "mean": 54.348923,
+    "median": 54.378765,
+    "n": 4,
+    "spread": 0.224371
+   },
+   "brake_application_rate": {
+    "mean": 0.852889,
+    "median": 0.787316,
+    "n": 4,
+    "spread": 0.275363
+   },
+   "brake_peak": {
+    "mean": 0.63547,
+    "median": 0.657691,
+    "n": 4,
+    "spread": 0.062521
+   },
+   "brake_point_dist_pct": {
+    "mean": 53.028981,
+    "median": 53.051382,
+    "n": 4,
+    "spread": 0.089787
+   },
+   "brake_release_duration_s": {
+    "mean": 1.0,
+    "median": 1.091667,
+    "n": 4,
+    "spread": 0.389444
+   },
+   "coast_s": {
+    "mean": 0.695833,
+    "median": 0.083333,
+    "n": 4,
+    "spread": 1.28123
+   },
+   "exit_accel_ms2": {
+    "mean": 0.661238,
+    "median": 0.765169,
+    "n": 4,
+    "spread": 0.437057
+   },
+   "full_throttle_dist_pct": {
+    "mean": 56.456012,
+    "median": 56.037464,
+    "n": 4,
+    "spread": 1.874433
+   },
+   "min_speed_kmh": {
+    "mean": 143.428981,
+    "median": 143.42486,
+    "n": 4,
+    "spread": 2.549229
+   },
+   "steering_corrections": {
+    "mean": 0.75,
+    "median": 0.5,
+    "n": 4,
+    "spread": 0.957427
+   },
+   "steering_smoothness_dps2": {
+    "mean": 211.403671,
+    "median": 193.685667,
+    "n": 4,
+    "spread": 75.643865
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.454167,
+    "median": 0.416667,
+    "n": 4,
+    "spread": 0.202473
+   },
+   "throttle_modulation_count": {
+    "mean": 0.75,
+    "median": 0.5,
+    "n": 4,
+    "spread": 0.957427
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 54.674961,
+    "median": 54.434297,
+    "n": 4,
+    "spread": 0.781528
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.820833,
+    "median": 0.641667,
+    "n": 4,
+    "spread": 0.478109
+   },
+   "turn_in_dist_pct": {
+    "mean": 53.814713,
+    "median": 53.802448,
+    "n": 4,
+    "spread": 0.144141
+   },
+   "yaw_peak_rate": {
+    "mean": 0.45747,
+    "median": 0.454009,
+    "n": 4,
+    "spread": 0.031053
+   }
+  },
+  "C08": {
+   "abs_active_ratio": {
+    "mean": 0.080871,
+    "median": 0.018793,
+    "n": 10,
+    "spread": 0.114744
+   },
+   "apex_dist_pct": {
+    "mean": 65.156025,
+    "median": 64.702157,
+    "n": 10,
+    "spread": 1.375255
+   },
+   "brake_application_rate": {
+    "mean": 0.957858,
+    "median": 0.785161,
+    "n": 10,
+    "spread": 0.57775
+   },
+   "brake_peak": {
+    "mean": 0.773978,
+    "median": 0.776242,
+    "n": 10,
+    "spread": 0.133016
+   },
+   "brake_point_dist_pct": {
+    "mean": 62.201495,
+    "median": 62.198378,
+    "n": 10,
+    "spread": 0.160022
+   },
+   "brake_release_duration_s": {
+    "mean": 1.125,
+    "median": 1.025,
+    "n": 10,
+    "spread": 0.560932
+   },
+   "coast_s": {
+    "mean": 5.865,
+    "median": 6.791667,
+    "n": 10,
+    "spread": 2.206534
+   },
+   "exit_accel_ms2": {
+    "mean": 0.994983,
+    "median": 0.998005,
+    "n": 10,
+    "spread": 0.434909
+   },
+   "full_throttle_dist_pct": {
+    "mean": 66.71678,
+    "median": 67.097914,
+    "n": 10,
+    "spread": 1.033712
+   },
+   "min_speed_kmh": {
+    "mean": 110.594279,
+    "median": 111.343912,
+    "n": 10,
+    "spread": 4.075645
+   },
+   "steering_corrections": {
+    "mean": 2.4,
+    "median": 2.5,
+    "n": 10,
+    "spread": 2.170509
+   },
+   "steering_smoothness_dps2": {
+    "mean": 274.915896,
+    "median": 245.484207,
+    "n": 10,
+    "spread": 75.973585
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.451667,
+    "median": 0.425,
+    "n": 10,
+    "spread": 0.192362
+   },
+   "throttle_modulation_count": {
+    "mean": 0.1,
+    "median": 0.0,
+    "n": 10,
+    "spread": 0.316228
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 66.416435,
+    "median": 66.939828,
+    "n": 10,
+    "spread": 1.049577
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.156667,
+    "median": 1.2,
+    "n": 10,
+    "spread": 0.454959
+   },
+   "turn_in_dist_pct": {
+    "mean": 63.399283,
+    "median": 63.380082,
+    "n": 10,
+    "spread": 0.082611
+   },
+   "yaw_peak_rate": {
+    "mean": 0.540925,
+    "median": 0.53629,
+    "n": 10,
+    "spread": 0.038398
+   }
+  },
+  "C09": {
+   "abs_active_ratio": {
+    "mean": 0.04338,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.077062
+   },
+   "apex_dist_pct": {
+    "mean": 70.636302,
+    "median": 70.42119,
+    "n": 11,
+    "spread": 0.415451
+   },
+   "brake_application_rate": {
+    "mean": 1.054066,
+    "median": 1.0488,
+    "n": 11,
+    "spread": 0.470251
+   },
+   "brake_peak": {
+    "mean": 0.771725,
+    "median": 0.766234,
+    "n": 11,
+    "spread": 0.139046
+   },
+   "brake_point_dist_pct": {
+    "mean": 69.334825,
+    "median": 69.34876,
+    "n": 11,
+    "spread": 0.118169
+   },
+   "brake_release_duration_s": {
+    "mean": 0.760606,
+    "median": 0.883333,
+    "n": 11,
+    "spread": 0.342886
+   },
+   "coast_s": {
+    "mean": 0.930303,
+    "median": 0.283333,
+    "n": 11,
+    "spread": 1.038584
+   },
+   "exit_accel_ms2": {
+    "mean": 1.618574,
+    "median": 1.700224,
+    "n": 11,
+    "spread": 0.638705
+   },
+   "full_throttle_dist_pct": {
+    "mean": 71.107408,
+    "median": 71.26769,
+    "n": 11,
+    "spread": 0.391719
+   },
+   "min_speed_kmh": {
+    "mean": 99.327876,
+    "median": 99.55814,
+    "n": 11,
+    "spread": 6.149827
+   },
+   "steering_corrections": {
+    "mean": 0.090909,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.301511
+   },
+   "steering_smoothness_dps2": {
+    "mean": 203.066754,
+    "median": 164.551899,
+    "n": 11,
+    "spread": 105.36099
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.372727,
+    "median": 0.3,
+    "n": 11,
+    "spread": 0.195686
+   },
+   "throttle_modulation_count": {
+    "mean": 0.454545,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.687552
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 70.595887,
+    "median": 70.38884,
+    "n": 11,
+    "spread": 0.411457
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.801515,
+    "median": 0.766667,
+    "n": 11,
+    "spread": 0.499692
+   },
+   "turn_in_dist_pct": {
+    "mean": 69.987188,
+    "median": 69.99732,
+    "n": 11,
+    "spread": 0.092643
+   },
+   "yaw_peak_rate": {
+    "mean": 0.598891,
+    "median": 0.600965,
+    "n": 11,
+    "spread": 0.046576
+   }
+  },
+  "C10": {
+   "abs_active_ratio": {
+    "mean": 0.149476,
+    "median": 0.149476,
+    "n": 2,
+    "spread": 0.114967
+   },
+   "apex_dist_pct": {
+    "mean": 74.003081,
+    "median": 74.015777,
+    "n": 4,
+    "spread": 0.23776
+   },
+   "brake_application_rate": {
+    "mean": 0.930268,
+    "median": 0.930268,
+    "n": 2,
+    "spread": 0.270316
+   },
+   "brake_peak": {
+    "mean": 0.342726,
+    "median": 0.342726,
+    "n": 2,
+    "spread": 0.00733
+   },
+   "brake_point_dist_pct": {
+    "mean": 73.420444,
+    "median": 73.420444,
+    "n": 2,
+    "spread": 0.11589
+   },
+   "brake_release_duration_s": {
+    "mean": 0.191667,
+    "median": 0.191667,
+    "n": 2,
+    "spread": 0.106066
+   },
+   "coast_s": {
+    "mean": 0.041667,
+    "median": 0.041667,
+    "n": 2,
+    "spread": 0.058926
+   },
+   "exit_accel_ms2": {
+    "mean": 1.48496,
+    "median": 1.483002,
+    "n": 4,
+    "spread": 0.101595
+   },
+   "full_throttle_dist_pct": {
+    "mean": 74.193323,
+    "median": 74.231424,
+    "n": 4,
+    "spread": 0.257031
+   },
+   "min_speed_kmh": {
+    "mean": 132.972425,
+    "median": 134.91592,
+    "n": 4,
+    "spread": 5.137843
+   },
+   "steering_corrections": {
+    "mean": 5.5,
+    "median": 5.0,
+    "n": 4,
+    "spread": 1.732051
+   },
+   "steering_smoothness_dps2": {
+    "mean": 483.105411,
+    "median": 486.576202,
+    "n": 4,
+    "spread": 84.591143
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.0875,
+    "median": 0.041667,
+    "n": 4,
+    "spread": 0.125739
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 4,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 73.920229,
+    "median": 73.904208,
+    "n": 4,
+    "spread": 0.207937
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.558333,
+    "median": 0.558333,
+    "n": 2,
+    "spread": 0.247487
+   },
+   "turn_in_dist_pct": {
+    "mean": 72.666691,
+    "median": 72.694722,
+    "n": 4,
+    "spread": 0.137495
+   },
+   "yaw_peak_rate": {
+    "mean": 0.508686,
+    "median": 0.507028,
+    "n": 4,
+    "spread": 0.042791
+   }
+  },
+  "C11": {
+   "apex_dist_pct": {
+    "mean": 75.523887,
+    "median": 75.3852,
+    "n": 5,
+    "spread": 0.347413
+   },
+   "full_throttle_dist_pct": {
+    "mean": 75.523887,
+    "median": 75.3852,
+    "n": 5,
+    "spread": 0.347413
+   },
+   "min_speed_kmh": {
+    "mean": 149.014638,
+    "median": 146.960712,
+    "n": 5,
+    "spread": 7.825219
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 5,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 75.523887,
+    "median": 75.3852,
+    "n": 5,
+    "spread": 0.347413
+   },
+   "turn_in_dist_pct": {
+    "mean": 75.523887,
+    "median": 75.3852,
+    "n": 5,
+    "spread": 0.347413
+   },
+   "yaw_peak_rate": {
+    "mean": 0.240142,
+    "median": 0.231976,
+    "n": 5,
+    "spread": 0.046317
+   }
+  },
+  "C12": {
+   "apex_dist_pct": {
+    "mean": 79.070025,
+    "median": 79.070025,
+    "n": 2,
+    "spread": 0.106073
+   },
+   "full_throttle_dist_pct": {
+    "mean": 79.070025,
+    "median": 79.070025,
+    "n": 2,
+    "spread": 0.106073
+   },
+   "min_speed_kmh": {
+    "mean": 167.145817,
+    "median": 167.145817,
+    "n": 2,
+    "spread": 6.020009
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 79.070025,
+    "median": 79.070025,
+    "n": 2,
+    "spread": 0.106073
+   },
+   "turn_in_dist_pct": {
+    "mean": 79.070025,
+    "median": 79.070025,
+    "n": 2,
+    "spread": 0.106073
+   },
+   "yaw_peak_rate": {
+    "mean": 0.215971,
+    "median": 0.215971,
+    "n": 2,
+    "spread": 0.005601
+   }
+  },
+  "C13": {
+   "apex_dist_pct": {
+    "mean": 83.717119,
+    "median": 83.649486,
+    "n": 11,
+    "spread": 0.470684
+   },
+   "exit_accel_ms2": {
+    "mean": 0.700096,
+    "median": 0.693716,
+    "n": 3,
+    "spread": 0.034233
+   },
+   "full_throttle_dist_pct": {
+    "mean": 83.867028,
+    "median": 83.464175,
+    "n": 9,
+    "spread": 1.088264
+   },
+   "min_speed_kmh": {
+    "mean": 184.975739,
+    "median": 184.675032,
+    "n": 11,
+    "spread": 2.306469
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 84.35099,
+    "median": 83.649486,
+    "n": 11,
+    "spread": 1.451678
+   },
+   "turn_in_dist_pct": {
+    "mean": 83.717119,
+    "median": 83.649486,
+    "n": 11,
+    "spread": 0.470684
+   },
+   "yaw_peak_rate": {
+    "mean": 0.229129,
+    "median": 0.222078,
+    "n": 11,
+    "spread": 0.024544
+   }
+  },
+  "C14": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 87.916037,
+    "median": 87.916037,
+    "n": 2,
+    "spread": 0.028006
+   },
+   "brake_application_rate": {
+    "mean": 1.115115,
+    "median": 1.115115,
+    "n": 2,
+    "spread": 0.117961
+   },
+   "brake_peak": {
+    "mean": 0.526629,
+    "median": 0.526629,
+    "n": 2,
+    "spread": 0.117949
+   },
+   "brake_point_dist_pct": {
+    "mean": 86.541343,
+    "median": 86.541343,
+    "n": 2,
+    "spread": 0.072729
+   },
+   "brake_release_duration_s": {
+    "mean": 1.191667,
+    "median": 1.191667,
+    "n": 2,
+    "spread": 0.176777
+   },
+   "coast_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.117877,
+    "median": 1.117877,
+    "n": 2,
+    "spread": 0.112748
+   },
+   "full_throttle_dist_pct": {
+    "mean": 88.116115,
+    "median": 88.116115,
+    "n": 2,
+    "spread": 0.081635
+   },
+   "min_speed_kmh": {
+    "mean": 143.486845,
+    "median": 143.486845,
+    "n": 2,
+    "spread": 1.368847
+   },
+   "steering_corrections": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 123.809364,
+    "median": 123.809364,
+    "n": 2,
+    "spread": 96.385762
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.55,
+    "median": 0.55,
+    "n": 2,
+    "spread": 0.164992
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 87.758743,
+    "median": 87.758743,
+    "n": 2,
+    "spread": 0.036162
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.175,
+    "median": 0.175,
+    "n": 2,
+    "spread": 0.176777
+   },
+   "turn_in_dist_pct": {
+    "mean": 87.720145,
+    "median": 87.720145,
+    "n": 2,
+    "spread": 0.008917
+   },
+   "yaw_peak_rate": {
+    "mean": 0.370495,
+    "median": 0.370495,
+    "n": 2,
+    "spread": 0.030391
+   }
+  },
+  "C15": {
+   "abs_active_ratio": {
+    "mean": 0.261548,
+    "median": 0.342697,
+    "n": 11,
+    "spread": 0.181292
+   },
+   "apex_dist_pct": {
+    "mean": 97.127332,
+    "median": 97.31051,
+    "n": 11,
+    "spread": 0.378231
+   },
+   "brake_application_rate": {
+    "mean": 0.559519,
+    "median": 0.662737,
+    "n": 11,
+    "spread": 0.263395
+   },
+   "brake_peak": {
+    "mean": 0.994768,
+    "median": 1.0,
+    "n": 11,
+    "spread": 0.015835
+   },
+   "brake_point_dist_pct": {
+    "mean": 94.28534,
+    "median": 94.298506,
+    "n": 11,
+    "spread": 0.323952
+   },
+   "brake_release_duration_s": {
+    "mean": 1.065152,
+    "median": 1.433333,
+    "n": 11,
+    "spread": 0.943853
+   },
+   "coast_s": {
+    "mean": 4.477273,
+    "median": 3.116667,
+    "n": 11,
+    "spread": 4.607049
+   },
+   "exit_accel_ms2": {
+    "mean": 1.547928,
+    "median": 1.301109,
+    "n": 11,
+    "spread": 0.508667
+   },
+   "full_throttle_dist_pct": {
+    "mean": 97.40149,
+    "median": 97.358274,
+    "n": 11,
+    "spread": 0.133725
+   },
+   "min_speed_kmh": {
+    "mean": 48.079487,
+    "median": 53.592012,
+    "n": 11,
+    "spread": 18.482545
+   },
+   "steering_corrections": {
+    "mean": 4.090909,
+    "median": 2.0,
+    "n": 11,
+    "spread": 6.774283
+   },
+   "steering_smoothness_dps2": {
+    "mean": 549.528278,
+    "median": 546.468989,
+    "n": 11,
+    "spread": 162.988949
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 1.233333,
+    "median": 1.116667,
+    "n": 11,
+    "spread": 0.8925
+   },
+   "throttle_modulation_count": {
+    "mean": 0.090909,
+    "median": 0.0,
+    "n": 11,
+    "spread": 0.301511
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 97.270639,
+    "median": 97.258884,
+    "n": 11,
+    "spread": 0.093942
+   },
+   "trail_brake_overlap_s": {
+    "mean": 3.024242,
+    "median": 3.25,
+    "n": 11,
+    "spread": 1.268822
+   },
+   "turn_in_dist_pct": {
+    "mean": 95.871128,
+    "median": 95.841557,
+    "n": 11,
+    "spread": 0.120661
+   },
+   "yaw_peak_rate": {
+    "mean": 1.061213,
+    "median": 1.027885,
+    "n": 11,
+    "spread": 0.14316
+   }
+  },
+  "C16": {
+   "abs_active_ratio": {
+    "mean": 0.058511,
+    "median": 0.0,
+    "n": 4,
+    "spread": 0.117021
+   },
+   "apex_dist_pct": {
+    "mean": 89.361492,
+    "median": 89.477134,
+    "n": 9,
+    "spread": 0.243753
+   },
+   "brake_application_rate": {
+    "mean": 0.387043,
+    "median": 0.298852,
+    "n": 4,
+    "spread": 0.359966
+   },
+   "brake_peak": {
+    "mean": 0.183844,
+    "median": 0.210235,
+    "n": 4,
+    "spread": 0.089219
+   },
+   "brake_point_dist_pct": {
+    "mean": 87.354877,
+    "median": 87.119588,
+    "n": 4,
+    "spread": 0.604629
+   },
+   "brake_release_duration_s": {
+    "mean": 0.116667,
+    "median": 0.116667,
+    "n": 4,
+    "spread": 0.013608
+   },
+   "coast_s": {
+    "mean": 0.841667,
+    "median": 0.825,
+    "n": 4,
+    "spread": 0.81132
+   },
+   "exit_accel_ms2": {
+    "mean": 0.917528,
+    "median": 0.917528,
+    "n": 2,
+    "spread": 0.259496
+   },
+   "full_throttle_dist_pct": {
+    "mean": 88.549066,
+    "median": 88.8568,
+    "n": 9,
+    "spread": 0.936904
+   },
+   "min_speed_kmh": {
+    "mean": 183.442788,
+    "median": 185.427767,
+    "n": 9,
+    "spread": 5.504274
+   },
+   "steering_corrections": {
+    "mean": 2.888889,
+    "median": 3.0,
+    "n": 9,
+    "spread": 2.472066
+   },
+   "steering_smoothness_dps2": {
+    "mean": 319.838239,
+    "median": 316.9081,
+    "n": 9,
+    "spread": 101.071522
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.092593,
+    "median": 0.0,
+    "n": 9,
+    "spread": 0.156372
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 6,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 88.285226,
+    "median": 88.568753,
+    "n": 9,
+    "spread": 0.757063
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.191667,
+    "median": 0.1,
+    "n": 4,
+    "spread": 0.267187
+   },
+   "turn_in_dist_pct": {
+    "mean": 87.364367,
+    "median": 87.4328,
+    "n": 9,
+    "spread": 0.259613
+   },
+   "yaw_peak_rate": {
+    "mean": 0.363793,
+    "median": 0.359316,
+    "n": 9,
+    "spread": 0.03291
+   }
+  },
+  "C17": {
+   "abs_active_ratio": {
+    "mean": 0.325827,
+    "median": 0.295732,
+    "n": 6,
+    "spread": 0.285845
+   },
+   "apex_dist_pct": {
+    "mean": 56.224513,
+    "median": 56.120982,
+    "n": 8,
+    "spread": 0.467624
+   },
+   "brake_application_rate": {
+    "mean": 0.340661,
+    "median": 0.270175,
+    "n": 6,
+    "spread": 0.249291
+   },
+   "brake_peak": {
+    "mean": 0.419556,
+    "median": 0.445014,
+    "n": 6,
+    "spread": 0.158175
+   },
+   "brake_point_dist_pct": {
+    "mean": 53.912702,
+    "median": 53.424717,
+    "n": 6,
+    "spread": 1.444072
+   },
+   "brake_release_duration_s": {
+    "mean": 0.566667,
+    "median": 0.475,
+    "n": 6,
+    "spread": 0.476678
+   },
+   "coast_s": {
+    "mean": 1.133333,
+    "median": 1.108333,
+    "n": 6,
+    "spread": 1.146831
+   },
+   "exit_accel_ms2": {
+    "mean": 0.569723,
+    "median": 0.626133,
+    "n": 6,
+    "spread": 0.329223
+   },
+   "full_throttle_dist_pct": {
+    "mean": 56.401805,
+    "median": 56.272709,
+    "n": 8,
+    "spread": 0.496916
+   },
+   "min_speed_kmh": {
+    "mean": 139.265485,
+    "median": 140.062532,
+    "n": 8,
+    "spread": 6.819836
+   },
+   "steering_corrections": {
+    "mean": 4.333333,
+    "median": 4.0,
+    "n": 6,
+    "spread": 2.42212
+   },
+   "steering_smoothness_dps2": {
+    "mean": 373.676715,
+    "median": 366.156812,
+    "n": 6,
+    "spread": 54.03248
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.216667,
+    "median": 0.158333,
+    "n": 8,
+    "spread": 0.208738
+   },
+   "throttle_modulation_count": {
+    "mean": 0.166667,
+    "median": 0.0,
+    "n": 6,
+    "spread": 0.408248
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 56.103731,
+    "median": 55.989527,
+    "n": 8,
+    "spread": 0.43029
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.463889,
+    "median": 1.208333,
+    "n": 6,
+    "spread": 1.17215
+   },
+   "turn_in_dist_pct": {
+    "mean": 54.552525,
+    "median": 53.550205,
+    "n": 8,
+    "spread": 1.500943
+   },
+   "yaw_peak_rate": {
+    "mean": 0.432908,
+    "median": 0.44165,
+    "n": 8,
+    "spread": 0.044386
+   }
+  },
+  "C18": {
+   "abs_active_ratio": {
+    "mean": 0.155844,
+    "median": 0.155844,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 72.62792,
+    "median": 72.62642,
+    "n": 7,
+    "spread": 0.071303
+   },
+   "brake_application_rate": {
+    "mean": 0.042893,
+    "median": 0.042893,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.080305,
+    "median": 0.080305,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 72.679317,
+    "median": 72.679317,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.35,
+    "median": 0.35,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 1.583333,
+    "median": 1.583333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.314241,
+    "median": 1.314241,
+    "n": 2,
+    "spread": 0.47473
+   },
+   "full_throttle_dist_pct": {
+    "mean": 73.127416,
+    "median": 72.677124,
+    "n": 7,
+    "spread": 0.840295
+   },
+   "min_speed_kmh": {
+    "mean": 132.477636,
+    "median": 131.521439,
+    "n": 7,
+    "spread": 4.476027
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.183333,
+    "median": 0.0,
+    "n": 7,
+    "spread": 0.485054
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 2,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 73.066381,
+    "median": 72.677124,
+    "n": 7,
+    "spread": 0.736135
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.1,
+    "median": 1.1,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 72.653892,
+    "median": 72.62642,
+    "n": 7,
+    "spread": 0.11367
+   },
+   "yaw_peak_rate": {
+    "mean": 0.476598,
+    "median": 0.458972,
+    "n": 7,
+    "spread": 0.058774
+   }
+  }
+ },
+ "payload_version": 4,
+ "phase_baselines": {
+  "C01": {
+   "entry": {
+    "median_s": 1.184025,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 1.109684,
+    "single_best_s": 1.072226,
+    "spread_s": 0.057988
+   },
+   "mid": {
+    "median_s": 4.11824,
+    "n": 9,
+    "n_outliers": 2,
+    "robust_best_s": 3.860159,
+    "single_best_s": 3.845529,
+    "spread_s": 0.416307
+   }
+  },
+  "C02": {
+   "exit": {
+    "median_s": 0.015011,
+    "n": 8,
+    "n_outliers": 2,
+    "robust_best_s": 0.014782,
+    "single_best_s": 0.01471,
+    "spread_s": 0.000332
+   },
+   "mid": {
+    "median_s": 5.247693,
+    "n": 7,
+    "n_outliers": 3,
+    "robust_best_s": 5.239233,
+    "single_best_s": 5.208641,
+    "spread_s": 0.026732
+   }
+  },
+  "C03": {
+   "entry": {
+    "median_s": 1.123558,
+    "n": 8,
+    "n_outliers": 2,
+    "robust_best_s": 1.109909,
+    "single_best_s": 1.064346,
+    "spread_s": 0.033952
+   },
+   "exit": {
+    "median_s": 0.189851,
+    "n": 9,
+    "n_outliers": 1,
+    "robust_best_s": 0.183201,
+    "single_best_s": 0.179586,
+    "spread_s": 0.006429
+   },
+   "mid": {
+    "median_s": 2.221363,
+    "n": 10,
+    "n_outliers": 0,
+    "robust_best_s": 2.073348,
+    "single_best_s": 2.016667,
+    "spread_s": 0.149838
+   }
+  },
+  "C04": {
+   "exit": {
+    "median_s": 0.711524,
+    "n": 7,
+    "n_outliers": 1,
+    "robust_best_s": 0.689247,
+    "single_best_s": 0.689192,
+    "spread_s": 0.031037
+   },
+   "mid": {
+    "median_s": 4.723264,
+    "n": 6,
+    "n_outliers": 2,
+    "robust_best_s": 4.679424,
+    "single_best_s": 4.66406,
+    "spread_s": 0.062103
+   }
+  },
+  "C05": {
+   "entry": {
+    "median_s": 1.703608,
+    "n": 9,
+    "n_outliers": 2,
+    "robust_best_s": 1.628524,
+    "single_best_s": 1.624455,
+    "spread_s": 0.044803
+   },
+   "exit": {
+    "median_s": 1.987326,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 1.9,
+    "single_best_s": 1.864589,
+    "spread_s": 0.059608
+   },
+   "mid": {
+    "median_s": 4.577991,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 4.528013,
+    "single_best_s": 4.488979,
+    "spread_s": 0.058469
+   }
+  },
+  "C06": {
+   "entry": {
+    "median_s": 0.910094,
+    "n": 11,
+    "n_outliers": 0,
+    "robust_best_s": 0.869325,
+    "single_best_s": 0.856046,
+    "spread_s": 0.033662
+   },
+   "exit": {
+    "median_s": 1.811598,
+    "n": 11,
+    "n_outliers": 0,
+    "robust_best_s": 1.693088,
+    "single_best_s": 1.690936,
+    "spread_s": 0.072573
+   },
+   "mid": {
+    "median_s": 0.536305,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 0.517022,
+    "single_best_s": 0.515389,
+    "spread_s": 0.017299
+   }
+  },
+  "C07": {
+   "entry": {
+    "median_s": 0.977567,
+    "n": 4,
+    "n_outliers": 0,
+    "robust_best_s": 0.971801,
+    "single_best_s": 0.956019,
+    "spread_s": 0.013365
+   },
+   "exit": {
+    "median_s": 7.959392,
+    "n": 4,
+    "n_outliers": 0,
+    "robust_best_s": 7.934604,
+    "single_best_s": 7.9,
+    "spread_s": 0.081826
+   },
+   "mid": {
+    "median_s": 0.646751,
+    "n": 4,
+    "n_outliers": 0,
+    "robust_best_s": 0.641624,
+    "single_best_s": 0.620745,
+    "spread_s": 0.019289
+   }
+  },
+  "C08": {
+   "entry": {
+    "median_s": 2.185627,
+    "n": 10,
+    "n_outliers": 0,
+    "robust_best_s": 2.102852,
+    "single_best_s": 2.077321,
+    "spread_s": 0.062816
+   },
+   "exit": {
+    "median_s": 6.279121,
+    "n": 10,
+    "n_outliers": 0,
+    "robust_best_s": 6.16879,
+    "single_best_s": 6.064418,
+    "spread_s": 0.138919
+   },
+   "mid": {
+    "median_s": 1.627606,
+    "n": 9,
+    "n_outliers": 1,
+    "robust_best_s": 1.592265,
+    "single_best_s": 1.52251,
+    "spread_s": 0.059644
+   }
+  },
+  "C09": {
+   "entry": {
+    "median_s": 1.114435,
+    "n": 11,
+    "n_outliers": 0,
+    "robust_best_s": 1.083333,
+    "single_best_s": 1.072375,
+    "spread_s": 0.046549
+   },
+   "exit": {
+    "median_s": 0.75,
+    "n": 11,
+    "n_outliers": 0,
+    "robust_best_s": 0.707617,
+    "single_best_s": 0.70097,
+    "spread_s": 0.031104
+   },
+   "mid": {
+    "median_s": 2.534481,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 2.469852,
+    "single_best_s": 2.444696,
+    "spread_s": 0.08868
+   }
+  },
+  "C10": {
+   "exit": {
+    "median_s": 0.546182,
+    "n": 3,
+    "n_outliers": 1,
+    "robust_best_s": 0.546182,
+    "single_best_s": 0.542699,
+    "spread_s": 0.005669
+   },
+   "mid": {
+    "median_s": 2.030554,
+    "n": 4,
+    "n_outliers": 0,
+    "robust_best_s": 2.013727,
+    "single_best_s": 1.99929,
+    "spread_s": 0.037477
+   }
+  },
+  "C13": {
+   "exit": {
+    "median_s": 1.578524,
+    "n": 9,
+    "n_outliers": 2,
+    "robust_best_s": 1.566865,
+    "single_best_s": 1.561413,
+    "spread_s": 0.013032
+   }
+  },
+  "C14": {
+   "entry": {
+    "median_s": 1.823969,
+    "n": 2,
+    "n_outliers": 0,
+    "robust_best_s": 1.823969,
+    "single_best_s": 1.814605,
+    "spread_s": 0.013243
+   },
+   "exit": {
+    "median_s": 0.486665,
+    "n": 2,
+    "n_outliers": 0,
+    "robust_best_s": 0.486665,
+    "single_best_s": 0.483333,
+    "spread_s": 0.004712
+   },
+   "mid": {
+    "median_s": 0.317436,
+    "n": 2,
+    "n_outliers": 0,
+    "robust_best_s": 0.317436,
+    "single_best_s": 0.316667,
+    "spread_s": 0.001087
+   }
+  },
+  "C15": {
+   "entry": {
+    "median_s": 3.284981,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 3.192545,
+    "single_best_s": 3.116978,
+    "spread_s": 0.137081
+   },
+   "exit": {
+    "median_s": 3.780904,
+    "n": 9,
+    "n_outliers": 2,
+    "robust_best_s": 3.536489,
+    "single_best_s": 3.39364,
+    "spread_s": 0.301069
+   },
+   "mid": {
+    "median_s": 1.394229,
+    "n": 10,
+    "n_outliers": 1,
+    "robust_best_s": 1.260498,
+    "single_best_s": 1.255231,
+    "spread_s": 0.099443
+   }
+  },
+  "C16": {
+   "entry": {
+    "median_s": 0.481097,
+    "n": 9,
+    "n_outliers": 0,
+    "robust_best_s": 0.477922,
+    "single_best_s": 0.476362,
+    "spread_s": 0.003495
+   },
+   "exit": {
+    "median_s": 0.15,
+    "n": 9,
+    "n_outliers": 0,
+    "robust_best_s": 0.146682,
+    "single_best_s": 0.146212,
+    "spread_s": 0.004894
+   },
+   "mid": {
+    "median_s": 2.723259,
+    "n": 9,
+    "n_outliers": 0,
+    "robust_best_s": 2.676759,
+    "single_best_s": 2.671081,
+    "spread_s": 0.049522
+   }
+  },
+  "C17": {
+   "entry": {
+    "median_s": 0.172537,
+    "n": 7,
+    "n_outliers": 1,
+    "robust_best_s": 0.170451,
+    "single_best_s": 0.169425,
+    "spread_s": 0.003734
+   },
+   "exit": {
+    "median_s": 0.10254,
+    "n": 8,
+    "n_outliers": 0,
+    "robust_best_s": 0.096431,
+    "single_best_s": 0.09447,
+    "spread_s": 0.008222
+   },
+   "mid": {
+    "median_s": 4.438466,
+    "n": 7,
+    "n_outliers": 1,
+    "robust_best_s": 4.378054,
+    "single_best_s": 4.255534,
+    "spread_s": 0.103636
+   }
+  },
+  "C18": {
+   "exit": {
+    "median_s": 0.096905,
+    "n": 7,
+    "n_outliers": 0,
+    "robust_best_s": 0.094344,
+    "single_best_s": 0.094303,
+    "spread_s": 0.00269
+   }
+  }
+ },
+ "quality": {
+  "flag_counts": {
+   "clipped_pedal": 11
+  },
+  "n_laps_flagged": 11
+ },
+ "unavailable_fundamentals": [
+  "tire slip/utilization \u2014 no slip channel in the source; never inferred",
+  "vision/eye-line \u2014 not measurable from telemetry; never inferred",
+  "fuel load, weather, lap validity, stint index \u2014 absent from the source contract; controls degrade with stated caveats instead"
+ ]
+}
