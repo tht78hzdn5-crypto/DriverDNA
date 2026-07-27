@@ -258,6 +258,42 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-26 — two hazards created by A23's storage split, found by reading
+  rather than by breakage (SPEC.md A26, A27).** Both were flagged while
+  answering the owner's questions about where lap data should live, and fixed
+  at their request.
+
+  *`rebuild-map` was destroying recoverable measurements (A26).* Moving blobs
+  to local disk gave `load_lap_arrays() is None` a second meaning. The old
+  code read it one way — evicted — and deleted phase times accordingly, so
+  running `rebuild-map` from a machine that merely hadn't imported those laps
+  would wipe measurements that were intact elsewhere, and blame retention in
+  the report. The fork was how to distinguish the two causes. Rejected:
+  inferring it from the retention setting ("is this lap within the newest
+  N?"), which breaks the moment retention is lowered and raised again, and
+  which infers something the system can just record. Chosen: an eviction
+  tombstone in the **blob store**, because eviction is a per-machine event and
+  the database may be shared — a DB column would tell machine B that a blob
+  it never held was "evicted". Then the harder question: on detecting an
+  absent trace, clear, skip, or refuse? Clearing destroys recoverable data;
+  skipping leaves the cohort with some phase times on new windows and some on
+  retired ones, which is precisely the silent mixing A22 exists to prevent.
+  So: refuse, before mutating anything, with an explicit override.
+
+  *Cohort labels can drift between `sync` and `import` (A27).* `sync` folds
+  the API's track `variant` into the label; a manual import takes the
+  filename, which has none. Since the API returns only one lap per cohort, the
+  documented workflow is to do both — so the split is structural, and it
+  halves the evidence behind every longitudinal number without erroring. Built
+  detection, not repair: which label is correct isn't derivable from the
+  strings, and cohort keys are load-bearing for evidence IDs, so an automatic
+  merge would risk the quiet corruption this project exists to refuse. The
+  deliberate non-goal was equally important — two *different* variants are
+  legitimately distinct cohorts per the spec's own rule, so flagging them
+  would make the warning noise and get it ignored. Surfaced at the end of
+  `import` specifically, because that is the moment the divergent label is
+  created and the fix still costs one re-import.
+
 - **2026-07-26 — Garage61 renamed its exports again; one splitter for both
   shapes, and `--car`/`--track` become independently optional (SPEC.md A24).**
   The owner reported import "not working in my local shell", suspecting the

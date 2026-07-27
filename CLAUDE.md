@@ -272,6 +272,30 @@ from the real fixtures and reviewed.
   auto-detecting, so a future rename never strands the driver. Errors name
   the missing field per file. Verified end-to-end on the owner's real
   filename, CLI and browser.
+- **`rebuild-map` refuses instead of destroying unmeasurable phase times
+  (2026-07-26, SPEC.md A26)** — after A23 put blobs on local disk, an
+  unreadable trace meant either "evicted here" (gone for good) or "imported on
+  another machine" (intact there), and `rebuild_cohort_map` treated both as
+  eviction: `delete_phase_times` plus a report blaming retention. Eviction now
+  writes a tombstone (`<lap_pk>.evicted`) in the **blob store** — not a DB
+  column, because eviction is per-machine while the store may be shared. A
+  pre-flight raises `RawTracesUnavailable` before touching anything when a
+  trace is missing without a tombstone; `--allow-missing-traces` overrides.
+  Refusing beats clearing (destroys recoverable data) and beats skipping
+  (would mix new-window and retired-window phase times, the exact thing A22
+  prevents). First rebuild after upgrading may refuse on pre-existing
+  evictions — deliberate, and safer than backfilling.
+- **Cohort-label drift detected, never merged (2026-07-26, SPEC.md A27)** —
+  `sync` labels a track `"Name (Variant)"` from the API; manual import uses
+  the filename's bare name. Doing both splits one cohort in two, silently
+  halving the evidence behind every baseline, trend and consistency number.
+  `cohorts.find_label_drift` flags case/punctuation drift and
+  variant-present-on-one-side-only, surfaced by `history` and at the end of
+  `import` (where the fix still costs one re-import). Two *different* variants
+  are deliberately not flagged — "track variants are distinct cohorts" is the
+  spec's own rule, and a noisy warning would get ignored. Reported only: the
+  right label isn't derivable from the strings, and cohort keys are
+  load-bearing for evidence IDs.
 - **Re-download suffix, corrected against real evidence (2026-07-26, SPEC.md
   A25)** — A24 stripped a browser re-download's `(1)` suffix assuming a
   leading space (`" (1)"`), never actually observed. The owner's own next

@@ -265,6 +265,25 @@ class RebuildResult:
         return sum(len(c.laps_cleared) for c in self.corners)
 
 
+class RawTracesUnavailable(Exception):
+    """Refusing to rebuild: some laps' raw traces are missing here but were
+    never evicted here, so they are still intact on the machine that imported
+    them (SPEC.md A26).
+
+    Raised BEFORE anything is modified. Rebuilding anyway would clear those
+    laps' phase times — measurements another machine can still reproduce —
+    and report the reason as retention eviction, which would be false.
+    """
+
+    def __init__(self, lap_pks: list[int]) -> None:
+        self.lap_pks = lap_pks
+        super().__init__(
+            f"{len(lap_pks)} lap(s) have no raw trace on this machine and were "
+            f"not evicted here: {lap_pks[:10]}"
+            f"{', ...' if len(lap_pks) > 10 else ''}"
+        )
+
+
 def _windows_differ(old: dict, new: PhaseWindows) -> bool:
     def diff(a: float | None, b: float | None) -> bool:
         if a is None or b is None:
@@ -280,7 +299,8 @@ def _windows_differ(old: dict, new: PhaseWindows) -> bool:
 
 
 def rebuild_cohort_map(
-    db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
+    db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig,
+    allow_missing_traces: bool = False,
 ) -> RebuildResult:
     """In-place refreeze of a cohort's frozen corner map (SPEC.md A22).
 
@@ -290,6 +310,14 @@ def rebuild_cohort_map(
     blob still survives retention, and DELETEs + reports phase times for any
     whose blob was evicted (a lap that can't be honestly re-interpolated
     against the new windows is never left silently stale — philosophy #7).
+
+    Raises `RawTracesUnavailable`, before modifying anything, when a lap's raw
+    trace is missing here but was never evicted here — meaning it is intact on
+    the machine that imported it (SPEC.md A26). Clearing such a lap's phase
+    times would destroy a measurement that is still reproducible elsewhere,
+    and blame retention for it. `allow_missing_traces=True` proceeds anyway,
+    clearing them; the driver has then said explicitly that this machine is
+    the one that matters.
 
     In-place, not versioned: `corner_pk` / `corner_id` never change, so every
     evidence ID that resolves through a corner stays valid; existing
@@ -303,6 +331,21 @@ def rebuild_cohort_map(
         return RebuildResult(car=car, track=track, existed=False)
     map_pk, corner_map = loaded
     old_windows = db.load_corner_windows(map_pk)
+
+    # Pre-flight, before a single centroid or window moves: a partial rebuild
+    # is worse than none, because the cohort would end up with some phase
+    # times measured against new windows and some against retired ones.
+    if not allow_missing_traces:
+        observed = {
+            lap_pk
+            for identity in corner_map.corners
+            for _obs_pk, lap_pk in db.observations_of_corner(
+                db.corner_pk(map_pk, identity.corner_id)
+            )
+        }
+        unavailable = db.unavailable_raw_laps(observed)
+        if unavailable:
+            raise RawTracesUnavailable(unavailable)
 
     corner_results: list[CornerRebuild] = []
     for identity in corner_map.corners:
@@ -334,9 +377,12 @@ def rebuild_cohort_map(
                 exit_end=new_windows.exit_end,
             )
 
-        # (c) re-measure phase times against the new window; a lap whose raw
-        #     blob was evicted can't be honestly re-interpolated — clear it and
-        #     report, never leave a number measured against a retired window.
+        # (c) re-measure phase times against the new window; a lap with no
+        #     readable raw trace can't be honestly re-interpolated — clear it
+        #     and report, never leave a number measured against a retired
+        #     window. By here that means either an eviction (gone for good) or
+        #     an explicit --allow-missing-traces; the pre-flight above has
+        #     already refused the silently-destructive case.
         remeasured = 0
         cleared: list[int] = []
         if new_windows is not None:

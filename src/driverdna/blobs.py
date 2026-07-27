@@ -7,12 +7,24 @@ they are only ever read whole, and pushing them over the wire would have cost
 roughly 2x the free-tier database allowance plus ~1 GB of egress on a single
 `rebuild-map`.
 
-The consequence is deliberate and already-handled: a blob is present on the
-machine that imported it, and absent elsewhere. That is not a new failure
-mode — `load_lap_arrays` has always returned None for an evicted blob, and
-every caller already degrades honestly (the track-trace view 404s, the
-pipeline skips re-measurement, `raw_retained` reports false). "Absent here"
-simply joins "evicted by retention" on that same path.
+The consequence is deliberate: a blob is present on the machine that imported
+it, and absent elsewhere. `load_lap_arrays` has always returned None for an
+evicted blob, and the read-only callers degrade honestly on it (the
+track-trace view 404s, `raw_retained` reports false), so for them "absent
+here" simply joins "evicted by retention" on that same path.
+
+That equivalence was originally claimed for *every* caller, and it was wrong.
+`rebuild-map` does not skip a lap it cannot re-measure — it DELETES that
+lap's phase times. For it the two causes are not interchangeable: retention
+evicting a blob is a deliberate, local act, and that lap can never be
+re-measured again anywhere, whereas a blob merely absent here is still intact
+on the machine that imported it. Clearing the second case destroys a
+measurement another machine can still reproduce, and blames retention for it.
+
+So an eviction now leaves a tombstone (`<lap_pk>.evicted`) beside the blobs,
+and `rebuild-map` refuses rather than guessing (SPEC.md A26). The tombstone
+lives in the blob store rather than the database precisely because eviction is
+a per-machine event, and the database may be shared between machines.
 
 Blob roots are per-database by construction, so two databases can never
 collide on a lap_pk: a SQLite file `X.db` stores blobs in `X.db.blobs/`, and
@@ -56,6 +68,18 @@ class BlobStore:
         """Every lap_pk this store currently holds a blob for."""
         raise NotImplementedError
 
+    def mark_evicted(self, lap_pk: int) -> None:
+        """Record that this lap's blob was deliberately evicted *here*.
+
+        Distinct from the blob merely being absent: an eviction means the raw
+        trace is gone for good on this machine, so a caller that cannot work
+        without it (`rebuild-map`) may proceed rather than refuse."""
+        raise NotImplementedError
+
+    def evicted_lap_pks(self) -> set[int]:
+        """Every lap_pk recorded as deliberately evicted from this store."""
+        raise NotImplementedError
+
 
 class MemoryBlobStore(BlobStore):
     """For `:memory:` databases — the database itself does not outlive the
@@ -63,6 +87,7 @@ class MemoryBlobStore(BlobStore):
 
     def __init__(self) -> None:
         self._data: dict[int, bytes] = {}
+        self._evicted: set[int] = set()
 
     def put(self, lap_pk: int, data: bytes) -> None:
         self._data[int(lap_pk)] = data
@@ -78,6 +103,12 @@ class MemoryBlobStore(BlobStore):
 
     def lap_pks(self) -> set[int]:
         return set(self._data)
+
+    def mark_evicted(self, lap_pk: int) -> None:
+        self._evicted.add(int(lap_pk))
+
+    def evicted_lap_pks(self) -> set[int]:
+        return set(self._evicted)
 
 
 class FileBlobStore(BlobStore):
@@ -117,10 +148,25 @@ class FileBlobStore(BlobStore):
         return self._path(lap_pk).exists()
 
     def lap_pks(self) -> set[int]:
+        return self._pks_matching("*.npz")
+
+    def mark_evicted(self, lap_pk: int) -> None:
+        # An empty marker file, same lap_pk-keyed naming as the blobs, and a
+        # different suffix so `lap_pks()`'s *.npz glob never sees it.
+        self.root.mkdir(parents=True, exist_ok=True)
+        self._evicted_path(lap_pk).touch()
+
+    def evicted_lap_pks(self) -> set[int]:
+        return self._pks_matching("*.evicted")
+
+    def _evicted_path(self, lap_pk: int) -> Path:
+        return self.root / f"{int(lap_pk)}.evicted"
+
+    def _pks_matching(self, pattern: str) -> set[int]:
         if not self.root.exists():
             return set()
         out: set[int] = set()
-        for p in self.root.glob("*.npz"):
+        for p in self.root.glob(pattern):
             try:
                 out.add(int(p.stem))
             except ValueError:

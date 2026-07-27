@@ -15,7 +15,7 @@ from typer.testing import CliRunner
 from driverdna.cli import app
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
-from driverdna.pipeline import rebuild_cohort_map
+from driverdna.pipeline import RawTracesUnavailable, rebuild_cohort_map
 from synth import CORNER_WINDOWS, track_lap
 from synth import run_synthetic_lap as _run
 
@@ -158,6 +158,83 @@ def test_rebuild_admits_newly_eligible_candidate_when_threshold_lowered(db):
     result = rebuild_cohort_map(db, config=lowered, **COHORT)
     assert result.admitted == ["C04"]
     assert "C04" in _corner_pks(db)
+
+
+# --- absent-here is NOT evicted-here: refuse rather than destroy (A26) -------
+
+
+def _phase_rows(db):
+    return db.conn.execute("SELECT COUNT(*) n FROM phase_times").fetchone()["n"]
+
+
+def test_rebuild_refuses_when_a_trace_is_absent_but_never_evicted(db):
+    """A blob missing without an eviction tombstone means the lap was
+    imported on another machine and is intact there. Clearing its phase times
+    here would destroy a measurement that machine can still reproduce, so the
+    rebuild refuses — and refuses before modifying anything."""
+    pks = [_run_pipeline(db, track_lap(src=f"lap{i}.csv")).lap_pk for i in range(3)]
+    windows_before = _windows(db)
+    phase_before = _phase_rows(db)
+
+    db.blobs.delete(pks[0])  # deleted WITHOUT mark_evicted: "absent here"
+
+    with pytest.raises(RawTracesUnavailable) as excinfo:
+        rebuild_cohort_map(db, config=CONFIG, **COHORT)
+    assert excinfo.value.lap_pks == [pks[0]]
+
+    # Nothing moved: not the windows, not a single phase-time row.
+    assert _windows(db) == windows_before
+    assert _phase_rows(db) == phase_before
+
+
+def test_rebuild_proceeds_for_absent_traces_when_explicitly_allowed(db):
+    pks = [_run_pipeline(db, track_lap(src=f"lap{i}.csv")).lap_pk for i in range(3)]
+    db.blobs.delete(pks[0])
+
+    result = rebuild_cohort_map(db, config=CONFIG, allow_missing_traces=True, **COHORT)
+    cleared = {pk for c in result.corners for pk in c.laps_cleared}
+    assert cleared == {pks[0]}
+
+
+def test_retention_eviction_is_tombstoned_so_rebuild_does_not_refuse(db):
+    """The counterpart: a genuine eviction leaves a tombstone, so rebuild
+    proceeds without needing the escape hatch. This is what keeps the refusal
+    above from firing on every long-running install."""
+    pks = [_run_pipeline(db, track_lap(src=f"lap{i}.csv")).lap_pk for i in range(4)]
+    assert db.enforce_retention(keep=2) == 2
+    assert db.blobs.evicted_lap_pks() == set(pks[:2])
+    assert db.unavailable_raw_laps(pks) == []  # evicted != unavailable
+
+    result = rebuild_cohort_map(db, config=CONFIG, **COHORT)  # no exception
+    cleared = {pk for c in result.corners for pk in c.laps_cleared}
+    assert cleared == set(pks[:2])
+
+
+def test_rebuild_map_cli_refuses_and_changes_nothing_on_absent_trace(tmp_path):
+    db_path = tmp_path / "spa.db"
+    runner = CliRunner()
+    assert runner.invoke(
+        app, ["import", str(FIXTURES_DIR), "--db", str(db_path)]
+    ).exit_code == 0
+
+    with Database.open(db_path) as db:
+        lap_pk = db.conn.execute(
+            "SELECT lap_pk FROM laps WHERE car='GR86' ORDER BY lap_pk"
+        ).fetchone()["lap_pk"]
+        db.blobs.delete(int(lap_pk))
+        phase_before = _phase_rows(db)
+
+    result = runner.invoke(app, [
+        "rebuild-map", "--car", "GR86", "--track", "Spa-Francorchamps",
+        "--db", str(db_path),
+    ])
+    assert result.exit_code == 2
+    assert "refusing to rebuild" in result.output
+    assert str(lap_pk) in result.output
+    assert "--allow-missing-traces" in result.output
+    assert "Nothing has been modified" in result.output
+    with Database.open(db_path) as db:
+        assert _phase_rows(db) == phase_before
 
 
 def test_rebuild_missing_cohort_reports_not_existed(db):

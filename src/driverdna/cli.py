@@ -220,6 +220,12 @@ def import_cmd(
         evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
         if evicted:
             typer.echo(f"retention: evicted {evicted} raw lap blob(s); summaries kept")
+        # Checked here because import is where a divergent label is created —
+        # catching it now costs one re-import, catching it later costs a
+        # rebuilt history (A27).
+        from driverdna.report.payload import list_cohorts as _list_cohorts
+
+        _warn_label_drift(_list_cohorts(db))
 
 
 @app.command()
@@ -670,6 +676,37 @@ def history(
                 f"config: {ch['key']} {ch['old_value']} -> {ch['new_value']} "
                 f"({ch['source']})"
             )
+        _warn_label_drift(list_cohorts(db))
+
+
+def _warn_label_drift(cohorts: list[dict[str, str]]) -> None:
+    """Surface cohorts that look like one cohort spelled two ways (A27).
+
+    Reported, never repaired: a cohort key is load-bearing for evidence IDs,
+    and only the driver knows which label is right.
+    """
+    from driverdna.cohorts import find_label_drift
+
+    pairs = find_label_drift(cohorts)
+    if not pairs:
+        return
+    typer.echo("")
+    typer.echo(
+        f"warning: {len(pairs)} cohort pair(s) look like the same cohort under "
+        "two labels."
+    )
+    for p in pairs:
+        typer.echo(f"  {p.left[0]} @ {p.left[1]}")
+        typer.echo(f"  {p.right[0]} @ {p.right[1]}")
+        typer.echo(f"    -> {p.describe()}")
+    typer.echo(
+        "  Split cohorts compute every baseline, trend and consistency number\n"
+        "  from half the laps, silently. `sync` labels a track with the API's\n"
+        "  variant (\"Track (Config)\"); a manual import uses the filename,\n"
+        "  which has none. To merge, re-import the affected laps with an\n"
+        "  explicit --car/--track matching the label you want to keep.\n"
+        "  Nothing has been changed automatically."
+    )
 
 
 @app.command()
@@ -801,6 +838,13 @@ def rebuild_map(
              "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
     ),
     driver: str = typer.Option("owner", help="Driver whose classes are re-derived."),
+    allow_missing_traces: bool = typer.Option(
+        False, "--allow-missing-traces",
+        help="Proceed even when laps' raw traces are missing here but were "
+             "never evicted here (they are intact on the machine that "
+             "imported them). Their phase times are cleared. Only pass this "
+             "if this machine is the one that matters.",
+    ),
 ) -> None:
     """In-place refreeze of a cohort's frozen corner map from its full lap set.
 
@@ -810,17 +854,38 @@ def rebuild_map(
     reclassifies. corner IDs never change, so evidence IDs stay valid. A lap
     whose raw blob was evicted past retention can't be re-measured — its stale
     phase times are cleared and reported, never left silently outdated.
+
+    Refuses outright, changing nothing, when a lap's raw trace is merely
+    absent on this machine rather than evicted from it: those measurements are
+    still reproducible where the lap was imported, so destroying them here
+    would be an unrecoverable loss blamed on retention (SPEC.md A26).
     """
     from driverdna.config import load_config
     from driverdna.db import Database
-    from driverdna.pipeline import rebuild_cohort_map
+    from driverdna.pipeline import RawTracesUnavailable, rebuild_cohort_map
 
     db_path = _require_store(db_path)
     config = load_config()
-    with Database.open(db_path) as db:
-        result = rebuild_cohort_map(
-            db, driver=driver, car=car, track=track, config=config
+    try:
+        with Database.open(db_path) as db:
+            result = rebuild_cohort_map(
+                db, driver=driver, car=car, track=track, config=config,
+                allow_missing_traces=allow_missing_traces,
+            )
+    except RawTracesUnavailable as e:
+        shown = ", ".join(str(pk) for pk in e.lap_pks[:10])
+        typer.echo(
+            f"error: refusing to rebuild — {len(e.lap_pks)} lap(s) have no raw "
+            f"trace on this machine and were not evicted here.\n"
+            f"  lap_pk(s): {shown}{', ...' if len(e.lap_pks) > 10 else ''}\n"
+            "  Raw traces live on local disk beside the machine that imported\n"
+            "  the lap, so these are almost certainly intact there. Rebuilding\n"
+            "  here would clear their phase times permanently.\n"
+            "  Run rebuild-map on the machine holding those laps' blobs, or\n"
+            "  pass --allow-missing-traces to clear them deliberately.\n"
+            "  Nothing has been modified."
         )
+        raise typer.Exit(code=2) from None
     if not result.existed:
         typer.echo(f"error: no corner map for {car} @ {track} — nothing to rebuild")
         raise typer.Exit(code=2)
@@ -834,16 +899,23 @@ def rebuild_map(
             f"{c.laps_remeasured} lap(s) re-measured"
         )
         if c.laps_cleared:
-            line += f", {len(c.laps_cleared)} cleared (blob evicted): {c.laps_cleared}"
+            line += (
+                f", {len(c.laps_cleared)} cleared (no raw trace): {c.laps_cleared}"
+            )
         typer.echo(line)
     if result.admitted:
         typer.echo(f"  admitted new corners: {', '.join(result.admitted)}")
     for corner_id, old, new in result.class_changes:
         typer.echo(f"  CLASS CHANGE {corner_id}: {old} -> {new}")
     if result.total_cleared:
+        reason = (
+            "were evicted past retention"
+            if not allow_missing_traces
+            else "are not readable on this machine (--allow-missing-traces)"
+        )
         typer.echo(
             f"note: {result.total_cleared} phase-time record(s) cleared — their raw "
-            f"blobs were evicted past retention and can't be re-measured against the "
+            f"traces {reason} and can't be re-measured against the "
             f"new windows. The laps' identity, metrics, and detectors are unchanged."
         )
 

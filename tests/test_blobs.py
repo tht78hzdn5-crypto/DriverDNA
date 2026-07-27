@@ -53,6 +53,41 @@ def test_store_round_trip(make, tmp_path):
     assert store.lap_pks() == {2}
 
 
+@pytest.mark.parametrize("make", [lambda tmp: MemoryBlobStore(),
+                                  lambda tmp: FileBlobStore(tmp / "blobs")])
+def test_eviction_tombstones_round_trip(make, tmp_path):
+    """An eviction is recorded separately from the blob's absence, because
+    "deliberately gone from here" and "never arrived here" have different
+    consequences for rebuild-map (A26)."""
+    store = make(tmp_path)
+    store.put(1, b"first")
+    store.put(2, b"second")
+    assert store.evicted_lap_pks() == set()
+
+    store.delete(1)
+    assert store.evicted_lap_pks() == set()  # deleting alone claims nothing
+    store.mark_evicted(1)
+    assert store.evicted_lap_pks() == {1}
+
+    # A tombstone is not a blob, and never becomes one.
+    assert store.lap_pks() == {2}
+    assert store.get(1) is None
+    assert store.has(1) is False
+
+    store.mark_evicted(1)  # idempotent
+    assert store.evicted_lap_pks() == {1}
+
+
+def test_file_store_tombstone_does_not_collide_with_blob_names(tmp_path):
+    root = tmp_path / "blobs"
+    store = FileBlobStore(root)
+    store.put(7, b"payload")
+    store.mark_evicted(9)
+    assert sorted(p.name for p in root.iterdir()) == ["7.npz", "9.evicted"]
+    assert store.lap_pks() == {7}
+    assert store.evicted_lap_pks() == {9}
+
+
 def test_file_store_leaves_no_temp_files(tmp_path):
     """`put` writes then renames, so a reader never sees a truncated blob.
     The temp file must not survive the write."""

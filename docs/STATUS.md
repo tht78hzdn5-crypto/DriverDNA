@@ -10,6 +10,29 @@ amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
 and `docs/COACHING.md` (M7 design). Orientation + full decision log:
 `docs/PROJECT-BRIEF.md`.
 
+**Two A23 follow-on hazards closed (2026-07-26, SPEC.md A26/A27).** Both were
+found by reading the storage split's consequences, not by hitting them.
+`rebuild-map` treated "raw trace unreadable" as "evicted by retention" and
+deleted phase times on that basis — so running it from a machine that hadn't
+imported a lap destroyed measurements still intact on the machine that had,
+and misreported why. Eviction now leaves a tombstone in the blob store (not a
+DB column: eviction is per-machine, the store may be shared), and a pre-flight
+refuses before modifying anything when a trace is missing without one;
+`--allow-missing-traces` overrides. Separately, `sync` labels tracks
+`"Name (Variant)"` from the API while manual import uses the filename's bare
+name, so doing both silently splits one cohort in two and halves the evidence
+behind every baseline, trend and consistency number.
+`cohorts.find_label_drift` now reports that at the end of `import` and in
+`history` — reported, never merged, and deliberately silent on two *different*
+variants, which are distinct cohorts by the spec's own rule.
+
+| Check | Result |
+| --- | --- |
+| `rebuild-map`, trace absent without tombstone | **exit 2**, nothing modified, names the lap_pk |
+| `rebuild-map`, trace evicted via retention | proceeds, clears + reports, as A22 specified |
+| Drift created by a real two-label import | warned at import **and** in `history` |
+| Two different track variants | **not** flagged (distinct cohorts) |
+
 **Import unblocked (2026-07-26, SPEC.md A24).** Garage61 renamed its browser
 exports a second time, to `Garage 61 - <driver> - <car> - <track> - <laptime> -
 <id>.csv`; the parser accepted only the 2026-07-21 double-underscore shape, so
@@ -146,7 +169,7 @@ Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests passing | **591 of 592** (40 test files). The one failure, `test_offline.py::test_app_loads_and_operates_with_non_localhost_network_blocked`, is **pre-existing** — it fails identically on a clean tree with no local changes (Playwright times out waiting for `svg.trackmap`); untouched by A24 and not yet investigated. | `python3 -m pytest` |
+| Tests passing | **612 of 613** (41 test files). The one failure, `test_offline.py::test_app_loads_and_operates_with_non_localhost_network_blocked`, is **pre-existing** — it fails identically on a clean tree with no local changes (Playwright times out waiting for `svg.trackmap`); untouched by A24 and not yet investigated. | `python3 -m pytest` |
 | Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |

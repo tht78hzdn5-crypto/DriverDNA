@@ -1255,3 +1255,82 @@ Accepted at owner plan review; rationale recorded in the review:
   `test_hyphen_filename_shape_handles_re_download_suffix_without_space`) and
   one as the still-unconfirmed original guess, kept only because it costs
   nothing to also accept.
+
+- **A26** (2026-07-26): **`rebuild-map` refuses rather than destroying phase
+  times it cannot honestly re-measure.** A23 moved raw blobs onto local disk,
+  which created a second, materially different reason `load_lap_arrays`
+  returns `None`. `rebuild_cohort_map` did not distinguish them: any
+  unreadable trace meant `delete_phase_times`, reported as "blobs were
+  evicted past retention".
+
+  Those two causes are not equivalent. **Evicted here** means the raw trace
+  is gone for good — nothing, anywhere, can re-measure that lap, so clearing
+  its stale phase times is the honest act A22 specified. **Absent here** means
+  the lap was imported on another machine and its trace is intact there;
+  clearing is then an unrecoverable local loss of a measurement that machine
+  can still reproduce, *and* the reported reason is false. `blobs.py`'s own
+  docstring asserted every caller "degrades honestly" on a missing blob and
+  listed "the pipeline skips re-measurement" — for this caller it did not
+  skip, it deleted.
+
+  **Eviction now leaves a tombstone** (`<lap_pk>.evicted`) in the blob store,
+  written by `enforce_retention` beside the blob it removes. The tombstone
+  lives in the blob store, not the database, because eviction is a
+  *per-machine* event while the database may be shared between machines — a
+  column would say "evicted" to a machine that had simply never held the
+  blob. Rejected alternative: infer the distinction from
+  `config.retention.raw_laps_per_cohort` (is this lap within the newest N?).
+  That breaks whenever retention is lowered and later raised, and it infers a
+  fact the system can simply record.
+
+  `rebuild_cohort_map` now runs a **pre-flight before mutating anything** and
+  raises `RawTracesUnavailable` when any observed lap's trace is missing
+  without a tombstone. Refusing beats the alternatives: clearing destroys
+  recoverable data, and skipping-without-clearing would leave the cohort with
+  some phase times measured against new windows and some against retired ones
+  — the silent mixing A22 exists to prevent. `--allow-missing-traces` proceeds
+  deliberately, and the cleared-reason wording now follows which case applied.
+
+  Refines philosophy #7 (nothing silently repaired) in the direction it
+  already pointed: a destructive step must know *why* the data it is
+  destroying is missing, not merely that it is.
+
+  **Note for existing installs**: laps evicted before this amendment have no
+  tombstone, so the first `rebuild-map` after upgrading may refuse and name
+  them. That is the safe direction — a false refusal costs one flag, a false
+  "evicted" costs the measurements. Deliberately not backfilled: on a shared
+  store the backfill would have to run from some machine, and every lap absent
+  *there* would be marked evicted *everywhere*.
+
+- **A27** (2026-07-26): **cohort-label drift is detected and reported, never
+  merged.** `car`/`track` are cohort keys, and every longitudinal number —
+  baselines, the vs-self ranker, M6 trend, consistency — is computed per
+  cohort. Two labels for one real cohort therefore halve the evidence behind
+  every one of them while raising nothing.
+
+  The exposure is structural, not hypothetical. `sync` builds its track label
+  from the API's `name` + `variant` (`garage61/sync.py:_track_label` →
+  "Summit Point Raceway (Shenandoah)"); a manual import takes the export
+  filename's label, which carries no variant. Doing both — the documented
+  workflow, since `/laps` returns only one lap per cohort (A24, M0b) — splits
+  the cohort.
+
+  `cohorts.find_label_drift` flags two signatures: labels differing only by
+  case/punctuation, and labels differing by one naming a parenthesised
+  variant where the other names none. Surfaced by `driverdna history` and, more
+  usefully, at the end of `driverdna import` — the moment a divergent label is
+  actually created, when the fix still costs one re-import.
+
+  **Two different variants are deliberately not flagged**: "track variants are
+  distinct cohorts" is this spec's own rule, so `(Main)` vs `(Shenandoah)` is
+  correct behavior. A warning that fired on legitimate cohorts would train the
+  driver to ignore the one that matters, so the false-negative direction was
+  chosen over the false-positive one, and both directions are tested.
+
+  **Reported, never repaired.** Which label is right — or whether two are
+  genuinely different configurations — is not derivable from the strings, and
+  a cohort key is load-bearing for evidence IDs, so an automatic merge would
+  risk exactly the quiet corruption this project refuses. The remedy is a
+  re-import under the intended label, chosen by the driver. This is
+  "insufficient data over guessing" applied to metadata rather than
+  measurements.

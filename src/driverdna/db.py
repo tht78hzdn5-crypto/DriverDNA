@@ -26,6 +26,7 @@ import io
 import json
 import math
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -702,6 +703,22 @@ class Database:
         """Whether this lap's raw trace is readable on this machine."""
         return self.blobs.has(lap_pk) or self._legacy_blob(lap_pk) is not None
 
+    def unavailable_raw_laps(self, lap_pks: Iterable[int]) -> list[int]:
+        """Of `lap_pks`, those whose raw trace is missing *and* was never
+        evicted here — i.e. imported on another machine, still intact there.
+
+        An evicted lap is deliberately excluded: its trace is gone for good,
+        so a caller that needs raw samples cannot ever get them and should
+        proceed on that basis. One that is merely absent here is a different
+        situation entirely, and destroying measurements derived from it would
+        throw away what another machine can still reproduce (SPEC.md A26).
+        """
+        evicted = self.blobs.evicted_lap_pks()
+        return sorted(
+            int(pk) for pk in lap_pks
+            if int(pk) not in evicted and not self.has_raw(int(pk))
+        )
+
     def enforce_retention(self, keep: int) -> int:
         """Evict raw blobs beyond the newest `keep` laps per cohort.
 
@@ -736,6 +753,11 @@ class Database:
             seen[cohort] = seen.get(cohort, 0) + 1
             if seen[cohort] > keep:
                 self.blobs.delete(lap_pk)
+                # Tombstone the eviction: "gone deliberately, here" has to
+                # stay distinguishable from "never arrived here", or
+                # `rebuild-map` cannot tell a permanently unmeasurable lap
+                # from one whose blob is intact on another machine (A26).
+                self.blobs.mark_evicted(lap_pk)
                 if self._has_legacy_blobs():
                     with self.conn:
                         self.conn.execute(
