@@ -8,12 +8,10 @@ on:
 env:
   PROJECT_ID: project-8b8fd512-1fa1-4f1c-8d9
   REGION: northamerica-northeast1
+  SERVICE: driverdna
   REPO_NAME: driverdna-repo
-  API_SERVICE: driverdna-api
-  UI_SERVICE: driverdna-ui
-  
+
   WORKLOAD_IDENTITY_PROVIDER: 'projects/661663598926/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
-  
   SERVICE_ACCOUNT: 'github-actions-deployer@project-8b8fd512-1fa1-4f1c-8d9.iam.gserviceaccount.com'
 
 jobs:
@@ -21,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # Required for Workload Identity Federation
+      id-token: write
 
     steps:
       - name: Checkout Code
@@ -37,29 +35,21 @@ jobs:
       - name: Setup Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Deploy API to Cloud Run
-        id: deploy-api
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.API_SERVICE }}
-          region: ${{ env.REGION }}
-          source: .
-
       - name: Authenticate Docker to Artifact Registry
         run: |
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: Build and Push UI Image
+      - name: Build and Push Image
         run: |
-          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.UI_SERVICE }}:${{ github.sha }}"
-          docker build -f Dockerfile.ui -t $IMAGE_PATH .
-          docker push $IMAGE_PATH
-          echo "UI_IMAGE=$IMAGE_PATH" >> $GITHUB_ENV
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - name: Deploy UI to Cloud Run
-        id: deploy-ui
+      - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ${{ env.UI_SERVICE }}
+          service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
-          image: ${{ env.UI_IMAGE }}
+          image: ${{ env.IMAGE }}
+          flags: '--no-allow-unauthenticated'
