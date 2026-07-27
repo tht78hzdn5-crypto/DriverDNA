@@ -1,9 +1,9 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-26.** Branch
-`claude/import-functionality-shell-bug-e6aa14` (the A24 import fix, on top of
-the A23 storage migration from `claude/driverdna-db-solution-pbanez`; `main`
-remains the default landing branch for ordinary work).
+**Snapshot date: 2026-07-26.** Branch `main`, following the merge of the A24/
+A25 import fix (originally developed on `claude/import-functionality-shell-
+bug-e6aa14`, on top of the A23 storage migration from
+`claude/driverdna-db-solution-pbanez`).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
