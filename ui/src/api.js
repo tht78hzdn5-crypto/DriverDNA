@@ -1,11 +1,31 @@
+// A session expired or was never established. Raised as an ordinary Error so
+// existing `catch` blocks are unchanged, but carrying `status` so the shell
+// can tell "you are signed out" apart from "that request failed".
+//
+// No `credentials:` option appears anywhere in this file, deliberately: every
+// path below is relative, so every request is same-origin, and fetch already
+// sends same-origin cookies by default. The session rides in an HttpOnly
+// cookie the page cannot read — there is no token in JS to attach by hand.
+export const UNAUTHENTICATED = "unauthenticated";
+
+async function fail(response, path) {
+  const body = await response.json().catch(() => ({}));
+  const error = new Error(body.detail || `${response.status} on ${path}`);
+  error.status = response.status;
+  if (response.status === 401) {
+    error.kind = UNAUTHENTICATED;
+    // Broadcast rather than thread a callback through every view: any 401,
+    // from any call site, drops the whole shell back to the sign-in gate.
+    window.dispatchEvent(new CustomEvent("driverdna:unauthenticated"));
+  }
+  return error;
+}
+
 // Every figure the UI shows comes from these endpoints verbatim (UI-SPEC
 // decision 2): the SPA formats for layout, it never computes a measurement.
 export async function get(path) {
   const response = await fetch(path);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.detail || `${response.status} on ${path}`);
-  }
+  if (!response.ok) throw await fail(response, path);
   return response.json();
 }
 
@@ -17,10 +37,7 @@ export async function send(method, path, body) {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || `${response.status} on ${path}`);
-  }
+  if (!response.ok) throw await fail(response, path);
   return response.json();
 }
 
@@ -30,10 +47,7 @@ export async function send(method, path, body) {
 // boundary, which fetch(JSON.stringify(...)) above would break.
 export async function uploadLaps(formData) {
   const response = await fetch("/api/laps/upload", { method: "POST", body: formData });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || `${response.status} on upload`);
-  }
+  if (!response.ok) throw await fail(response, "upload");
   return response.json();
 }
 
@@ -47,10 +61,7 @@ export async function streamChat(sessionId, text, onEvent) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || `${response.status} on chat message`);
-  }
+  if (!response.ok) throw await fail(response, "chat message");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";

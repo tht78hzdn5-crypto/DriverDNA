@@ -576,6 +576,43 @@ class CoachingConfig(_Section):
     )
 
 
+class AuthConfig(_Section):
+    """Single-driver session policy (docs/DEPLOY-SPEC.md track H1).
+
+    Policy only — **the passphrase itself is never here**. `DRIVERDNA_ACCESS_TOKEN`
+    is env-only like every other secret: never persisted, never written to this
+    TOML, never logged. What lives here is how long a session lasts and how hard
+    it is to guess at, which are ordinary tunables and belong on the audited
+    ConfigStore path like every other threshold.
+    """
+
+    session_ttl_hours: int = Field(
+        default=720,
+        gt=0,
+        description="How long a login lasts before the driver signs in again. "
+        "Default 30 days: this is a personal instrument reached from a phone, "
+        "and a short TTL on a single-driver tool trains the habit of retyping "
+        "a passphrase rather than adding security. Rotating "
+        "DRIVERDNA_ACCESS_TOKEN invalidates every outstanding session "
+        "immediately, which is the revocation path.",
+    )
+    login_max_attempts: int = Field(
+        default=5,
+        gt=0,
+        description="Failed logins from one client address before further "
+        "attempts are refused for login_lockout_seconds. Stops trivial "
+        "scanning of a publicly reachable instrument; the real defence "
+        "against a determined attacker is passphrase entropy.",
+    )
+    login_lockout_seconds: int = Field(
+        default=300,
+        gt=0,
+        description="How long a locked-out client address must wait. Kept "
+        "short deliberately: a long lockout on a single-driver tool is a way "
+        "for a stranger to keep the owner out of their own cockpit.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -592,6 +629,7 @@ class DriverDNAConfig(_Section):
     incidents: IncidentConfig = Field(default_factory=IncidentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
     coaching: CoachingConfig = Field(default_factory=CoachingConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:

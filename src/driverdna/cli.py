@@ -485,6 +485,24 @@ def coach(
         typer.echo(f"wrote {out}")
 
 
+def _is_loopback(host: str) -> bool:
+    """True only for addresses that cannot be reached from another machine.
+
+    Fails closed: a name this cannot parse (a DNS hostname, a typo, an empty
+    string) is treated as exposed. Guessing the other way is exactly how an
+    unauthenticated instrument ends up on the internet, and the cost of being
+    wrong in this direction is only that the driver sets a passphrase.
+    """
+    import ipaddress
+
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 @app.command()
 def ui(
     db_path: str = typer.Option(
@@ -501,7 +519,8 @@ def ui(
     ),
     host: str = typer.Option(
         "127.0.0.1",
-        help="Bind address. Use 0.0.0.0 for hosted/container deployments.",
+        help="Bind address. Use 0.0.0.0 for hosted/container deployments — "
+             "which requires DRIVERDNA_ACCESS_TOKEN to be set.",
     ),
 ) -> None:
     """Serve the cockpit (API + built SPA)."""
@@ -517,7 +536,23 @@ def ui(
         )
         raise typer.Exit(code=2) from None
 
-    application = create_app(_store(db_path), config_path)
+    from driverdna.ui import auth
+
+    access_token = auth.access_token_from_env()
+
+    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a misconfiguration
+    # must not be able to publish an unauthenticated instrument. Checked before
+    # anything is built or bound, so refusing costs nothing and exposes nothing.
+    if not _is_loopback(host) and access_token is None:
+        typer.echo(
+            f"error: refusing to bind {host}, which is reachable from outside "
+            "this machine, with no authentication configured.\n"
+            f"Set {auth.ACCESS_TOKEN_ENV} to a long random passphrase first "
+            "(env only; never persisted or logged), or bind 127.0.0.1."
+        )
+        raise typer.Exit(code=2)
+
+    application = create_app(_store(db_path), config_path, access_token=access_token)
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
         application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
@@ -606,7 +641,15 @@ def demo(
         n = _seed_demo_db(db, fixtures, config)
     typer.echo(f"demo cockpit ready — {n} sample laps.")
 
-    application = create_app(db_path, config_path)
+    # Loopback-only, bundled sample laps — no interlock is needed here and
+    # `--host` deliberately does not exist on this command. The passphrase is
+    # still honoured when one is configured, so `demo` and `ui` never disagree
+    # about whether this machine requires a login.
+    from driverdna.ui import auth
+
+    application = create_app(
+        db_path, config_path, access_token=auth.access_token_from_env()
+    )
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
         application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")

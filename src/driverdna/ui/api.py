@@ -21,7 +21,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -30,6 +30,7 @@ from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.db import Database
 from driverdna.store import missing_reason
+from driverdna.ui import auth
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -70,6 +71,17 @@ class ChatMessageBody(BaseModel):
     text: str
 
 
+class LoginBody(BaseModel):
+    token: str
+
+
+#: Reachable without a session: the login exchange itself, and the status probe
+#: the SPA uses to decide whether to draw the login gate. The static shell is
+#: also public — it is a `StaticFiles` mount rather than a route, so the guard
+#: never sees it, which is correct: the shell is what renders the login screen.
+PUBLIC_API_PATHS = frozenset({"/api/auth/login", "/api/auth/status"})
+
+
 #: Bounds on live chat sessions. Each one pins a database connection for its
 #: lifetime, so these are what stop abandoned browser tabs from exhausting a
 #: hosted store's connection limit. Kept comfortably below any sane pool size.
@@ -82,14 +94,139 @@ def create_app(
     config_path: Path,
     *,
     chat_provider_factory: Callable[[], ChatProvider] | None = None,
+    access_token: str | None = None,
 ) -> FastAPI:
     """`chat_provider_factory` defaults to the real `ClaudeChatProvider`
     (env-only `ANTHROPIC_API_KEY`, lazy-imported so nothing else needs the
     SDK installed); tests inject a mocked provider here, same pattern as
     the CLI's `chat` command — no test ever calls a live model.
+
+    `access_token` is the single-driver passphrase (docs/DEPLOY-SPEC.md H1),
+    injected the same way rather than read from the environment here, so tests
+    never depend on process state. **None means auth is not configured and
+    every route is open** — which is the local `driverdna ui` experience on
+    loopback, and what keeps this change additive rather than a rewrite. The
+    CLI supplies it from `DRIVERDNA_ACCESS_TOKEN` and refuses to bind a
+    non-loopback address without it.
     """
-    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None)
+    # The throttle holds state, so its policy is fixed when the app is built:
+    # changing login_max_attempts/login_lockout_seconds takes effect on
+    # restart. Ordinary for a rate limiter, and stated rather than discovered.
+    # The session TTL is read per login, like every other config value here.
+    _startup = load_config(config_path)
+    throttle = auth.LoginThrottle(
+        max_attempts=_startup.auth.login_max_attempts,
+        lockout_seconds=_startup.auth.login_lockout_seconds,
+    )
+
+    def authenticated(request: Request) -> bool:
+        if access_token is None:
+            return True
+        cookie = request.cookies.get(auth.SESSION_COOKIE)
+        return bool(cookie) and auth.verify_session(cookie, access_token)
+
+    def guard(request: Request) -> None:
+        """The whole auth surface: one app-level dependency.
+
+        Attached via `FastAPI(dependencies=[...])` rather than per route, so a
+        route added later is guarded by default instead of by remembering —
+        DEPLOY-SPEC's done-criterion is a test that enumerates `app.routes`
+        precisely because the opposite is so easy to get wrong.
+
+        It raises before the endpoint's own parameters are solved, so an
+        unauthenticated request never reaches body validation or the database.
+        """
+        if request.url.path in PUBLIC_API_PATHS or authenticated(request):
+            return
+        raise HTTPException(401, detail="not authenticated")
+
+    app = FastAPI(
+        title="DriverDNA",
+        docs_url=None,
+        redoc_url=None,
+        dependencies=[Depends(guard)],
+    )
     chat_sessions: dict[str, dict[str, Any]] = {}
+
+    @app.middleware("http")
+    async def no_store(request: Request, call_next):
+        """`no-store` on every API response (DEPLOY-SPEC H1.3).
+
+        Two reasons, both real: a cached finding is a wrong number shown as a
+        current one (UI-SPEC's service-worker rule), and these responses are
+        session-bearing. Static assets are left cacheable — they are hashed by
+        Vite and carry no data.
+        """
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+    # --- auth (DEPLOY-SPEC H1) ----------------------------------------------
+
+    def _client_key(request: Request) -> str:
+        return request.client.host if request.client else "unknown"
+
+    def _is_https(request: Request) -> bool:
+        """Cloud Run terminates TLS and forwards `X-Forwarded-Proto`, and
+        uvicorn only trusts that header from `forwarded_allow_ips` (which does
+        not include a Cloud Run front end). Read it directly rather than
+        shipping an unmarked session cookie over a real HTTPS deployment."""
+        forwarded = request.headers.get("x-forwarded-proto", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip() == "https"
+        return request.url.scheme == "https"
+
+    @app.post("/api/auth/login")
+    def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
+        """Exchange the passphrase for a signed, expiring session cookie.
+
+        The passphrase is compared in constant time and never echoed — not in
+        the success body, not in the error detail, not in a log line.
+        """
+        if access_token is None:
+            raise HTTPException(
+                400,
+                detail=f"{auth.ACCESS_TOKEN_ENV} is not set, so there is no "
+                "sign-in to perform (env only; never persisted or logged).",
+            )
+        key = _client_key(request)
+        locked = throttle.locked_for(key)
+        if locked:
+            raise HTTPException(
+                429, detail=f"too many failed attempts — try again in {locked}s"
+            )
+        if not auth.check_token(body.token, access_token):
+            throttle.record_failure(key)
+            raise HTTPException(401, detail="incorrect passphrase")
+
+        throttle.reset(key)
+        ttl = load_config(config_path).auth.session_ttl_hours * 3600
+        response.set_cookie(
+            auth.SESSION_COOKIE,
+            auth.issue_session(access_token, ttl_seconds=ttl),
+            max_age=ttl,
+            httponly=True,
+            samesite="lax",
+            secure=_is_https(request),
+            path="/",
+        )
+        return {"authenticated": True}
+
+    @app.post("/api/auth/logout")
+    def logout(response: Response) -> dict[str, Any]:
+        response.delete_cookie(auth.SESSION_COOKIE, path="/")
+        return {"authenticated": False}
+
+    @app.get("/api/auth/status")
+    def auth_status(request: Request) -> dict[str, bool]:
+        """What the SPA asks before drawing anything, so it can show the login
+        gate instead of ten failed panels. Deliberately says only whether a
+        sign-in is required and whether this caller has one."""
+        return {
+            "required": access_token is not None,
+            "authenticated": authenticated(request),
+        }
 
     def make_chat_provider() -> ChatProvider:
         if chat_provider_factory is not None:
