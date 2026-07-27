@@ -270,12 +270,13 @@ Two matter for A28 specifically:
 
 - **`canViewTelemetry`** (bool) — "Can you view the telemetry data?" This is
   how `sync` decides whether a CSV fetch is worth attempting, rather than
-  discovering it as a 403. Given `seeTelemetry`'s documented Pro-plan
-  requirement and the owner's free plan, this is the field that determines
-  whether A28's unlock is real for this account. **Unverified against a live
-  call** — if a free plan reports `false` for non-PB laps, `sync` will report
-  "listed but telemetry not viewable" per cohort and import nothing for them,
-  which is the honest outcome rather than a failure.
+  discovering it as a 403. **Live-verified (A30, 2026-07-27):** on a free
+  plan, many non-PB laps do **not** carry `canViewTelemetry: false` yet
+  still 404 on CSV fetch — the API lists them but has no stored telemetry.
+  `sync` now catches both 404 and 403 on CSV fetch as skip reasons,
+  separately from this pre-flight flag. The three-layer skip chain is:
+  (1) `canViewTelemetry: false` → skip before fetch; (2) 404 on CSV →
+  telemetry not stored; (3) 403 on CSV → permission denied despite listing.
 - **`clean`** (bool) — "Is this a clean, complete lap?" Recorded in the
   existing `api_lap_metadata` quality flag. With `unclean=true`, laps where
   this is `false` now reach the pipeline by design (A19).
@@ -569,13 +570,26 @@ from scratch; none of this is used by `sync` today.
   The observation (every driver in two shared cohorts — 30 and 66 drivers —
   had exactly 1, vs 979 laps driven per `/me/statistics`) was accurate; the
   conclusion drawn from it was not.
+- ⚠️ **Free-plan telemetry availability — resolved (A30, 2026-07-27,
+  observed live):** a real `sync` with `group=none` listed ~928 laps across
+  9 cohorts. A substantial share of those laps — non-PB laps that only
+  appear with `group=none` — return **404 on `/laps/{id}/csv`** despite
+  appearing in the listing with no `canViewTelemetry: false` flag. This is
+  **distinct from the Pro-only `seeTelemetry` gate**: the field is not
+  `false` on these laps (it is absent or `true`), and the error is 404 (lap
+  not found), not 403 (forbidden). The best interpretation is that Garage61
+  simply does not store telemetry for every lap on a free plan — the listing
+  knows the lap existed, but the raw data was never persisted. `sync` now
+  catches `Garage61NotFoundError` and `Garage61ForbiddenError` on CSV fetch,
+  counts them separately (`laps_csv_not_found`, `laps_csv_forbidden`), and
+  continues importing remaining laps. This means the ~928 listing yields
+  fewer importable laps than the count suggests — the gap is surfaced in the
+  CLI summary rather than silently swallowed.
 - ⚠️ Unconfirmed, do not assume before re-checking: whether team-shared
-  consent changes the 403 outcome; exact rate-limit thresholds; and —
-  newly important — **whether a free plan can fetch CSV for non-PB laps at
-  all** (`seeTelemetry` is documented as requiring Pro; each lap carries
-  `canViewTelemetry`, which `sync` now honours per lap rather than assuming
-  either way). Resolved by A28, previously listed here: date-filter param
-  names (`after`/`age`) and the `limit` ceiling (1000).
+  consent changes the 403 outcome; exact rate-limit thresholds. Resolved by
+  A28, previously listed here: date-filter param names (`after`/`age`) and
+  the `limit` ceiling (1000). Resolved by A30: free-plan CSV availability
+  (see above).
 
 Done per M0b's criteria: this document exists and API capabilities are
 enumerated from observed behavior, including the one genuine unknown the

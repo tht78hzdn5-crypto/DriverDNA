@@ -1481,3 +1481,19 @@ Accepted at owner plan review; rationale recorded in the review:
   version (not the `v0` major, which still accepts breaking changes) and gated
   on `github.event.sender.login == github.repository_owner`, since the job
   holds `contents: write`.
+
+- **A30** (2026-07-27): **free-plan non-PB laps 404 on CSV fetch — observed
+  live, `sync` now handles gracefully.** A real `sync` with `group=none`
+  (A28) listed ~928 laps across 9 cohorts. A substantial share of non-PB
+  laps return 404 on `/laps/{id}/csv` despite appearing in the listing
+  without `canViewTelemetry: false`. This is distinct from the Pro-only
+  `seeTelemetry` gate: Garage61 does not store telemetry for every lap on a
+  free plan. `sync.py` now catches `Garage61NotFoundError` (404) and
+  `Garage61ForbiddenError` (403) on CSV fetch, records them separately in
+  `CohortSync` (`laps_csv_not_found`, `laps_csv_forbidden`), and continues
+  importing remaining laps. Auth errors (401) and server errors (500) still
+  abort immediately — the guard catches only per-lap fetch failures.
+
+  Resolves the open question flagged in A28's capabilities summary ("whether
+  a free plan can fetch CSV for non-PB laps at all"). Documented in
+  `docs/garage61-api.md`, which is updated with the live observation.

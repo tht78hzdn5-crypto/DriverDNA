@@ -47,12 +47,14 @@ def _lap(lap_id: str, *, driver_id: str = ME["id"], run: int = 0, session: int =
 
 
 class FakeTransport:
-    def __init__(self, *, statistics, cars, tracks, laps_by_track, csv_by_id=None):
+    def __init__(self, *, statistics, cars, tracks, laps_by_track,
+                 csv_by_id=None, csv_errors=None):
         self._statistics = statistics
         self._cars = cars
         self._tracks = tracks
         self._laps_by_track = laps_by_track
         self._csv_by_id = csv_by_id or {}
+        self._csv_errors = csv_errors or {}
         self.csv_calls: list[str] = []
         self.lap_params: list[dict] = []
 
@@ -73,6 +75,9 @@ class FakeTransport:
         if path.endswith("/csv"):
             lap_id = path.split("/")[2]
             self.csv_calls.append(lap_id)
+            if lap_id in self._csv_errors:
+                status = self._csv_errors[lap_id]
+                return status, json.dumps({"error": f"status {status}"}).encode()
             return 200, self._csv_by_id.get(lap_id, FIXTURE_CSV)
         raise AssertionError(f"unexpected path {path}")
 
@@ -328,3 +333,61 @@ def test_reference_laps_are_never_fetchable_via_sync(db):
     roles = {r["role"] for r in db.conn.execute("SELECT role FROM laps").fetchall()}
     assert roles == {"self"}
     assert transport.csv_calls == ["L-mine"]
+
+
+def test_sync_skips_lap_on_csv_404_and_continues(db):
+    """A30: on a free plan, non-PB laps listed by group=none may 404 on CSV
+    fetch. Sync must skip and continue, not abort the whole cohort."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 3}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [
+            _lap("L1", start="2026-06-15T10:00:00Z"),
+            _lap("L-gone", start="2026-06-15T10:01:00Z"),
+            _lap("L3", start="2026-06-15T10:02:00Z"),
+        ]},
+        csv_by_id={"L1": FIXTURE_CSV, "L3": FIXTURE_CSV_2},
+        csv_errors={"L-gone": 404},
+    )
+    client = Garage61Client(transport=transport)
+    summaries = sync_driver(db, client, driver="owner", config=DriverDNAConfig())
+    s = summaries[0]
+    assert s.laps_new == 2
+    assert s.laps_csv_not_found == 1
+    assert ("L-gone", "csv not found (404)") in s.laps_skipped
+    assert set(transport.csv_calls) == {"L1", "L-gone", "L3"}
+
+
+def test_sync_skips_lap_on_csv_403_and_continues(db):
+    """A30: a 403 on CSV fetch (permission denied despite listing) is
+    counted separately from 404 (telemetry absent)."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 2}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [
+            _lap("L-ok", start="2026-06-15T10:00:00Z"),
+            _lap("L-denied", start="2026-06-15T10:01:00Z"),
+        ]},
+        csv_errors={"L-denied": 403},
+    )
+    client = Garage61Client(transport=transport)
+    summaries = sync_driver(db, client, driver="owner", config=DriverDNAConfig())
+    s = summaries[0]
+    assert s.laps_new == 1
+    assert s.laps_csv_forbidden == 1
+    assert ("L-denied", "csv forbidden (403)") in s.laps_skipped
+
+
+def test_sync_auth_error_still_aborts(db):
+    """401 and 500 must propagate — the guard catches only 404/403."""
+    from driverdna.garage61.client import Garage61AuthError
+
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [_lap("L1")]},
+        csv_errors={"L1": 401},
+    )
+    client = Garage61Client(transport=transport)
+    with pytest.raises(Garage61AuthError):
+        sync_driver(db, client, driver="owner", config=DriverDNAConfig())

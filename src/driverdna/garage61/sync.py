@@ -29,7 +29,11 @@ from typing import Any
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
-from driverdna.garage61.client import Garage61Client
+from driverdna.garage61.client import (
+    Garage61Client,
+    Garage61ForbiddenError,
+    Garage61NotFoundError,
+)
 from driverdna.ingest.parser import FlagCode, QualityFlag, parse_lap_text
 from driverdna.pipeline import ImportResult, import_parsed_lap
 
@@ -59,6 +63,11 @@ class CohortSync:
     #: from `laps_skipped` because this is a plan/permission ceiling, not a
     #: property of the lap — see docs/garage61-api.md on `seeTelemetry`.
     laps_without_telemetry: int = 0
+    #: CSV fetch returned 404 — telemetry not stored for this lap (observed
+    #: on free-plan non-PB laps with group=none, A30).
+    laps_csv_not_found: int = 0
+    #: CSV fetch returned 403 — permission denied despite listing.
+    laps_csv_forbidden: int = 0
 
 
 def discover_cohorts(client: Garage61Client) -> list[dict[str, Any]]:
@@ -149,7 +158,16 @@ def sync_driver(
             if existing is not None:
                 continue  # already synced — never re-fetch a CSV we have
 
-            csv_bytes = client.lap_csv(lap_id)
+            try:
+                csv_bytes = client.lap_csv(lap_id)
+            except Garage61NotFoundError:
+                summary.laps_csv_not_found += 1
+                summary.laps_skipped.append((lap_id, "csv not found (404)"))
+                continue
+            except Garage61ForbiddenError:
+                summary.laps_csv_forbidden += 1
+                summary.laps_skipped.append((lap_id, "csv forbidden (403)"))
+                continue
             lap = parse_lap_text(
                 csv_bytes.decode("utf-8-sig"), source_label=source_label, lap_id=lap_id,
             )
