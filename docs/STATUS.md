@@ -1,6 +1,6 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-27.** On `main` after PR #6 (sync 404/403 guard A30, UI bug fixes), PR #7 & PR #8 & PR #9 (Cloud Run deploy pipeline WIF auth resolution, direct source build via `google-github-actions/deploy-cloudrun@v2`). The Cloud Run service `driverdna` is live at `https://driverdna-b4wjnb2baa-nn.a.run.app`.
+**Snapshot date: 2026-07-27.** On `main` after PR #6 (sync 404/403 guard A30, UI bug fixes), PR #7 & PR #8 & PR #9 (Cloud Run deploy pipeline WIF auth resolution, direct source build via `google-github-actions/deploy-cloudrun@v2`), and Phase 5 history purge (18 orphaned blob & report files removed, `*.blobs/` added to `.gitignore`). The Cloud Run service `driverdna` is live at `https://driverdna-b4wjnb2baa-nn.a.run.app`.
 Previous: branch consolidation merge, A24–A29, A23 storage migration, UI U0–U6.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
