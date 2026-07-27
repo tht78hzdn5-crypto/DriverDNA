@@ -96,6 +96,7 @@ h2 {
   font-size: 0.68rem; color: var(--dim); border: 1px solid var(--line);
   border-radius: 2px; padding: 0.12rem 0.45rem; background: var(--raised);
 }
+.chip.incident { color: var(--warn); border-color: var(--warn); }
 
 /* --- Tables ------------------------------------------------------------ */
 table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }

@@ -19,6 +19,7 @@ import pytest
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
+from driverdna.blobs import default_blob_root
 from driverdna.cli import app as cli_app
 from driverdna.db import Database
 from driverdna.garage61.client import Garage61Client
@@ -269,6 +270,11 @@ def test_rebuild_map_effects_identical_to_cli(tmp_path):
     cli_db = tmp_path / "cli.db"
     shutil.copy(source_db, api_db)
     shutil.copy(source_db, cli_db)
+    # A23 moved raw blobs from inside SQLite to <db>.blobs/ on disk
+    source_blobs = Path(default_blob_root(source_db))
+    if source_blobs.is_dir():
+        shutil.copytree(source_blobs, Path(default_blob_root(api_db)))
+        shutil.copytree(source_blobs, Path(default_blob_root(cli_db)))
 
     app = create_app(api_db, tmp_path / "api-cfg.toml")
     r = TestClient(app).post(f"/api/cohorts/{SPA_SLUG}/rebuild-map")

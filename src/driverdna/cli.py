@@ -5,6 +5,7 @@ Commands arrive with their milestones (docs/SPEC.md):
   coach (M4) - chat (M5) - history (M4) - model (M6) - coaching (M7)
 """
 
+import os
 from pathlib import Path
 
 import typer
@@ -494,9 +495,16 @@ def ui(
     config_path: Path = typer.Option(
         Path("driverdna.toml"), "--config", help="TOML config file."
     ),
-    port: int = typer.Option(8710, help="Port on 127.0.0.1."),
+    port: int = typer.Option(
+        int(os.environ.get("PORT", "8710")),
+        help="Listen port. Defaults to $PORT if set, else 8710.",
+    ),
+    host: str = typer.Option(
+        "127.0.0.1",
+        help="Bind address. Use 0.0.0.0 for hosted/container deployments.",
+    ),
 ) -> None:
-    """Serve the local cockpit (API + built SPA) on 127.0.0.1."""
+    """Serve the cockpit (API + built SPA)."""
     try:
         import uvicorn
         from fastapi.staticfiles import StaticFiles
@@ -515,8 +523,8 @@ def ui(
         application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
     else:
         typer.echo("note: no built SPA found (ui/static missing) — serving API only")
-    typer.echo(f"DriverDNA cockpit: http://127.0.0.1:{port}")
-    uvicorn.run(application, host="127.0.0.1", port=port, log_level="warning")
+    typer.echo(f"DriverDNA cockpit: http://{host}:{port}")
+    uvicorn.run(application, host=host, port=port, log_level="warning")
 
 
 def _demo_fixtures_dir() -> Path | None:

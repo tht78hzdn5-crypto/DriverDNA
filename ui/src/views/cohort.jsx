@@ -64,7 +64,8 @@ function ReferenceLaps({ refLaps }) {
           {refLaps.map((l, i) => (
             <span key={l.lap_pk}>
               {i > 0 && " · "}
-              <b>{l.driver}</b> <span className="num">{lapTime(l.duration_s)}</span>
+              {l.driver && <b>{l.driver}</b>}{" "}
+              <span className="num">{lapTime(l.duration_s)}</span>
             </span>
           ))}
         </div>
@@ -198,7 +199,11 @@ export default function Cohort({ slug }) {
 
       <div className="tiles">
         <div className="tile"><div className="v num">{c.n_laps}</div><div className="k">Laps</div></div>
-        <div className="tile"><div className="v num">{c.n_sessions}</div><div className="k">Sessions</div></div>
+        <div className="tile">
+          <div className="v num">{c.n_sessions || "—"}</div>
+          <div className="k">Sessions</div>
+          {c.n_sessions === 0 && <div className="s">manual import — no session data</div>}
+        </div>
         <div className="tile"><div className="v num">{shownCount}</div><div className="k">Findings shown</div></div>
         <div className="tile"><div className="v num">{suppressedCount}</div><div className="k">Suppressed</div>
           <div className="s">reasons stated</div></div>
@@ -266,7 +271,8 @@ export default function Cohort({ slug }) {
               </div>
               <div className="meta">
                 {e.kinds} · min <span className="num">{fmt(e.min_speed_kmh, 0)}</span> km/h ·
-                peak yaw <span className="num">{fmt(e.peak_yaw_rate)}</span> rad/s · {e.lap_id}
+                peak yaw <span className="num">{fmt(e.peak_yaw_rate)}</span> rad/s ·{" "}
+                <span className="dim" title={e.lap_id}>{e.lap_id.slice(0, 6)}…</span>
               </div>
               <div className="reason">{e.rationale}</div>
             </div>
@@ -300,13 +306,18 @@ export default function Cohort({ slug }) {
         <div className="scroll-x">
           <table>
             <tbody>
-              {c.lap_durations_s.map((duration, i) => (
-                <tr key={i}>
-                  <td className="dim num">{i + 1}</td>
-                  <td className={`num ${c.lap_delta_s[i] === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</td>
-                  <td className="dim num right">{c.lap_delta_s[i] === 0 ? "best" : `+${fmt(c.lap_delta_s[i])}`}</td>
-                </tr>
-              ))}
+              {c.lap_durations_s.map((duration, i) => {
+                const hasIncident = p.incidents && c.lap_ids &&
+                  p.incidents.events.some((e) => e.lap_id === c.lap_ids[i]);
+                return (
+                  <tr key={i}>
+                    <td className="dim num">{i + 1}</td>
+                    <td className={`num ${c.lap_delta_s[i] === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</td>
+                    <td className="dim num right">{c.lap_delta_s[i] === 0 ? "best" : `+${fmt(c.lap_delta_s[i])}`}</td>
+                    {hasIncident && <td><span className="chip incident">incident</span></td>}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
