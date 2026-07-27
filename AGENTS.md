@@ -35,9 +35,10 @@ convenience.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
 - Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
-  quality-flagged with counts.
+  quality-flagged with counts. Network/API errors (e.g., 404 vs 403) must be categorized and surfaced, never swallowed.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
+- Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
 <!-- /shared:non-negotiables -->
 
 ## Decision discipline (standing rule)
@@ -144,7 +145,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 3. `git log --oneline -20` — see what the previous agent did.
 4. Skim `docs/STATUS.md` "Verified counts" and `CLAUDE.md` "Current status".
 5. Run `python3 -m pytest` **before changing anything**, to establish a
-   baseline. A suite that was already red is not yours to be surprised by later.
+   baseline. Read the output; never blindly report it green. A suite that was already red is not yours to be surprised by later.
 
 ### End of session
 
@@ -203,3 +204,5 @@ forbidden files. Which is exactly why the guardrails themselves are off-limits:
   edit in the repo. Its whole job is to make "AI never produces a number"
   mechanical rather than requested. Loosening it to make a test pass defeats
   the point of the project.
+- **Investigate bug reports.** Cross-reference UI reports against `docs/SPEC.md` and engine payloads. Do not implement "fixes" that contradict engine rules (e.g., filtering outliers).
+- **Propose major changes.** Architectural changes (e.g., collapsing services) or destructive operations (history rewrites) require explicit owner approval before execution.
