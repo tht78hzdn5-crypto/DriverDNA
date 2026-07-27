@@ -9,7 +9,6 @@ env:
   PROJECT_ID: project-8b8fd512-1fa1-4f1c-8d9
   REGION: northamerica-northeast1
   SERVICE: driverdna
-  REPO_NAME: driverdna-repo
 
   WORKLOAD_IDENTITY_PROVIDER: 'projects/661663598926/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider'
   SERVICE_ACCOUNT: 'github-actions-deployer@project-8b8fd512-1fa1-4f1c-8d9.iam.gserviceaccount.com'
@@ -32,24 +31,10 @@ jobs:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.SERVICE_ACCOUNT }}
 
-      - name: Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Authenticate Docker to Artifact Registry
-        run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-
-      - name: Build and Push Image
-        run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
-
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
-          image: ${{ env.IMAGE }}
+          source: .
           flags: '--no-allow-unauthenticated'
