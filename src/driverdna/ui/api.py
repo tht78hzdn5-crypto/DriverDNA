@@ -158,8 +158,21 @@ def create_app(
         docs_url=None,
         redoc_url=None,
         dependencies=[Depends(guard)],
+        # FastAPI registers its schema with `add_route`, not `add_api_route`,
+        # so app-level dependencies never see it — it answered 200 on a live
+        # server with a passphrase set, publishing every endpoint and request
+        # model to anyone who asked. Disabled here and re-declared below as an
+        # ordinary route, which the guard does see.
+        openapi_url=None,
     )
     chat_sessions: dict[str, dict[str, Any]] = {}
+
+    @app.get("/openapi.json", include_in_schema=False)
+    def openapi_schema() -> dict[str, Any]:
+        """The schema, for the signed-in driver only. Kept rather than removed
+        because with no passphrase configured this stays available exactly as
+        before, so local tooling and readiness probes are unaffected."""
+        return app.openapi()
 
     @app.middleware("http")
     async def no_store(request: Request, call_next):

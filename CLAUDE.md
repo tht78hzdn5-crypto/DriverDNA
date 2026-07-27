@@ -381,7 +381,7 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   rejected on cost/benefit, recorded rather than left implied. No third-party
   origin at either level, so **no trust gate was amended**. Auth is off when no
   passphrase is configured — the local instrument is unchanged and every
-  pre-existing test passed unmodified. 723 passed / 0 failed (from 644/1: the
+  pre-existing test passed unmodified. 725 passed / 0 failed (from 644/1: the
   `AGENTS.md` size-budget failure on `main` was pre-existing and is fixed).
   ⚠️ `Dockerfile` binds `0.0.0.0`, so **Cloud Run needs the secret set before
   this merges** or the service will not start; exposure itself is unchanged.

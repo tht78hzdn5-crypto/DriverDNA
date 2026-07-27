@@ -355,6 +355,18 @@ with zero application-level auth, protected only by Cloud Run's
    is what Starlette's multipart parser actually read, so the body has been
    received (spooled to disk) by the time it can be measured. What the cap
    bounds is what gets parsed and imported.
+8. **`/openapi.json` had to be re-declared to be guarded at all** — and this
+   one was a real hole, found by curling a live server rather than by the
+   tests. FastAPI registers its schema with `add_route`, not
+   `add_api_route`, so app-level dependencies never see it: with a
+   passphrase set it still answered **200**, publishing every endpoint and
+   request model. The `/api/`-prefixed route enumeration in the
+   done-criterion did not look at it either, which is the more useful
+   lesson — *a guard proven only against the paths you thought to list is
+   not proven.* Fixed by `openapi_url=None` plus an ordinary `@app.get`
+   route the guard does see; the enumeration test now walks **every** route
+   the app declares, not just the `/api/` ones. With no passphrase
+   configured the schema stays available exactly as before.
 
 **An identity provider was considered and rejected on evidence.** Auth0,
 Clerk, Firebase and Supabase Auth are all free at this scale, and all are

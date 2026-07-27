@@ -313,6 +313,18 @@ in `AGENTS.md`). Newest first.
   done-criterion is a test that enumerates `app.routes`, which exists
   precisely because the opposite is so easy to get wrong.
 
+  *One hole the tests missed, worth its own paragraph.* With everything green
+  including a route-enumeration test taken verbatim from DEPLOY-SPEC's
+  done-criteria, curling the live server showed `/openapi.json` answering
+  **200 with a passphrase set** — the whole endpoint surface and every request
+  model, readable by anyone. FastAPI registers its schema with `add_route`
+  rather than `add_api_route`, so app-level dependencies never see it, and
+  the enumeration test filtered on paths starting with `/api/`, so it never
+  looked. The fix is small; the lesson is not, and it is the reason the test
+  now walks every route the app declares: **a guard proven only against the
+  paths you thought to list is not proven, and a green suite is not a
+  substitute for asking the running thing.**
+
   *Found along the way, recorded rather than quietly fixed:* the `--host`
   flag had shipped for the container without its fail-closed interlock, so
   `Dockerfile`'s `--host 0.0.0.0` had nothing stopping it publishing an

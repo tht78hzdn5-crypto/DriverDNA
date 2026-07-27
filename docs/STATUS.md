@@ -23,7 +23,7 @@ local instrument is unchanged and every pre-existing test passed unmodified.
 > push to `main`. Cloud Run exposure (`--no-allow-unauthenticated`) is
 > deliberately **not** changed by this work.
 
-**Tests: 723 passed, 0 failed, 13 skipped** (all skips Postgres-only; both
+**Tests: 725 passed, 0 failed, 13 skipped** (all skips Postgres-only; both
 browser trust gates ran and passed, Chromium being present in that
 environment). Baseline before this work was 644 passed / **1 failed** — a
 pre-existing `AGENTS.md` size-budget failure on `main`, fixed here by moving

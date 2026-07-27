@@ -89,6 +89,44 @@ def test_every_api_route_refuses_an_unauthenticated_request(guarded):
     )
 
 
+def test_no_route_outside_api_is_left_open_either(guarded):
+    """Broader than DEPLOY-SPEC's criterion, because the narrow version missed
+    a real one. `/openapi.json` is registered by FastAPI with `add_route`, not
+    `add_api_route`, so app-level dependencies never see it — and a
+    `/api/`-prefixed enumeration never looks at it. It answered 200 on a live
+    server with a passphrase set, publishing the whole endpoint surface,
+    request models and all.
+
+    So: enumerate *every* route the app declares and require each to be either
+    guarded or deliberately public. The static SPA shell is mounted after
+    `create_app` (in `cli.py`) and is intentionally public — it is what renders
+    the sign-in screen — so it is not in this app object at all.
+    """
+    import re
+
+    open_routes = []
+    for route in guarded.app.routes:
+        path = getattr(route, "path", "")
+        if path in PUBLIC_API_PATHS:
+            continue
+        for method in sorted(getattr(route, "methods", set()) - {"HEAD", "OPTIONS"}):
+            concrete = re.sub(r"\{[^}]+\}", "1", path)
+            if guarded.request(method, concrete).status_code != 401:
+                open_routes.append(f"{method} {path}")
+    assert not open_routes, (
+        "reachable without a session: " + ", ".join(open_routes)
+    )
+
+
+def test_the_api_schema_is_not_public(guarded, unguarded):
+    """Called out on its own because it is the one that got away, and a
+    regression here would be silent."""
+    assert guarded.get("/openapi.json").status_code == 401
+    # With no passphrase configured it stays available, so nothing that
+    # relies on it locally (readiness probes, tooling) changes.
+    assert unguarded.get("/openapi.json").status_code == 200
+
+
 def test_the_guard_runs_before_body_validation(guarded):
     """A 422 instead of a 401 would mean the request body was parsed before
     the caller was authenticated — attacker-controlled input reaching the
