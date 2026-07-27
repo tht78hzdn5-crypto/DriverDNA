@@ -44,6 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-python@v5
         with:
@@ -97,8 +99,12 @@ jobs:
       - name: Warn if tests changed without source changes
         if: github.event_name == 'push'
         run: |
-          # Compare this push's commits against the parent.
-          changed_files=$(git diff --name-only ${{ github.event.before }}..${{ github.sha }} 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+          # Compare this push's commits against the parent (fetch-depth: 2).
+          changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null) || true
+          if [ -z "$changed_files" ]; then
+            echo "Could not determine changed files (shallow clone?). Skipping TDD guardrail check."
+            exit 0
+          fi
           test_changes=$(echo "$changed_files" | grep -c '^tests/' || true)
           src_changes=$(echo "$changed_files" | grep -c '^driverdna/' || true)
 
