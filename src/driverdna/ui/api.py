@@ -118,6 +118,7 @@ def create_app(
         max_attempts=_startup.auth.login_max_attempts,
         lockout_seconds=_startup.auth.login_lockout_seconds,
     )
+    chat_limiter = auth.RateLimiter(limit=_startup.api.chat_requests_per_minute)
 
     def authenticated(request: Request) -> bool:
         if access_token is None:
@@ -137,8 +138,20 @@ def create_app(
         unauthenticated request never reaches body validation or the database.
         """
         if request.url.path in PUBLIC_API_PATHS or authenticated(request):
+            _rate_limit(request)
             return
         raise HTTPException(401, detail="not authenticated")
+
+    def _rate_limit(request: Request) -> None:
+        """Only `/api/chat/*` — the one family of endpoints that reaches a
+        metered third-party model (DEPLOY-SPEC H1.3). Reading your own
+        findings is never throttled."""
+        if not request.url.path.startswith("/api/chat/"):
+            return
+        if not chat_limiter.allow(_client_key(request)):
+            raise HTTPException(
+                429, detail="chat rate limit reached — wait a moment and retry"
+            )
 
     app = FastAPI(
         title="DriverDNA",
@@ -418,6 +431,40 @@ def create_app(
             raise HTTPException(422, detail="role must be self or reference")
         if date is not None:
             date = _parse_lap_date(date)
+
+        # Hardening (DEPLOY-SPEC H1.3). Both checks run over the whole batch
+        # before the database is opened, listing every offending file — the
+        # same "never partially import" promise the car/track check below
+        # already makes. Refusing half a batch is worse than refusing it all.
+        api_limits = load_config(config_path).api
+        refused = [
+            u.filename or "(unnamed file)"
+            for u in files
+            if not (u.filename or "").lower().endswith(".csv")
+        ]
+        if refused:
+            raise HTTPException(
+                422,
+                detail="only Garage61 CSV exports are accepted — refused: "
+                + ", ".join(refused),
+            )
+        cap = api_limits.max_upload_mb * 1024 * 1024
+        # `UploadFile.size` is the count Starlette's multipart parser actually
+        # read, not a Content-Length the client asserted. Honest limitation:
+        # the body has necessarily been received by the time it can be
+        # measured — Starlette spools it to disk, so what this bounds is what
+        # gets parsed and imported, not what crosses the wire.
+        oversized = [
+            f"{u.filename or '(unnamed file)'} ({(u.size or 0) / 1048576:.1f}MB)"
+            for u in files
+            if (u.size or 0) > cap
+        ]
+        if oversized:
+            raise HTTPException(
+                413,
+                detail=f"over the {api_limits.max_upload_mb}MB per-file limit: "
+                + ", ".join(oversized),
+            )
 
         from driverdna.ingest.parser import parse_garage61_filename
         from driverdna.pipeline import import_lap_file

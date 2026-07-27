@@ -184,3 +184,44 @@ class LoginThrottle:
         while len(self._failures) > MAX_THROTTLE_KEYS:
             oldest = min(self._failures, key=lambda k: self._failures[k][1])
             del self._failures[oldest]
+
+
+class RateLimiter:
+    """Fixed-window request limiter for the endpoints that cost money.
+
+    Lives beside `LoginThrottle` because it carries exactly the same honest
+    limits — in-process, therefore per-instance — and keeping them together
+    means that caveat is stated once instead of rediscovered twice.
+
+    Fixed window rather than a token bucket on purpose: the job is to bound a
+    runaway loop against a metered third-party model, not to shape traffic,
+    and a window the driver can reason about ("20 a minute") beats a smoother
+    curve nobody can predict.
+    """
+
+    def __init__(self, *, limit: int, window_seconds: int = 60) -> None:
+        self.limit = limit
+        self.window_seconds = window_seconds
+        # key -> (window start, count within that window)
+        self._windows: dict[str, tuple[float, int]] = {}
+
+    def allow(self, key: str, *, now: float | None = None) -> bool:
+        moment = _now() if now is None else now
+        start, count = self._windows.get(key, (moment, 0))
+        if moment - start >= self.window_seconds:
+            start, count = moment, 0
+        if count >= self.limit:
+            return False
+        self._windows[key] = (start, count + 1)
+        self._evict(moment)
+        return True
+
+    def _evict(self, now: float) -> None:
+        if len(self._windows) <= MAX_THROTTLE_KEYS:
+            return
+        for key, (start, _) in list(self._windows.items()):
+            if now - start >= self.window_seconds:
+                del self._windows[key]
+        while len(self._windows) > MAX_THROTTLE_KEYS:
+            oldest = min(self._windows, key=lambda k: self._windows[k][0])
+            del self._windows[oldest]

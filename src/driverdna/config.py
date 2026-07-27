@@ -613,6 +613,33 @@ class AuthConfig(_Section):
     )
 
 
+class ApiConfig(_Section):
+    """Limits on the served API (docs/DEPLOY-SPEC.md track H1, item 3).
+
+    Serving-layer bounds rather than auth policy, which is why they are their
+    own section: they apply whether or not a passphrase is configured, because
+    an unbounded upload is a bad idea on loopback too.
+    """
+
+    max_upload_mb: int = Field(
+        default=25,
+        gt=0,
+        description="Largest single lap CSV accepted by /api/laps/upload. The "
+        "committed fixture laps are ~1.8MB each, so 25 leaves roughly an "
+        "order of magnitude for a long track at a high sample rate while "
+        "still bounding what one request can spend.",
+    )
+    chat_requests_per_minute: int = Field(
+        default=20,
+        gt=0,
+        description="Requests per minute per client address to /api/chat/*. "
+        "Chat and coach are the only paths that reach a third-party model, so "
+        "they are the only ones that cost money and quota. Set above a real "
+        "conversation's pace — one chat turn can issue several tool steps — "
+        "so this bounds runaway loops, not the driver.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -630,6 +657,7 @@ class DriverDNAConfig(_Section):
     model: ModelConfig = Field(default_factory=ModelConfig)
     coaching: CoachingConfig = Field(default_factory=CoachingConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
+    api: ApiConfig = Field(default_factory=ApiConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:
