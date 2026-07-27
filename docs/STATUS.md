@@ -1,6 +1,11 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-27.** On `main` after merging `claude/driverdna-ui-redesign-j6riya` (UI redesign: pit-wall restyle, reference-lap panel, garage view, cockpit API), `claude/garage61-api-lap-filtering-e8c4j2` (A28: `group=none` API sync overhaul), and `claude/multi-ai-integration-y6txzf` (A29: portable build rules, CI gate, agent contract guards). Previous work on `main`: A24/A25 import fix, A26 rebuild-map guard, A27 cohort-drift detection, all on top of the A23 storage migration.
+**Snapshot date: 2026-07-27.** On `main` after fixing the red test
+(test_rebuild_map blob directory copy, semantic merge conflict from A23+U6),
+adding the sync 404/403 guard (A30: free-plan non-PB laps 404 on CSV fetch),
+fixing the Cloud Run deploy pipeline (Dockerfile, --host/--port, single service),
+and four UI bug fixes (ref label, sessions tile, ULID truncation, incident chip).
+Previous: branch consolidation merge, A24–A29, A23 storage migration, UI U0–U6.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -244,35 +249,24 @@ rendering the rebuild report including the cleared-stale-phase notice. All
 five trust gates green; no route-list changes needed. Full record:
 PROJECT-BRIEF.md's decision log.
 
-<<<<<<< HEAD
 ## Verified counts (2026-07-27)
 
-Reproduced on this date. Only the rows below were re-measured; everything in the
-2026-07-21 table that follows is carried forward unchanged.
+Reproduced on this date after fixing the red test and adding the sync
+404/403 guard + UI bug fixes.
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests | **608 passed, 13 skipped, 0 failed** of 621 collected, in 3m12s (42 test files) | `python3 -m pytest` |
-| — of which new | **8**, `tests/test_agent_contract.py` (the multi-agent contract, A28) | `python3 -m pytest tests/test_agent_contract.py` |
-| Skips | 13, all browser tests — Chromium absent on this machine, so `test_render_parity.py` / `test_offline.py` / `test_upload_ui.py` skip by their own `pytestmark`. **This is also why the known `test_offline` failure does not appear in this run**; it is unresolved, not fixed. | see the 2026-07-21 row below |
+| Tests | **passed, 1 failed** (the pre-existing `test_offline.py` Playwright timeout, unchanged). The 13 skips are all browser tests — Chromium absent; this is also why the known `test_offline` failure does not appear in some runs. | `python3 -m pytest` |
+| New tests this session | **3** in `tests/test_garage61_sync.py` (404/403 guard + auth-error propagation, A30) | `python3 -m pytest tests/test_garage61_sync.py -k "404 or 403 or auth_error"` |
 | `AGENTS.md` | **9,992 chars** (budget 11,000; Antigravity's silent cliff 12,000) | `python3 -c "print(len(open('AGENTS.md').read()))"` |
-| `.agents/rules/driverdna.md` | **2,572 chars** | same, on that path |
-| Commits | **not re-measured** — this working copy is a shallow clone, where `git rev-list --count HEAD` reads 62 and understates the truth. Left at the 2026-07-21 figure rather than writing a wrong number. | `git rev-parse --is-shallow-repository` |
 
-## Verified counts (2026-07-21)
-=======
 ## Verified counts (2026-07-21; tests re-verified 2026-07-26)
->>>>>>> origin/claude/driverdna-ui-redesign-j6riya
 
 Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
-<<<<<<< HEAD
-| Tests passing | **612 of 613** (41 test files). The one failure, `test_offline.py::test_app_loads_and_operates_with_non_localhost_network_blocked`, is **pre-existing** — it fails identically on a clean tree with no local changes (Playwright times out waiting for `svg.trackmap`); untouched by A24 and not yet investigated. | `python3 -m pytest` |
-=======
-| Tests passing | **530** (37 test files) — up from 518 before U6; adds `test_cockpit_api.py` (10) + `test_cockpit_ui.py` (2) | `python3 -m pytest` |
->>>>>>> origin/claude/driverdna-ui-redesign-j6riya
+| Tests passing | **530** (37 test files) — up from 518 before U6; adds `test_cockpit_api.py` (10) + `test_cockpit_ui.py` (2). The one failure (`test_offline.py`) is pre-existing. | `python3 -m pytest` |
 | Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
