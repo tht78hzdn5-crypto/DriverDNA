@@ -72,12 +72,16 @@ def test_import_fixtures_and_render_metrics(tmp_path):
         assert build_metrics_report(db) == build_metrics_report(db)
 
 
-def test_import_without_manifest_requires_metadata(tmp_path):
+def test_import_of_an_empty_directory_is_a_loud_error(tmp_path):
+    """An empty directory imports nothing, so it exits 2 rather than
+    reporting a silent success. It now says so directly — it used to be
+    conflated with the missing --car/--track message, which was never the
+    actual problem here."""
     empty = tmp_path / "csvs"
     empty.mkdir()
     result = CliRunner().invoke(app, ["import", str(empty)])
     assert result.exit_code == 2
-    assert "--car and --track" in result.output
+    assert "no .csv files" in result.output
 
 
 def _as_new_filename_format(dest_dir, src, *, car="Ford_Mustang_GT4",
@@ -120,6 +124,88 @@ def test_import_mixed_unresolvable_filenames_rejects_nothing_imported(tmp_path):
     assert result.exit_code == 2
     assert "Garage_61_OLDFMT.csv" in result.output
     assert not db_path.exists()
+
+
+def _as_hyphen_filename_format(dest_dir, src, *, car="Ford Mustang GT4",
+                               track="Summit Point Raceway",
+                               lap_id="01KY31T54KGGQ351PDAGJDTZJM"):
+    """Same trick as `_as_new_filename_format`, for the second newer export
+    shape (" - " delimited, literal spaces inside fields) observed 2026-07-26."""
+    dest = dest_dir / (
+        f"Garage 61 - Benjamin Richards - {car} - {track} - 01.27.017 - {lap_id}.csv"
+    )
+    dest.write_bytes(src.read_bytes())
+    return dest
+
+
+def test_import_auto_detects_car_track_from_hyphen_filename_shape(tmp_path):
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    _as_hyphen_filename_format(src_dir, FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    db_path = tmp_path / "hyphen.db"
+
+    result = CliRunner().invoke(app, ["import", str(src_dir), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    assert "auto-detected from filename: Ford Mustang GT4 @ Summit Point Raceway" in result.output
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track, lap_id FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("Ford Mustang GT4", "Summit Point Raceway")
+        assert row["lap_id"] == "01KY31T54KGGQ351PDAGJDTZJM"
+
+
+def test_import_with_only_car_applies_it_and_auto_detects_track(tmp_path):
+    """One flag on its own is a working manual override — the escape hatch for
+    when a future filename rename breaks auto-detect for that field."""
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    _as_hyphen_filename_format(src_dir, FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    db_path = tmp_path / "partial.db"
+
+    result = CliRunner().invoke(
+        app, ["import", str(src_dir), "--db", str(db_path), "--car", "GR86"]
+    )
+    assert result.exit_code == 0, result.output
+    # The note names only what actually came from the filename — a value the
+    # driver typed is never reported back to them as "auto-detected".
+    assert "track auto-detected from filename: Summit Point Raceway" in result.output
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("GR86", "Summit Point Raceway")
+
+
+def test_import_with_only_car_and_undetectable_filename_names_the_missing_field(tmp_path):
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    (src_dir / "Garage_61_OLDFMT.csv").write_bytes(
+        (FIXTURES_DIR / "Garage_61_HKWPXX.csv").read_bytes()
+    )
+    db_path = tmp_path / "missing.db"
+
+    result = CliRunner().invoke(
+        app, ["import", str(src_dir), "--db", str(db_path), "--car", "GR86"]
+    )
+    assert result.exit_code == 2
+    assert "missing track" in result.output
+    assert not db_path.exists()
+
+
+def test_import_of_a_re_downloaded_copy_is_reported_duplicate_not_double_counted(tmp_path):
+    """A browser re-download's " (1)" suffix still auto-detects, and the copy
+    lands as a content-hash duplicate rather than a second lap."""
+    src_dir = tmp_path / "csvs"
+    src_dir.mkdir()
+    original = _as_hyphen_filename_format(src_dir, FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    (src_dir / original.name.replace(".csv", " (1).csv")).write_bytes(original.read_bytes())
+    db_path = tmp_path / "redownload.db"
+
+    result = CliRunner().invoke(app, ["import", str(src_dir), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    assert "DUPLICATE" in result.output
+    with Database.open(db_path) as db:
+        assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
+        assert db.conn.execute(
+            "SELECT lap_id FROM laps"
+        ).fetchone()["lap_id"] == "01KY31T54KGGQ351PDAGJDTZJM"
 
 
 def test_metrics_without_db_fails_loudly(tmp_path):

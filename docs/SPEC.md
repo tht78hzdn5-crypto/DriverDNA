@@ -1154,3 +1154,104 @@ Accepted at owner plan review; rationale recorded in the review:
   sorting after every integer, and rejected outright by a typed store.
   `store-copy` repairs those rows and *reports* the count; a silent repair
   would itself violate the "nothing silently repaired" rule.
+
+- **A24** (2026-07-26, driver-reported bug): **a second newer Garage61 export
+  filename shape, and an independently-optional `--car`/`--track`.**
+
+  Import failed on both surfaces for a lap the owner downloaded from the
+  browser:
+  `Garage 61 - Benjamin Richards - Ford Mustang GT4 - Summit Point Raceway - 01.27.017 - 01KY31T54KGGQ351PDAGJDTZJM.csv`.
+  `parse_garage61_filename` accepted only the 2026-07-21 double-underscore
+  shape, so auto-detect returned `None` and `#/upload` raised its 422 before
+  the store was opened. Diagnosed first, not guessed: this was initially
+  suspected to be fallout from A23's Postgres/blob move, and it was not —
+  the rejection happens in a filename-only loop, which an existing test
+  already pins (`not db_path.exists()` after rejection).
+
+  **One splitter, parameterized per shape — not one regex per shape.** This is
+  the load-bearing choice. `car`/`track` are *cohort keys*, so the same lap
+  spelled either way must produce byte-identical strings or the driver's laps
+  silently split into two cohorts and every trend, baseline and consistency
+  statistic quietly reads from half the evidence. Per-shape lazy regexes
+  absorb a surplus delimiter at a different group per shape, which is exactly
+  how that divergence would arise; an explicit five-field split has no
+  backtracking to diverge. Parity is a test, not a claim
+  (`test_both_filename_shapes_give_byte_identical_car_track`, and end-to-end
+  in `test_both_filename_shapes_land_in_one_cohort`).
+
+  **A delimiter inside a field is refused, not split on a guess — this
+  reaffirms non-negotiable #3 ("insufficient data" over guessing).** With a
+  surplus delimiter, car-vs-track is genuinely ambiguous: `Ben - GR86 - Spa -
+  Francorchamps` could be car `GR86` / track `Spa - Francorchamps` or car
+  `GR86 - Spa` / track `Francorchamps`. Two resolutions were considered and
+  rejected — extras-to-track (mirrors the old lazy-regex behavior; a driver
+  display name containing ` - ` then yields a wrong cohort with no error) and
+  extras-to-driver (a config-suffixed track like `Watkins Glen - Boot` yields
+  a wrong cohort with no error). Both put a *wrong value* in the cohort key,
+  where it is invisible. Refusal is loud, itemized, and the driver types the
+  field instead. Note this also drops one pre-existing behavior: a
+  6+-field underscore name used to parse with a garbage `track`; it now
+  refuses. That was never a real Garage61 output.
+
+  A browser re-download's ` (1)` suffix is stripped before splitting, so it
+  can never enter `lap_id`; the copy then lands as a content-hash duplicate
+  at import, which is the honest report — it is the same telemetry under a
+  new name. Safari's `-1` form is deliberately not handled: it was not
+  observed, and inventing it would guess past the evidence.
+
+  **`--car`/`--track` (and the `#/upload` boxes) become independently
+  optional.** Previously `explicit = bool(car and track)` meant a
+  single supplied field was silently discarded and the driver was then told
+  "car/track not given" while looking at the car they had just typed — so the
+  documented manual escape hatch did not actually exist. Now a given field
+  applies to every file and a blank one keeps auto-detecting per file, which
+  is what makes the hatch real: when Garage61 renames its exports again,
+  filling only the box the filename no longer states is enough to keep
+  importing. Unresolvable files remain a loud, itemized, nothing-imported
+  rejection, now naming *which* field each file is missing. The CLI's
+  per-file note reports only what actually came from the filename, so a value
+  the driver typed is never echoed back to them as "auto-detected".
+
+  All of this is additive to the locked M0a contract: only filename-derived
+  `car`/`track`/`lap_id` widen; no channel, metric, score or artifact changes,
+  and the committed fixture reports are byte-identical.
+
+  **Flagged, not fixed here (owner-directed, separate work): blob roots can
+  collide between two hosted projects.** `default_blob_root`
+  (`blobs.py:131-150`) keys a URL's blob directory on the DSN's last path
+  segment, which for *every* Supabase project is literally `postgres`. Two
+  projects therefore share `~/.driverdna/blobs/postgres/`, and since `lap_pk`
+  restarts per database, lap 1 of one would overwrite and then be served for
+  lap 1 of the other — silently returning the wrong telemetry rather than
+  erroring. This contradicts `blobs.py`'s own "per-database by construction"
+  claim. Harmless with a single project; the workaround today is to set
+  `DRIVERDNA_BLOB_ROOT` per project. A real fix keys the root on a hash of
+  the full DSN and migrates existing blobs.
+
+- **A25** (2026-07-26, owner-reported): **A24's re-download suffix handling
+  was itself an unverified guess, and the guess was wrong.** A24 recorded
+  "a browser re-download's ` (1)` suffix is stripped before splitting" as if
+  observed; it was not — no re-download had actually happened yet, only a
+  space-separated form was assumed by analogy to common desktop conventions.
+  The owner's own next re-download, on their own Windows machine, produced
+  `...PDABVEREMJ(1).csv` — **no space** before the parenthesis — and
+  `parse_garage61_filename` returned `None` for it, reproducing the exact
+  "could not resolve car/track" rejection A24 was supposed to have closed.
+
+  `_RE_DOWNLOAD_SUFFIX_RE` widened from `r" \(\d+\)$"` to `r" ?\(\d+\)$"` —
+  the leading space is now optional, so both spellings strip cleanly before
+  the five-field split. Nothing else about A24's design changes: the suffix
+  is still stripped before splitting (never enters `lap_id`), and a
+  re-downloaded copy still lands as a content-hash duplicate at import.
+
+  The corrected instinct A24 already stated, misapplied to itself: "store,
+  don't depend on the shape persisting... inventing it would be guessing
+  past the evidence." A24's own re-download handling was exactly that kind
+  of invention, just not caught before it shipped, because no test used real
+  observed evidence for that one line — every suffix test at the time used
+  the same assumed, unconfirmed spelling. Both spellings are now tested
+  explicitly, one labeled as the real observed case
+  (`test_new_filename_format_handles_re_download_suffix_without_space`,
+  `test_hyphen_filename_shape_handles_re_download_suffix_without_space`) and
+  one as the still-unconfirmed original guess, kept only because it costs
+  nothing to also accept.

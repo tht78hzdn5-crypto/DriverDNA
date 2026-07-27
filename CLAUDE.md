@@ -255,6 +255,32 @@ from the real fixtures and reviewed.
   both. One flagged, unverified observation in `docs/garage61-api.md`: the
   new filename's trailing ID structurally matches the API's own ULID shape,
   unlike the old short code — untested against a live call.
+- **Second export filename shape + working one-field override (2026-07-26,
+  SPEC.md A24)** — Garage61 renamed its browser downloads again, to
+  `Garage 61 - <driver> - <car> - <track> - <laptime> - <id>.csv` (` - `
+  delimited, literal spaces in fields). That broke import on both surfaces:
+  auto-detect returned nothing, so `#/upload` 422'd before the DB was
+  touched. Both newer shapes now go through **one splitter** parameterized by
+  prefix/delimiter/underscore-decoding — chosen because car/track are cohort
+  keys and per-shape regexes absorb a surplus delimiter at different points,
+  which is exactly how one cohort would silently become two (tested
+  directly). A delimiter *inside* a field is refused, not guessed
+  (philosophy: insufficient data over guessing); a re-download's ` (1)` is
+  stripped before splitting so it never enters `lap_id`. Separately,
+  `--car`/`--track` (and the `#/upload` boxes) are now **independently**
+  optional: a given field applies to every file, a blank one keeps
+  auto-detecting, so a future rename never strands the driver. Errors name
+  the missing field per file. Verified end-to-end on the owner's real
+  filename, CLI and browser.
+- **Re-download suffix, corrected against real evidence (2026-07-26, SPEC.md
+  A25)** — A24 stripped a browser re-download's `(1)` suffix assuming a
+  leading space (`" (1)"`), never actually observed. The owner's own next
+  re-download on Windows produced `...(1).csv` with **no space**, and the
+  parser rejected it — the same "could not resolve car/track" error A24 was
+  meant to close. Fixed by making the space optional; both spellings parse
+  now, only the no-space one is confirmed against a real file. Recorded
+  because it's the same mistake A24 itself warned against: an unverified
+  guess presented as if observed.
 - **`consistency` scoring fixed: per-unit CV normalization, `dm-v2`
   (2026-07-21, SPEC.md A21)** — the M6 "Known v1 limitation" note's own
   diagnosis (cross-cohort raw-magnitude pooling) was investigated before
@@ -326,6 +352,10 @@ Update this section as milestones complete.
 - Install: `python3 -m pip install -e ".[dev]"`
 - Test: `python3 -m pytest`
 - CLI: `driverdna --help`
+- The owner runs the CLI from a local Windows shell. Any command block given to
+  them must be PowerShell-ready: full paths (not relative to some assumed cwd),
+  and no bash-only syntax (`&&` chaining, `$(...)`, POSIX env-var syntax).
+  `;` chains commands in PowerShell; `$env:NAME` reads/sets an env var.
 
 ## Testing rules
 

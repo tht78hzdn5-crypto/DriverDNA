@@ -258,6 +258,49 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-26 — Garage61 renamed its exports again; one splitter for both
+  shapes, and `--car`/`--track` become independently optional (SPEC.md A24).**
+  The owner reported import "not working in my local shell", suspecting the
+  new database. It was not the database. A lap downloaded from the browser
+  arrived as `Garage 61 - <driver> - <car> - <track> - <laptime> - <id>.csv`
+  — ` - ` delimited, literal spaces in fields — while the parser accepted
+  only the 2026-07-21 double-underscore shape. The 422 the owner saw is
+  raised in a filename-only loop, before `Database.open` is reached; an
+  existing test already pinned that ordering, which is what ruled A23 out
+  quickly rather than by inspection of the new store.
+
+  *The fork that mattered was not "add a second regex".* It was how to keep
+  the two shapes from disagreeing. `car`/`track` are cohort keys, so the same
+  lap spelled either way must yield byte-identical strings; per-shape lazy
+  regexes absorb a surplus delimiter at different groups, so the shapes would
+  diverge precisely on the ambiguous filenames. Chose one splitter
+  parameterized by prefix/delimiter/underscore-decoding, with an explicit
+  five-field count and no backtracking, and made parity a test rather than an
+  argument.
+
+  *A filename with the delimiter inside a field is refused, not guessed.*
+  Two resolutions were considered and both rejected for putting a wrong value
+  in the cohort key with no error: extras-to-track (a driver name containing
+  ` - ` mislabels the cohort) and extras-to-driver (a config-suffixed track
+  like `Watkins Glen - Boot` mislabels it the other way). A wrong cohort key
+  is invisible; a refusal is loud and the driver types the field. This is
+  non-negotiable #3 applied to metadata rather than to measurements.
+
+  *The escape hatch was documented but did not exist.* `explicit = bool(car
+  and track)` silently discarded a single supplied field and then reported
+  "car/track not given" — the exact message the owner was staring at next to
+  the car they had typed. Offered the choice between a clearer error and a
+  working one-field override, the owner chose the override: a given field now
+  applies to every file while a blank one keeps auto-detecting. That is what
+  makes the next rename survivable without a code change.
+
+  Verified end-to-end on the owner's real filename, CLI and browser, plus the
+  cohort-parity check against two real fixtures. One incidental find, flagged
+  in A24 and deliberately left for separate work at the owner's direction:
+  hosted blob roots key on the DSN's last path segment, which is `postgres`
+  for every Supabase project, so two projects would silently serve each
+  other's telemetry.
+
 - **2026-07-26 — the store moves to a hosted Supabase Postgres; SQLite stays a
   first-class backend; raw blobs stay local (SPEC.md A23).** The owner asked
   what the current DB solution was, having spun up a Supabase project and

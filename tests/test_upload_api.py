@@ -136,13 +136,100 @@ def test_upload_without_car_track_auto_detects_from_new_filename_format(client):
         assert (row["car"], row["track"]) == ("Ford Mustang GT4", "Summit Point Raceway")
 
 
+def _as_hyphen_filename_format(tmp_path, src, *, car="Ford Mustang GT4",
+                               track="Summit Point Raceway",
+                               lap_id="01KY31T54KGGQ351PDAGJDTZJM"):
+    """Same trick as `_as_new_filename_format`, for the second newer export
+    shape (" - " delimited, literal spaces inside fields) observed 2026-07-26."""
+    dest = tmp_path / (
+        f"Garage 61 - Benjamin Richards - {car} - {track} - 01.27.017 - {lap_id}.csv"
+    )
+    dest.write_bytes(src.read_bytes())
+    return dest
+
+
 def test_upload_unresolvable_filename_without_car_track_rejected_nothing_imported(client):
     c, db_path = client
     with open(ONE_LAP, "rb") as fh:  # old-format filename, no car/track given
         r = c.post("/api/laps/upload", files=[("files", (ONE_LAP.name, fh, "text/csv"))], data={})
     assert r.status_code == 422
-    assert "Garage_61_HKWPXX.csv" in r.json()["detail"]
+    detail = r.json()["detail"]
+    assert "Garage_61_HKWPXX.csv" in detail
+    assert "missing car and track" in detail
     assert not db_path.exists()  # rejected before the DB was even opened
+
+
+def test_upload_without_car_track_auto_detects_from_hyphen_filename_shape(client):
+    c, db_path = client
+    hyphen = _as_hyphen_filename_format(db_path.parent, ONE_LAP)
+    with open(hyphen, "rb") as fh:
+        r = c.post("/api/laps/upload", files=[("files", (hyphen.name, fh, "text/csv"))], data={})
+    assert r.status_code == 200, r.text
+    result = r.json()["results"][0]
+    assert result["car"] == "Ford Mustang GT4"
+    assert result["track"] == "Summit Point Raceway"
+    assert result["auto_detected"] is True
+    assert result["status"] == "imported"
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("Ford Mustang GT4", "Summit Point Raceway")
+
+
+def test_both_filename_shapes_land_in_one_cohort(client):
+    """The end-to-end statement of the cohort-key constraint: the same car and
+    track spelled either way must not split the driver's laps in two."""
+    c, db_path = client
+    underscore = _as_new_filename_format(db_path.parent, ONE_LAP)
+    hyphen = _as_hyphen_filename_format(
+        db_path.parent, FIXTURES_DIR / "Garage_61_W5JRZB.csv"  # distinct telemetry
+    )
+    with open(underscore, "rb") as f1, open(hyphen, "rb") as f2:
+        r = c.post("/api/laps/upload", files=[
+            ("files", (underscore.name, f1, "text/csv")),
+            ("files", (hyphen.name, f2, "text/csv")),
+        ], data={})
+    assert r.status_code == 200, r.text
+    assert [x["status"] for x in r.json()["results"]] == ["imported", "imported"]
+    with Database.open(db_path) as db:
+        cohorts = db.conn.execute("SELECT DISTINCT car, track FROM laps").fetchall()
+    assert [(row["car"], row["track"]) for row in cohorts] == [
+        ("Ford Mustang GT4", "Summit Point Raceway")
+    ]
+
+
+def test_upload_with_only_car_applies_it_and_auto_detects_track(client):
+    """One field on its own is a working manual override — the escape hatch
+    for when a future filename rename breaks auto-detect for that field."""
+    c, db_path = client
+    hyphen = _as_hyphen_filename_format(db_path.parent, ONE_LAP)
+    with open(hyphen, "rb") as fh:
+        r = c.post(
+            "/api/laps/upload",
+            files=[("files", (hyphen.name, fh, "text/csv"))],
+            data={"car": "GR86"},
+        )
+    assert r.status_code == 200, r.text
+    result = r.json()["results"][0]
+    assert result["car"] == "GR86"  # given, applied
+    assert result["track"] == "Summit Point Raceway"  # blank, detected
+    assert result["auto_detected"] is True
+    with Database.open(db_path) as db:
+        row = db.conn.execute("SELECT car, track FROM laps").fetchone()
+        assert (row["car"], row["track"]) == ("GR86", "Summit Point Raceway")
+
+
+def test_upload_with_only_car_and_an_undetectable_filename_names_the_missing_field(client):
+    c, db_path = client
+    with open(ONE_LAP, "rb") as fh:  # old shape: states neither car nor track
+        r = c.post(
+            "/api/laps/upload",
+            files=[("files", (ONE_LAP.name, fh, "text/csv"))],
+            data={"car": "GR86"},
+        )
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert "missing track" in detail and "missing car" not in detail
+    assert not db_path.exists()
 
 
 def test_explicit_car_track_overrides_filename_for_every_file(client):
