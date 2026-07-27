@@ -56,11 +56,7 @@ export default function Upload() {
     <div className="grid">
       <section className="panel">
         <h1>Import laps</h1>
-        <div className="sub">
-          Upload Garage61 CSV exports directly — the same import path as{" "}
-          <code>driverdna import</code>, run from the browser. Nothing is computed
-          here; every result below is the engine's own report of what it did.
-        </div>
+        <div className="sub">Garage61 CSV exports — the same import as the CLI, from the browser.</div>
       </section>
 
       <section className="panel">
@@ -94,10 +90,7 @@ export default function Upload() {
               Leave both blank to auto-detect each file's car and track from its
               Garage61 export filename, so one upload can span cohorts. Fill
               either box on its own to apply that value to every file while the
-              other keeps auto-detecting — the escape hatch when Garage61
-              changes its filenames again. The older
-              <code> Garage_61_&lt;id&gt;.csv</code> shape carries neither, so it
-              needs both.
+              other keeps auto-detecting.
             </div>
             <div className="upload-row">
               <label className="upload-field">
@@ -105,7 +98,7 @@ export default function Upload() {
                 <select className="in" style={{ width: "100%" }} value={role}
                         onChange={(e) => setRole(e.target.value)}>
                   <option value="self">self (your driving)</option>
-                  <option value="reference">reference (never enters your history/trends)</option>
+                  <option value="reference">reference (gap context)</option>
                 </select>
               </label>
               <label className="upload-field">
@@ -119,9 +112,11 @@ export default function Upload() {
                        onChange={(e) => setDate(e.target.value)} />
               </label>
             </div>
+            <div className="guarantee">
+              Reference laps are context only — they never enter your history, trends, or scores.
+            </div>
             <div className="sub" style={{ marginTop: 0 }}>
-              Date enables trend for these laps later, same as <code>--date</code>. Session
-              groups laps for within-session repeatability, same as a manifest's <code>session</code>.
+              Date enables trend; session groups laps for repeatability.
             </div>
             <div className="actions">
               <button className="btn confirm" type="submit" disabled={busy || !files.length}>

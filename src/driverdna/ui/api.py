@@ -56,6 +56,11 @@ class ApplyBody(BaseModel):
     note: str | None = None
 
 
+class SyncBody(BaseModel):
+    car: str | None = None
+    track: str | None = None
+
+
 class ChatCreateBody(BaseModel):
     cohort: str  # cohort slug, as returned by GET /api/cohorts
     driver: str = "owner"
@@ -198,7 +203,7 @@ def create_app(
         with open_db() as db:
             c = resolve(db, cohort)
             rows = db.conn.execute(
-                """SELECT lap_pk, lap_id, role, duration_s, session_key,
+                """SELECT lap_pk, lap_id, driver, role, duration_s, session_key,
                           quality_flags
                    FROM laps WHERE car=? AND track=? ORDER BY lap_pk""",
                 (c["car"], c["track"]),
@@ -208,6 +213,7 @@ def create_app(
                 {
                     "lap_pk": r["lap_pk"],
                     "lap_id": r["lap_id"],
+                    "driver": r["driver"],
                     "role": r["role"],
                     "duration_s": r["duration_s"],
                     "session_key": r["session_key"],
@@ -454,6 +460,104 @@ def create_app(
                 "SELECT * FROM config_history WHERE change_pk=?", (new_pk,)
             ).fetchone()
             return dict(row)
+
+    # --- cockpit actions (U6): sync + rebuild-map, wrappers only ------------
+    # Both rewrite real state (new laps; refrozen geometry) through the exact
+    # audited functions `driverdna sync` / `driverdna rebuild-map` call — no
+    # endpoint here recomputes or aggregates a number the engine didn't.
+
+    def _cohort_sync_dict(s: Any) -> dict[str, Any]:
+        return {
+            "car": s.car,
+            "track": s.track,
+            "laps_seen": s.laps_seen,
+            "laps_new": s.laps_new,
+            "laps_skipped": [
+                {"lap_id": lap_id, "reason": reason} for lap_id, reason in s.laps_skipped
+            ],
+            "results": [
+                {
+                    "lap_pk": r.lap_pk,
+                    "status": r.status,
+                    "admitted": r.admitted,
+                    "class_changes": [
+                        {"corner_id": c, "old": o, "new": n} for c, o, n in r.class_changes
+                    ],
+                }
+                for r in s.results
+            ],
+        }
+
+    @app.post("/api/sync")
+    def sync(body: SyncBody | None = None) -> list[dict[str, Any]]:
+        """Wraps `sync_driver` (UI-SPEC U6 condition 1). `Garage61Client()` is
+        constructed here, straight from the environment (`GARAGE61_TOKEN`) —
+        this endpoint never reads a token out of the request body. Mirrors
+        `driverdna sync`'s own order: the client is constructed, and its
+        missing-token RuntimeError can surface, before the DB is ever opened —
+        an unset token writes nothing."""
+        from driverdna.garage61.client import Garage61Client
+        from driverdna.garage61.sync import sync_driver
+
+        try:
+            client = Garage61Client()
+        except RuntimeError as e:
+            raise HTTPException(400, detail=str(e)) from None
+
+        config = load_config(config_path)
+        with open_db() as db:
+            summaries = sync_driver(
+                db, client, driver="owner", config=config,
+                car=body.car if body else None, track=body.track if body else None,
+            )
+            # Same conditional as the CLI: retention only runs once there is
+            # something to enforce it over (an empty discovery skips it too).
+            if summaries:
+                db.enforce_retention(config.retention.raw_laps_per_cohort)
+            return [_cohort_sync_dict(s) for s in summaries]
+
+    @app.post("/api/cohorts/{slug}/rebuild-map")
+    def rebuild_map(slug: str) -> dict[str, Any]:
+        """Wraps `rebuild_cohort_map` (UI-SPEC U6 condition 2): in-place
+        refreeze of a cohort's frozen corner map from its full current lap
+        set. It rewrites frozen geometry, so the UI gates the call behind its
+        own explicit confirm (decision 5) — same division of responsibility
+        as `config_apply`, which likewise trusts the UI's confirm gate rather
+        than re-implementing staging here."""
+        from driverdna.pipeline import rebuild_cohort_map
+
+        with open_db() as db:
+            cohort = resolve(db, slug)
+            config = load_config(config_path)
+            result = rebuild_cohort_map(
+                db, driver=cohort["driver"], car=cohort["car"], track=cohort["track"],
+                config=config,
+            )
+            if not result.existed:
+                raise HTTPException(
+                    404,
+                    detail=f"no corner map for {cohort['car']} @ {cohort['track']} "
+                    "— nothing to rebuild",
+                )
+            return {
+                "car": result.car,
+                "track": result.track,
+                "corners": [
+                    {
+                        "corner_id": c.corner_id,
+                        "centroid_shift_m": c.centroid_shift_m,
+                        "window_changed": c.window_changed,
+                        "laps_remeasured": c.laps_remeasured,
+                        "laps_cleared": c.laps_cleared,
+                    }
+                    for c in result.corners
+                ],
+                "admitted": result.admitted,
+                "class_changes": [
+                    {"corner_id": c, "old": o, "new": n} for c, o, n in result.class_changes
+                ],
+                "total_cleared": result.total_cleared,
+            }
 
     # --- chat (U3) ------------------------------------------------------------
     # A ChatSession is stateful (in-memory conversation + staged proposals,

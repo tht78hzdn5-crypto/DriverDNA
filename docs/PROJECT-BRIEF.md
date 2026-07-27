@@ -508,6 +508,158 @@ in `AGENTS.md`). Newest first.
   backend. Recorded because it is exactly the sort of false positive that
   would otherwise discredit a real one.
 
+- **2026-07-26 — U6 "cockpit actions" built (`POST /api/sync` +
+  `POST /api/cohorts/{slug}/rebuild-map`).** The second, write-side half of
+  design language v2, unblocked once U5's gates went green. Both endpoints
+  are pure wrappers per decision 3 — no business logic in `api.py`: `/api/sync`
+  constructs `Garage61Client()` straight from the environment (`GARAGE61_TOKEN`)
+  and calls `sync_driver` verbatim, never reading a token from the request
+  body; `/api/cohorts/{slug}/rebuild-map` resolves the slug via the existing
+  `resolve()` and calls `rebuild_cohort_map` (the A22 in-place refreeze),
+  404ing both on an unknown slug and on a resolvable cohort with no frozen
+  map yet — mirroring `driverdna rebuild-map`'s exit-2 in both cases.
+  CLI-effect parity (decision 3's binding condition) proven directly in
+  `tests/test_cockpit_api.py`: a mocked `Garage61Client` (canned lap listing +
+  CSV bytes, never a live API or a real token) is synced through both the
+  endpoint and `driverdna sync` to independent fresh DBs, asserting identical
+  lap/corner-observation/sync-state rows; separately, one real fixture
+  cohort (GR86 @ Spa-Francorchamps) is imported once, copied to two DB
+  files, rebuilt via the endpoint and via `driverdna rebuild-map`, asserting
+  identical `corners`/`corner_windows`/`phase_times` rows. A dedicated test
+  proves the token stays env-only: `GARAGE61_TOKEN` unset returns HTTP 400
+  with the client's own actionable message and the DB is never even opened.
+  10 API tests plus 2 browser-driven tests (`tests/test_cockpit_ui.py`,
+  mirroring `test_upload_ui.py`'s convention) — suite 518 → 530, all green.
+  UI, v2 button system: a `btn-primary` **Sync** on driver home renders each
+  cohort's seen/new/skipped/admitted/class-change lines verbatim (a `.reason`
+  guidance line — "Set GARAGE61_TOKEN to sync." — replaces the button's
+  output when the token is absent, never an input field, so the secret never
+  transits the browser); a `btn small` **Rebuild map** in the cohort context
+  strip opens a client-side confirm/cancel gate (decision 5 — the same
+  non-default-action discipline as the config panel's staged card, just
+  without server-side staging, since a map rebuild has no engine-level
+  "propose" step to mirror), then renders the rebuild report as a per-corner
+  table (centroid shift, window changed, laps re-measured, laps cleared)
+  plus the admitted/class-change/cleared-stale-phase notices, and triggers a
+  payload refetch afterward since corner geometry, classes, and loss figures
+  can move. Four implementation-time decisions flagged in UI-SPEC.md's U6
+  section (details the spec's seven conditions left open, not changes to
+  them): both endpoints require a pre-existing DB via the same `open_db()`
+  helper every write endpoint but `/api/laps/upload` uses (upload remains the
+  sole cold-start exception); the missing-token error is HTTP 400 specifically
+  (in the required 4xx range, chosen over 422 — reserved for an invalid
+  request body, which this isn't — and over the 503 already used elsewhere
+  in this file for a missing `ANTHROPIC_API_KEY`); `/api/sync` returns a bare
+  `list[CohortSync]` per condition 1's literal wording rather than an
+  upload-style `{results, evicted}` wrapper (retention eviction still runs
+  for parity, just isn't separately echoed); Sync lives on driver home only,
+  not duplicated onto Garage. All five trust gates green; no route-list
+  changes needed (both buttons live on already-covered routes, and their
+  result panels render only after a click, so the static crawlers never see
+  them — the same reasoning that already excludes `#/upload`). `npm run
+  build` ships the updated SPA bundle in-package.
+- **2026-07-22 — U5 "pit wall" restyle built (design language v2).** Executed
+  the v2 spec on the owner's go. Token layer: `ui/tokens.json` gains
+  `font.display` (IBM Plex Sans Condensed, self-hosted 600/700 latin —
+  bundled, offline intact) and a `shape` group (chamfer sizes); `main.jsx`
+  generalized from colour-only to inject every token group as a CSS var;
+  `report/builder.py`'s `_TOKENS` mirror gains `display` so the byte-match
+  test stays green (reports don't reference it yet — SPA-only, like the
+  bundled fonts). Shell: a constant six-tab bar (Driver · Model · Garage ·
+  Chat · Import · Config) with the DriverDNA wordmark + a helix/racing-line
+  inline-SVG mark; cohort-scoped nav moved to a per-view context strip
+  (`ContextStrip`). New **Garage** view (view 8) over the existing
+  `/api/cohorts`; driver home is now purely the rollup + pit-board stat
+  tiles. Button system (chamfered, condensed-uppercase labels, inset focus
+  ring): `btn-primary`/`btn`/`btn small`/`btn confirm`, and every action
+  that was a text link is now a button. Reference-lap visibility folded in
+  (R1): a "Reference laps" cohort tile + panel, the isolation guarantee
+  line, "ref n=K" on vs-reference findings, a "References" line naming
+  driver + lap time over the one read-field addition (`driver` on
+  `/api/laps`), and the N=0 direction state. Copy trimmed throughout per the
+  owner's "very wordy" note (the explanatory `.sub` paragraphs cut to one
+  line or a `title` tooltip; measurement copy and gate reasons kept verbatim).
+  Colours, colour grammar, and all five trust gates unchanged. Two
+  route-list details resolved at build (flagged in UI-SPEC U5): `#/garage`
+  added to the offline route list only (no measurement to parity-crawl,
+  like `#/upload`); no `role='reference'` lap seeded into the shared
+  `tests/fixtures/` DB (reference figures are parity-clean by construction;
+  seeding would perturb determinism/report-snapshot tests). Built SPA
+  reships in-package; suite green. Mockup: `docs/ui-redesign-mockup.html`.
+- **2026-07-22 — UI copy flagged "very wordy" (owner).** Recorded as binding
+  copy guidance in UI-SPEC.md ("Copy density"): the instrument speaks in
+  labels, not paragraphs (iRacing/timing-screen register) — captions ≤ 3
+  words, state lines one sentence, explanatory sub-paragraphs cut to a line
+  or a tooltip; measurement copy and gate reasons keep their exact words.
+  Acted on in the U5 build above, not just filed.
+- **2026-07-22 — Reference-lap survey + R-track plan written
+  (`docs/REFERENCE-LAPS.md`), owner-requested.** Owner asked for "a schema or
+  a plan on incorporating reference laps — one may exist but i haven't seen
+  it." Both halves true, so the doc does both: a cited survey showing the
+  machinery is built and tested (role column + CHECK, query-surface
+  isolation, shared `(car,track)` corner maps so gaps join on the owner's
+  own corner identities, `reference_envelope` + `vs_reference_findings`
+  through payload/report/UI, manual-import-only per M0b/A16) and the
+  structural reason it has never fired: the owner's DB contains zero
+  reference laps — `sync` can't fetch them and none was ever imported, so
+  every vs-reference path is correctly silent. Doc includes the
+  owner-runnable recipe (Garage61 web export → `import --role reference` →
+  the vs-reference section appears; a live re-observation of trust
+  condition 3), six honest gaps (invisibility, envelope opacity,
+  undifferentiated pool, no curation, sourcing friction, no drill-level
+  reference depth), and a design-stage **R-track**: R0 (owner feeds one
+  real reference lap; gate for everything else) → R1 (visibility, UI-only)
+  → R2 (reference identity/depth; label semantics deliberately left open)
+  → R3 (curation; option A, an audited annotations-style exclusion,
+  recommended over B, no mechanism). Non-goals restated as binding
+  (no references in Driver Model/trends/classes/consistency/incidents, no
+  "recoverable time", no auto-sync, no blending). Nothing built; awaiting
+  owner reaction, M7 precedent.
+  *Follow-up same day (owner: "make the reference lap easier to see and
+  understand and incorporate that into the ui plan"):* R1 fleshed into a
+  "see & understand" layer and **folded into U5** (UI-SPEC.md
+  "Reference-lap visibility"). Split by data dependency: R1a
+  discoverability (N=0 vs-reference direction state + import button, the
+  isolation guarantee line, upload help — needs no data, isn't R0-gated,
+  and is what leads the owner to R0) and R1b legibility (reference stat
+  tile, "ref n=K" on gap findings from the payload, a "References" line
+  naming driver + lap time). One read-field addition only: `driver` on
+  `/api/laps` (`api.py`) so the name traces to a read endpoint — render
+  parity honored, engine untouched. Mockup updated to show both states
+  (`docs/ui-redesign-mockup.html`). Crawler fixture gains one
+  `role='reference'` lap so the section is exercised.
+- **2026-07-22 — UI design language v2 ("pit wall") specced, owner-directed.**
+  Owner asked for a better UI design: keep the color scheme; more simplicity,
+  more buttons, a small tinge of personality; iRacing's UI/promotional
+  language as the reference register. Specced as an amendment
+  (`docs/UI-SPEC.md`, "Design language v2"), not a rewrite: all eleven token
+  colors, the three color-grammar rules, structural source-tag identity, the
+  mono-numeral rule, suppression rendering, motion rules, and all five trust
+  gates are explicitly unchanged. What v2 adds: an IBM Plex Sans **Condensed**
+  display face for structure labels only — this amends the base section's "no
+  decorative display face" clause, and the recorded reason is that the
+  clause's intent (no typographic editorializing about *numbers*) survives
+  verbatim while structure labels gain a voice from the same Plex
+  superfamily; a single top-right 45° chamfer as the one geometric tell; a
+  three-tier button system plus the rule "an action is a button, navigation
+  is a link"; a constant six-tab shell (contextual links move to a per-view
+  context strip); a **Garage** view (view 8 — the cohort index over the
+  existing `GET /api/cohorts`, no new endpoint; driver home stops doubling as
+  the cohort list); pit-board stat tiles (payload values or rendered-item
+  counts only, the `shownCount` precedent); and a bounded four-element
+  personality kit with binding boundaries — no license-class letter cosplay
+  on scores (a letter on a score is a grade, an opaque blend by another
+  name), no alarm red, no decorative motion, idiom in state copy only. New
+  milestones: **U5** (restyle; `#/garage` added to both hardcoded browser
+  route lists) and **U6** (cockpit actions: `POST /api/sync` +
+  `POST /api/cohorts/{slug}/rebuild-map`, both CLI-effect-parity tested;
+  `GARAGE61_TOKEN` stays env-only, never an input field; rebuild-map behind
+  its own explicit confirm since it rewrites frozen geometry). Checked
+  against the philosophy: no principle touched; #6's anti-blend line is
+  guarded explicitly by the license-letter ban. Spec-first per the M7
+  precedent — build awaits owner go. Mockup with labeled placeholder
+  numbers: `docs/ui-redesign-mockup.html`. Delivered on session branch
+  `claude/driverdna-ui-redesign-j6riya`.
 - **2026-07-21 — `rebuild-map`: in-place refreeze of a frozen corner map from
   its full lap set (SPEC.md A22), the last of the owner's E→F→G arc.** Corner
   maps + canonical phase windows freeze from a cohort's first laps (M1) and

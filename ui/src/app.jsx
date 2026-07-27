@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DriverHome from "./views/driver.jsx";
+import Garage from "./views/garage.jsx";
 import Cohort from "./views/cohort.jsx";
 import CornerDrill from "./views/corner.jsx";
 import FindingDetail from "./views/finding.jsx";
@@ -9,12 +10,25 @@ import Chat from "./views/chat.jsx";
 import DriverModel from "./views/model.jsx";
 import Upload from "./views/upload.jsx";
 
-// Tiny hash router: #/ · #/cohort/:slug · #/corner/:slug/:cid ·
-// #/finding/:slug/:fid · #/laps/:slug · #/chat[/:slug]
+// Tiny hash router: #/ · #/garage · #/cohort/:slug · #/corner/:slug/:cid ·
+// #/finding/:slug/:fid · #/laps/:slug · #/model · #/chat[/:slug] · #/upload
 function parseHash() {
   const parts = window.location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   return { view: parts[0] || "home", args: parts.slice(1).map(decodeURIComponent) };
 }
+
+// v2 shell: a constant six-tab bar that never changes shape with context.
+// Entity views (cohort/corner/finding/laps) live "in the garage", so Garage
+// stays lit for them; their own scoped nav is a context strip in the view.
+const TABS = [
+  { id: "home", label: "Driver", href: "#/" },
+  { id: "model", label: "Model", href: "#/model" },
+  { id: "garage", label: "Garage", href: "#/garage" },
+  { id: "chat", label: "Chat", href: "#/chat" },
+  { id: "upload", label: "Import", href: "#/upload" },
+  { id: "config", label: "Config", href: "#/config" },
+];
+const TAB_FOR = { cohort: "garage", corner: "garage", finding: "garage", laps: "garage" };
 
 export default function App() {
   const [route, setRoute] = useState(parseHash());
@@ -25,26 +39,32 @@ export default function App() {
   }, []);
 
   const { view, args } = route;
+  const activeTab = TAB_FOR[view] || view;
   return (
     <>
       <header className="topbar">
-        <a href="#/" className="brand">DriverDNA</a>
+        <a href="#/" className="brand" aria-label="DriverDNA home">
+          {/* Helix half-twist that reads equally as two racing lines through a
+              chicane — drawn once, no image assets. */}
+          <svg className="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <polyline points="2,2 9,6 16,10 9,14 2,16" fill="none"
+                      stroke="var(--accent)" strokeWidth="1.6" strokeLinejoin="round" />
+            <polyline points="16,2 9,6 2,10 9,14 16,16" fill="none"
+                      stroke="var(--dim)" strokeWidth="1.6" strokeLinejoin="round" />
+          </svg>
+          <span className="word">Driver<b>DNA</b></span>
+        </a>
         <nav>
-          {args[0] && view !== "home" && view !== "config" && (
-            <>
-              {view !== "cohort" && <a href={`#/cohort/${args[0]}`}>cohort</a>}
-              {view !== "laps" && <a href={`#/laps/${args[0]}`}>laps</a>}
-              {view !== "chat" && <a href={`#/chat/${args[0]}`}>chat</a>}
-            </>
-          )}
-          <a href="#/">driver</a>
-          {view !== "model" && <a href="#/model">model</a>}
-          {view !== "chat" && <a href="#/chat">chat</a>}
-          {view !== "upload" && <a href="#/upload">import</a>}
-          <a href="#/config">config</a>
+          {TABS.map((t) => (
+            <a key={t.id} href={t.href}
+               className={`tab ${activeTab === t.id ? "active" : ""}`}>
+              {t.label}
+            </a>
+          ))}
         </nav>
       </header>
       {view === "home" && <DriverHome />}
+      {view === "garage" && <Garage />}
       {view === "cohort" && <Cohort slug={args[0]} />}
       {view === "corner" && <CornerDrill slug={args[0]} cornerId={args[1]} />}
       {view === "finding" && <FindingDetail slug={args[0]} findingId={args[1]} />}
@@ -68,6 +88,25 @@ export function useFetch(makeRequest, deps) {
     return () => { alive = false; };
   }, deps);
   return state;
+}
+
+// Cohort-scoped nav, rendered under a view's title (never in the global tabs).
+export function ContextStrip({ slug, here, children }) {
+  const links = [
+    { id: "cohort", label: "Overview", href: `#/cohort/${slug}` },
+    { id: "laps", label: "Laps", href: `#/laps/${slug}` },
+    { id: "chat", label: "Chat", href: `#/chat/${slug}` },
+  ];
+  return (
+    <div className="context">
+      {links.map((l) => (
+        l.id === here
+          ? <span key={l.id} className="crumb"><b>{l.label}</b></span>
+          : <a key={l.id} href={l.href}>{l.label}</a>
+      ))}
+      {children && <><span className="spacer" />{children}</>}
+    </div>
+  );
 }
 
 export function Loading({ error }) {

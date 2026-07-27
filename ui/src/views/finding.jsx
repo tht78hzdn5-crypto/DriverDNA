@@ -100,8 +100,8 @@ export default function FindingDetail({ slug, findingId }) {
               Suppressed from priority framing; the measurement above is kept.
             </div>
             <div className="actions">
-              <button className="btn" disabled={busy} onClick={clear}>
-                Clear annotation
+              <button className="btn" disabled={busy} onClick={clear} title="Restore priority framing">
+                Clear
               </button>
             </div>
           </div>
@@ -111,11 +111,13 @@ export default function FindingDetail({ slug, findingId }) {
               This stays measured but stops being framed as a priority. Reversible.
             </div>
             <div className="actions">
-              <button className="btn" disabled={busy} onClick={() => annotate("acknowledged")}>
-                Acknowledged — I've seen it
+              <button className="btn" disabled={busy} onClick={() => annotate("acknowledged")}
+                      title="I've seen it — stop prioritizing, keep measuring">
+                Acknowledged
               </button>
-              <button className="btn" disabled={busy} onClick={() => annotate("intentional")}>
-                Intentional — I do this on purpose
+              <button className="btn" disabled={busy} onClick={() => annotate("intentional")}
+                      title="I do this on purpose — stop prioritizing, keep measuring">
+                Intentional
               </button>
             </div>
           </div>

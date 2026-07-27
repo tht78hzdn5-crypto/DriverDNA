@@ -1,43 +1,6 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-27.** On `main` after merging both
-`claude/garage61-api-lap-filtering-e8c4j2` (A28: `group=none` API sync
-overhaul) and `claude/multi-ai-integration-y6txzf` (A29: portable build rules,
-CI gate, agent contract guards). Previous work on `main`: A24/A25 import fix,
-A26 rebuild-map guard, A27 cohort-drift detection, all on top of the A23
-storage migration from `claude/driverdna-db-solution-pbanez`.
-
-**`/laps` is not a personal-best endpoint — that was a parameter default
-(2026-07-27, SPEC.md A28).** Garage61 replied to the owner's feature request
-by pointing at `group=none`, which already does what was asked. M0b's census
-(1 lap per driver per cohort, universal across 30- and 66-driver cohorts) was
-accurate; its conclusion — "the endpoint's shape … not something a different
-plan or more API calls can pull around" — was not. `group` defaults to
-`driver` ("Personal best laps per driver"). The authoritative parameter list
-was then read from `https://garage61.net/api/openapi/v1.json`, the JSON that
-the "unreachable" JS developer portal fetches for itself; its URL is a plain
-string in the SPA bundle. `sync` now sends `group=none`, `drivers=me`,
-`unclean=true` (A19: an off is measured, not filtered — owner-confirmed), and
-driver-supplied `--after`/`--max-age-days`.
-
-| Check | Result |
-| --- | --- |
-| Two distinct laps in one cohort via sync | both imported (was structurally impossible before) |
-| `group` / `drivers` / `unclean` sent | `none` / `me` / `true`, asserted in tests |
-| Lap with `canViewTelemetry: false` | skipped + counted, **no** CSV call spent |
-| `canViewTelemetry` key absent | imported normally (absence ≠ denial) |
-| Other-driver rows in a listing | discarded locally, counted as `foreign_rows` |
-| `page_size` outside 1..1000 | `ValueError`, refused locally |
-| Malformed `--after` | **exit 2**, before any network call |
-| Full suite | **622 passed, 13 skipped** |
-
-**Not live-verified.** This session had no `GARAGE61_TOKEN`, so every A28
-claim is spec-sourced (official documentation) rather than observed. Two
-things need a real run to settle: whether a **free** plan exposes CSV for
-non-PB laps at all (`seeTelemetry` is documented Pro-only; sync reports
-`canViewTelemetry` honestly either way), and whether `drivers=me` actually
-applies server-side (reported as `foreign_rows`, never assumed — the
-client-side self-filter is what guarantees reference isolation).
+**Snapshot date: 2026-07-27.** On `main` after merging `claude/driverdna-ui-redesign-j6riya` (UI redesign: pit-wall restyle, reference-lap panel, garage view, cockpit API), `claude/garage61-api-lap-filtering-e8c4j2` (A28: `group=none` API sync overhaul), and `claude/multi-ai-integration-y6txzf` (A29: portable build rules, CI gate, agent contract guards). Previous work on `main`: A24/A25 import fix, A26 rebuild-map guard, A27 cohort-drift detection, all on top of the A23 storage migration.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,
@@ -208,6 +171,53 @@ retention can't be honestly re-measured, so its stale phase times are
 cleared and reported, never left silently outdated. Deterministic and
 idempotent; new geometry still enters only through the existing audited
 admission path. Closes the A17-deferred corner-map refreeze gap.
+**UI design language v2 ("pit wall") specced (2026-07-22)**: owner-directed
+redesign — palette kept byte-for-byte, more simplicity, a real button
+system, and a bounded personality kit, with iRacing's UI/promo language as
+the register reference. `docs/UI-SPEC.md` gains a "Design language v2"
+section, view 8 (Garage — cohort index over the existing `/api/cohorts`),
+and milestones **U5** (restyle) / **U6** (cockpit actions: `POST /api/sync`
++ `POST /api/cohorts/{slug}/rebuild-map`, CLI-effect parity, token
+env-only); the base "no decorative display face" clause is amended (one
+condensed Plex face, structure labels only, never data). Color grammar,
+trust gates, and philosophy untouched; explicit boundaries recorded (no
+license-letter grades on scores, no alarm red, no decorative motion). Spec
++ labeled-placeholder mockup only (`docs/ui-redesign-mockup.html`) — build
+awaits owner go, per the M7 spec-first precedent. Full record:
+PROJECT-BRIEF.md decision log.
+**U5 "pit wall" restyle built (2026-07-22, design language v2)**: the
+owner-directed redesign is live in the SPA. `ui/tokens.json` gains
+`font.display` (self-hosted IBM Plex Sans Condensed, 600/700 latin, offline
+intact) and a `shape` group; a condensed display face now carries structure
+labels only (wordmark, tabs, titles, buttons, tile captions), never data. A
+single top-right chamfer is the one geometric tell; a real three-tier button
+system replaced text-link actions; a constant six-tab shell (Driver · Model ·
+Garage · Chat · Import · Config) with a per-view context strip replaced the
+shape-shifting nav; a new **Garage** view (view 8) is the cohort index and
+driver home is now purely the rollup + pit-board stat tiles. Reference-lap
+visibility folded in (R1): reference tile + panel, isolation guarantee line,
+"ref n=K" on gap findings, a "References" line (driver + lap time) over one
+read-field addition (`driver` on `/api/laps`), and the N=0 direction state.
+Copy trimmed throughout after the owner flagged the first mockup "very wordy"
+(binding "Copy density" rule now in UI-SPEC.md). Colours, colour grammar,
+and all five trust gates unchanged; `_TOKENS` byte-match green; built SPA
+reships in-package; suite green. Milestone **U6** (cockpit actions: sync +
+rebuild-map buttons) followed once U5's gates passed — see below.
+**Reference-lap survey + plan written (2026-07-22, `docs/REFERENCE-LAPS.md`)**:
+owner-requested. The machinery exists and is tested (role column,
+query-surface isolation, shared corner maps, `reference_envelope` →
+`vs_reference_findings` → payload/UI, manual import only per M0b) but has
+never fired because the DB holds zero reference laps — `sync` structurally
+can't fetch them. The doc gives the owner-runnable recipe (Garage61 web
+export → `import --role reference`), six gaps, and a design-stage R-track
+(R0 feed-and-pin → R1 visibility → R2 identity/depth → R3 curation) with
+open decisions flagged, not picked. Nothing built; awaiting owner reaction.
+Same-day follow-up (owner asked to make references easier to see/understand
+and put it in the UI plan): R1 fleshed into a see-&-understand layer and
+folded into U5 — N=0 vs-reference direction state + button, isolation
+guarantee line, reference stat tile, "ref n=K" on gap findings, and a
+"References" line (driver + lap time) over one read-field addition (`driver`
+on `/api/laps`). Mockup updated to show it; still spec-only.
 M0b (API probe) is **done** — a later
 session's network policy did reach `garage61.net` successfully (an earlier
 snapshot's belief that it was blocked no longer holds); `docs/garage61-api.md`
@@ -219,7 +229,22 @@ sync twice more was fully idempotent (0 new laps, 25 total unchanged), and
 `driverdna report` ran clean on the API-sourced laps. Reference laps stay
 on the manual `import` path per M0b's finding (other-drivers' laps return
 `403 forbidden_lap`) — confirmed again live: every synced lap is `role='self'`.
+**U6 "cockpit actions" built (2026-07-26)**: the write-side half of design
+language v2. `POST /api/sync` (wraps `sync_driver`, constructing
+`Garage61Client()` straight from `GARAGE61_TOKEN` — never from the request)
+and `POST /api/cohorts/{slug}/rebuild-map` (wraps the A22 in-place refreeze)
+are both pure wrappers, decision-3 style; CLI-effect parity against
+`driverdna sync` / `driverdna rebuild-map` is a mocked-client / two-copies-
+of-one-fixture-cohort test respectively, plus a dedicated test proving an
+unset `GARAGE61_TOKEN` returns HTTP 400 and writes nothing. UI: a
+`btn-primary` **Sync** on driver home (missing-token state renders as
+guidance text, never an input field) and a `btn small` **Rebuild map** in
+the cohort context strip behind its own client-side confirm/cancel gate,
+rendering the rebuild report including the cleared-stale-phase notice. All
+five trust gates green; no route-list changes needed. Full record:
+PROJECT-BRIEF.md's decision log.
 
+<<<<<<< HEAD
 ## Verified counts (2026-07-27)
 
 Reproduced on this date. Only the rows below were re-measured; everything in the
@@ -235,12 +260,19 @@ Reproduced on this date. Only the rows below were re-measured; everything in the
 | Commits | **not re-measured** — this working copy is a shallow clone, where `git rev-list --count HEAD` reads 62 and understates the truth. Left at the 2026-07-21 figure rather than writing a wrong number. | `git rev-parse --is-shallow-repository` |
 
 ## Verified counts (2026-07-21)
+=======
+## Verified counts (2026-07-21; tests re-verified 2026-07-26)
+>>>>>>> origin/claude/driverdna-ui-redesign-j6riya
 
 Regenerated from the repo this date, not asserted from memory:
 
 | Count | Value | How to reproduce |
 |---|---|---|
+<<<<<<< HEAD
 | Tests passing | **612 of 613** (41 test files). The one failure, `test_offline.py::test_app_loads_and_operates_with_non_localhost_network_blocked`, is **pre-existing** — it fails identically on a clean tree with no local changes (Playwright times out waiting for `svg.trackmap`); untouched by A24 and not yet investigated. | `python3 -m pytest` |
+=======
+| Tests passing | **530** (37 test files) — up from 518 before U6; adds `test_cockpit_api.py` (10) + `test_cockpit_ui.py` (2) | `python3 -m pytest` |
+>>>>>>> origin/claude/driverdna-ui-redesign-j6riya
 | Commits | **75** | `git rev-list --count HEAD` |
 | Real laps imported | **12** primary (GR86/Spa 11, Mustang/Laguna 1) + **11** second Spa cohort (`tests/fixtures/spa-blind-2026-07/`) | `driverdna import tests/fixtures` |
 | Spa cohort | 11 laps · **3 sessions** | `/api/cohorts/gr86-spa-francorchamps/payload` |
