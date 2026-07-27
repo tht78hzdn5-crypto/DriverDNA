@@ -1,9 +1,42 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-26.** Branch `main`, following the merge of the A24/
-A25 import fix (originally developed on `claude/import-functionality-shell-
-bug-e6aa14`, on top of the A23 storage migration from
+**Snapshot date: 2026-07-27.** Branch
+`claude/garage61-api-lap-filtering-e8c4j2` (A28), on top of `main` after the
+A24/A25 import fix (originally developed on `claude/import-functionality-
+shell-bug-e6aa14`, itself on top of the A23 storage migration from
 `claude/driverdna-db-solution-pbanez`).
+
+**`/laps` is not a personal-best endpoint — that was a parameter default
+(2026-07-27, SPEC.md A28).** Garage61 replied to the owner's feature request
+by pointing at `group=none`, which already does what was asked. M0b's census
+(1 lap per driver per cohort, universal across 30- and 66-driver cohorts) was
+accurate; its conclusion — "the endpoint's shape … not something a different
+plan or more API calls can pull around" — was not. `group` defaults to
+`driver` ("Personal best laps per driver"). The authoritative parameter list
+was then read from `https://garage61.net/api/openapi/v1.json`, the JSON that
+the "unreachable" JS developer portal fetches for itself; its URL is a plain
+string in the SPA bundle. `sync` now sends `group=none`, `drivers=me`,
+`unclean=true` (A19: an off is measured, not filtered — owner-confirmed), and
+driver-supplied `--after`/`--max-age-days`.
+
+| Check | Result |
+| --- | --- |
+| Two distinct laps in one cohort via sync | both imported (was structurally impossible before) |
+| `group` / `drivers` / `unclean` sent | `none` / `me` / `true`, asserted in tests |
+| Lap with `canViewTelemetry: false` | skipped + counted, **no** CSV call spent |
+| `canViewTelemetry` key absent | imported normally (absence ≠ denial) |
+| Other-driver rows in a listing | discarded locally, counted as `foreign_rows` |
+| `page_size` outside 1..1000 | `ValueError`, refused locally |
+| Malformed `--after` | **exit 2**, before any network call |
+| Full suite | **622 passed, 13 skipped** |
+
+**Not live-verified.** This session had no `GARAGE61_TOKEN`, so every A28
+claim is spec-sourced (official documentation) rather than observed. Two
+things need a real run to settle: whether a **free** plan exposes CSV for
+non-PB laps at all (`seeTelemetry` is documented Pro-only; sync reports
+`canViewTelemetry` honestly either way), and whether `drivers=me` actually
+applies server-side (reported as `foreign_rows`, never assumed — the
+client-side self-filter is what guarantees reference isolation).
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
 amendment log), `docs/ARCHITECTURE_VISION.md` (constitution), `docs/UI-SPEC.md`,

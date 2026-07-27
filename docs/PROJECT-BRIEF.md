@@ -258,6 +258,55 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `CLAUDE.md`). Newest first.
 
+- **2026-07-27 — the `/laps` "personal-best endpoint" finding was wrong; it
+  was a parameter default (SPEC.md A28).** The owner emailed Garage61 asking
+  for un-deduplicated laps or a session endpoint. Alex from Garage61 replied
+  that the feature already exists: **`group=none`**, plus `lapTypes`,
+  `event`, `unclean` and `maxAge` filtering. He was right.
+
+  *What we had concluded, and why it was wrong.* M0b censused two shared
+  cohorts and found every driver — 30 in one, 66 in the other — had exactly
+  one lap, against 979 laps driven on the account. It correctly ruled out a
+  free-plan cap, then concluded the remaining explanation was the endpoint's
+  fixed shape, and wrote that down as "not something a different plan or more
+  API calls can pull around." The census was good work; the inference was the
+  failure. Universality across accounts excludes an *account-specific* cause,
+  but a parameter default is universal too — and invisible to a probe that
+  never varies it. The honest conclusion available at the time was "one lap
+  per driver per cohort **under the parameters we sent**." The endpoint's own
+  summary, "Find laps and lap **records**," was a real clue, and it got read
+  as confirmation of a ceiling rather than as a hint that a switch existed.
+
+  *The more useful error.* M0b recorded the endpoint reference as
+  unreachable — "a JS-rendered SPA not reachable by this session's fetch
+  tooling" — and stopped. But the SPA fetches a plain OpenAPI JSON, and its
+  URL is a literal string in the bundle: `https://garage61.net/api/openapi/
+  v1.json`, no token needed. Downloading the Angular chunks and grepping them
+  took a few minutes and produced the complete, authoritative parameter list,
+  including several things M0b had listed as permanently unconfirmed
+  (`limit` max 1000; `after`/`age` as the real date filters, versus the
+  `start`/`end` that were guessed and silently ignored). **Standing lesson:
+  when a documentation site won't render, read its client — the data source
+  usually is reachable.**
+
+  *This is A24/A25's lesson again, one level up.* Those amendments were about
+  not presenting an unverified guess as observed. Here the guess concerned
+  what the API *cannot* do, which is the more expensive kind: it silently
+  shaped three later decisions (dated manual import, A27's premise, and M6's
+  trend limitations) around a limit that never existed. Negative capability
+  claims now need a documented source, not an inference from a probe.
+
+  *Resolutions.* `sync` sends `group=none`, `drivers=me`, `unclean=true`, and
+  driver-supplied `after`/`age`. Dated manual import is **not** retired — it
+  remains the only path for pre-API history and laps Garage61 never held.
+  Owner confirmed including unclean laps (A19: a spin is measured, not
+  filtered) and confirmed the account is still on the free plan, so telemetry
+  access for non-PB laps stays genuinely unknown: sync checks each lap's
+  `canViewTelemetry` and reports what it finds instead of assuming. Because
+  no `GARAGE61_TOKEN` was available in this session, nothing here is
+  live-verified, and the client-side self-filter is kept unconditionally —
+  `drivers=me` is an optimisation, never the guarantee.
+
 - **2026-07-26 — two hazards created by A23's storage split, found by reading
   rather than by breakage (SPEC.md A26, A27).** Both were flagged while
   answering the owner's questions about where lap data should live, and fixed

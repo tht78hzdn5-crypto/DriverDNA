@@ -1,5 +1,40 @@
 # Garage61 API report (M0b)
 
+> ## Correction, 2026-07-27 (SPEC.md A28) — read this before anything below
+>
+> **This document's headline finding was wrong.** It concluded that `/laps`
+> "returns at most one lap per driver per (car, track) — a leaderboard/PB
+> endpoint, not a full session log," and that this was "the endpoint's shape
+> … not something a different plan or more API calls can pull around."
+>
+> It is a **query-parameter default**. `group` defaults to `driver`
+> ("Personal best laps per driver"); **`group=none` returns all laps.**
+>
+> The census that produced the claim was sound — every driver in two shared
+> cohorts (30 and 66 drivers) really did have exactly one lap. The *inference*
+> was not: "universal across accounts" rules out an account-specific cause,
+> but a parameter default is equally universal, and a probe that never varies
+> the parameter cannot see it. The conclusion should have been "one lap per
+> driver per cohort under the parameters we sent."
+>
+> The correction came from a Garage61 engineer (Alex) by email, and was then
+> confirmed against Garage61's own OpenAPI document — which this document had
+> declared unreachable. That was the second error, and the more useful one:
+>
+> **The developer portal is a JS SPA, but it fetches a plain JSON spec, and
+> the URL is a literal string in its own bundle:**
+> **`https://garage61.net/api/openapi/v1.json`** (no token required).
+> When a docs site won't render, read its client before concluding the
+> documentation is unavailable.
+>
+> Sections below are left as originally written, with inline `**Corrected
+> (A28)**` notes where they are now known to be wrong. Everything sourced
+> from the OpenAPI document is tagged **per spec** — that is official
+> documentation, but it is *not* the same tag as **observed**: the session
+> that applied this correction had no `GARAGE61_TOKEN`, so no claim here
+> marked "per spec" has been re-verified against a live call. See "Spec-
+> sourced lap filtering (A28)" below for the full parameter list.
+
 Probed 2026-07-20 against the live API with a real `GARAGE61_TOKEN`
 (scopes granted: `profile`, `openid`, `driving_data`; free subscription
 plan). Cross-referenced 2026-07-21 against Garage61's own developer-portal
@@ -125,6 +160,16 @@ not the iRacing `platform_id` strings — these integer IDs are what
   reachable by this session's fetch tooling, so it could not be consulted
   in this pass. Do not build `sync` filtering on `start`/`end`/`teams`/
   `accounts` without re-verifying param names first.
+
+  > **Corrected (A28).** The names were simply wrong, which is exactly what
+  > "silently ignores unrecognized names" predicts. Per spec, date filtering
+  > is **`after`** (RFC3339 date-time) and **`age`** (positive = days ago;
+  > `-1`/`-2`/`-3`/`-4` = current season / current+previous / last 3 / last
+  > 4). `teams` *is* real (by team **slug**), alongside `drivers`
+  > (`me`, `following`) and `extraDrivers` (by user slug); `accounts` is
+  > not a parameter. The lesson stands and generalises: against an API that
+  > ignores unknown parameters, a no-op is evidence about the *name*, never
+  > about the *capability*.
 - **`/laps` is not scoped to "my own laps" by default.** A plain
   `tracks=69` query returned laps from ~30 distinct drivers (own account
   included), not just the token's account. Reliable self-scoping observed
@@ -156,6 +201,97 @@ not the iRacing `platform_id` strings — these integer IDs are what
   bucket-composition confound) needs many laps *per cohort*, which this
   endpoint cannot supply for any account — it would need a dated
   manual-import path for locally-exported CSVs instead.
+
+  > **Corrected (A28) — this whole bullet's conclusion is wrong.** The
+  > observation (1 lap per driver per cohort, universal) was real; the
+  > explanation was not. Per spec, `group` defaults to `driver` = "Personal
+  > best laps per driver", and **`group=none` = "Return all laps."** The
+  > "lap records" wording in the endpoint's own summary was a genuine clue
+  > read as confirmation of a limit rather than as a hint to look for the
+  > switch. `sync` sends `group=none` since A28.
+  >
+  > "Not something more API calls can pull around" was the specific
+  > overreach: a universal observation constrains *what the parameters we
+  > sent do*, never *what the endpoint can do*. Note also that
+  > `group=driver-car` exists (PB per driver **per car**), which is why the
+  > count tracked cohorts so exactly.
+  >
+  > M6's per-cohort trend is therefore reachable from the API after all.
+  > Dated manual import (2026-07-21) is still the only path for pre-API
+  > history and laps Garage61 never held, so it is not retired.
+
+## Spec-sourced lap filtering (A28, 2026-07-27) — `/laps` parameters
+
+**Source: `https://garage61.net/api/openapi/v1.json`** (operation
+`findLaps`), the JSON the developer portal's own SPA renders. Fetched
+without a token 2026-07-27. Everything in this section is **per spec** and
+**not live-verified** — the session that wrote it had no `GARAGE61_TOKEN`.
+Given that this API silently ignores query names it does not recognise, an
+unverified parameter fails *silently and permissively* (returning more than
+intended), which is why `sync` keeps its client-side self-filter regardless.
+
+The parameters DriverDNA uses or could use:
+
+| Parameter | Type | Meaning (spec wording, condensed) |
+|---|---|---|
+| `tracks` | int list | **Required.** Track IDs. |
+| `cars` | int list | Car IDs. **Negative = car *category* ID** (`cars=3,-4` = car 3 or category 4). |
+| `group` | string | Result grouping, **default `driver`**: `driver` = PB per driver; `driver-car` = PB per driver/car; **`none` = return all laps**. |
+| `drivers` | string list | `me` (own laps), `following`. Combined with `teams`/`extraDrivers`. If none given, defaults to all data visible to the token. |
+| `teams` | string list | Teammates from the given teams, by team **slug**. |
+| `extraDrivers` | string list | Extra drivers by user **slug**. |
+| `after` | RFC3339 date-time | Laps driven after this instant. |
+| `age` | int | Positive = max days ago. Negative: `-1` current season, `-2` current+previous, `-3` last 3, `-4` last 4. |
+| `lapTypes` | int list | **Default: normal laps only.** `1` normal (full), `2` joker, `3` out lap, `4` in lap. |
+| `unclean` | bool | Allow returning unclean (and potentially incomplete) laps. |
+| `sessionTypes` | int list | `1` practice, `2` qualifying, `3` race. |
+| `event` | string | Laps for one event ID (pairs with each lap's own `event` field). |
+| `seeTelemetry` | bool | Require telemetry to be visible. **"Requires the calling user to have a Pro plan."** |
+| `minLapTime` / `maxLapTime` | number | Lap-time bounds, seconds. |
+| `limit` | int | **Maximum and default are both 1000.** |
+| `offset` | int | Result offset. |
+
+Also available and unused here: `seasons`, `sessionSetupTypes`, `seeGhostLap`,
+`seeSetup`, `minRating`/`maxRating`, fuel bounds, weight-penalty and
+power-adjust bounds, a full set of track/weather-condition bounds
+(`minConditionsTrackTemp`, `maxConditionsTrackWetness`, …), and `round`
+(display-rounding correction, `metric` / `englishStandard`).
+
+**What `sync` sends** (`garage61/client.py`): `tracks`, `cars`, `limit`,
+`offset`, `group=none`, `drivers=me`, `unclean=true`, and `after`/`age` when
+the driver supplies them. `lapTypes` is deliberately **not** sent — its
+default is normal full laps, which is exactly M0a's single-lap contract; in
+and out laps would violate the `LapDistPct` 0→1 invariant.
+
+### Lap fields relevant to ingest (per spec)
+
+The `Lap` schema marks these **required**, so they should always be present.
+Two matter for A28 specifically:
+
+- **`canViewTelemetry`** (bool) — "Can you view the telemetry data?" This is
+  how `sync` decides whether a CSV fetch is worth attempting, rather than
+  discovering it as a 403. Given `seeTelemetry`'s documented Pro-plan
+  requirement and the owner's free plan, this is the field that determines
+  whether A28's unlock is real for this account. **Unverified against a live
+  call** — if a free plan reports `false` for non-PB laps, `sync` will report
+  "listed but telemetry not viewable" per cohort and import nothing for them,
+  which is the honest outcome rather than a failure.
+- **`clean`** (bool) — "Is this a clean, complete lap?" Recorded in the
+  existing `api_lap_metadata` quality flag. With `unclean=true`, laps where
+  this is `false` now reach the pipeline by design (A19).
+
+Others already used or worth knowing: `id`, `driver`, `event`, `session`,
+`run`, `startTime`, `lapNumber`, `lapTime` (seconds), `sectors`,
+`sessionType`, `eventType`, `missing`, `incomplete`, `offtrack`,
+`discontinuity`, `pitlane`/`pitIn`/`pitOut`, `trackTemp`, `trackUsage`,
+`trackWetness`, plus fuel, tyre-compound and weather fields.
+
+### `PositionType` (per spec, matches the M0a contract)
+
+The CSV export's `PositionType` column is documented as: `0` unknown,
+`1` in the pit lane, `2` making a pit stop, `3` on track, **`4` off track**.
+This independently corroborates `config.incidents.offtrack_position_value`,
+which the incident subsystem (A19) uses for off-track detection.
 
 ## Single-lap detail and CSV — `/laps/{lap_id}`, `/laps/{lap_id}/csv`
 
@@ -425,19 +561,21 @@ from scratch; none of this is used by `sync` today.
   it for this goal (see "team data packs" in the reference-lap section).
 - ⚠️ `sync` must discover cohorts via `/me/statistics` (or a
   driver-supplied car/track list) and loop `/laps?tracks=...&cars=...`
-  per cohort — there is no unscoped "give me everything" call.
-- ⚠️ `/laps` returns **at most one lap per driver per cohort, confirmed
-  universal** (every driver in two independently-checked shared cohorts —
-  30 and 66 drivers — had exactly 1, no exceptions) — not a plan-specific
-  cap on this account. vs 979 laps driven per `/me/statistics`. `sync`
-  pulls all of them, so it's the endpoint's shape, not an under-pull: M6's
-  per-cohort trend needs a dated manual-import path for locally-exported
-  CSVs instead — no account or API call sequence can pull more per cohort
-  from `/laps`.
-- ⚠️ Unconfirmed, do not assume before re-checking: the real query-param
-  names for date-range and team/account-scoped filtering; the exact
-  `limit` ceiling; whether team-shared consent changes the 403 outcome;
-  exact rate-limit thresholds.
+  per cohort — there is no unscoped "give me everything" call. (Still true:
+  `tracks` is required per spec.)
+- ~~⚠️ `/laps` returns **at most one lap per driver per cohort**~~ —
+  **withdrawn (A28)**: that was `group`'s default (`driver`), not the
+  endpoint's shape. `group=none` returns all laps, and `sync` now sends it.
+  The observation (every driver in two shared cohorts — 30 and 66 drivers —
+  had exactly 1, vs 979 laps driven per `/me/statistics`) was accurate; the
+  conclusion drawn from it was not.
+- ⚠️ Unconfirmed, do not assume before re-checking: whether team-shared
+  consent changes the 403 outcome; exact rate-limit thresholds; and —
+  newly important — **whether a free plan can fetch CSV for non-PB laps at
+  all** (`seeTelemetry` is documented as requiring Pro; each lap carries
+  `canViewTelemetry`, which `sync` now honours per lap rather than assuming
+  either way). Resolved by A28, previously listed here: date-filter param
+  names (`after`/`age`) and the `limit` ceiling (1000).
 
 Done per M0b's criteria: this document exists and API capabilities are
 enumerated from observed behavior, including the one genuine unknown the

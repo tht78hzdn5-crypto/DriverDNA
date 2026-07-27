@@ -75,6 +75,32 @@ def _validate_lap_date(value: str) -> str:
         raise typer.Exit(code=2) from None
 
 
+def _validate_after(value: str) -> str:
+    """Normalise `sync --after` to the RFC3339 the API's `after` parameter
+    documents (`format: date-time`).
+
+    A bare `YYYY-MM-DD` becomes midnight UTC, and a naive timestamp is read
+    as UTC — stated here and in the flag's help rather than left implicit.
+    This only moves a *filter boundary* by at most a few hours; no lap's
+    stored `lap_date` is affected, since that always comes from the API's
+    own `startTime`. Validated locally because this API silently ignores
+    query values it cannot parse, which would turn a typo'd date into a
+    full, unbounded backfill with no error.
+    """
+    from datetime import UTC, date as _date, datetime as _datetime
+
+    validated = _validate_lap_date(value)
+    try:
+        parsed = _datetime.fromisoformat(validated)
+    except ValueError:
+        parsed = _datetime.combine(
+            _date.fromisoformat(validated), _datetime.min.time()
+        )
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.isoformat().replace("+00:00", "Z")
+
+
 @app.command("import")
 def import_cmd(
     directory: Path = typer.Argument(
@@ -238,16 +264,40 @@ def sync(
     driver: str = typer.Option("owner", help="Driver label."),
     car: str = typer.Option(None, help="Restrict to one car (by Garage61 name)."),
     track: str = typer.Option(None, help="Restrict to one track (by Garage61 name)."),
+    clean_only: bool = typer.Option(
+        False, "--clean-only",
+        help="Ask the API for clean laps only. Default is to include unclean "
+             "laps: a spin or an off is measured, not filtered (A19).",
+    ),
+    after: str = typer.Option(
+        None, "--after",
+        help="Only laps driven after this date (YYYY-MM-DD or ISO8601; a bare "
+             "date means midnight UTC, a naive timestamp is read as UTC). "
+             "Filters on when the lap was DRIVEN, not when it was synced.",
+    ),
+    max_age_days: int = typer.Option(
+        None, "--max-age-days",
+        help="Only laps driven in the last N days. Negative values select "
+             "seasons instead (-1 current, -2 current+previous, -3, -4).",
+    ),
 ) -> None:
     """Incremental self-lap ingest from the Garage61 API (requires
     GARAGE61_TOKEN). Reference laps stay on `import` — M0b found other-
-    drivers' laps aren't fetchable with this token (docs/garage61-api.md)."""
+    drivers' laps aren't fetchable with this token (docs/garage61-api.md).
+
+    Since A28 this pulls EVERY lap per cohort (`group=none`), not one
+    personal best per cohort, so the first run after upgrading may fetch a
+    lot of laps. It is resumable: an already-synced lap never costs a CSV
+    call. Use --after/--max-age-days to bound a first backfill.
+    """
     from driverdna.config import load_config
     from driverdna.db import Database
     from driverdna.garage61.client import Garage61Client
     from driverdna.garage61.sync import sync_driver
 
     config = load_config()
+    if after is not None:
+        after = _validate_after(after)
     try:
         client = Garage61Client()
     except RuntimeError as e:
@@ -255,7 +305,10 @@ def sync(
         raise typer.Exit(code=2) from None
 
     with Database.open(_store(db_path)) as db:
-        summaries = sync_driver(db, client, driver=driver, config=config, car=car, track=track)
+        summaries = sync_driver(
+            db, client, driver=driver, config=config, car=car, track=track,
+            unclean=not clean_only, after=after, max_age_days=max_age_days,
+        )
         if not summaries:
             typer.echo("no cohorts found (nothing driven yet, or --car/--track matched none)")
             raise typer.Exit(code=0)
@@ -263,6 +316,18 @@ def sync(
             typer.echo(
                 f"{s.car} @ {s.track}: {s.laps_seen} seen, {s.laps_new} new"
             )
+            if s.laps_without_telemetry:
+                typer.echo(
+                    f"  {s.laps_without_telemetry} lap(s) listed but their telemetry "
+                    f"is not viewable by this token (canViewTelemetry=false) — "
+                    f"metadata only, nothing imported for them"
+                )
+            if s.foreign_rows:
+                typer.echo(
+                    f"  note: paged {s.foreign_rows} other-driver row(s) — the "
+                    f"server-side drivers=me scope did not apply; they were "
+                    f"discarded locally, nothing of theirs was fetched"
+                )
             for lap_id, reason in s.laps_skipped:
                 typer.echo(f"  skipped {lap_id}: {reason}")
             for r in s.results:

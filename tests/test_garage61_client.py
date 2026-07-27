@@ -75,7 +75,11 @@ def test_list_own_laps_requires_tracks_and_filters_self():
     transport = FakeTransport({"/me": lambda p: _json(200, ME), "/laps": laps})
     client = Garage61Client(transport=transport)
     result = client.list_own_laps(track_id=69)
-    assert [lap["id"] for lap in result] == ["L-MINE"]
+    assert [lap["id"] for lap in result.laps] == ["L-MINE"]
+    # The other driver's row was paged through and discarded locally, and
+    # that fact is reported rather than assumed away (A28).
+    assert result.rows_scanned == 2
+    assert result.foreign_rows == 1
 
 
 def test_list_own_laps_paginates_until_total_reached():
@@ -92,7 +96,65 @@ def test_list_own_laps_paginates_until_total_reached():
     transport = FakeTransport({"/me": lambda p: _json(200, ME), "/laps": laps})
     client = Garage61Client(transport=transport)
     result = client.list_own_laps(track_id=69, page_size=2)
-    assert [lap["id"] for lap in result] == ["A", "B", "C"]
+    assert [lap["id"] for lap in result.laps] == ["A", "B", "C"]
+    assert (result.rows_scanned, result.foreign_rows) == (3, 0)
+
+
+def test_list_own_laps_requests_all_laps_not_personal_bests():
+    """A28: the whole point — `group=none` ("Return all laps") instead of the
+    API's `group=driver` default ("Personal best laps per driver"), which is
+    what made M0b measure one lap per driver per cohort."""
+    seen = {}
+
+    def laps(params):
+        seen.update(params)
+        return _json(200, {"items": [], "total": 0})
+
+    transport = FakeTransport({"/me": lambda p: _json(200, ME), "/laps": laps})
+    Garage61Client(transport=transport).list_own_laps(track_id=69)
+    assert seen["group"] == "none"
+    assert seen["drivers"] == "me"
+    # Unclean laps are requested by default: a spin or an off is measured,
+    # not filtered (A19). Sent as the spec's lower-case spelling.
+    assert seen["unclean"] == "true"
+
+
+def test_list_own_laps_sends_date_filters_only_when_given():
+    calls = []
+
+    def laps(params):
+        calls.append(dict(params))
+        return _json(200, {"items": [], "total": 0})
+
+    transport = FakeTransport({"/me": lambda p: _json(200, ME), "/laps": laps})
+    client = Garage61Client(transport=transport)
+    client.list_own_laps(track_id=69)
+    client.list_own_laps(track_id=69, after="2026-07-01T00:00:00Z", max_age_days=30)
+    assert calls[0]["after"] is None and calls[0]["age"] is None
+    assert calls[1]["after"] == "2026-07-01T00:00:00Z"
+    assert calls[1]["age"] == 30
+
+
+def test_list_own_laps_can_ask_for_clean_laps_only():
+    seen = {}
+
+    def laps(params):
+        seen.update(params)
+        return _json(200, {"items": [], "total": 0})
+
+    transport = FakeTransport({"/me": lambda p: _json(200, ME), "/laps": laps})
+    Garage61Client(transport=transport).list_own_laps(track_id=69, unclean=False)
+    assert seen["unclean"] == "false"
+
+
+@pytest.mark.parametrize("bad", [0, -1, 1001, 5000])
+def test_list_own_laps_rejects_page_size_outside_the_documented_limit(bad):
+    """The spec puts `limit`'s maximum and default at 1000. M0b observed
+    oversized values silently falling back rather than erroring, so a bad
+    page_size would page wrongly with no signal — refuse it locally."""
+    transport = FakeTransport({"/me": lambda p: _json(200, ME)})
+    with pytest.raises(ValueError, match="1000"):
+        Garage61Client(transport=transport).list_own_laps(track_id=69, page_size=bad)
 
 
 def test_list_own_laps_passes_car_filter_when_given():

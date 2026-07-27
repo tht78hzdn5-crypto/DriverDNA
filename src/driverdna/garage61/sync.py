@@ -49,6 +49,16 @@ class CohortSync:
     laps_new: int = 0
     laps_skipped: list[tuple[str, str]] = field(default_factory=list)  # (lap_id, reason)
     results: list[ImportResult] = field(default_factory=list)
+    #: Rows the listing paged through, and how many belonged to other drivers
+    #: (discarded client-side). A non-zero `foreign_rows` means the
+    #: server-side `drivers=me` scope did not apply — reported, never assumed.
+    rows_scanned: int = 0
+    foreign_rows: int = 0
+    #: Laps listed but skipped because the API said their telemetry is not
+    #: viewable by this token (`canViewTelemetry: false`). Counted separately
+    #: from `laps_skipped` because this is a plan/permission ceiling, not a
+    #: property of the lap — see docs/garage61-api.md on `seeTelemetry`.
+    laps_without_telemetry: int = 0
 
 
 def discover_cohorts(client: Garage61Client) -> list[dict[str, Any]]:
@@ -83,9 +93,21 @@ def sync_driver(
     config: DriverDNAConfig,
     car: str | None = None,
     track: str | None = None,
+    unclean: bool = True,
+    after: str | None = None,
+    max_age_days: int | None = None,
 ) -> list[CohortSync]:
     """Discover cohorts (or restrict to a given car/track), pull every new
     self-lap through the import pipeline, and record sync state per cohort.
+
+    `after`/`max_age_days` are passed through to the API's own date filters
+    and are always driver-supplied. There is deliberately **no automatic
+    watermark** off `garage61_sync_state.last_synced_at`: `after` filters on
+    when a lap was *driven*, not when it was synced, so a lap driven before
+    the last sync but uploaded after it would be silently skipped forever.
+    Re-listing a cohort in full is cheap (the `source_file` pre-check below
+    means an already-synced lap never costs a CSV fetch); silently missing a
+    lap is not.
     """
     cohorts = discover_cohorts(client)
     if car:
@@ -96,13 +118,26 @@ def sync_driver(
     summaries: list[CohortSync] = []
     for c in cohorts:
         summary = CohortSync(car=c["car"], track=c["track"])
-        laps = client.list_own_laps(track_id=c["track_id"], car_id=c["car_id"])
-        summary.laps_seen = len(laps)
-        for item in sorted(laps, key=lambda lap_item: lap_item.get("startTime") or ""):
+        listing = client.list_own_laps(
+            track_id=c["track_id"], car_id=c["car_id"],
+            unclean=unclean, after=after, max_age_days=max_age_days,
+        )
+        summary.laps_seen = len(listing.laps)
+        summary.rows_scanned = listing.rows_scanned
+        summary.foreign_rows = listing.foreign_rows
+        for item in sorted(listing.laps, key=lambda lap_item: lap_item.get("startTime") or ""):
             lap_id = item["id"]
             if item.get("missing") or item.get("incomplete"):
                 reason = "missing" if item.get("missing") else "incomplete"
                 summary.laps_skipped.append((lap_id, reason))
+                continue
+
+            # Only an explicit `false` — the field is required by the spec,
+            # but a missing key must not be read as "no access" and silently
+            # drop a lap we could have fetched.
+            if item.get("canViewTelemetry") is False:
+                summary.laps_without_telemetry += 1
+                summary.laps_skipped.append((lap_id, "telemetry not viewable"))
                 continue
 
             # No "//" — parse_lap_text wraps this in a Path, which collapses

@@ -1,21 +1,40 @@
 """Garage61Client: token auth, lap listing/filtering, CSV fetch.
 
-Built from M0b's observed behavior (docs/garage61-api.md) — nothing here
-assumes anything not confirmed there. `GARAGE61_TOKEN` is read from the
-environment only (never persisted, printed, or logged); a `transport` can be
-injected for testing so no test ever calls the live API.
+Built from M0b's observed behavior plus Garage61's own OpenAPI specification
+(docs/garage61-api.md) — nothing here assumes anything neither source states.
+`GARAGE61_TOKEN` is read from the environment only (never persisted, printed,
+or logged); a `transport` can be injected for testing so no test ever calls
+the live API.
 
 Confirmed capabilities this client relies on:
   - Base URL `https://garage61.net/api/v1`, `Authorization: Bearer <token>`.
-  - `/laps` requires an explicit `tracks` filter and is NOT owner-scoped —
-    it returns laps from many drivers for that track/car, so every result is
-    filtered client-side on `driver.id == /me`'s id.
+  - `/laps` requires an explicit `tracks` filter and is NOT owner-scoped by
+    default — it returns laps from many drivers for that track/car.
   - `/laps/{id}` and `/laps/{id}/csv` return 200 for this account's own laps;
     a lap owned by someone else returns 403 `forbidden_lap` — confirmed NOT
     fetchable with this token/plan. This client makes no attempt to fetch
     other-driver laps; reference laps stay on the manual `import` path.
   - Pagination is `limit`/`offset` with a `total` field in every list
-    response.
+    response; `limit`'s maximum and default are both 1000 (spec).
+
+Per-spec filtering (A28), none of it live-verified — see the "spec-sourced,
+not observed" caveat in docs/garage61-api.md:
+  - `group=none` returns ALL laps. The default, `group=driver`, returns one
+    personal-best lap per driver — which is what M0b measured and wrongly
+    concluded was the endpoint's fixed shape.
+  - `drivers=me` scopes the search server-side. This is an optimisation, NOT
+    a trust boundary: the client-side `driver.id == /me` filter below is kept
+    unconditionally, because reference-lap isolation is a non-negotiable and
+    must not rest on an unverified query parameter.
+  - `after` (RFC3339 datetime) and `age` (days; negative = seasons) are the
+    real date filters. M0b tried `start`/`end`, which this API silently
+    ignores along with every other unrecognised name.
+  - `lapTypes` defaults to normal (full) laps only, which is exactly what
+    M0a's single-lap contract requires — in/out laps are not requested.
+  - `unclean=true` asks for laps flagged not-clean. DriverDNA wants these:
+    a spin or an off is measured, not filtered (A19). Laps whose telemetry
+    is unusable (`missing`/`incomplete`) are dropped by `sync`, after the
+    fact, on the lap's own flags rather than by asking the API for less.
 """
 
 from __future__ import annotations
@@ -29,6 +48,38 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 BASE_URL = "https://garage61.net/api/v1"
+
+#: `group=none` — "Return all laps" (spec). The API's own default is
+#: `driver`, "Personal best laps per driver", which is what M0b's census
+#: measured as "at most one lap per driver per cohort".
+GROUP_ALL_LAPS = "none"
+#: `limit`'s documented maximum AND default (spec). M0b observed values above
+#: this silently falling back rather than erroring, which matches a cap.
+MAX_PAGE_SIZE = 1000
+
+
+def _bool_param(value: bool) -> str:
+    """Lower-case `true`/`false`. Python's `str(True)` is `"True"`, which is
+    accepted by Go's ParseBool but is not what the spec writes — send the
+    documented spelling rather than relying on a lenient parser."""
+    return "true" if value else "false"
+
+
+@dataclass(frozen=True)
+class LapListing:
+    """One cohort's self-laps, plus what it took to find them.
+
+    `rows_scanned`/`foreign_rows` exist so `sync` can report whether the
+    server-side `drivers=me` scope actually applied: if `foreign_rows` is
+    non-zero, other drivers' rows were paged through and discarded locally,
+    meaning the parameter did not take effect. Correctness is unaffected
+    either way — only the cost of the listing, and what we can honestly
+    claim about the API.
+    """
+
+    laps: list[dict[str, Any]]
+    rows_scanned: int
+    foreign_rows: int
 
 
 class Garage61Error(Exception):
@@ -146,33 +197,67 @@ class Garage61Client:
         return self._get("/tracks").get("items", [])
 
     def list_own_laps(
-        self, *, track_id: int, car_id: int | None = None, page_size: int = 1000,
-    ) -> list[dict[str, Any]]:
+        self,
+        *,
+        track_id: int,
+        car_id: int | None = None,
+        page_size: int = MAX_PAGE_SIZE,
+        group: str = GROUP_ALL_LAPS,
+        unclean: bool = True,
+        after: str | None = None,
+        max_age_days: int | None = None,
+    ) -> LapListing:
         """Every one of THIS account's laps for one (track[, car]).
 
-        `/laps` is not owner-scoped by default (M0b) — every page is fetched
-        in full and filtered client-side on `driver.id == /me`'s id. Never
-        fetches or returns another driver's lap metadata beyond what the
-        listing itself already exposes.
+        `group` defaults to `none` ("return all laps") rather than the API's
+        own `driver` default ("personal best laps per driver") — the whole
+        point of A28. `unclean=True` keeps incident laps in the result set.
+
+        `/laps` is not owner-scoped by default (M0b), so `drivers=me` is sent
+        AND every page is still filtered client-side on `driver.id == /me`'s
+        id. The redundancy is deliberate: `drivers=me` is spec-sourced and
+        never live-verified here, and this API silently ignores query names
+        it does not recognise, so a typo or a rename would degrade to "all
+        drivers" with no error. The client-side filter is what actually
+        guarantees no other driver's lap is ever returned; the returned
+        `foreign_rows` count reports whether the server-side scope did
+        anything, instead of assuming it did.
         """
+        if not 1 <= page_size <= MAX_PAGE_SIZE:
+            raise ValueError(
+                f"page_size must be 1..{MAX_PAGE_SIZE} (the API's documented "
+                f"limit maximum); got {page_size}"
+            )
         me_id = self.me()["id"]
         laps: list[dict[str, Any]] = []
+        rows_scanned = 0
+        foreign_rows = 0
         offset = 0
         while True:
             params: dict[str, Any] = {
-                "tracks": track_id, "limit": page_size, "offset": offset,
+                "tracks": track_id,
+                "limit": page_size,
+                "offset": offset,
+                "group": group,
+                "drivers": "me",
+                "unclean": _bool_param(unclean),
+                "after": after,
+                "age": max_age_days,
             }
             if car_id is not None:
                 params["cars"] = car_id
             page = self._get("/laps", params)
             items = page.get("items", [])
-            laps.extend(
-                item for item in items if item.get("driver", {}).get("id") == me_id
-            )
+            for item in items:
+                if item.get("driver", {}).get("id") == me_id:
+                    laps.append(item)
+                else:
+                    foreign_rows += 1
+            rows_scanned += len(items)
             offset += len(items)
             if not items or offset >= page.get("total", 0):
                 break
-        return laps
+        return LapListing(laps=laps, rows_scanned=rows_scanned, foreign_rows=foreign_rows)
 
     def lap_csv(self, lap_id: str) -> bytes:
         """Raw CSV bytes for one lap. Raises Garage61ForbiddenError (403,

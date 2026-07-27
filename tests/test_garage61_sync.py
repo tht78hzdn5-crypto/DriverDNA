@@ -16,6 +16,10 @@ from driverdna.garage61.client import Garage61Client
 from driverdna.garage61.sync import discover_cohorts, sync_driver
 
 FIXTURE_CSV = (Path(__file__).parent / "fixtures" / "Garage_61_RH11X7.csv").read_bytes()
+# A second, genuinely different lap — content_hash dedup means two laps with
+# identical telemetry collapse into one, so a "many laps per cohort" test
+# needs real distinct traces, not the same fixture twice.
+FIXTURE_CSV_2 = (Path(__file__).parent / "fixtures" / "Garage_61_HKWPXX.csv").read_bytes()
 
 ME = {"id": "me-01", "slug": "owner"}
 CAR = {"id": 8, "name": "Mazda MX-5"}
@@ -28,14 +32,18 @@ def _json(status: int, obj) -> tuple[int, bytes]:
 
 
 def _lap(lap_id: str, *, driver_id: str = ME["id"], run: int = 0, session: int = 0,
-         missing: bool = False, incomplete: bool = False,
+         missing: bool = False, incomplete: bool = False, clean: bool = True,
+         offtrack: bool = False, can_view_telemetry: bool | None = None,
          start: str = "2026-07-01T00:00:00Z") -> dict:
-    return {
+    lap = {
         "id": lap_id, "driver": {"id": driver_id}, "event": "ev-1",
         "session": session, "run": run, "startTime": start,
-        "clean": True, "missing": missing, "incomplete": incomplete,
-        "offtrack": False, "discontinuity": False, "pitlane": False,
+        "clean": clean, "missing": missing, "incomplete": incomplete,
+        "offtrack": offtrack, "discontinuity": False, "pitlane": False,
     }
+    if can_view_telemetry is not None:
+        lap["canViewTelemetry"] = can_view_telemetry
+    return lap
 
 
 class FakeTransport:
@@ -46,8 +54,11 @@ class FakeTransport:
         self._laps_by_track = laps_by_track
         self._csv_by_id = csv_by_id or {}
         self.csv_calls: list[str] = []
+        self.lap_params: list[dict] = []
 
     def get(self, path, params):
+        if path == "/laps":
+            self.lap_params.append(dict(params))
         if path == "/me":
             return _json(200, ME)
         if path == "/me/statistics":
@@ -185,6 +196,122 @@ def test_sync_car_track_filters_restrict_cohorts(db):
         db, client, driver="owner", config=DriverDNAConfig(), track="Laguna Seca"
     )
     assert [s.track for s in summaries] == ["Laguna Seca"]
+
+
+def test_sync_imports_many_laps_from_one_cohort(db):
+    """A28, the actual unlock: before `group=none`, `/laps` returned one
+    personal-best lap per driver per cohort, so a cohort could never yield
+    more than one lap through sync — which is why M6's per-cohort trend
+    needed dated manual import. Two distinct laps in one cohort now both
+    land."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 2}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [
+            _lap("L1", start="2026-06-15T10:00:00Z"),
+            _lap("L2", start="2026-06-15T10:02:00Z"),
+        ]},
+        csv_by_id={"L1": FIXTURE_CSV, "L2": FIXTURE_CSV_2},
+    )
+    client = Garage61Client(transport=transport)
+    summaries = sync_driver(db, client, driver="owner", config=DriverDNAConfig())
+
+    assert summaries[0].laps_seen == 2
+    assert summaries[0].laps_new == 2
+    dates = [
+        r["lap_date"] for r in db.conn.execute(
+            "SELECT lap_date FROM laps ORDER BY lap_date"
+        ).fetchall()
+    ]
+    assert dates == ["2026-06-15T10:00:00Z", "2026-06-15T10:02:00Z"]
+
+
+def test_sync_requests_unclean_laps_by_default_and_imports_them(db):
+    """A19 is binding on the sync path too: an off is measured, not filtered.
+    A lap the API flags unclean/offtrack is imported like any other."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [_lap("L-off", clean=False, offtrack=True)]},
+    )
+    client = Garage61Client(transport=transport)
+    summaries = sync_driver(db, client, driver="owner", config=DriverDNAConfig())
+    assert transport.lap_params[0]["unclean"] == "true"
+    assert summaries[0].laps_new == 1
+    assert transport.csv_calls == ["L-off"]
+
+
+def test_sync_clean_only_asks_the_api_for_clean_laps(db):
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK], laps_by_track={69: [_lap("L1")]},
+    )
+    client = Garage61Client(transport=transport)
+    sync_driver(db, client, driver="owner", config=DriverDNAConfig(), unclean=False)
+    assert transport.lap_params[0]["unclean"] == "false"
+
+
+def test_sync_passes_date_filters_through_to_the_api(db):
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK], laps_by_track={69: [_lap("L1")]},
+    )
+    client = Garage61Client(transport=transport)
+    sync_driver(
+        db, client, driver="owner", config=DriverDNAConfig(),
+        after="2026-06-01T00:00:00Z", max_age_days=14,
+    )
+    assert transport.lap_params[0]["after"] == "2026-06-01T00:00:00Z"
+    assert transport.lap_params[0]["age"] == 14
+
+
+def test_sync_skips_laps_whose_telemetry_is_not_viewable(db):
+    """`seeTelemetry` is documented as requiring a Pro plan, and each lap
+    carries `canViewTelemetry`. A lap we cannot fetch is reported as such,
+    never turned into a 403 storm and never silently dropped."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 2}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [
+            _lap("L-ok", can_view_telemetry=True),
+            _lap("L-locked", can_view_telemetry=False),
+        ]},
+    )
+    client = Garage61Client(transport=transport)
+    s = sync_driver(db, client, driver="owner", config=DriverDNAConfig())[0]
+    assert s.laps_without_telemetry == 1
+    assert ("L-locked", "telemetry not viewable") in s.laps_skipped
+    assert transport.csv_calls == ["L-ok"]  # never spent a call we'd get 403 on
+
+
+def test_sync_does_not_treat_a_missing_telemetry_flag_as_no_access(db):
+    """Only an explicit `false` blocks a fetch — an absent field must not
+    silently drop a lap that would have imported fine."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [_lap("L1")]},  # no canViewTelemetry key at all
+    )
+    client = Garage61Client(transport=transport)
+    s = sync_driver(db, client, driver="owner", config=DriverDNAConfig())[0]
+    assert s.laps_without_telemetry == 0
+    assert s.laps_new == 1
+
+
+def test_sync_reports_when_server_side_self_scoping_did_not_apply(db):
+    """`drivers=me` is spec-sourced and never live-verified, and this API
+    ignores query names it does not recognise. If other drivers' rows come
+    back anyway, that is surfaced as a count rather than assumed away."""
+    transport = FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 1}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [_lap("L-mine"), _lap("L-other", driver_id="someone-else")]},
+    )
+    client = Garage61Client(transport=transport)
+    s = sync_driver(db, client, driver="owner", config=DriverDNAConfig())[0]
+    assert s.rows_scanned == 2
+    assert s.foreign_rows == 1
+    assert s.laps_seen == 1
 
 
 def test_reference_laps_are_never_fetchable_via_sync(db):

@@ -1311,9 +1311,11 @@ Accepted at owner plan review; rationale recorded in the review:
   The exposure is structural, not hypothetical. `sync` builds its track label
   from the API's `name` + `variant` (`garage61/sync.py:_track_label` →
   "Summit Point Raceway (Shenandoah)"); a manual import takes the export
-  filename's label, which carries no variant. Doing both — the documented
-  workflow, since `/laps` returns only one lap per cohort (A24, M0b) — splits
-  the cohort.
+  filename's label, which carries no variant. Doing both — at the time, the
+  documented workflow, since `/laps` was believed to return only one lap per
+  cohort (A24, M0b; **that premise was wrong — see A28**) — splits the
+  cohort. A28 removes the *need* to mix the two paths but not the ability to,
+  so this detector remains load-bearing.
 
   `cohorts.find_label_drift` flags two signatures: labels differing only by
   case/punctuation, and labels differing by one naming a parenthesised
@@ -1334,3 +1336,82 @@ Accepted at owner plan review; rationale recorded in the review:
   re-import under the intended label, chosen by the driver. This is
   "insufficient data over guessing" applied to metadata rather than
   measurements.
+
+- **A28** (2026-07-27): **`/laps` was never a personal-best endpoint — M0b
+  measured a default, not a shape.** The `group` parameter defaults to
+  `driver` ("Personal best laps per driver"); `group=none` returns all laps.
+  Sync now sends `group=none`, and the per-cohort lap ceiling that shaped
+  three prior decisions is gone.
+
+  **How the error happened, because that matters more than the fix.** M0b
+  probed the live API carefully and found the right *fact*: every driver in
+  two independently-checked cohorts (30 and 66 drivers) had exactly one lap,
+  no exceptions. It then ruled out the plan-cap hypothesis, correctly, and
+  concluded the remaining explanation was the endpoint's fixed shape. That
+  step was the mistake: "universal across accounts" rules out an
+  account-specific cause, not a *parameter default*, which is equally
+  universal and equally invisible to a probe that never varies it. The census
+  was sound; the inference from it was not. The doc then hardened the guess
+  into "not something a different plan or more API calls can pull around" —
+  a claim about what cannot exist, drawn from evidence that only showed what
+  a default does.
+
+  The reachable ground truth was the OpenAPI document at
+  `https://garage61.net/api/openapi/v1.json`. M0b recorded the endpoint
+  reference as unreachable ("a JS-rendered SPA not reachable by this
+  session's fetch tooling") and stopped there; the SPA in fact fetches that
+  JSON, and the URL is a plain string in its bundle. **Standing lesson: when
+  a documentation site is unreadable, the site's own data source usually is
+  not** — read the client before concluding the docs are unavailable. A
+  Garage61 engineer (Alex) supplied the `group=none` pointer by email, which
+  is what prompted the re-check; the spec then confirmed it and much more.
+
+  **What the spec settles that M0b listed as unconfirmed:** `limit`'s ceiling
+  and default are both 1000; the real date filters are `after` (RFC3339) and
+  `age` (days, or negative for seasons) — not the `start`/`end` M0b guessed
+  and watched silently no-op; `drivers`/`teams`/`extraDrivers` scope the
+  search server-side, with `drivers=me` for own laps; `lapTypes` already
+  defaults to normal (full) laps, which is what M0a's single-lap contract
+  needs; `cars` accepts negative IDs for car *categories*.
+
+  **Decisions this reverses or narrows.** The "dated manual import" path
+  (2026-07-21) exists *because* per-cohort trend was thought unreachable via
+  the API. It stays — it is the only path for pre-API history and for laps
+  Garage61 never held — but it is no longer the only way to get a real
+  per-cohort trend. A27's cohort-label drift detector stays for the same
+  reason: mixing paths is now avoidable, not impossible.
+
+  **Unclean laps are requested (`unclean=true`), not filtered.** A19 made a
+  spin or an off a measurement rather than a disqualification; accepting the
+  API's clean-only default would have quietly undone that on the sync path,
+  leaving the incident subsystem structurally unable to see the laps it was
+  built for. Laps whose telemetry is genuinely unusable (`missing`,
+  `incomplete`) are still dropped — but locally, on the lap's own flags,
+  after seeing it. `--clean-only` opts out. Owner-confirmed 2026-07-27.
+
+  **Two guards, because this amendment is spec-sourced and not live-verified
+  (no `GARAGE61_TOKEN` in the session that wrote it).** This is the A24/A25
+  lesson applied pre-emptively rather than after a correction:
+
+  1. `drivers=me` is an optimisation, never a trust boundary. The
+     client-side `driver.id == /me` filter is kept unconditionally, because
+     reference-lap isolation is a non-negotiable and this API silently
+     ignores query names it does not recognise — a rename would degrade
+     "scope to me" into "all drivers" with no error. `LapListing.foreign_rows`
+     counts other-driver rows that came back anyway, so whether the
+     server-side scope applied is *reported from the response*, not assumed.
+  2. Telemetry access is checked per lap, not hoped for. `seeTelemetry` is
+     documented as requiring a Pro plan and the owner's account is free, so
+     whether non-PB laps expose CSV at all is genuinely unknown. Each lap
+     carries `canViewTelemetry`; sync skips an explicit `false` and reports
+     the count, instead of spending a call to collect a 403. An *absent*
+     field is not read as denial — that would silently drop importable laps.
+
+  **No automatic sync watermark.** `after` filters on when a lap was
+  *driven*, not when it was synced, so deriving it from
+  `garage61_sync_state.last_synced_at` would permanently skip any lap driven
+  before the last sync but uploaded after it. Re-listing a cohort in full is
+  cheap (an already-synced lap never costs a CSV fetch); silently missing a
+  lap is not. `--after`/`--max-age-days` stay driver-supplied, and `--after`
+  is validated and normalised to RFC3339 locally, since a value this API
+  cannot parse would become an unbounded backfill rather than an error.

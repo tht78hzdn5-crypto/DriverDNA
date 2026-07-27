@@ -151,9 +151,10 @@ from the real fixtures and reviewed.
   field overrides the flag for that entry, so a mixed-date directory can be
   imported in one pass. Malformed dates are rejected loudly (exit 2, nothing
   imported) — never silently accepted, since trend sorts on this string.
-  Exists because the Garage61 API caps `/laps` at ~1 saved lap per driver
-  per cohort (`docs/garage61-api.md`), so a real per-cohort trend needs the
-  driver's own exported history, not `sync` alone. Verified end-to-end
+  Originally built because the Garage61 API was believed to cap `/laps` at
+  ~1 saved lap per driver per cohort — **that premise was wrong (A28,
+  2026-07-27): it was `group`'s default, not a cap.** Still the only path
+  for pre-API history and laps Garage61 never held, so it is not retired. Verified end-to-end
   against the real fixture CSVs (not just synthetic tests): dating the
   11-lap Spa cohort by session produced a real `declining` trend on
   `consistency` from `driverdna model`, byte-identical across two runs; the
@@ -198,8 +199,25 @@ from the real fixtures and reviewed.
   metadata upgrades `session_key` and `run_index` beyond what manual CSV
   import can derive, and populates `lap_date` (M6 trend's precondition;
   trend computation itself remains a separate follow-up). Idempotent via
-  the existing source_file/content_hash dedup. Date-range filtering is
-  deliberately not implemented — M0b found the real param names unconfirmed.
+  the existing source_file/content_hash dedup. Date-range filtering landed
+  with A28 (`--after`/`--max-age-days`) once the real param names were known.
+- **`/laps` is not a personal-best endpoint (2026-07-27, SPEC.md A28)** — it
+  was `group`'s default all along (`driver` = PB per driver; `group=none` =
+  all laps). M0b's census was accurate but its conclusion ("the endpoint's
+  shape … not something more API calls can pull around") was an inference
+  presented as a fact, and it silently shaped three later decisions. `sync`
+  now sends `group=none`, `drivers=me`, `unclean=true` (A19: an off is
+  measured, not filtered), plus optional `after`/`age`. The authoritative
+  parameter list came from `https://garage61.net/api/openapi/v1.json` — the
+  JSON the "unreachable" JS developer portal fetches for itself, its URL a
+  plain string in the SPA bundle. **Standing lesson: when a docs site won't
+  render, read its client before declaring the documentation unavailable;
+  and a negative capability claim needs a source, not a probe inference.**
+  Spec-sourced, **not live-verified** (no token in that session): the
+  client-side self-filter is kept unconditionally rather than trusting
+  `drivers=me`, and each lap's `canViewTelemetry` is honoured per lap
+  (`seeTelemetry` is documented Pro-only; the owner is on free, so whether
+  non-PB CSVs are fetchable at all is still open).
 - Coach/chat live runs blocked on `ANTHROPIC_API_KEY`; all provider tests are
   mocked regardless.
 - **Spa blind acceptance test: run (2026-07-21, SPEC.md A18)** on 11
