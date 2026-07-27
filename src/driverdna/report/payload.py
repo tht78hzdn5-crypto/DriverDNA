@@ -190,6 +190,7 @@ def build_cohort_payload(
             "driver": driver, "car": car, "track": track,
             "n_laps": len(laps), "n_sessions": len(sessions),
             "lap_durations_s": [round(float(r["duration_s"]), 4) for r in laps],
+            "lap_ids": [r["lap_id"] for r in laps],
             # Deltas computed here, not in any renderer: the UI renders what
             # the engine computed, it never derives a new number.
             "lap_delta_s": [
