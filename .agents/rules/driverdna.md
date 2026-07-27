@@ -44,7 +44,8 @@ never only here.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
 - Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
-  quality-flagged with counts.
+  quality-flagged with counts. Network/API errors (e.g., 404 vs 403) must be categorized and surfaced, never swallowed.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
+- Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
 <!-- /shared:non-negotiables -->
