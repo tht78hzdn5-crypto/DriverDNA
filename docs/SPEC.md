@@ -52,8 +52,12 @@ These nine principles are binding on every design decision below.
    Simplicity and auditability outrank generality. (Refined by **A23**,
    2026-07-26: the primary store may be a private, single-tenant hosted
    Postgres; SQLite remains a first-class, tested backend and the offline
-   path. Still one driver's instrument — no multi-tenancy, no auth layer, no
-   API for anyone but the owner's own localhost UI. Refined by A17,
+   path. Still one driver's instrument — no multi-tenancy, and no API for
+   anyone but the one driver. Refined by **A31**, 2026-07-27: the original
+   "no auth layer, ... owner's own localhost UI" clause is retired — the app
+   is served over a hostname and now carries single-driver authentication.
+   "No multi-tenancy" is reaffirmed, not softened: no user table, no
+   registration, no second identity. Refined by A17,
    2026-07-20: personal instrument *first* — product potential is acknowledged
    and deferred until the instrument is proven on its owner, post-M6 and
    post-blind-test; any productization keeps the gates, no-blending, and
@@ -1497,3 +1501,62 @@ Accepted at owner plan review; rationale recorded in the review:
   Resolves the open question flagged in A28's capabilities summary ("whether
   a free plan can fetch CSV for non-PB laps at all"). Documented in
   `docs/garage61-api.md`, which is updated with the live observation.
+
+- **A31** (2026-07-27): **single-driver auth is built — philosophy #8's "no
+  auth layer" clause is retired, and its "one driver" clause is not.**
+
+  **Principle refined, named here as the decision discipline requires:**
+  philosophy #8, *"Personal instrument, not a product."* Its A23 refinement
+  still reads "no multi-tenancy, **no auth layer**, no API for anyone but the
+  owner's own localhost UI." Two of those three are now false in different
+  ways, and the difference is the whole point:
+
+  - *"No auth layer"* is **retired**. It was true when the only listener was
+    `127.0.0.1`. The Cloud Run deployment made it false-by-omission rather
+    than false-by-decision — the app was reachable over a hostname with no
+    application-level authentication whatsoever, held up only by Cloud Run's
+    `--no-allow-unauthenticated` IAM flag. A lock is now what makes "one
+    driver's instrument" true off-loopback, so the clause is refined rather
+    than merely deleted.
+  - *"No multi-tenancy"* is **untouched and reaffirmed**. There is no user
+    table, no registration, no tenant column, no second identity, and no
+    password reset. `laps.driver` remains a data label unrelated to who is
+    signed in. This amendment is explicitly **not** precedent for multi-user,
+    exactly as A23 said of itself.
+
+  **What was built** (docs/DEPLOY-SPEC.md track H1, designed and adopted
+  2026-07-26, unimplemented until now): `DRIVERDNA_ACCESS_TOKEN` — env-only,
+  same non-negotiable as every other secret — exchanged at
+  `POST /api/auth/login` for a signed, expiring, HttpOnly/SameSite=Lax
+  cookie; `hmac.compare_digest`; one app-level FastAPI dependency guarding
+  every route; `POST /api/auth/logout`, `GET /api/auth/status`; a
+  fail-closed `--host` interlock refusing a non-loopback bind with no
+  passphrase configured; write-path hardening (per-file upload cap, CSV type
+  check, `/api/chat/*` rate limit, `no-store` on every API response).
+
+  **Stdlib only, and that is a design constraint rather than a preference.**
+  An identity provider (Auth0, Clerk, Firebase, Supabase Auth) is
+  mechanically excluded from the browser by two existing tests, not by
+  taste: `tests/test_ui_static.py` asserts the built bundle contains no
+  `https://` (it fails in CI, with no browser), and `tests/test_offline.py`
+  aborts every non-same-origin browser request. A server-side OIDC flow
+  could satisfy both, and was rejected on cost/benefit: for one driver it
+  buys MFA in exchange for a vendor, a dependency, a redirect URI pinned to
+  a hostname, and a user model this very amendment forbids. Because the
+  chosen scheme adds no third-party origin at either the browser or the
+  process level, **UI-SPEC trust gates 5a and 5b are untouched** — no gate
+  wording is weakened by this change.
+
+  **No numbers move.** Nothing here touches a metric, a score, a threshold
+  default, or a model version. Two new config sections (`auth`, `api`) hold
+  session and serving policy only; the passphrase is never among them.
+
+  **Auth is off when no passphrase is configured**, which is what keeps the
+  local loopback instrument identical to before and let every pre-existing
+  test pass unmodified — the mechanical proof that this is additive.
+
+  Full record: PROJECT-BRIEF.md's decision log, dated. Deployment
+  consequence flagged there and in DEPLOY-SPEC: `Dockerfile` binds
+  `0.0.0.0`, so the Cloud Run service now requires `DRIVERDNA_ACCESS_TOKEN`
+  in its environment or it will refuse to start — the interlock working as
+  designed, and a sequencing hazard if merged before the secret is set.

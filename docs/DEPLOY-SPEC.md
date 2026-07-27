@@ -255,6 +255,11 @@ instance won't launch.
 
 ## H1 — make the app safe to expose (before any exposure)
 
+> **Status: BUILT 2026-07-27** (SPEC.md A31). All five items below are
+> implemented and tested. Read the "H1 as built" subsection after them for
+> what changed on the way, what the platform turned out to be, and the one
+> deployment step that must happen *before* this reaches `main`.
+
 This lands and is verified **entirely locally**. Nothing is deployed until
 H1's done-criteria pass.
 
@@ -288,6 +293,106 @@ H1's done-criteria pass.
    `DRIVERDNA_ACCESS_TOKEN` in a `0600` systemd `EnvironmentFile` owned by
    the service user. Never in the DB, never in config TOML, never in logs.
    Log format reviewed once for accidental secret echo.
+
+## H1 as built (2026-07-27)
+
+Implemented as specified above, with the deviations and findings below
+flagged at build time rather than left to be discovered.
+
+**The platform is not the one this document assumed.** Decision 1 chose an
+Oracle Cloud Always Free VM with SQLite, reached over Tailscale. What
+actually exists is **Google Cloud Run** (`northamerica-northeast1`, service
+`driverdna`, deployed from `main` by `.github/workflows/deploy.yml`) with
+**Supabase Postgres** as the store (SPEC.md A23). That move was never
+recorded in an amendment — a decision-discipline gap noted here so the next
+reader is not misled by the Oracle/Tailscale text in H2/H3, which describes
+a deployment that does not exist. H2 and H3 are **not** built and now
+describe the wrong target; revisit them against Cloud Run when they are
+picked up.
+
+**The build order was violated before this milestone started.** H1 says "H1
+must precede any exposure, by definition." The Cloud Run deploy landed
+first, so between then and now the app was reachable at a public hostname
+with zero application-level auth, protected only by Cloud Run's
+`--no-allow-unauthenticated` IAM flag. That flag is untouched by this work
+(owner's call, 2026-07-27: build auth first, flip exposure separately).
+
+**Deviations from the five items, and why:**
+
+1. **One *app-level* dependency, not a per-route one.** Item 2 says "one
+   FastAPI dependency guards every route". Implemented as
+   `FastAPI(dependencies=[Depends(guard)])`, which is that, and additionally
+   covers any route added later — the failure mode the done-criterion's
+   route-table test exists to catch. The guard allowlists `/api/auth/login`
+   and `/api/auth/status` by path.
+2. **The static shell is public**, as item 2 allows. It is a `StaticFiles`
+   mount rather than a route, so the guard never sees it. Correct: the shell
+   is what renders the sign-in screen.
+3. **`Secure` is conditional, and read from `X-Forwarded-Proto`.** Cloud Run
+   terminates TLS, and uvicorn only trusts forwarded headers from
+   `forwarded_allow_ips` (which does not include a Cloud Run front end), so
+   the app cannot read the scheme off the request URL. Reading the header
+   directly is what stops the session cookie going out unmarked over a real
+   HTTPS deployment. On plain-http loopback the flag is omitted so local
+   development still works.
+4. **Login throttling was added**, beyond item 3's list. A single-secret
+   endpoint on a public URL needs it. Per client address, short lockout by
+   default — a long one would let a stranger keep the driver out of their
+   own cockpit.
+5. **The session is stateless.** No session table, no server-side store: the
+   cookie carries an expiry and its signature, and the signing key is
+   derived from the passphrase. This was not specified either way and
+   matters here — Cloud Run can run more than one instance, and a
+   server-side session store would break across them. It also makes
+   rotating `DRIVERDNA_ACCESS_TOKEN` the revocation path.
+6. **Item 4's single-worker constraint is necessary but no longer
+   sufficient.** It was written for a systemd unit. Cloud Run scales to N
+   *instances*, which `--workers 1` does not address. Auth is unaffected
+   (stateless), but `chat_sessions` and both in-process limiters are
+   per-instance. **Recommend `--max-instances=1` on the service**; this is a
+   pre-existing latent bug, not one this milestone introduced.
+7. **The upload cap measures parsed size, not wire size.** `UploadFile.size`
+   is what Starlette's multipart parser actually read, so the body has been
+   received (spooled to disk) by the time it can be measured. What the cap
+   bounds is what gets parsed and imported.
+
+**An identity provider was considered and rejected on evidence.** Auth0,
+Clerk, Firebase and Supabase Auth are all free at this scale, and all are
+mechanically excluded from the browser by two existing tests:
+`tests/test_ui_static.py` asserts the built bundle contains no `https://`
+(fails in CI, no browser needed), and `tests/test_offline.py` aborts every
+non-same-origin browser request. A server-side OIDC flow would pass both;
+it was rejected because for one driver it buys MFA in exchange for a vendor,
+a dependency, a redirect URI pinned to the Cloud Run hostname, and a user
+model this document forbids. The chosen scheme adds no third-party origin at
+either level, so **trust gates 5a and 5b needed no amendment**.
+
+**Done-criteria status:**
+
+- ✅ With auth unconfigured, `driverdna ui --host 0.0.0.0` refuses and says
+  why (`tests/test_auth_cli.py`).
+- ✅ Every `/api/*` route returns 401 without a session, via a test that
+  enumerates `app.routes` (`tests/test_auth_api.py`).
+- ✅ Both UI-SPEC browser trust gates green, plus a browser test of the gate
+  itself (`tests/test_auth_ui.py`), including one proving the gate tests are
+  not vacuous.
+- ⬜ Unreachable-from-outside check — belongs to H2/H3, which are not built.
+- ⬜ Full suite on the deployment against the real DB — owner's to run.
+
+### ⚠️ Required before this reaches `main`
+
+`Dockerfile` runs `driverdna ui --host 0.0.0.0`. The interlock now refuses
+that bind with no passphrase configured, so **the Cloud Run service will fail
+to start unless `DRIVERDNA_ACCESS_TOKEN` is set in its environment.** That is
+the interlock working as designed; it is also a sequencing hazard, because
+`.github/workflows/deploy.yml` deploys on every push to `main`.
+
+Order: create the secret, set it on the service, confirm it survives a
+revision deployed by `deploy-cloudrun@v2` (which can clear env vars it is not
+told about — prefer Secret Manager with `--set-secrets`, declared in the
+workflow, over a one-off `--set-env-vars`), and only then merge. Generate the
+passphrase with real entropy; it is the only thing between the internet and
+the instrument once exposure is flipped on.
 
 ## H2 — network shape
 

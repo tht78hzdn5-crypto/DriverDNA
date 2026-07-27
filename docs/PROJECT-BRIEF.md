@@ -258,6 +258,73 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-07-27 — single-driver auth built, and it is a passphrase rather than
+  an identity provider (SPEC.md A31, DEPLOY-SPEC track H1).** The owner asked
+  for "a free auth solution — could be Auth0, could be something else, that
+  works with our tech stack."
+
+  *The first finding was that the question was overdue.* `docs/DEPLOY-SPEC.md`
+  had specified this exact mechanism on 2026-07-26 and it was never built,
+  while the Cloud Run deployment shipped anyway. So the live service had been
+  sitting at a public hostname with **no application-level authentication at
+  all** — every `/api` route open, including `sync`, `config/apply`,
+  `laps/upload` and `chat` — held up only by Cloud Run's
+  `--no-allow-unauthenticated` IAM flag. DEPLOY-SPEC's own build order says
+  "H1 must precede any exposure, by definition"; the deploy went first.
+
+  *The fork the owner named — Auth0 or something else — turned out to be
+  decided by the test suite rather than by preference.* Two existing tests
+  mechanically exclude a browser-side identity SDK:
+  `tests/test_ui_static.py` asserts the built JS bundle contains no
+  `https://` (and it runs in CI with no browser, so this is not a soft
+  constraint), and `tests/test_offline.py` aborts every non-same-origin
+  browser request and asserts none was attempted. Auth0, Clerk, Firebase and
+  Supabase Auth all embed a tenant URL and all fetch from a third-party
+  origin. Weakening either test to accommodate one is exactly what AGENTS.md
+  forbids.
+
+  A **server-side** OIDC flow (browser only ever does a top-level redirect,
+  the server exchanges the code and sets its own cookie) would have passed
+  both gates — that was checked, not assumed, and it is the honest version of
+  "Auth0 is possible here." It was rejected on cost/benefit and the owner
+  chose the alternative: for one driver it buys MFA in exchange for a vendor,
+  a dependency, a client secret, a redirect URI pinned to the Cloud Run
+  hostname, a new external dependency at the process level (needing a UI-SPEC
+  gate-5b amendment), and a user-management model DEPLOY-SPEC explicitly
+  forbids.
+
+  **Chosen: `DRIVERDNA_ACCESS_TOKEN` → signed, expiring, HttpOnly cookie.**
+  Stdlib only (`hmac`/`hashlib`/`base64`), so no new dependency and no
+  third-party origin at either the browser or the process level — which is
+  why **no trust gate wording had to be weakened or amended**. Three
+  properties were deliberate: single-tenant by construction (no user table,
+  so the "no multi-tenancy" half of philosophy #8 is reaffirmed rather than
+  eroded); stateless (the cookie carries an expiry and its signature, so it
+  verifies on any instance after any restart — Cloud Run scales to N); and
+  revocable by rotation (the signing key derives from the passphrase).
+
+  Two decisions worth recording because they are the kind that get
+  second-guessed later. **Auth is off when no passphrase is configured** —
+  that is what keeps the local loopback instrument identical to before, and
+  it is the mechanical proof the change is additive, since every pre-existing
+  test passed unmodified. And **the guard is an app-level dependency rather
+  than a per-route one**, so an endpoint added in future is guarded by
+  default rather than by someone remembering; DEPLOY-SPEC's own
+  done-criterion is a test that enumerates `app.routes`, which exists
+  precisely because the opposite is so easy to get wrong.
+
+  *Found along the way, recorded rather than quietly fixed:* the `--host`
+  flag had shipped for the container without its fail-closed interlock, so
+  `Dockerfile`'s `--host 0.0.0.0` had nothing stopping it publishing an
+  unguarded instrument; `main` was red on a pre-existing `AGENTS.md`
+  size-budget failure; and the platform drift from this document's Oracle
+  VM + SQLite + Tailscale decision to Cloud Run + Supabase was never
+  recorded in an amendment, which left DEPLOY-SPEC's H2/H3 describing a
+  deployment that does not exist. **Consequence to sequence carefully:** the
+  interlock means the Cloud Run service now needs `DRIVERDNA_ACCESS_TOKEN`
+  in its environment or it will refuse to start, and `deploy.yml` deploys on
+  every push to `main`. Set the secret before merging.
+
 - **2026-07-27 — the build rules became portable and CI became a real gate,
   because more than one agent now works here (SPEC.md A29).** The owner uses
   Gemini CLI and Antigravity during Claude Code usage-limit windows, with
