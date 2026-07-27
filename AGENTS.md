@@ -59,21 +59,14 @@ recorded in the durable docs at decision time, never left only in chat:
 
 ## Build order (strict)
 
-M0a (contract lock) → M1 (parse/segment/identify/classify) → M2
-(metrics/detectors/persistence) → M3 (attribution/ranking) → M4 (reports +
-one-shot coach) → M5 (interactive chat) → M6 (Driver Model — deterministic,
-versioned scoring; the constitution's center of gravity, additive over M1–M5)
-→ M7 (Coaching Intelligence — grounded coaching ontology; docs/COACHING.md).
+Do not begin a milestone until the prior milestone's done-criteria pass. Every
+milestone ends with tests green AND its inspectable artifact generated from the
+real fixtures and reviewed. No code may assume Garage61 API behavior before
+`docs/garage61-api.md` documents it.
 
-M0b (Garage61 API probe) floats: it requires `GARAGE61_TOKEN` and gates only the
-`sync` feature — but no code may assume API behavior before M0b documents it.
-
-Do not begin a milestone until the prior milestone's done-criteria (in the spec)
-pass. Every milestone ends with tests green AND its inspectable artifact generated
-from the real fixtures and reviewed.
-
-The engine and UI milestone tracks are both complete — see `CLAUDE.md`'s
-"Current status" for where the build actually stands today.
+The M0a→M7 engine chain and the U0→U6 UI chain are both complete; `docs/SPEC.md`
+defines the milestones, `CLAUDE.md`'s "Current status" says where the build
+actually stands, and `docs/DEPLOY-SPEC.md` holds the open P/M/H tracks.
 
 ## Commands
 
@@ -116,9 +109,9 @@ agent from writing both the answer and the grading rubric in one thought.
 
 ## Multi-agent working agreement
 
-More than one agent works on this repository, one at a time, usually because
-the owner has hit a usage limit on another. The rules below exist so a handoff
-in either direction is cheap and so no agent has to guess what the last one did.
+More than one agent works on this repository, one at a time (usually because the
+owner hit a usage limit on another). The rules below make a handoff in either
+direction cheap, so no agent has to guess what the last one did.
 
 ### Branches and merging
 
@@ -171,18 +164,17 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 
 ### What CI does and does not cover
 
-`.github/workflows/tests.yml` runs the full suite on every push and on pull
-requests to `main`, across Python 3.11 and 3.12, with a Postgres service
-container so the dual-backend tests actually execute. A follow-up step fails the
-job if any test skipped for "no local Postgres configured" — otherwise a
-container that never came up would leave every A23 guard skipped and the job
-still green, which is the exact silent-coverage loss the container prevents.
+`.github/workflows/tests.yml` runs the full suite on every push and on PRs to
+`main`, across Python 3.11 and 3.12, with a Postgres service container so the
+dual-backend tests actually execute — and a step fails the job if any test
+skipped for "no local Postgres configured", so a container that never came up
+cannot leave the A23 guards silently unrun. Rationale: the workflow's comments.
 
 It does **not** install Chromium, so the two UI-SPEC trust-gate tests
-(`tests/test_render_parity.py`, `tests/test_offline.py`) skip in CI. Those are
-the owner's to run locally. This is deliberate — a gate that is red by default
-gets ignored — but it means **green CI is not proof the browser trust gates
-hold**. Say so rather than implying full coverage.
+(`tests/test_render_parity.py`, `tests/test_offline.py`) skip in CI — the
+owner's to run locally. Deliberate (a gate red by default gets ignored), but it
+means **green CI is not proof the browser trust gates hold**. Say so rather
+than implying full coverage.
 
 ### Working with the durable docs
 
