@@ -1,10 +1,6 @@
 # DriverDNA — Status & Decision Log
 
-**Snapshot date: 2026-07-27.** On `main` after fixing the red test
-(test_rebuild_map blob directory copy, semantic merge conflict from A23+U6),
-adding the sync 404/403 guard (A30: free-plan non-PB laps 404 on CSV fetch),
-fixing the Cloud Run deploy pipeline (Dockerfile, --host/--port, single service),
-and four UI bug fixes (ref label, sessions tile, ULID truncation, incident chip).
+**Snapshot date: 2026-07-27.** On `main` after PR #6 (sync 404/403 guard A30, UI bug fixes), PR #7 & PR #8 & PR #9 (Cloud Run deploy pipeline WIF auth resolution, direct source build via `google-github-actions/deploy-cloudrun@v2`). The Cloud Run service `driverdna` is live at `https://driverdna-b4wjnb2baa-nn.a.run.app`.
 Previous: branch consolidation merge, A24–A29, A23 storage migration, UI U0–U6.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +
