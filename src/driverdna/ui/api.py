@@ -15,21 +15,26 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
-from driverdna.db import Database
-from driverdna.store import missing_reason
+from driverdna.blobs import open_blob_store
+from driverdna.db import Database, open_postgres_pool
+from driverdna.store import is_postgres_url, missing_reason
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -88,8 +93,37 @@ def create_app(
     SDK installed); tests inject a mocked provider here, same pattern as
     the CLI's `chat` command — no test ever calls a live model.
     """
-    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None)
+    _pool = None
+    _is_pg = is_postgres_url(db_path)
+    _pg_blobs = open_blob_store(db_path) if _is_pg else None
     chat_sessions: dict[str, dict[str, Any]] = {}
+
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        nonlocal _pool
+        if _is_pg:
+            _pool = open_postgres_pool(str(db_path))
+            app.state.pool = _pool
+        yield
+        if _pool is not None:
+            _pool.close()
+            _pool = None
+
+    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None, lifespan=_lifespan)
+
+    @app.exception_handler(Exception)
+    async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        # Anything not already an HTTPException (a DB timeout, a connection
+        # refusal, a bad query) would otherwise surface as a bare, unlogged
+        # "Internal Server Error" with no trace of what happened.
+        logger.exception("unhandled exception on %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "internal server error"})
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        # No DB access: this is Cloud Run's liveness probe, and it must
+        # answer even while the store is unreachable or still migrating.
+        return {"status": "ok"}
 
     def make_chat_provider() -> ChatProvider:
         if chat_provider_factory is not None:
@@ -100,13 +134,11 @@ def create_app(
         return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
 
     def open_db(*, check_same_thread: bool = True) -> Database:
-        # A hosted store has no file to stat and creates its schema on
-        # connect, so "not there yet" is reported by `missing_reason` only
-        # for the SQLite case; an empty hosted store surfaces as the normal
-        # no-cohorts empty state instead.
         reason = missing_reason(db_path)
         if reason:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
+        if _pool is not None:
+            return Database.from_pool(_pool, _pg_blobs)
         return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:

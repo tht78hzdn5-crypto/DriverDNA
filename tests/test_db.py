@@ -5,9 +5,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from driverdna.blobs import MemoryBlobStore
 from driverdna.config import DriverDNAConfig
-from driverdna.db import MIGRATIONS, Database
+from driverdna.db import MIGRATIONS, Database, open_postgres_pool
 from synth import CORNER_WINDOWS, one_corner_lap, run_synthetic_lap, track_lap
+
+from conftest import requires_postgres
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CONFIG = DriverDNAConfig()
@@ -153,3 +156,50 @@ def test_config_history_records(db):
     )
     row = db.conn.execute("SELECT * FROM config_history").fetchone()
     assert row["key"] == "detectors.overlap_max_s" and row["source"] == "cli"
+
+
+# --- Postgres connection pool -----------------------------------------------
+#
+# A single shared connection reused across every concurrent HTTP request
+# (the pre-pool approach) is not safe: FastAPI runs sync routes in a thread
+# pool, and psycopg connections are not designed for concurrent use from
+# multiple threads. These tests prove the pool hands each caller its own
+# connection instead.
+
+
+@requires_postgres
+def test_pool_gives_concurrent_checkouts_distinct_connections(pg_schema):
+    pool = open_postgres_pool(pg_schema, min_size=2, max_size=4)
+    try:
+        db1 = Database.from_pool(pool, MemoryBlobStore())
+        db2 = Database.from_pool(pool, MemoryBlobStore())
+        try:
+            assert db1.conn.raw is not db2.conn.raw
+            # Both are already migrated — the pool's configure callback runs
+            # per physical connection, not per checkout.
+            assert db1.schema_version == len(MIGRATIONS)
+            assert db2.schema_version == len(MIGRATIONS)
+        finally:
+            db1.close()
+            db2.close()
+    finally:
+        pool.close()
+
+
+@requires_postgres
+def test_pool_close_returns_connection_instead_of_closing_it(pg_schema):
+    pool = open_postgres_pool(pg_schema, min_size=1, max_size=2)
+    try:
+        db = Database.from_pool(pool, MemoryBlobStore())
+        raw = db.conn.raw
+        db.close()
+        assert not raw.closed, "close() must release to the pool, not close the socket"
+
+        # The released connection is available for the next checkout.
+        db2 = Database.from_pool(pool, MemoryBlobStore())
+        try:
+            db2.conn.execute("SELECT 1")
+        finally:
+            db2.close()
+    finally:
+        pool.close()

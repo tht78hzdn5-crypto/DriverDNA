@@ -11,6 +11,8 @@ from driverdna.config import load_config
 from driverdna.db import Database
 from driverdna.ui.api import create_app
 
+from conftest import requires_postgres
+
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SPA_SLUG = "gr86-spa-francorchamps"
 
@@ -31,6 +33,59 @@ def env(tmp_path_factory):
     client = TestClient(create_app(db_path, root / "config.toml"))
     return {"client": client, "db_path": db_path, "out_dir": out_dir,
             "config_path": root / "config.toml"}
+
+
+def test_health_endpoint_does_not_open_db():
+    # A path that cannot possibly resolve to a real store — if /health opened
+    # the DB, this would 404 or raise instead of answering.
+    client = TestClient(
+        create_app(Path("/nonexistent-dir/does-not-exist.db"), Path("/nonexistent-dir/config.toml"))
+    )
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
+def test_unhandled_exception_returns_structured_500_not_a_traceback(env, monkeypatch):
+    import driverdna.ui.api as api_module
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("simulated unhandled failure")
+
+    monkeypatch.setattr(api_module, "build_driver_payload", boom)
+    # raise_server_exceptions=False: the default TestClient re-raises server
+    # errors for the test to catch directly, which is the opposite of what
+    # this test checks — that a live deployment gets a structured response,
+    # not a bare crash.
+    no_raise_client = TestClient(
+        create_app(env["db_path"], env["config_path"]), raise_server_exceptions=False
+    )
+    resp = no_raise_client.get("/api/driver")
+    assert resp.status_code == 500
+    body = resp.json()
+    assert body.get("detail") == "internal server error"
+
+
+@requires_postgres
+def test_postgres_backed_app_serves_requests_through_a_connection_pool(pg_schema, tmp_path):
+    from psycopg_pool import ConnectionPool
+
+    result = CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", pg_schema]
+    )
+    assert result.exit_code == 0, result.output
+    app = create_app(pg_schema, tmp_path / "config.toml")
+    with TestClient(app) as client:
+        # A real pool, not the single-shared-connection scheme it replaces:
+        # that distinction matters because FastAPI dispatches sync routes to
+        # a thread pool, and one psycopg connection shared across
+        # concurrently-executing requests is not safe.
+        assert isinstance(app.state.pool, ConnectionPool)
+        r1 = client.get("/api/driver")
+        r2 = client.get("/api/cohorts")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        assert {c["slug"] for c in r2.json()} == {SPA_SLUG, "mustang-laguna-seca"}
 
 
 def test_cohort_payload_byte_identical_to_report_json(env):
