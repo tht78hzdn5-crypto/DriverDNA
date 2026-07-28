@@ -247,6 +247,16 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE lap_samples RENAME TO lap_samples_legacy;
     """,
+    # 007 — performance indexes on hot-path columns
+    """
+    CREATE INDEX IF NOT EXISTS idx_laps_cohort ON laps(driver, car, track, role);
+    CREATE INDEX IF NOT EXISTS idx_corner_obs_lap ON corner_observations(lap_pk);
+    CREATE INDEX IF NOT EXISTS idx_corner_obs_corner ON corner_observations(corner_pk);
+    CREATE INDEX IF NOT EXISTS idx_metric_values_obs ON metric_values(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_detector_results_obs ON detector_results(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_phase_times_obs ON phase_times(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_corners_map ON corners(map_pk);
+    """,
 )
 
 
@@ -532,8 +542,32 @@ class Database:
         except Exception as exc:
             raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
+    @classmethod
+    def from_connection(
+        cls,
+        conn,
+        blobs: BlobStore,
+        dialect: "_Dialect",
+    ) -> "Database":
+        """Wrap an already-opened, already-migrated connection.
+
+        Skips `_migrate` and `_harden_postgres` — the caller guarantees those
+        ran once (at startup or when the pool was created).  Used by the UI's
+        per-request path so every HTTP request avoids the migration-check and
+        RLS-catalogue round-trips.  The returned instance is a *borrowed* view:
+        `close()` is a no-op so `with db:` cannot tear down the shared
+        connection.
+        """
+        db = object.__new__(cls)
+        db.dialect = dialect
+        db.conn = conn if isinstance(conn, _Conn) else _Conn(conn, dialect)
+        db.blobs = blobs
+        db._borrowed = True
+        return db
+
     def close(self) -> None:
-        self.conn.close()
+        if not getattr(self, "_borrowed", False):
+            self.conn.close()
 
     def __enter__(self) -> "Database":
         return self
