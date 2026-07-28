@@ -113,8 +113,16 @@ def import_parsed_lap(
     loaded = db.load_corner_map(car=car, track=track)
     if loaded is None:
         corner_map = build_corner_map([(lap, spans)], config.identity)
+        import json
+        step = max(1, len(lap.lat) // 800)
+        outline = {
+            "lap_id": lap.lap_id,
+            "lat": [round(float(v), 6) for v in lap.lat[::step]],
+            "lon": [round(float(v), 6) for v in lap.lon[::step]],
+            "lap_dist": [round(float(v), 5) for v in lap.lap_dist[::step]],
+        }
         map_pk = db.store_corner_map(
-            corner_map, car=car, track=track, built_from_n_laps=1
+            corner_map, car=car, track=track, built_from_n_laps=1, track_outline_json=json.dumps(outline)
         )
         # Freeze canonical phase windows alongside the map (F1): every later
         # lap is measured over these identical spans, never its own landmarks.

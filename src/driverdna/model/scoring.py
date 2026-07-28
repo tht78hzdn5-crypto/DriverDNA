@@ -134,9 +134,9 @@ class _Component:
 
 def _driver_cohorts(db: Database, driver: str) -> list[tuple[str, str]]:
     rows = db.conn.execute(
-        """SELECT DISTINCT car, track FROM laps WHERE role='self' AND driver=?
+        """SELECT DISTINCT car, track FROM laps WHERE role='self' AND driver=? AND owner_user_pk=?
            ORDER BY car, track""",
-        (driver,),
+        (driver, db.user_pk),
     ).fetchall()
     return [(r["car"], r["track"]) for r in rows]
 

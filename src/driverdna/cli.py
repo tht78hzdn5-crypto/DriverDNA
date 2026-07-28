@@ -538,21 +538,28 @@ def ui(
 
     from driverdna.ui import auth
 
-    access_token = auth.access_token_from_env()
+    session_secret = auth.session_secret_from_env()
+    google_client_id = auth.google_client_id_from_env()
+    google_client_secret = auth.google_client_secret_from_env()
+    smtp_config = auth.smtp_config_from_env()
 
     # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a misconfiguration
     # must not be able to publish an unauthenticated instrument. Checked before
     # anything is built or bound, so refusing costs nothing and exposes nothing.
-    if not _is_loopback(host) and access_token is None:
+    if not _is_loopback(host) and session_secret is None:
         typer.echo(
             f"error: refusing to bind {host}, which is reachable from outside "
             "this machine, with no authentication configured.\n"
-            f"Set {auth.ACCESS_TOKEN_ENV} to a long random passphrase first "
+            f"Set {auth.SESSION_SECRET_ENV} to a long random session secret first "
             "(env only; never persisted or logged), or bind 127.0.0.1."
         )
         raise typer.Exit(code=2)
 
-    application = create_app(_store(db_path), config_path, access_token=access_token)
+    application = create_app(
+        _store(db_path), config_path, session_secret=session_secret,
+        google_client_id=google_client_id, google_client_secret=google_client_secret,
+        smtp_config=smtp_config
+    )
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
         application.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
@@ -576,7 +583,7 @@ def _seed_demo_db(db, fixtures: Path, config) -> int:
     from driverdna.ingest.contract import load_fixture_manifest
     from driverdna.pipeline import import_lap_file
 
-    existing = db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"]
+    existing = db.conn.execute("SELECT COUNT(*) AS n FROM laps WHERE owner_user_pk=?", (db.user_pk,)).fetchone()["n"]
     if existing == 0:
         for e in load_fixture_manifest(fixtures):
             import_lap_file(
@@ -585,7 +592,7 @@ def _seed_demo_db(db, fixtures: Path, config) -> int:
                 role=e["role"], session_key=e.get("session"),
             )
         db.enforce_retention(config.retention.raw_laps_per_cohort)
-    return db.conn.execute("SELECT COUNT(*) AS n FROM laps").fetchone()["n"]
+    return db.conn.execute("SELECT COUNT(*) AS n FROM laps WHERE owner_user_pk=?", (db.user_pk,)).fetchone()["n"]
 
 
 @app.command()
@@ -648,7 +655,10 @@ def demo(
     from driverdna.ui import auth
 
     application = create_app(
-        db_path, config_path, access_token=auth.access_token_from_env()
+        db_path, config_path, session_secret=auth.session_secret_from_env(),
+        google_client_id=auth.google_client_id_from_env(),
+        google_client_secret=auth.google_client_secret_from_env(),
+        smtp_config=auth.smtp_config_from_env()
     )
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
@@ -770,12 +780,12 @@ def history(
         for c in list_cohorts(db):
             n = db.conn.execute(
                 """SELECT COUNT(*) n FROM laps WHERE role='self'
-                   AND driver=? AND car=? AND track=?""",
-                (c["driver"], c["car"], c["track"]),
+                   AND driver=? AND car=? AND track=? AND owner_user_pk=?""",
+                (c["driver"], c["car"], c["track"], db.user_pk),
             ).fetchone()["n"]
             n_ref = db.conn.execute(
-                "SELECT COUNT(*) n FROM laps WHERE role='reference' AND car=? AND track=?",
-                (c["car"], c["track"]),
+                "SELECT COUNT(*) n FROM laps WHERE role='reference' AND car=? AND track=? AND owner_user_pk=?",
+                (c["car"], c["track"], db.user_pk),
             ).fetchone()["n"]
             typer.echo(
                 f"{c['driver']} / {c['car']} @ {c['track']}: {n} self laps, "

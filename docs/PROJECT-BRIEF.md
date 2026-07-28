@@ -258,6 +258,9 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-07-28 - Multi-tenant, SaaS Productization, Google OAuth, and SMTP Password Resets.** The strict "one driver's instrument" rule (Philosophy #8, A31) was overridden by explicit owner directive to productize the app as a SaaS platform (A32).
+  A new `users` table was added, backing both a Google OAuth TLS callback route and a standalone SMTP-based password reset flow (via SendGrid). Every data structure (`laps`, `incidents`, `model_cache`, etc.) was partitioned with `owner_user_pk`, and the row-level security was tested extensively. Trust gate 5b was amended in A32 to permit outbound calls to `smtp.sendgrid.net` and Google OAuth endpoints. All deterministic grounding tests remain strictly isolated per tenant.
+
 - **2026-07-27 — single-driver auth built, and it is a passphrase rather than
   an identity provider (SPEC.md A31, DEPLOY-SPEC track H1).** The owner asked
   for "a free auth solution — could be Auth0, could be something else, that

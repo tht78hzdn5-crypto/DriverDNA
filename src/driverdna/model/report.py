@@ -26,7 +26,8 @@ def _fmt_confidence(value: float) -> str:
 def build_model_report(db: Database, config: DriverDNAConfig) -> str:
     drivers = [
         r["driver"] for r in db.conn.execute(
-            "SELECT DISTINCT driver FROM laps WHERE role='self' ORDER BY driver"
+            "SELECT DISTINCT driver FROM laps WHERE role='self' AND owner_user_pk=? ORDER BY driver",
+            (db.user_pk,)
         ).fetchall()
     ]
 

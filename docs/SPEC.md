@@ -1560,3 +1560,16 @@ Accepted at owner plan review; rationale recorded in the review:
   `0.0.0.0`, so the Cloud Run service now requires `DRIVERDNA_ACCESS_TOKEN`
   in its environment or it will refuse to start — the interlock working as
   designed, and a sequencing hazard if merged before the secret is set.
+
+- **A32** (2026-07-28): **Multi-tenancy and Productization.**
+  **Principle refined:** philosophy #8 ("no multi-tenancy", overriding A31).
+  The owner has explicitly directed the system to support multi-user accounts
+  and SaaS productization, dropping the strict "one driver's instrument" rule.
+  
+  **What was built:** A new `users` table, row-level `owner_user_pk`
+  partitioning on all data structures, a password reset SMTP flow, and a
+  Google OAuth flow. UI-SPEC trust gate 5b is amended to permit outbound
+  network calls for SMTP (`smtp.sendgrid.net`) and Google OAuth endpoints.
+  Trust gate 5a remains untouched, ensuring telemetry blobs are only fetched
+  from trusted domains. Data remains fully isolated per user, and deterministic
+  measurements remain strictly independent per account.

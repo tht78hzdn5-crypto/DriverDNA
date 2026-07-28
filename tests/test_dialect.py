@@ -207,9 +207,9 @@ def test_transaction_block_does_not_close_the_connection(pg_schema):
     with Database.open(pg_schema) as pg:
         with pg.conn:
             pg.conn.execute(
-                """INSERT INTO laps (source_file, driver, car, track, role,
+                """INSERT INTO laps (owner_user_pk, source_file, driver, car, track, role,
                                      n_samples, duration_s, quality_flags)
-                   VALUES ('t.csv', 'owner', 'C', 'T', 'self', 1, 1.0, '[]')"""
+                   VALUES (1, 't.csv', 'owner', 'C', 'T', 'self', 1, 1.0, '[]')"""
             )
         assert pg.conn.closed is False
         # ...and the connection is still usable, which is the real assertion.

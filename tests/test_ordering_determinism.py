@@ -44,8 +44,8 @@ def _map_with_corners_inserted_out_of_order(db) -> int:
     """Freeze a map whose rows land in an order that is deliberately not
     corner_id order, so an unordered SELECT returns them wrongly."""
     map_pk = db._insert_returning(
-        "INSERT INTO corner_maps (car, track, built_from_n_laps) VALUES (?, ?, ?)",
-        (COHORT["car"], COHORT["track"], 3),
+        "INSERT INTO corner_maps (owner_user_pk, car, track, built_from_n_laps) VALUES (?, ?, ?, ?)",
+        (1, COHORT["car"], COHORT["track"], 3),
         "map_pk",
     )
     # Insert C03, C01, C02 in that order: rowid order != corner_id order.
@@ -99,8 +99,8 @@ def test_tied_distance_labels_the_lower_corner_id(db):
     from driverdna.incidents.detector import _corner_at
 
     map_pk = db._insert_returning(
-        "INSERT INTO corner_maps (car, track, built_from_n_laps) VALUES (?, ?, ?)",
-        (COHORT["car"], COHORT["track"], 3),
+        "INSERT INTO corner_maps (owner_user_pk, car, track, built_from_n_laps) VALUES (?, ?, ?, ?)",
+        (1, COHORT["car"], COHORT["track"], 3),
         "map_pk",
     )
     # C02 inserted first, so rowid order puts the *higher* id first.
@@ -241,10 +241,10 @@ def test_phase_times_upsert_overwrites_in_place(db):
     """`store_phase_times` is the other rewritten upsert — re-storing must
     replace the value, not duplicate the (obs_pk, phase) row."""
     lap_pk = db._insert_returning(
-        """INSERT INTO laps (source_file, driver, car, track, role, n_samples,
+        """INSERT INTO laps (owner_user_pk, source_file, driver, car, track, role, n_samples,
                              duration_s, quality_flags)
-           VALUES (?, ?, ?, ?, 'self', 10, 1.0, '[]')""",
-        (str(Path("synthetic-upsert.csv")), COHORT["driver"], COHORT["car"],
+           VALUES (?, ?, ?, ?, ?, 'self', 10, 1.0, '[]')""",
+        (1, str(Path("synthetic-upsert.csv")), COHORT["driver"], COHORT["car"],
          COHORT["track"]),
         "lap_pk",
     )

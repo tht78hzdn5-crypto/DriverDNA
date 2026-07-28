@@ -22,7 +22,14 @@ TOKEN = "a-long-random-passphrase-for-one-driver"
 
 #: The only endpoints reachable without a session — the login exchange itself
 #: and the status probe the SPA uses to decide whether to draw the login gate.
-PUBLIC_API_PATHS = {"/api/auth/login", "/api/auth/status"}
+PUBLIC_API_PATHS = {
+    "/api/auth/login", 
+    "/api/auth/status",
+    "/api/auth/google/login",
+    "/api/auth/google/callback",
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
+}
 
 
 @pytest.fixture(scope="module")
@@ -33,13 +40,23 @@ def db_path(tmp_path_factory):
         cli_app, ["import", str(FIXTURES_DIR), "--db", str(path)]
     )
     assert result.exit_code == 0, result.output
+    
+    # Create the user to login with
+    from driverdna.db import Database
+    from driverdna.ui.auth import hash_password
+    with Database.open(path) as db:
+        with db.conn:
+            db.conn.execute(
+                "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+                ("driver@driverdna.com", hash_password(TOKEN))
+            )
     return path
 
 
 @pytest.fixture
 def guarded(db_path, tmp_path):
     return TestClient(
-        create_app(db_path, tmp_path / "config.toml", access_token=TOKEN)
+        create_app(db_path, tmp_path / "config.toml", session_secret=TOKEN)
     )
 
 
@@ -139,7 +156,7 @@ def test_the_guard_runs_before_the_database_is_opened(tmp_path):
     """A 404 "no database" would leak whether the instrument has data. The
     DB path here does not exist at all."""
     client = TestClient(
-        create_app(tmp_path / "nope.db", tmp_path / "config.toml", access_token=TOKEN)
+        create_app(tmp_path / "nope.db", tmp_path / "config.toml", session_secret=TOKEN)
     )
     assert client.get("/api/driver").status_code == 401
 
@@ -149,12 +166,12 @@ def test_the_guard_runs_before_the_database_is_opened(tmp_path):
 
 def test_the_right_passphrase_opens_the_cockpit(guarded):
     assert guarded.get("/api/driver").status_code == 401
-    assert guarded.post("/api/auth/login", json={"token": TOKEN}).status_code == 200
+    assert guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN}).status_code == 200
     assert guarded.get("/api/driver").status_code == 200
 
 
 def test_the_session_cookie_is_httponly_and_samesite(guarded):
-    response = guarded.post("/api/auth/login", json={"token": TOKEN})
+    response = guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     cookie = response.headers["set-cookie"]
     assert auth.SESSION_COOKIE in cookie
     # Attribute names and values are case-insensitive (RFC 6265); Starlette
@@ -169,19 +186,19 @@ def test_the_cookie_is_marked_secure_behind_an_https_proxy(guarded):
     """Cloud Run terminates TLS and forwards `X-Forwarded-Proto: https`, so
     the app cannot read the scheme off the request URL. Without this the
     session cookie would go out unmarked over a real HTTPS deployment."""
-    plain = guarded.post("/api/auth/login", json={"token": TOKEN})
+    plain = guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     assert "Secure" not in plain.headers["set-cookie"]  # plain-http loopback dev
 
     forwarded = guarded.post(
         "/api/auth/login",
-        json={"token": TOKEN},
+        json={"email": "driver@driverdna.com", "password": TOKEN},
         headers={"X-Forwarded-Proto": "https"},
     )
     assert "Secure" in forwarded.headers["set-cookie"]
 
 
 def test_a_wrong_passphrase_is_refused_and_never_echoed(guarded):
-    response = guarded.post("/api/auth/login", json={"token": "hunter2"})
+    response = guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": "hunter2"})
     assert response.status_code == 401
     # Neither the guess nor the real secret may appear in the response.
     assert "hunter2" not in response.text
@@ -190,7 +207,7 @@ def test_a_wrong_passphrase_is_refused_and_never_echoed(guarded):
 
 
 def test_logout_ends_the_session(guarded):
-    guarded.post("/api/auth/login", json={"token": TOKEN})
+    guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     assert guarded.get("/api/driver").status_code == 200
     assert guarded.post("/api/auth/logout").status_code == 200
     assert guarded.get("/api/driver").status_code == 401
@@ -205,7 +222,7 @@ def test_status_reports_whether_auth_is_required_and_met(guarded, unguarded):
     assert guarded.get("/api/auth/status").json() == {
         "required": True, "authenticated": False,
     }
-    guarded.post("/api/auth/login", json={"token": TOKEN})
+    guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     assert guarded.get("/api/auth/status").json() == {
         "required": True, "authenticated": True,
     }
@@ -232,9 +249,9 @@ def test_without_a_token_every_route_stays_open(unguarded):
 def test_logging_in_is_refused_when_no_passphrase_is_configured(unguarded):
     """With auth off there is nothing to log in to, and accepting any
     passphrase would be worse than accepting none."""
-    response = unguarded.post("/api/auth/login", json={"token": "anything"})
+    response = unguarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": "anything"})
     assert response.status_code == 400
-    assert auth.ACCESS_TOKEN_ENV in response.json()["detail"]
+    assert auth.SESSION_SECRET_ENV in response.json()["detail"]
 
 
 # --- throttling -----------------------------------------------------------
@@ -242,18 +259,18 @@ def test_logging_in_is_refused_when_no_passphrase_is_configured(unguarded):
 
 def test_repeated_wrong_guesses_are_locked_out(db_path, tmp_path):
     client = TestClient(
-        create_app(db_path, tmp_path / "config.toml", access_token=TOKEN)
+        create_app(db_path, tmp_path / "config.toml", session_secret=TOKEN)
     )
     config = __import__(
         "driverdna.config", fromlist=["load_config"]
     ).load_config(tmp_path / "config.toml")
     for _ in range(config.auth.login_max_attempts):
-        assert client.post("/api/auth/login", json={"token": "no"}).status_code == 401
+        assert client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": "no"}).status_code == 401
 
-    locked = client.post("/api/auth/login", json={"token": "no"})
+    locked = client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": "no"})
     assert locked.status_code == 429
     # And the lockout is not bypassed by suddenly knowing the passphrase.
-    assert client.post("/api/auth/login", json={"token": TOKEN}).status_code == 429
+    assert client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN}).status_code == 429
 
 
 # --- responses are not cacheable ------------------------------------------
@@ -263,6 +280,6 @@ def test_api_responses_carry_no_store(guarded):
     """A cached finding is a wrong number shown as a current one (UI-SPEC's
     service-worker rule). It is also a session-bearing response sitting in a
     shared cache."""
-    guarded.post("/api/auth/login", json={"token": TOKEN})
+    guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     for path in ("/api/driver", "/api/cohorts", "/api/auth/status"):
         assert guarded.get(path).headers["cache-control"] == "no-store"

@@ -102,9 +102,9 @@ def test_an_anon_role_reads_nothing_even_with_select_granted(fresh_database, tmp
             f'GRANT SELECT ON ALL TABLES IN SCHEMA "{PG_SCHEMA}" TO anon_probe'
         )
         db.conn.execute(
-            """INSERT INTO laps (source_file, driver, car, track, role,
+            """INSERT INTO laps (owner_user_pk, source_file, driver, car, track, role,
                                  n_samples, duration_s, quality_flags)
-               VALUES ('secret.csv', 'owner', 'GR86', 'Spa', 'self', 1, 1.0, '[]')"""
+               VALUES (1, 'secret.csv', 'owner', 'GR86', 'Spa', 'self', 1, 1.0, '[]')"""
         )
         assert db.conn.execute("SELECT count(*) AS n FROM laps").fetchone()["n"] == 1
 

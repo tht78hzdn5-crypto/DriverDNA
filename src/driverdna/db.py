@@ -247,6 +247,189 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE lap_samples RENAME TO lap_samples_legacy;
     """,
+    # 007 — Identity Core (Phase 1)
+    """
+    CREATE TABLE users (
+        user_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT ''
+    );
+    INSERT INTO users (email, password_hash) VALUES ('owner@example.com', 'placeholder');
+
+    CREATE TABLE password_resets (
+        token TEXT PRIMARY KEY,
+        user_pk INTEGER NOT NULL REFERENCES users(user_pk),
+        expires_at TEXT NOT NULL
+    );
+    """,
+    # 008 — Data Partitioning (Phase 2)
+    """
+    PRAGMA foreign_keys=OFF;
+    CREATE TABLE laps_new (
+        lap_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_user_pk INTEGER NOT NULL,
+        lap_id TEXT,
+        source_file TEXT NOT NULL,
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('self', 'reference')),
+        session_key TEXT,
+        run_index INTEGER,
+        n_samples INTEGER NOT NULL,
+        duration_s REAL NOT NULL,
+        imported_at TEXT,
+        quality_flags TEXT NOT NULL,
+        content_hash TEXT,
+        lap_date TEXT,
+        UNIQUE(content_hash, source_file, owner_user_pk)
+    );
+    INSERT INTO laps_new (lap_pk, owner_user_pk, lap_id, source_file, driver, car, track, role, session_key, run_index, n_samples, duration_s, imported_at, quality_flags, content_hash, lap_date)
+    SELECT lap_pk, 1, lap_id, source_file, driver, car, track, role, session_key, run_index, n_samples, duration_s, imported_at, quality_flags, content_hash, lap_date FROM laps;
+    DROP TABLE laps;
+    ALTER TABLE laps_new RENAME TO laps;
+    CREATE INDEX idx_laps_cohort ON laps(car, track, role);
+    CREATE INDEX idx_laps_content_hash ON laps(content_hash);
+
+    CREATE TABLE corner_maps_new (
+        map_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_user_pk INTEGER NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        built_from_n_laps INTEGER NOT NULL,
+        UNIQUE(car, track, owner_user_pk)
+    );
+    INSERT INTO corner_maps_new (map_pk, owner_user_pk, car, track, built_from_n_laps)
+    SELECT map_pk, 1, car, track, built_from_n_laps FROM corner_maps;
+    DROP TABLE corner_maps;
+    ALTER TABLE corner_maps_new RENAME TO corner_maps;
+
+    CREATE TABLE incidents_new (
+        incident_pk INTEGER PRIMARY KEY,
+        lap_pk INTEGER NOT NULL REFERENCES laps(lap_pk) ON DELETE CASCADE,
+        owner_user_pk INTEGER NOT NULL,
+        kinds TEXT NOT NULL,
+        classification TEXT NOT NULL,
+        confidence TEXT NOT NULL,
+        corner_id TEXT,
+        span_start INTEGER NOT NULL,
+        span_end INTEGER NOT NULL,
+        onset INTEGER NOT NULL,
+        min_speed_kmh REAL NOT NULL,
+        peak_yaw_rate REAL NOT NULL,
+        rationale TEXT NOT NULL,
+        detail TEXT NOT NULL
+    );
+    INSERT INTO incidents_new (incident_pk, lap_pk, owner_user_pk, kinds, classification, confidence, corner_id, span_start, span_end, onset, min_speed_kmh, peak_yaw_rate, rationale, detail)
+    SELECT incident_pk, lap_pk, 1, kinds, classification, confidence, corner_id, span_start, span_end, onset, min_speed_kmh, peak_yaw_rate, rationale, detail FROM incidents;
+    DROP TABLE incidents;
+    ALTER TABLE incidents_new RENAME TO incidents;
+    CREATE INDEX idx_incidents_lap ON incidents(lap_pk);
+
+    CREATE TABLE chat_transcripts_new (
+        turn_pk INTEGER PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        bundle_version INTEGER NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('driver', 'assistant', 'system-event')),
+        content TEXT NOT NULL,
+        evidence_cited TEXT,
+        effects TEXT
+    );
+    INSERT INTO chat_transcripts_new (turn_pk, session_id, owner_user_pk, bundle_version, role, content, evidence_cited, effects)
+    SELECT turn_pk, session_id, 1, bundle_version, role, content, evidence_cited, effects FROM chat_transcripts;
+    DROP TABLE chat_transcripts;
+    ALTER TABLE chat_transcripts_new RENAME TO chat_transcripts;
+
+    CREATE TABLE driver_beliefs_new (
+        belief_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        fundamental TEXT NOT NULL,
+        signal_status TEXT NOT NULL CHECK (signal_status IN ('measured','proxy','no_signal')),
+        score REAL,
+        confidence REAL NOT NULL,
+        evidence_count INTEGER NOT NULL,
+        trend TEXT NOT NULL CHECK (trend IN ('improving','stable','declining','unavailable')),
+        insufficient_reason TEXT,
+        scoring_model_version TEXT NOT NULL,
+        taxonomy_version TEXT NOT NULL,
+        computed_at TEXT,
+        UNIQUE (owner_user_pk, driver, fundamental, scoring_model_version)
+    );
+    INSERT INTO driver_beliefs_new (belief_pk, owner_user_pk, driver, fundamental, signal_status, score, confidence, evidence_count, trend, insufficient_reason, scoring_model_version, taxonomy_version, computed_at)
+    SELECT belief_pk, 1, driver, fundamental, signal_status, score, confidence, evidence_count, trend, insufficient_reason, scoring_model_version, taxonomy_version, computed_at FROM driver_beliefs;
+    DROP TABLE driver_beliefs;
+    ALTER TABLE driver_beliefs_new RENAME TO driver_beliefs;
+
+    CREATE TABLE coach_outputs_new (
+        output_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        payload_version INTEGER NOT NULL,
+        prompt_version TEXT NOT NULL,
+        model TEXT NOT NULL,
+        output_json TEXT NOT NULL,
+        created_at TEXT
+    );
+    INSERT INTO coach_outputs_new (output_pk, owner_user_pk, driver, car, track, payload_version, prompt_version, model, output_json, created_at)
+    SELECT output_pk, 1, driver, car, track, payload_version, prompt_version, model, output_json, created_at FROM coach_outputs;
+    DROP TABLE coach_outputs;
+    ALTER TABLE coach_outputs_new RENAME TO coach_outputs;
+
+    CREATE TABLE garage61_sync_state_new (
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        laps_seen INTEGER NOT NULL DEFAULT 0,
+        laps_new INTEGER NOT NULL DEFAULT 0,
+        last_synced_at TEXT,
+        PRIMARY KEY (owner_user_pk, driver, car, track)
+    );
+    INSERT INTO garage61_sync_state_new (driver, car, track, owner_user_pk, laps_seen, laps_new, last_synced_at)
+    SELECT driver, car, track, 1, laps_seen, laps_new, last_synced_at FROM garage61_sync_state;
+    DROP TABLE garage61_sync_state;
+    ALTER TABLE garage61_sync_state_new RENAME TO garage61_sync_state;
+
+    CREATE TABLE config_history_new (
+        change_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        key TEXT NOT NULL,
+        old_value TEXT,
+        new_value TEXT NOT NULL,
+        source TEXT NOT NULL,
+        note TEXT
+    );
+    INSERT INTO config_history_new (change_pk, owner_user_pk, key, old_value, new_value, source, note)
+    SELECT change_pk, 1, key, old_value, new_value, source, note FROM config_history;
+    DROP TABLE config_history;
+    ALTER TABLE config_history_new RENAME TO config_history;
+    PRAGMA foreign_keys=ON;
+    """,
+    # 009 — track outline
+    """
+    ALTER TABLE corner_maps ADD COLUMN track_outline_json TEXT;
+    """,
+    # 010 - session_epoch for auth
+    """
+    ALTER TABLE users ADD COLUMN session_epoch TEXT NOT NULL DEFAULT '';
+    """,
+    # 011 - password resets
+    """
+    DROP TABLE IF EXISTS password_resets;
+    CREATE TABLE password_resets (
+        user_pk INTEGER NOT NULL,
+        reset_token_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        FOREIGN KEY(user_pk) REFERENCES users(user_pk) ON DELETE CASCADE
+    );
+    CREATE INDEX idx_password_resets_hash ON password_resets(reset_token_hash);
+    """
 )
 
 
@@ -463,8 +646,10 @@ class Database:
         conn,
         blobs: BlobStore | None = None,
         dialect: _Dialect | None = None,
+        user_pk: int = 1,
     ):
         self.dialect = dialect or _SQLITE
+        self.user_pk = user_pk
         self.conn = conn if isinstance(conn, _Conn) else _Conn(conn, self.dialect)
         self.blobs = blobs if blobs is not None else MemoryBlobStore()
         if self.dialect is _SQLITE:
@@ -479,6 +664,7 @@ class Database:
         *,
         check_same_thread: bool = True,
         blob_root: Path | str | None = None,
+        user_pk: int = 1,
     ) -> "Database":
         """`check_same_thread=False` is for long-lived connections handed
         across a thread pool (e.g. the UI's per-chat-session connection,
@@ -498,13 +684,14 @@ class Database:
         if is_postgres_url(path):
             conn = cls._connect_postgres(str(path))
             _namespace_postgres(conn)
-            database = cls(conn, blobs, _POSTGRES)
+            database = cls(conn, blobs, _POSTGRES, user_pk=user_pk)
             database._harden_postgres()
             return database
         return cls(
             sqlite3.connect(str(path), check_same_thread=check_same_thread),
             blobs,
             _SQLITE,
+            user_pk=user_pk,
         )
 
     @staticmethod
@@ -628,14 +815,14 @@ class Database:
         surfaces "exists"/"duplicate" to the driver.
         """
         existing = self.conn.execute(
-            "SELECT lap_pk FROM laps WHERE source_file = ?", (str(lap.source_path),)
+            "SELECT lap_pk FROM laps WHERE source_file = ? AND owner_user_pk = ?", (str(lap.source_path), self.user_pk)
         ).fetchone()
         if existing:
             return int(existing["lap_pk"]), "exists"
 
         content_hash = _content_hash(lap)
         dup = self.conn.execute(
-            "SELECT lap_pk FROM laps WHERE content_hash = ?", (content_hash,)
+            "SELECT lap_pk FROM laps WHERE content_hash = ? AND owner_user_pk = ?", (content_hash, self.user_pk)
         ).fetchone()
         if dup:
             return int(dup["lap_pk"]), "duplicate"
@@ -648,12 +835,13 @@ class Database:
             lap_pk = self._insert_returning(
                 """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
                                      session_key, run_index, n_samples, duration_s,
-                                     imported_at, quality_flags, content_hash, lap_date)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                     imported_at, quality_flags, content_hash, lap_date,
+                                     owner_user_pk)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     lap.lap_id, str(lap.source_path), driver, car, track, role,
                     session_key, run_index, lap.n_samples, lap.duration_s, imported_at,
-                    flags, content_hash, lap_date,
+                    flags, content_hash, lap_date, self.user_pk,
                 ),
                 "lap_pk",
             )
@@ -687,7 +875,7 @@ class Database:
         if not self._has_legacy_blobs():
             return None
         row = self.conn.execute(
-            "SELECT data FROM lap_samples_legacy WHERE lap_pk = ?", (lap_pk,)
+            "SELECT ls.data FROM lap_samples_legacy ls JOIN laps l ON l.lap_pk = ls.lap_pk WHERE ls.lap_pk = ? AND l.owner_user_pk = ?", (lap_pk, self.user_pk)
         ).fetchone()
         return row["data"] if row is not None else None
 
@@ -735,7 +923,9 @@ class Database:
         if self._has_legacy_blobs():
             held |= {
                 int(r["lap_pk"])
-                for r in self.conn.execute("SELECT lap_pk FROM lap_samples_legacy")
+                for r in self.conn.execute(
+                    "SELECT ls.lap_pk FROM lap_samples_legacy ls JOIN laps l ON l.lap_pk = ls.lap_pk WHERE l.owner_user_pk = ?", (self.user_pk,)
+                )
             }
         if not held:
             return 0
@@ -744,7 +934,9 @@ class Database:
         evicted = 0
         for r in self.conn.execute(
             """SELECT lap_pk, driver, car, track FROM laps
-               ORDER BY driver, car, track, lap_pk DESC"""
+               WHERE owner_user_pk = ?
+               ORDER BY driver, car, track, lap_pk DESC""",
+            (self.user_pk,)
         ):
             lap_pk = int(r["lap_pk"])
             if lap_pk not in held:
@@ -776,30 +968,31 @@ class Database:
             return 0
         moved = 0
         for r in self.conn.execute(
-            "SELECT lap_pk, data FROM lap_samples_legacy ORDER BY lap_pk"
+            "SELECT ls.lap_pk, ls.data FROM lap_samples_legacy ls JOIN laps l ON l.lap_pk = ls.lap_pk WHERE l.owner_user_pk = ? ORDER BY ls.lap_pk",
+            (self.user_pk,)
         ).fetchall():
             lap_pk = int(r["lap_pk"])
             if not self.blobs.has(lap_pk):
                 self.blobs.put(lap_pk, r["data"])
             moved += 1
         with self.conn:
-            self.conn.execute("DELETE FROM lap_samples_legacy")
+            self.conn.execute("DELETE FROM lap_samples_legacy WHERE lap_pk IN (SELECT ls.lap_pk FROM lap_samples_legacy ls JOIN laps l ON l.lap_pk = ls.lap_pk WHERE l.owner_user_pk = ?)", (self.user_pk,))
         return moved
 
     # --- corner maps -------------------------------------------------------
 
     def store_corner_map(
         self, corner_map: CornerMap, *, car: str, track: str,
-        built_from_n_laps: int,
+        built_from_n_laps: int, track_outline_json: str | None = None,
     ) -> int:
         """Corner maps are keyed by (car, track) — NOT driver — so reference
         laps from other drivers share the owner's corner identities; gap
         analysis joins on them."""
         with self.conn:
             map_pk = self._insert_returning(
-                """INSERT INTO corner_maps (car, track, built_from_n_laps)
-                   VALUES (?, ?, ?)""",
-                (car, track, built_from_n_laps),
+                """INSERT INTO corner_maps (car, track, built_from_n_laps, owner_user_pk, track_outline_json)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (car, track, built_from_n_laps, self.user_pk, track_outline_json),
                 "map_pk",
             )
             for c in corner_map.corners:
@@ -814,8 +1007,8 @@ class Database:
 
     def load_corner_map(self, *, car: str, track: str) -> tuple[int, CornerMap] | None:
         row = self.conn.execute(
-            "SELECT map_pk FROM corner_maps WHERE car=? AND track=?",
-            (car, track),
+            "SELECT map_pk FROM corner_maps WHERE car=? AND track=? AND owner_user_pk=?",
+            (car, track, self.user_pk),
         ).fetchone()
         if row is None:
             return None
@@ -834,8 +1027,8 @@ class Database:
 
     def corner_pk(self, map_pk: int, corner_id: str) -> int:
         row = self.conn.execute(
-            "SELECT corner_pk FROM corners WHERE map_pk=? AND corner_id=?",
-            (map_pk, corner_id),
+            "SELECT c.corner_pk FROM corners c JOIN corner_maps m ON m.map_pk = c.map_pk WHERE c.map_pk=? AND c.corner_id=? AND m.owner_user_pk=?",
+            (map_pk, corner_id, self.user_pk),
         ).fetchone()
         if row is None:
             raise KeyError(f"no corner {corner_id} in map {map_pk}")
@@ -844,7 +1037,11 @@ class Database:
     def set_corner_class(self, corner_pk: int, cls: str) -> None:
         with self.conn:
             self.conn.execute(
-                "UPDATE corners SET class=? WHERE corner_pk=?", (cls, corner_pk)
+                """UPDATE corners SET class=? WHERE corner_pk IN (
+                    SELECT c.corner_pk FROM corners c
+                    JOIN corner_maps m ON m.map_pk = c.map_pk
+                    WHERE c.corner_pk=? AND m.owner_user_pk=?
+                )""", (cls, corner_pk, self.user_pk)
             )
 
     def corner_apex_positions(
@@ -854,9 +1051,12 @@ class Database:
         assigned to this corner — the input to an in-place centroid refreeze
         (`rebuild-map`). Compact rows only; survives blob eviction."""
         rows = self.conn.execute(
-            """SELECT apex_lat, apex_lon, apex_lap_dist FROM corner_observations
-               WHERE corner_pk=? ORDER BY obs_pk""",
-            (corner_pk,),
+            """SELECT o.apex_lat, o.apex_lon, o.apex_lap_dist
+               FROM corner_observations o
+               JOIN corners c ON c.corner_pk = o.corner_pk
+               JOIN corner_maps m ON m.map_pk = c.map_pk
+               WHERE o.corner_pk=? AND m.owner_user_pk=? ORDER BY o.obs_pk""",
+            (corner_pk, self.user_pk),
         ).fetchall()
         return [
             (float(r["apex_lat"]), float(r["apex_lon"]), float(r["apex_lap_dist"]))
@@ -949,10 +1149,10 @@ class Database:
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN corner_maps m ON m.map_pk = c.map_pk
                JOIN laps l ON l.lap_pk = o.lap_pk
-               WHERE l.role = 'self' AND l.driver=? AND l.car=? AND l.track=?
+               WHERE l.role = 'self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                  AND c.corner_id=? AND mv.name=? AND mv.value IS NOT NULL
                ORDER BY l.lap_pk, o.span_start""",
-            (driver, car, track, corner_id, metric),
+            (driver, car, track, self.user_pk, corner_id, metric),
         ).fetchall()
         return [float(r["value"]) for r in rows]
 
@@ -1013,7 +1213,7 @@ class Database:
         clause = "AND l.driver = ?" if driver is not None else ""
         pk_clause, pk_params = _lap_pk_filter(lap_pks)
         params = (
-            [car, track, corner_id, phase, role]
+            [car, track, corner_id, phase, role, self.user_pk]
             + ([driver] if driver else [])
             + pk_params
         )
@@ -1024,7 +1224,7 @@ class Database:
                 JOIN corners c ON c.corner_pk = o.corner_pk
                 JOIN laps l ON l.lap_pk = o.lap_pk
                 WHERE l.car=? AND l.track=? AND c.corner_id=? AND p.phase=?
-                  AND l.role=? {clause}{pk_clause}
+                  AND l.role=? AND l.owner_user_pk=? {clause}{pk_clause}
                 ORDER BY l.lap_pk, o.span_start""",
             params,
         ).fetchall()
@@ -1053,10 +1253,10 @@ class Database:
                JOIN corner_observations o ON o.obs_pk = mv.obs_pk
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN laps l ON l.lap_pk = o.lap_pk
-               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                  AND mv.value IS NOT NULL{pk_clause}
                ORDER BY c.corner_id, mv.name, l.lap_pk, o.span_start""",
-            [driver, car, track, *pk_params],
+            [driver, car, track, self.user_pk, *pk_params],
         ).fetchall()
         table: dict[str, dict[str, list[float]]] = {}
         for r in rows:
@@ -1079,10 +1279,10 @@ class Database:
                JOIN corner_observations o ON o.obs_pk = d.obs_pk
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN laps l ON l.lap_pk = o.lap_pk
-               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?{pk_clause}
+               WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?{pk_clause}
                GROUP BY c.corner_id, d.detector
                ORDER BY c.corner_id, d.detector""",
-            [driver, car, track, *pk_params],
+            [driver, car, track, self.user_pk, *pk_params],
         ).fetchall()
         table: dict[str, dict[str, tuple[int, int]]] = {}
         for r in rows:
@@ -1142,12 +1342,12 @@ class Database:
         with self.conn:
             for inc in sorted(incidents, key=lambda i: i.span_start):
                 self.conn.execute(
-                    """INSERT INTO incidents (lap_pk, kinds, classification, confidence,
+                    """INSERT INTO incidents (lap_pk, owner_user_pk, kinds, classification, confidence,
                         corner_id, span_start, span_end, onset, min_speed_kmh,
                         peak_yaw_rate, rationale, detail)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
-                        lap_pk, "+".join(inc.kinds), inc.classification, inc.confidence,
+                        lap_pk, self.user_pk, "+".join(inc.kinds), inc.classification, inc.confidence,
                         inc.corner_id, int(inc.span_start), int(inc.span_end),
                         int(inc.onset),
                         float(inc.min_speed_kmh), float(inc.peak_yaw_rate),
@@ -1175,9 +1375,9 @@ class Database:
             }
             for r in self.conn.execute(
                 """SELECT i.*, l.lap_id FROM incidents i JOIN laps l ON l.lap_pk=i.lap_pk
-                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                    ORDER BY i.corner_id IS NULL, i.corner_id, i.span_start, i.incident_pk""",
-                (driver, car, track),
+                (driver, car, track, self.user_pk),
             )
         ]
 
@@ -1215,9 +1415,9 @@ class Database:
         rows = self.conn.execute(
             """SELECT o.obs_pk, o.apex_lat, o.apex_lon, o.apex_lap_dist, o.lap_pk
                FROM corner_observations o JOIN laps l ON l.lap_pk = o.lap_pk
-               WHERE o.corner_pk IS NULL AND l.car=? AND l.track=?
+               WHERE o.corner_pk IS NULL AND l.car=? AND l.track=? AND l.owner_user_pk=?
                ORDER BY o.obs_pk""",
-            (car, track),
+            (car, track, self.user_pk),
         ).fetchall()
         clusters: list[dict[str, Any]] = []
         for r in rows:
@@ -1280,10 +1480,10 @@ class Database:
         with self.conn:
             return self._insert_returning(
                 """INSERT INTO coach_outputs
-                   (driver, car, track, payload_version, prompt_version, model,
+                   (driver, car, track, owner_user_pk, payload_version, prompt_version, model,
                     output_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (driver, car, track, payload_version, prompt_version, model,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (driver, car, track, self.user_pk, payload_version, prompt_version, model,
                  output_json, created_at),
                 "output_pk",
             )
@@ -1291,8 +1491,8 @@ class Database:
     def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
             """SELECT output_pk, output_json FROM coach_outputs
-               WHERE driver=? AND car=? AND track=? ORDER BY output_pk""",
-            (driver, car, track),
+               WHERE driver=? AND car=? AND track=? AND owner_user_pk=? ORDER BY output_pk""",
+            (driver, car, track, self.user_pk),
         ).fetchall()
         history = []
         for r in rows:
@@ -1352,10 +1552,10 @@ class Database:
         with self.conn:
             return self._insert_returning(
                 """INSERT INTO chat_transcripts
-                   (session_id, bundle_version, role, content, evidence_cited, effects)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                   (session_id, owner_user_pk, bundle_version, role, content, evidence_cited, effects)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    session_id, bundle_version, role, content,
+                    session_id, self.user_pk, bundle_version, role, content,
                     json.dumps(evidence_cited or [], sort_keys=True),
                     json.dumps(effects or {}, sort_keys=True),
                 ),
@@ -1371,8 +1571,8 @@ class Database:
                 "effects": json.loads(r["effects"] or "{}"),
             }
             for r in self.conn.execute(
-                "SELECT * FROM chat_transcripts WHERE session_id=? ORDER BY turn_pk",
-                (session_id,),
+                "SELECT * FROM chat_transcripts WHERE session_id=? AND owner_user_pk=? ORDER BY turn_pk",
+                (session_id, self.user_pk),
             )
         ]
 
@@ -1384,9 +1584,9 @@ class Database:
     ) -> int:
         with self.conn:
             return self._insert_returning(
-                """INSERT INTO config_history (key, old_value, new_value, source, note)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (key, old_value, new_value, source, note),
+                """INSERT INTO config_history (key, old_value, new_value, source, note, owner_user_pk)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (key, old_value, new_value, source, note, self.user_pk),
                 "change_pk",
             )
 
@@ -1408,11 +1608,11 @@ class Database:
         with self.conn:
             cur = self.conn.execute(
                 """INSERT INTO driver_beliefs
-                   (driver, fundamental, signal_status, score, confidence,
+                   (driver, owner_user_pk, fundamental, signal_status, score, confidence,
                     evidence_count, trend, insufficient_reason,
                     scoring_model_version, taxonomy_version, computed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT (driver, fundamental, scoring_model_version)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (owner_user_pk, driver, fundamental, scoring_model_version)
                    DO UPDATE SET
                        signal_status=excluded.signal_status,
                        score=excluded.score,
@@ -1422,14 +1622,14 @@ class Database:
                        insufficient_reason=excluded.insufficient_reason,
                        taxonomy_version=excluded.taxonomy_version,
                        computed_at=excluded.computed_at""",
-                (driver, fundamental, signal_status, score, confidence,
+                (driver, self.user_pk, fundamental, signal_status, score, confidence,
                  evidence_count, trend, insufficient_reason,
                  scoring_model_version, taxonomy_version, computed_at),
             )
         row = self.conn.execute(
             """SELECT belief_pk FROM driver_beliefs
-               WHERE driver=? AND fundamental=? AND scoring_model_version=?""",
-            (driver, fundamental, scoring_model_version),
+               WHERE driver=? AND fundamental=? AND scoring_model_version=? AND owner_user_pk=?""",
+            (driver, fundamental, scoring_model_version, self.user_pk),
         ).fetchone()
         return int(row["belief_pk"])
 
@@ -1439,17 +1639,17 @@ class Database:
         """{fundamental: belief dict} for one driver at one model version."""
         rows = self.conn.execute(
             """SELECT * FROM driver_beliefs
-               WHERE driver=? AND scoring_model_version=?
+               WHERE driver=? AND scoring_model_version=? AND owner_user_pk=?
                ORDER BY fundamental""",
-            (driver, scoring_model_version),
+            (driver, scoring_model_version, self.user_pk),
         ).fetchall()
         return {r["fundamental"]: dict(r) for r in rows}
 
     def driver_session_count(self, driver: str) -> int:
         row = self.conn.execute(
             """SELECT COUNT(DISTINCT session_key) n FROM laps
-               WHERE role='self' AND driver=? AND session_key IS NOT NULL""",
-            (driver,),
+               WHERE role='self' AND driver=? AND session_key IS NOT NULL AND owner_user_pk=?""",
+            (driver, self.user_pk),
         ).fetchone()
         return int(row["n"])
 
@@ -1482,8 +1682,8 @@ class Database:
         row = self.conn.execute(
             f"""SELECT COUNT(DISTINCT o.lap_pk) n FROM corner_observations o
                 JOIN laps l ON l.lap_pk = o.lap_pk
-                WHERE l.role='self' AND l.driver=? AND ({' OR '.join(clauses)})""",
-            [driver, *params],
+                WHERE l.role='self' AND l.driver=? AND l.owner_user_pk=? AND ({' OR '.join(clauses)})""",
+            [driver, self.user_pk, *params],
         ).fetchone()
         return int(row["n"])
 
@@ -1493,8 +1693,8 @@ class Database:
         the API's startTime)."""
         row = self.conn.execute(
             """SELECT COUNT(*) n FROM laps
-               WHERE role='self' AND driver=? AND lap_date IS NOT NULL""",
-            (driver,),
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL AND owner_user_pk=?""",
+            (driver, self.user_pk),
         ).fetchone()
         return int(row["n"])
 
@@ -1506,9 +1706,9 @@ class Database:
         the timeline, so they never enter a trend bucket."""
         rows = self.conn.execute(
             """SELECT lap_pk FROM laps
-               WHERE role='self' AND driver=? AND lap_date IS NOT NULL
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL AND owner_user_pk=?
                ORDER BY lap_date, lap_pk""",
-            (driver,),
+            (driver, self.user_pk),
         ).fetchall()
         return [int(r["lap_pk"]) for r in rows]
 
@@ -1527,20 +1727,20 @@ class Database:
         with self.conn:
             self.conn.execute(
                 """INSERT INTO garage61_sync_state
-                   (driver, car, track, laps_seen, laps_new, last_synced_at)
-                   VALUES (?, ?, ?, ?, ?, ?)
-                   ON CONFLICT (driver, car, track) DO UPDATE SET
+                   (driver, car, track, owner_user_pk, laps_seen, laps_new, last_synced_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (owner_user_pk, driver, car, track) DO UPDATE SET
                        laps_seen=excluded.laps_seen,
                        laps_new=excluded.laps_new,
                        last_synced_at=excluded.last_synced_at""",
-                (driver, car, track, laps_seen, laps_new, synced_at),
+                (driver, car, track, self.user_pk, laps_seen, laps_new, synced_at),
             )
 
     def sync_states(self, driver: str) -> list[dict[str, Any]]:
         return [
             dict(r) for r in self.conn.execute(
-                """SELECT * FROM garage61_sync_state WHERE driver=?
+                """SELECT * FROM garage61_sync_state WHERE driver=? AND owner_user_pk=?
                    ORDER BY car, track""",
-                (driver,),
+                (driver, self.user_pk),
             )
         ]

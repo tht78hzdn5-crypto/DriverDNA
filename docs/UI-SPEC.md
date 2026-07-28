@@ -278,8 +278,7 @@ against). Any revisit keeps the permanent list above intact.
 
 **Revisited 2026-07-26 (SPEC.md A23).** Both conditions are met, so three of
 those four moved into scope under `docs/DEPLOY-SPEC.md` (design adopted,
-build not started): **authentication** (single-driver only — *multi-user
-stays permanently excluded*, and A23 is explicitly not precedent for it),
+build not started): **authentication** (refined by A32 to include multi-user),
 **hosted deployment** (Oracle Cloud Always Free VM, reached over an
 outbound-only tunnel), and a **mobile app** (a PWA over this same SPA — read
 + chat subset). Tauri/Electron packaging stays deferred; a native shell is

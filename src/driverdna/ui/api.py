@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from pydantic import BaseModel
 
 from driverdna.chat.session import ChatProvider, ChatSession
@@ -72,14 +72,31 @@ class ChatMessageBody(BaseModel):
 
 
 class LoginBody(BaseModel):
+    email: str
+    password: str
+
+
+class ForgotPasswordBody(BaseModel):
+    email: str
+
+
+class ResetPasswordBody(BaseModel):
     token: str
+    new_password: str
 
 
 #: Reachable without a session: the login exchange itself, and the status probe
 #: the SPA uses to decide whether to draw the login gate. The static shell is
 #: also public — it is a `StaticFiles` mount rather than a route, so the guard
 #: never sees it, which is correct: the shell is what renders the login screen.
-PUBLIC_API_PATHS = frozenset({"/api/auth/login", "/api/auth/status"})
+PUBLIC_API_PATHS = frozenset({
+    "/api/auth/login",
+    "/api/auth/status",
+    "/api/auth/google/login",
+    "/api/auth/google/callback",
+    "/api/auth/forgot-password",
+    "/api/auth/reset-password",
+})
 
 
 #: Bounds on live chat sessions. Each one pins a database connection for its
@@ -94,7 +111,10 @@ def create_app(
     config_path: Path,
     *,
     chat_provider_factory: Callable[[], ChatProvider] | None = None,
-    access_token: str | None = None,
+    session_secret: str | None = None,
+    google_client_id: str | None = None,
+    google_client_secret: str | None = None,
+    smtp_config: dict[str, str] | None = None,
 ) -> FastAPI:
     """`chat_provider_factory` defaults to the real `ClaudeChatProvider`
     (env-only `ANTHROPIC_API_KEY`, lazy-imported so nothing else needs the
@@ -119,12 +139,27 @@ def create_app(
         lockout_seconds=_startup.auth.login_lockout_seconds,
     )
     chat_limiter = auth.RateLimiter(limit=_startup.api.chat_requests_per_minute)
+    
+    smtp_host = smtp_config.get("host") if smtp_config else None
+    smtp_port = smtp_config.get("port") if smtp_config else None
+    smtp_user = smtp_config.get("user") if smtp_config else None
+    smtp_password = smtp_config.get("password") if smtp_config else None
 
     def authenticated(request: Request) -> bool:
-        if access_token is None:
+        if session_secret is None:
+            request.state.user_pk = 1
+            # Do not set session_epoch here; open_db will skip the epoch check
             return True
         cookie = request.cookies.get(auth.SESSION_COOKIE)
-        return bool(cookie) and auth.verify_session(cookie, access_token)
+        if not cookie:
+            return False
+        result = auth.verify_session(cookie, session_secret)
+        if not result:
+            return False
+        user_pk, session_epoch = result
+        request.state.user_pk = user_pk
+        request.state.session_epoch = session_epoch
+        return True
 
     def guard(request: Request) -> None:
         """The whole auth surface: one app-level dependency.
@@ -205,39 +240,195 @@ def create_app(
 
     @app.post("/api/auth/login")
     def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
-        """Exchange the passphrase for a signed, expiring session cookie.
-
-        The passphrase is compared in constant time and never echoed — not in
-        the success body, not in the error detail, not in a log line.
-        """
-        if access_token is None:
-            raise HTTPException(
-                400,
-                detail=f"{auth.ACCESS_TOKEN_ENV} is not set, so there is no "
-                "sign-in to perform (env only; never persisted or logged).",
-            )
+        """Exchange credentials for a signed, expiring session cookie."""
+        if session_secret is None:
+            raise HTTPException(400, detail=f"auth not configured - set {auth.SESSION_SECRET_ENV}")
+        
         key = _client_key(request)
         locked = throttle.locked_for(key)
         if locked:
-            raise HTTPException(
-                429, detail=f"too many failed attempts — try again in {locked}s"
-            )
-        if not auth.check_token(body.token, access_token):
-            throttle.record_failure(key)
-            raise HTTPException(401, detail="incorrect passphrase")
+            raise HTTPException(429, detail=f"too many failed attempts — try again in {locked}s")
+            
+        from datetime import datetime
+        session_epoch = datetime.utcnow().isoformat()
+        
+        with open_db(request) as db:
+            row = db.conn.execute("SELECT user_pk, password_hash FROM users WHERE email=?", (body.email,)).fetchone()
+            if not row or not auth.verify_password(body.password, row["password_hash"]):
+                throttle.record_failure(key)
+                raise HTTPException(401, detail="incorrect email or password")
+                
+            user_pk = row["user_pk"]
+            with db.conn:
+                db.conn.execute(
+                    "UPDATE users SET session_epoch=? WHERE user_pk=?", 
+                    (session_epoch, user_pk)
+                )
 
         throttle.reset(key)
         ttl = load_config(config_path).auth.session_ttl_hours * 3600
+        
         response.set_cookie(
             auth.SESSION_COOKIE,
-            auth.issue_session(access_token, ttl_seconds=ttl),
+            auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
             max_age=ttl,
             httponly=True,
             samesite="lax",
             secure=_is_https(request),
             path="/",
         )
-        return {"authenticated": True}
+        return {"authenticated": True, "user_pk": user_pk}
+
+    @app.post("/api/auth/forgot-password")
+    def forgot_password(body: ForgotPasswordBody, request: Request) -> dict[str, str]:
+        if not all([smtp_host, smtp_port, smtp_user, smtp_password]):
+            raise HTTPException(400, detail="SMTP is not configured")
+        
+        import secrets
+        import hashlib
+        from datetime import datetime, timedelta
+        
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+        
+        with open_db(request) as db:
+            row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (body.email,)).fetchone()
+            if row:
+                user_pk = row["user_pk"]
+                with db.conn:
+                    db.conn.execute(
+                        "INSERT INTO password_resets (user_pk, reset_token_hash, expires_at) VALUES (?, ?, ?)",
+                        (user_pk, token_hash, expires_at)
+                    )
+        
+                from driverdna.ui.email import send_reset_email
+                reset_link = f"{str(request.base_url).rstrip('/')}/reset-password?token={token}"
+                send_reset_email(smtp_host, int(smtp_port), smtp_user, smtp_password, body.email, reset_link)
+
+        # Always return 200 to prevent email enumeration
+        return {"status": "ok"}
+
+    @app.post("/api/auth/reset-password")
+    def reset_password(body: ResetPasswordBody, request: Request) -> dict[str, str]:
+        import hashlib
+        from datetime import datetime
+        
+        token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+        now = datetime.utcnow().isoformat()
+        
+        with open_db(request) as db:
+            row = db.conn.execute(
+                "SELECT user_pk, expires_at FROM password_resets WHERE reset_token_hash=?", 
+                (token_hash,)
+            ).fetchone()
+            
+            if not row or row["expires_at"] < now:
+                raise HTTPException(400, detail="invalid or expired token")
+                
+            user_pk = row["user_pk"]
+            new_password_hash = auth.hash_password(body.new_password)
+            
+            with db.conn:
+                db.conn.execute("UPDATE users SET password_hash=? WHERE user_pk=?", (new_password_hash, user_pk))
+                db.conn.execute("DELETE FROM password_resets WHERE user_pk=?", (user_pk,))
+                
+        return {"status": "ok"}
+
+    @app.get("/api/auth/google/login")
+    def google_login(request: Request) -> Response:
+        if not google_client_id:
+            raise HTTPException(400, "Google OAuth not configured")
+            
+        import urllib.parse
+        url_obj = request.url_for("google_callback")
+        if _is_https(request):
+            url_obj = url_obj.replace(scheme="https")
+            
+        url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode({
+            "client_id": google_client_id,
+            "redirect_uri": str(url_obj),
+            "response_type": "code",
+            "scope": "openid email profile",
+            "access_type": "online",
+        })
+        return RedirectResponse(url)
+
+    @app.get("/api/auth/google/callback")
+    def google_callback(code: str, request: Request) -> Response:
+        if not google_client_id or not google_client_secret or not session_secret:
+            raise HTTPException(400, "Google OAuth not configured")
+            
+        import urllib.request
+        import urllib.parse
+        
+        url_obj = request.url_for("google_callback")
+        if _is_https(request):
+            url_obj = url_obj.replace(scheme="https")
+            
+        data = urllib.parse.urlencode({
+            "client_id": google_client_id,
+            "client_secret": google_client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": str(url_obj),
+        }).encode("utf-8")
+        
+        req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+        try:
+            with urllib.request.urlopen(req) as f:
+                token_res = json.loads(f.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            raise HTTPException(400, f"failed to exchange token: {e.read().decode('utf-8')}")
+            
+        id_token = token_res.get("id_token")
+        if not id_token:
+            raise HTTPException(400, "no id_token returned")
+            
+        verify_req = urllib.request.Request(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}")
+        try:
+            with urllib.request.urlopen(verify_req) as f:
+                claims = json.loads(f.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            raise HTTPException(400, f"failed to verify id_token: {e.read().decode('utf-8')}")
+            
+        if claims.get("aud") != google_client_id:
+            raise HTTPException(400, "token audience mismatch")
+            
+        email = claims.get("email")
+        if not email:
+            raise HTTPException(400, "no email in id_token")
+            
+        with open_db(request) as db:
+            row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (email,)).fetchone()
+            if row:
+                user_pk = row["user_pk"]
+            else:
+                count = db.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+                if count == 0:
+                    from datetime import datetime
+                    user_pk = db.conn.execute(
+                        "INSERT INTO users (email, password_hash, session_epoch) VALUES (?, ?, ?) RETURNING user_pk",
+                        (email, "", datetime.utcnow().isoformat())
+                    ).fetchone()["user_pk"]
+                else:
+                    raise HTTPException(403, "registration is closed")
+            
+            session_epoch = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()["session_epoch"]
+            
+        ttl = load_config(config_path).auth.session_ttl_hours * 3600
+        
+        response = RedirectResponse("/")
+        response.set_cookie(
+            auth.SESSION_COOKIE,
+            auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
+            max_age=ttl,
+            httponly=True,
+            samesite="lax",
+            secure=_is_https(request),
+            path="/",
+        )
+        return response
 
     @app.post("/api/auth/logout")
     def logout(response: Response) -> dict[str, Any]:
@@ -250,7 +441,7 @@ def create_app(
         gate instead of ten failed panels. Deliberately says only whether a
         sign-in is required and whether this caller has one."""
         return {
-            "required": access_token is not None,
+            "required": session_secret is not None,
             "authenticated": authenticated(request),
         }
 
@@ -262,7 +453,7 @@ def create_app(
         cfg = load_config(config_path)
         return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
 
-    def open_db(*, check_same_thread: bool = True) -> Database:
+    def open_db(request: Request | None = None, *, check_same_thread: bool = True) -> Database:
         # A hosted store has no file to stat and creates its schema on
         # connect, so "not there yet" is reported by `missing_reason` only
         # for the SQLite case; an empty hosted store surfaces as the normal
@@ -270,7 +461,17 @@ def create_app(
         reason = missing_reason(db_path)
         if reason:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
-        return Database.open(db_path, check_same_thread=check_same_thread)
+        user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
+        db = Database.open(db_path, check_same_thread=check_same_thread, user_pk=user_pk)
+        
+        if request and hasattr(request.state, "session_epoch"):
+            # Ensure the session epoch hasn't been rotated
+            expected = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()
+            if not expected or request.state.session_epoch != expected["session_epoch"]:
+                db.close()
+                raise HTTPException(401, detail="session invalid or expired")
+                
+        return db
 
     def resolve(db: Database, slug: str) -> dict[str, str]:
         for cohort in list_cohorts(db):
@@ -284,29 +485,29 @@ def create_app(
     # --- reads --------------------------------------------------------------
 
     @app.get("/api/driver")
-    def driver() -> Response:
-        with open_db() as db:
+    def driver(request: Request) -> Response:
+        with open_db(request) as db:
             return normalized(build_driver_payload(db, load_config(config_path)))
 
     @app.get("/api/cohorts")
-    def cohorts() -> list[dict[str, str]]:
-        with open_db() as db:
+    def cohorts(request: Request) -> list[dict[str, str]]:
+        with open_db(request) as db:
             return [
                 c | {"slug": cohort_slug(c["car"], c["track"])}
                 for c in list_cohorts(db)
             ]
 
     @app.get("/api/cohorts/{slug}/payload")
-    def cohort_payload(slug: str) -> Response:
-        with open_db() as db:
+    def cohort_payload(slug: str, request: Request) -> Response:
+        with open_db(request) as db:
             cohort = resolve(db, slug)
             return normalized(
                 build_cohort_payload(db, **cohort, config=load_config(config_path))
             )
 
     @app.get("/api/cohorts/{slug}/corners")
-    def corners(slug: str) -> list[dict[str, Any]]:
-        with open_db() as db:
+    def corners(slug: str, request: Request) -> list[dict[str, Any]]:
+        with open_db(request) as db:
             cohort = resolve(db, slug)
             loaded = db.load_corner_map(car=cohort["car"], track=cohort["track"])
             if loaded is None:
@@ -327,19 +528,30 @@ def create_app(
             ]
 
     @app.get("/api/cohorts/{slug}/track-trace")
-    def track_trace(slug: str) -> dict[str, Any]:
+    def track_trace(slug: str, request: Request) -> dict[str, Any]:
         """Lat/Lon of the newest retained self lap, downsampled for transport
         — the outline the cohort view draws (UI-SPEC view 2)."""
-        with open_db() as db:
+        with open_db(request) as db:
             cohort = resolve(db, slug)
+            
+            # Fast path: use cached outline if M009 migration populated it.
+            # Survives blob eviction naturally.
+            row = db.conn.execute(
+                "SELECT track_outline_json FROM corner_maps WHERE car=? AND track=? AND owner_user_pk=?",
+                (cohort["car"], cohort["track"], db.user_pk)
+            ).fetchone()
+            if row and row["track_outline_json"]:
+                import json
+                return json.loads(row["track_outline_json"])
+
             # Raw blobs live on local disk, so "which lap still has one" is a
             # filesystem question, not a join. Walk newest-first and take the
             # first lap whose trace is actually readable here.
             rows = db.conn.execute(
                 """SELECT l.lap_pk, l.lap_id FROM laps l
-                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                    ORDER BY l.lap_pk DESC""",
-                (cohort["driver"], cohort["car"], cohort["track"]),
+                (cohort["driver"], cohort["car"], cohort["track"], db.user_pk),
             ).fetchall()
             arrays = None
             chosen = None
@@ -362,14 +574,14 @@ def create_app(
             }
 
     @app.get("/api/laps")
-    def laps(cohort: str) -> list[dict[str, Any]]:
-        with open_db() as db:
+    def laps(cohort: str, request: Request) -> list[dict[str, Any]]:
+        with open_db(request) as db:
             c = resolve(db, cohort)
             rows = db.conn.execute(
                 """SELECT lap_pk, lap_id, driver, role, duration_s, session_key,
                           quality_flags
-                   FROM laps WHERE car=? AND track=? ORDER BY lap_pk""",
-                (c["car"], c["track"]),
+                   FROM laps WHERE car=? AND track=? AND owner_user_pk=? ORDER BY lap_pk""",
+                (c["car"], c["track"], db.user_pk),
             ).fetchall()
             incident_counts = db.incident_counts_by_lap([r["lap_pk"] for r in rows])
             return [
@@ -414,7 +626,7 @@ def create_app(
             ) from None
 
     @app.post("/api/laps/upload")
-    async def upload_laps(
+    async def upload_laps(request: Request, 
         files: list[UploadFile] = File(...),
         car: str | None = Form(None),
         track: str | None = Form(None),
@@ -520,7 +732,7 @@ def create_app(
         config = load_config(config_path)
         results: list[dict[str, Any]] = []
         with tempfile.TemporaryDirectory() as tmp:
-            with Database.open(db_path) as db:
+            with Database.open(db_path, user_pk=request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1) as db:
                 for upload, file_car, file_track, auto_detected in resolved:
                     # Original filename preserved (not a random temp name):
                     # parse_lap's Garage61 lap-ID regex reads it, same as a
@@ -555,8 +767,8 @@ def create_app(
         return {"results": results, "evicted": evicted}
 
     @app.get("/api/metrics/{corner_id}/{metric}/distribution")
-    def metric_distribution(corner_id: str, metric: str, cohort: str) -> dict[str, Any]:
-        with open_db() as db:
+    def metric_distribution(corner_id: str, metric: str, cohort: str, request: Request) -> dict[str, Any]:
+        with open_db(request) as db:
             c = resolve(db, cohort)
             result = execute_tool(
                 db=db, store=ConfigStore(config_path, db), cohort=c,
@@ -577,8 +789,8 @@ def create_app(
         }
 
     @app.get("/api/config/history")
-    def config_history() -> list[dict[str, Any]]:
-        with open_db() as db:
+    def config_history(request: Request) -> list[dict[str, Any]]:
+        with open_db(request) as db:
             return [
                 dict(r)
                 for r in db.conn.execute(
@@ -589,10 +801,10 @@ def create_app(
     # --- writes (wrappers over the audited paths only) ----------------------
 
     @app.post("/api/findings/{finding_id}/annotate")
-    def annotate(finding_id: str, body: AnnotateBody) -> dict[str, Any]:
+    def annotate(finding_id: str, body: AnnotateBody, request: Request) -> dict[str, Any]:
         if body.status not in ("acknowledged", "intentional"):
             raise HTTPException(422, detail="status must be acknowledged or intentional")
-        with open_db() as db:
+        with open_db(request) as db:
             config = load_config(config_path)
             known = {
                 f["finding_id"]
@@ -610,26 +822,26 @@ def create_app(
             }
 
     @app.delete("/api/findings/{finding_id}/annotate")
-    def clear_annotation(finding_id: str) -> dict[str, Any]:
+    def clear_annotation(finding_id: str, request: Request) -> dict[str, Any]:
         """Undo an annotation — driver sovereignty cuts both ways. The finding
         returns to normal framing; no measurement was ever touched."""
-        with open_db() as db:
+        with open_db(request) as db:
             if finding_id not in db.annotations():
                 raise HTTPException(404, detail=f"no annotation on {finding_id}")
             db.clear_annotation(finding_id)
             return {"cleared": finding_id}
 
     @app.post("/api/config/propose")
-    def config_propose(body: ProposeBody) -> dict[str, Any]:
-        with open_db() as db:
+    def config_propose(body: ProposeBody, request: Request) -> dict[str, Any]:
+        with open_db(request) as db:
             try:
                 return ConfigStore(config_path, db).propose(body.key, body.new_value)
             except (KeyError, ValueError) as e:
                 raise HTTPException(422, detail=str(e)) from None
 
     @app.post("/api/config/apply")
-    def config_apply(body: ApplyBody) -> dict[str, Any]:
-        with open_db() as db:
+    def config_apply(body: ApplyBody, request: Request) -> dict[str, Any]:
+        with open_db(request) as db:
             store = ConfigStore(config_path, db)
             try:
                 # Re-validate rather than trusting the client's proposal.
@@ -645,10 +857,10 @@ def create_app(
             return dict(row)
 
     @app.post("/api/config/revert/{change_pk}")
-    def config_revert(change_pk: int) -> dict[str, Any]:
+    def config_revert(change_pk: int, request: Request) -> dict[str, Any]:
         """Revert a recorded change (applies its old value back as a new,
         audited change) — the reversibility the philosophy requires."""
-        with open_db() as db:
+        with open_db(request) as db:
             try:
                 new_pk = ConfigStore(config_path, db).revert(change_pk)
             except KeyError as e:
@@ -686,7 +898,7 @@ def create_app(
         }
 
     @app.post("/api/sync")
-    def sync(body: SyncBody | None = None) -> list[dict[str, Any]]:
+    def sync(request: Request, body: SyncBody | None = None) -> list[dict[str, Any]]:
         """Wraps `sync_driver` (UI-SPEC U6 condition 1). `Garage61Client()` is
         constructed here, straight from the environment (`GARAGE61_TOKEN`) —
         this endpoint never reads a token out of the request body. Mirrors
@@ -702,7 +914,7 @@ def create_app(
             raise HTTPException(400, detail=str(e)) from None
 
         config = load_config(config_path)
-        with open_db() as db:
+        with open_db(request) as db:
             summaries = sync_driver(
                 db, client, driver="owner", config=config,
                 car=body.car if body else None, track=body.track if body else None,
@@ -714,7 +926,7 @@ def create_app(
             return [_cohort_sync_dict(s) for s in summaries]
 
     @app.post("/api/cohorts/{slug}/rebuild-map")
-    def rebuild_map(slug: str) -> dict[str, Any]:
+    def rebuild_map(slug: str, request: Request) -> dict[str, Any]:
         """Wraps `rebuild_cohort_map` (UI-SPEC U6 condition 2): in-place
         refreeze of a cohort's frozen corner map from its full current lap
         set. It rewrites frozen geometry, so the UI gates the call behind its
@@ -723,7 +935,7 @@ def create_app(
         than re-implementing staging here."""
         from driverdna.pipeline import rebuild_cohort_map
 
-        with open_db() as db:
+        with open_db(request) as db:
             cohort = resolve(db, slug)
             config = load_config(config_path)
             result = rebuild_cohort_map(
@@ -760,7 +972,7 @@ def create_app(
     # A ChatSession is stateful (in-memory conversation + staged proposals,
     # UI-SPEC decision 5) and keeps its own DB connection open for the
     # session's lifetime — unlike every other endpoint's per-request
-    # `with open_db() as db:`.
+    # `with open_db(request) as db:`.
     #
     # That deviation used to come with "a local, single-user tool doesn't need
     # session eviction machinery". Against a local file that was true: an
@@ -830,7 +1042,7 @@ def create_app(
         return _touch_chat_session(session_id)["session"]
 
     @app.post("/api/chat/sessions/{session_id}/messages")
-    def chat_message(session_id: str, body: ChatMessageBody) -> StreamingResponse:
+    def chat_message(session_id: str, body: ChatMessageBody, request: Request) -> StreamingResponse:
         session = _get_session(session_id)
 
         def events():

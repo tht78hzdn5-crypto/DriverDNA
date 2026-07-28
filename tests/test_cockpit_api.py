@@ -245,8 +245,9 @@ def test_rebuild_map_known_cohort_without_a_frozen_map_404s(tmp_path):
     with Database.open(db_path) as db:
         db.conn.execute(
             """INSERT INTO laps (lap_id, source_file, driver, car, track, role,
-                                  n_samples, duration_s, quality_flags)
-               VALUES ('X1', 'x1.csv', 'owner', 'Ghost', 'NoMap', 'self', 10, 90.0, '[]')"""
+                                  n_samples, duration_s, quality_flags, owner_user_pk)
+               VALUES ('X1', 'x1.csv', 'owner', 'Ghost', 'NoMap', 'self', 10, 90.0, '[]', ?)""",
+            (db.user_pk,)
         )
         db.conn.commit()
     app = create_app(db_path, tmp_path / "cfg.toml")

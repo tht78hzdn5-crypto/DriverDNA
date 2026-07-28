@@ -1,29 +1,10 @@
-# DriverDNA — Status & Decision Log
+# DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-07-27.** On `main` after PR #6 (sync 404/403 guard A30, UI bug fixes), PR #7 & PR #8 & PR #9 (Cloud Run deploy pipeline WIF auth resolution, direct source build via `google-github-actions/deploy-cloudrun@v2`), and Phase 5 history purge (18 orphaned blob & report files removed, `*.blobs/` added to `.gitignore`). The Cloud Run service `driverdna` is live at `https://driverdna-b4wjnb2baa-nn.a.run.app`.
+**Snapshot date: 2026-07-28.** On branch `antigravity/multi-user-accounts`.
+Completed multi-tenant, SaaS Productization, Google OAuth, and SMTP Password Resets (SPEC.md A32).
+A new `users` table backs both a Google OAuth TLS callback route and a standalone SMTP-based password reset flow (via SendGrid). Every data structure (`laps`, `incidents`, `model_cache`, etc.) is partitioned with `owner_user_pk`, and the row-level security is tested extensively. All deterministic grounding tests remain strictly isolated per tenant. All tests pass.
 
-**Single-driver auth built (2026-07-27, SPEC.md A31, branch
-`claude/free-auth-solution-plan-vvym7c`).** DEPLOY-SPEC track H1, designed
-2026-07-26 and unbuilt until now while the Cloud Run deploy shipped anyway —
-so until this lands, every `/api` route on the live service is open behind
-nothing but the `--no-allow-unauthenticated` IAM flag.
-`DRIVERDNA_ACCESS_TOKEN` (env-only) exchanges at `POST /api/auth/login` for a
-signed, expiring, HttpOnly cookie; one app-level dependency guards every
-route; `driverdna ui` now refuses a non-loopback bind with no passphrase
-configured. Stdlib only — no dependency, no third-party origin, so **no trust
-gate was amended**. An identity provider (Auth0 &c.) is mechanically excluded
-from the browser by `test_ui_static.py` + `test_offline.py`; the reasoning,
-including the server-side-OIDC alternative that *would* have passed, is in
-PROJECT-BRIEF's decision log. Auth is off when no passphrase is set, so the
-local instrument is unchanged and every pre-existing test passed unmodified.
-
-> ⚠️ **Before this merges to `main`:** `Dockerfile` binds `0.0.0.0`, so the
-> interlock will stop the Cloud Run service starting unless
-> `DRIVERDNA_ACCESS_TOKEN` is set on it first. `deploy.yml` deploys on every
-> push to `main`. Cloud Run exposure (`--no-allow-unauthenticated`) is
-> deliberately **not** changed by this work.
-
-**Tests: 725 passed, 0 failed, 13 skipped** (all skips Postgres-only; both
+**Single-driver auth built (2026-07-27, SPEC.md A31)** (Now superseded by A32).only; both
 browser trust gates ran and passed, Chromium being present in that
 environment). Baseline before this work was 644 passed / **1 failed** — a
 pre-existing `AGENTS.md` size-budget failure on `main`, fixed here by moving
