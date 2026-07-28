@@ -18,6 +18,7 @@ import json
 import tempfile
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
@@ -29,7 +30,7 @@ from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.db import Database
-from driverdna.store import missing_reason
+from driverdna.store import is_postgres_url, missing_reason
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -88,8 +89,21 @@ def create_app(
     SDK installed); tests inject a mocked provider here, same pattern as
     the CLI's `chat` command — no test ever calls a live model.
     """
-    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None)
+    _shared_db: Database | None = None
+    _is_pg = is_postgres_url(db_path)
     chat_sessions: dict[str, dict[str, Any]] = {}
+
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        nonlocal _shared_db
+        if _is_pg:
+            _shared_db = Database.open(db_path, check_same_thread=False)
+        yield
+        if _shared_db is not None:
+            _shared_db.close()
+            _shared_db = None
+
+    app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None, lifespan=_lifespan)
 
     def make_chat_provider() -> ChatProvider:
         if chat_provider_factory is not None:
@@ -100,13 +114,13 @@ def create_app(
         return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
 
     def open_db(*, check_same_thread: bool = True) -> Database:
-        # A hosted store has no file to stat and creates its schema on
-        # connect, so "not there yet" is reported by `missing_reason` only
-        # for the SQLite case; an empty hosted store surfaces as the normal
-        # no-cohorts empty state instead.
         reason = missing_reason(db_path)
         if reason:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
+        if _shared_db is not None:
+            return Database.from_connection(
+                _shared_db.conn, _shared_db.blobs, _shared_db.dialect,
+            )
         return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:

@@ -192,7 +192,7 @@ def _v5_database_with_inline_blobs(db_path: Path) -> list[int]:
             "INSERT INTO lap_samples (lap_pk, fmt, data) VALUES (?, 'npz-v1', ?)",
             (pk, data),
         )
-    raw.execute("DELETE FROM schema_version WHERE version = 6")
+    raw.execute("DELETE FROM schema_version WHERE version >= 6")
     raw.commit()
     raw.close()
 
@@ -209,7 +209,7 @@ def test_old_database_still_reads_its_blobs_before_draining(tmp_path, monkeypatc
     pks = _v5_database_with_inline_blobs(db_path)
 
     with Database.open(db_path) as db:
-        assert db.schema_version == 6  # 006 applied on open
+        assert db.schema_version >= 6  # 006+ applied on open
         assert db.conn.execute(
             "SELECT COUNT(*) AS n FROM lap_samples_legacy"
         ).fetchone()["n"] == 3
