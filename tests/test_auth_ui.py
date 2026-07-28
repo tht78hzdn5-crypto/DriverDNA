@@ -60,7 +60,7 @@ def locked_server(tmp_path):
     )
     assert result.exit_code == 0, result.output
 
-    app = create_app(db_path, tmp_path / "config.toml", access_token=TOKEN)
+    app = create_app(db_path, tmp_path / "config.toml", session_secret=TOKEN)
     app.mount("/", StaticFiles(directory=STATIC, html=True), name="spa")
 
     port = _free_port()

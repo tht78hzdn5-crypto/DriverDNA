@@ -121,13 +121,14 @@ def create_app(
     SDK installed); tests inject a mocked provider here, same pattern as
     the CLI's `chat` command — no test ever calls a live model.
 
-    `access_token` is the single-driver passphrase (docs/DEPLOY-SPEC.md H1),
-    injected the same way rather than read from the environment here, so tests
-    never depend on process state. **None means auth is not configured and
-    every route is open** — which is the local `driverdna ui` experience on
-    loopback, and what keeps this change additive rather than a rewrite. The
-    CLI supplies it from `DRIVERDNA_ACCESS_TOKEN` and refuses to bind a
-    non-loopback address without it.
+    `session_secret` is the single-driver passphrase / session-signing key
+    (docs/DEPLOY-SPEC.md H1), injected the same way rather than read from the
+    environment here, so tests never depend on process state. **None means
+    auth is not configured and every route is open** — which is the local
+    `driverdna ui` experience on loopback, and what keeps this change
+    additive rather than a rewrite. The CLI supplies it from
+    `DRIVERDNA_SESSION_SECRET` and refuses to bind a non-loopback address
+    without it.
     """
     # The throttle holds state, so its policy is fixed when the app is built:
     # changing login_max_attempts/login_lockout_seconds takes effect on

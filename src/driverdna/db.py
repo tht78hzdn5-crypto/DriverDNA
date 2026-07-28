@@ -250,7 +250,7 @@ MIGRATIONS: tuple[str, ...] = (
     # 007 — Identity Core (Phase 1)
     """
     CREATE TABLE users (
-        user_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_pk INTEGER PRIMARY KEY,
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT '',
@@ -268,7 +268,7 @@ MIGRATIONS: tuple[str, ...] = (
     """
     PRAGMA foreign_keys=OFF;
     CREATE TABLE laps_new (
-        lap_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        lap_pk INTEGER PRIMARY KEY,
         owner_user_pk INTEGER NOT NULL,
         lap_id TEXT,
         source_file TEXT NOT NULL,
@@ -294,7 +294,7 @@ MIGRATIONS: tuple[str, ...] = (
     CREATE INDEX idx_laps_content_hash ON laps(content_hash);
 
     CREATE TABLE corner_maps_new (
-        map_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        map_pk INTEGER PRIMARY KEY,
         owner_user_pk INTEGER NOT NULL,
         car TEXT NOT NULL,
         track TEXT NOT NULL,

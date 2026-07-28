@@ -86,6 +86,16 @@ def to_pg_ddl(ddl: str) -> str:
     """Translate one SQLite DDL script into its Postgres equivalent."""
     out = ddl
 
+    # SQLite-only: no Postgres session-level switch disables FK enforcement.
+    # It exists in a migration only to let a table-rebuild's DROP TABLE
+    # succeed despite another table's dangling FK reference — DROP TABLE
+    # ... CASCADE below is the Postgres equivalent of that same bypass.
+    out = re.sub(r"^\s*PRAGMA foreign_keys\s*=\s*(ON|OFF);\s*\n?", "", out, flags=re.MULTILINE)
+
+    # A rebuilt table's own CREATE TABLE re-declares its FKs, so cascading
+    # past a dependent's constraint here does not lose it permanently.
+    out = re.sub(r"\bDROP TABLE (\w+);", r"DROP TABLE \1 CASCADE;", out)
+
     # Surrogate keys only. `INTEGER PRIMARY KEY REFERENCES ...` is a foreign
     # key that happens to be the primary key (corner_windows, lap_samples) —
     # always supplied explicitly, never generated.
