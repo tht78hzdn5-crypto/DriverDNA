@@ -11,6 +11,8 @@ from driverdna.config import load_config
 from driverdna.db import Database
 from driverdna.ui.api import create_app
 
+from conftest import requires_postgres
+
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SPA_SLUG = "gr86-spa-francorchamps"
 
@@ -62,6 +64,28 @@ def test_unhandled_exception_returns_structured_500_not_a_traceback(env, monkeyp
     assert resp.status_code == 500
     body = resp.json()
     assert body.get("detail") == "internal server error"
+
+
+@requires_postgres
+def test_postgres_backed_app_serves_requests_through_a_connection_pool(pg_schema, tmp_path):
+    from psycopg_pool import ConnectionPool
+
+    result = CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", pg_schema]
+    )
+    assert result.exit_code == 0, result.output
+    app = create_app(pg_schema, tmp_path / "config.toml")
+    with TestClient(app) as client:
+        # A real pool, not the single-shared-connection scheme it replaces:
+        # that distinction matters because FastAPI dispatches sync routes to
+        # a thread pool, and one psycopg connection shared across
+        # concurrently-executing requests is not safe.
+        assert isinstance(app.state.pool, ConnectionPool)
+        r1 = client.get("/api/driver")
+        r2 = client.get("/api/cohorts")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        assert {c["slug"] for c in r2.json()} == {SPA_SLUG, "mustang-laguna-seca"}
 
 
 def test_cohort_payload_byte_identical_to_report_json(env):

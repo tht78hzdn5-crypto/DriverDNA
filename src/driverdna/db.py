@@ -465,6 +465,51 @@ def _namespace_postgres(conn) -> None:
     conn.execute(f'SET search_path TO "{PG_SCHEMA}"')
 
 
+def open_postgres_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> "ConnectionPool":
+    """A per-process pool: each request checks out its own connection
+    (`Database.from_pool`) instead of every request paying a fresh
+    TCP+TLS+migration round trip, or — the hazard a single shared connection
+    would introduce — multiple concurrent requests contending for the same
+    connection.
+
+    `configure` runs once per new physical connection, not per checkout: the
+    namespace switch, migration check, and RLS hardening all happen there,
+    so steady-state checkouts do none of that work.
+    """
+    try:
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+    except ModuleNotFoundError as exc:  # pragma: no cover - install hint
+        raise RuntimeError(
+            "Postgres support needs psycopg: pip install 'driverdna[pg]'"
+        ) from exc
+
+    def _configure(conn) -> None:
+        _namespace_postgres(conn)
+        database = Database(conn, dialect=_POSTGRES)  # runs _migrate()
+        database._harden_postgres()
+
+    try:
+        pool = ConnectionPool(
+            dsn,
+            min_size=min_size,
+            max_size=max_size,
+            kwargs={
+                "autocommit": True,
+                "row_factory": dict_row,
+                # See Database._connect_postgres: breaks behind a
+                # transaction-mode pooler (Supabase port 6543).
+                "prepare_threshold": None,
+            },
+            configure=_configure,
+            open=True,
+        )
+        pool.wait(timeout=10)
+    except Exception as exc:
+        raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
+    return pool
+
+
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
 
@@ -543,31 +588,34 @@ class Database:
             raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
     @classmethod
-    def from_connection(
-        cls,
-        conn,
-        blobs: BlobStore,
-        dialect: "_Dialect",
-    ) -> "Database":
-        """Wrap an already-opened, already-migrated connection.
+    def from_pool(cls, pool: "ConnectionPool", blobs: BlobStore) -> "Database":
+        """Check out a connection from a pool built by `open_postgres_pool`.
 
-        Skips `_migrate` and `_harden_postgres` — the caller guarantees those
-        ran once (at startup or when the pool was created).  Used by the UI's
-        per-request path so every HTTP request avoids the migration-check and
-        RLS-catalogue round-trips.  The returned instance is a *borrowed* view:
-        `close()` is a no-op so `with db:` cannot tear down the shared
-        connection.
+        Each caller gets its own physical connection, never a shared one:
+        psycopg connections are not safe for concurrent use from multiple
+        threads, and FastAPI runs sync route handlers in a thread pool, so
+        two simultaneous requests sharing one connection would be a real
+        correctness hazard, not just a missed optimization. `close()` on the
+        returned instance returns the connection to the pool rather than
+        closing the socket. Already migrated and hardened — the pool's
+        `configure` callback does that once per physical connection, not per
+        checkout.
         """
+        raw = pool.getconn()
         db = object.__new__(cls)
-        db.dialect = dialect
-        db.conn = conn if isinstance(conn, _Conn) else _Conn(conn, dialect)
+        db.dialect = _POSTGRES
+        db.conn = _Conn(raw, _POSTGRES)
         db.blobs = blobs
-        db._borrowed = True
+        db._pool = pool
+        db._pool_raw = raw
         return db
 
     def close(self) -> None:
-        if not getattr(self, "_borrowed", False):
-            self.conn.close()
+        pool = getattr(self, "_pool", None)
+        if pool is not None:
+            pool.putconn(self._pool_raw)
+            return
+        self.conn.close()
 
     def __enter__(self) -> "Database":
         return self

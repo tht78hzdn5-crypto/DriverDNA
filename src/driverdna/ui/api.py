@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
-from driverdna.db import Database
+from driverdna.blobs import open_blob_store
+from driverdna.db import Database, open_postgres_pool
 from driverdna.store import is_postgres_url, missing_reason
 from driverdna.report.payload import (
     build_cohort_payload,
@@ -92,19 +93,21 @@ def create_app(
     SDK installed); tests inject a mocked provider here, same pattern as
     the CLI's `chat` command — no test ever calls a live model.
     """
-    _shared_db: Database | None = None
+    _pool = None
     _is_pg = is_postgres_url(db_path)
+    _pg_blobs = open_blob_store(db_path) if _is_pg else None
     chat_sessions: dict[str, dict[str, Any]] = {}
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI):
-        nonlocal _shared_db
+        nonlocal _pool
         if _is_pg:
-            _shared_db = Database.open(db_path, check_same_thread=False)
+            _pool = open_postgres_pool(str(db_path))
+            app.state.pool = _pool
         yield
-        if _shared_db is not None:
-            _shared_db.close()
-            _shared_db = None
+        if _pool is not None:
+            _pool.close()
+            _pool = None
 
     app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None, lifespan=_lifespan)
 
@@ -134,10 +137,8 @@ def create_app(
         reason = missing_reason(db_path)
         if reason:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
-        if _shared_db is not None:
-            return Database.from_connection(
-                _shared_db.conn, _shared_db.blobs, _shared_db.dialect,
-            )
+        if _pool is not None:
+            return Database.from_pool(_pool, _pg_blobs)
         return Database.open(db_path, check_same_thread=check_same_thread)
 
     def resolve(db: Database, slug: str) -> dict[str, str]:
