@@ -15,6 +15,7 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import time
 import uuid
@@ -22,9 +23,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
@@ -104,6 +107,20 @@ def create_app(
             _shared_db = None
 
     app = FastAPI(title="DriverDNA", docs_url=None, redoc_url=None, lifespan=_lifespan)
+
+    @app.exception_handler(Exception)
+    async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        # Anything not already an HTTPException (a DB timeout, a connection
+        # refusal, a bad query) would otherwise surface as a bare, unlogged
+        # "Internal Server Error" with no trace of what happened.
+        logger.exception("unhandled exception on %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "internal server error"})
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        # No DB access: this is Cloud Run's liveness probe, and it must
+        # answer even while the store is unreachable or still migrating.
+        return {"status": "ok"}
 
     def make_chat_provider() -> ChatProvider:
         if chat_provider_factory is not None:

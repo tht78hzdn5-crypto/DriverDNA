@@ -33,6 +33,37 @@ def env(tmp_path_factory):
             "config_path": root / "config.toml"}
 
 
+def test_health_endpoint_does_not_open_db():
+    # A path that cannot possibly resolve to a real store — if /health opened
+    # the DB, this would 404 or raise instead of answering.
+    client = TestClient(
+        create_app(Path("/nonexistent-dir/does-not-exist.db"), Path("/nonexistent-dir/config.toml"))
+    )
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok"}
+
+
+def test_unhandled_exception_returns_structured_500_not_a_traceback(env, monkeypatch):
+    import driverdna.ui.api as api_module
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("simulated unhandled failure")
+
+    monkeypatch.setattr(api_module, "build_driver_payload", boom)
+    # raise_server_exceptions=False: the default TestClient re-raises server
+    # errors for the test to catch directly, which is the opposite of what
+    # this test checks — that a live deployment gets a structured response,
+    # not a bare crash.
+    no_raise_client = TestClient(
+        create_app(env["db_path"], env["config_path"]), raise_server_exceptions=False
+    )
+    resp = no_raise_client.get("/api/driver")
+    assert resp.status_code == 500
+    body = resp.json()
+    assert body.get("detail") == "internal server error"
+
+
 def test_cohort_payload_byte_identical_to_report_json(env):
     api_bytes = env["client"].get(f"/api/cohorts/{SPA_SLUG}/payload").text
     file_bytes = (env["out_dir"] / f"{SPA_SLUG}.json").read_text()
