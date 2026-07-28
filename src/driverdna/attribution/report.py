@@ -45,8 +45,9 @@ def _findings_table(findings: list[Finding], extra_cols: list[str]) -> list[str]
 
 def build_attribution_report(db: Database, config: DriverDNAConfig) -> str:
     cohorts = db.conn.execute(
-        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self'
-           ORDER BY driver, car, track"""
+        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self' AND owner_user_pk=?
+           ORDER BY driver, car, track""",
+        (db.user_pk,),
     ).fetchall()
 
     lines = [

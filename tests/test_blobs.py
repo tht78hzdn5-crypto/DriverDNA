@@ -21,7 +21,7 @@ from driverdna.blobs import (
     default_blob_root,
     open_blob_store,
 )
-from driverdna.db import Database
+from driverdna.db import MIGRATIONS, Database
 from synth import run_synthetic_lap, track_lap
 
 COHORT = {"driver": "owner", "car": "TestCar", "track": "SynthRing"}
@@ -193,6 +193,12 @@ def _v5_database_with_inline_blobs(db_path: Path) -> list[int]:
             (pk, data),
         )
     raw.execute("DELETE FROM schema_version WHERE version >= 6")
+    raw.execute("DROP TABLE IF EXISTS password_resets")
+    raw.execute("DROP TABLE IF EXISTS users")
+    try:
+        raw.execute("ALTER TABLE laps DROP COLUMN owner_user_pk")
+    except sqlite3.OperationalError:
+        pass
     raw.commit()
     raw.close()
 
@@ -209,7 +215,7 @@ def test_old_database_still_reads_its_blobs_before_draining(tmp_path, monkeypatc
     pks = _v5_database_with_inline_blobs(db_path)
 
     with Database.open(db_path) as db:
-        assert db.schema_version >= 6  # 006+ applied on open
+        assert db.schema_version == len(MIGRATIONS)  # all migrations applied on open
         assert db.conn.execute(
             "SELECT COUNT(*) AS n FROM lap_samples_legacy"
         ).fetchone()["n"] == 3

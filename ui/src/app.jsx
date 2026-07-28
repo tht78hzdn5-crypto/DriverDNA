@@ -9,6 +9,8 @@ import Config from "./views/config.jsx";
 import Chat from "./views/chat.jsx";
 import DriverModel from "./views/model.jsx";
 import Upload from "./views/upload.jsx";
+import Login from "./views/login.jsx";
+import { get, send } from "./api.js";
 
 // Tiny hash router: #/ · #/garage · #/cohort/:slug · #/corner/:slug/:cid ·
 // #/finding/:slug/:fid · #/laps/:slug · #/model · #/chat[/:slug] · #/upload
@@ -32,14 +34,47 @@ const TAB_FOR = { cohort: "garage", corner: "garage", finding: "garage", laps: "
 
 export default function App() {
   const [route, setRoute] = useState(parseHash());
+  // null while unknown; then {required, authenticated} straight from the
+  // server. Asked once before anything renders, so a locked cockpit shows a
+  // sign-in rather than every panel failing its own fetch in turn.
+  const [session, setSession] = useState(null);
+
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  const checkSession = () =>
+    get("/api/auth/status")
+      .then(setSession)
+      // If even the status probe fails, the server is unreachable rather than
+      // locked — fall through to the shell so the view's own error shows.
+      .catch(() => setSession({ required: false, authenticated: true }));
+
+  useEffect(() => {
+    checkSession();
+    // Any 401 anywhere (an expired cookie mid-session, a rotated passphrase)
+    // returns the whole shell to the gate instead of stranding one panel.
+    const onLost = () =>
+      setSession((s) => ({ ...s, required: true, authenticated: false }));
+    window.addEventListener("driverdna:unauthenticated", onLost);
+    return () => window.removeEventListener("driverdna:unauthenticated", onLost);
+  }, []);
+
+  async function signOut() {
+    await send("POST", "/api/auth/logout").catch(() => {});
+    setSession({ required: true, authenticated: false });
+  }
+
   const { view, args } = route;
   const activeTab = TAB_FOR[view] || view;
+
+  if (session === null) return <Loading />;
+  if (session.required && !session.authenticated) {
+    return <Login onAuthenticated={checkSession} googleEnabled={session.google_enabled} />;
+  }
+
   return (
     <>
       <header className="topbar">
@@ -61,6 +96,11 @@ export default function App() {
               {t.label}
             </a>
           ))}
+          {/* Only when there is a session to end — the local loopback
+              instrument has no sign-in and needs no sign-out. */}
+          {session.required && (
+            <button className="btn small" onClick={signOut}>Sign out</button>
+          )}
         </nav>
       </header>
       {view === "home" && <DriverHome />}

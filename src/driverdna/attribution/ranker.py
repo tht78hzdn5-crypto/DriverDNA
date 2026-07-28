@@ -88,9 +88,9 @@ def vs_self_findings(
         # order, so laps sharing a duration would otherwise land in the fast
         # or slow group by whatever order storage happened to return.
         """SELECT lap_pk, duration_s, session_key FROM laps
-           WHERE role='self' AND driver=? AND car=? AND track=?
+           WHERE role='self' AND driver=? AND car=? AND track=? AND owner_user_pk=?
            ORDER BY duration_s, lap_pk""",
-        (driver, car, track),
+        (driver, car, track, db.user_pk),
     ).fetchall()
     n_laps = len(laps)
     third = max(1, n_laps // 3)
@@ -222,19 +222,19 @@ def vs_principle_findings(
                    JOIN corner_observations o ON o.obs_pk = d.obs_pk
                    JOIN corners c ON c.corner_pk = o.corner_pk
                    JOIN laps l ON l.lap_pk = o.lap_pk
-                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                      AND c.corner_id=? AND d.detector=? AND d.triggered=1
                    ORDER BY d.obs_pk""",
-                (driver, car, track, corner_id, detector),
+                (driver, car, track, db.user_pk, corner_id, detector),
             ).fetchall()
             sessions = db.conn.execute(
                 """SELECT COUNT(DISTINCT l.session_key) n FROM detector_results d
                    JOIN corner_observations o ON o.obs_pk = d.obs_pk
                    JOIN corners c ON c.corner_pk = o.corner_pk
                    JOIN laps l ON l.lap_pk = o.lap_pk
-                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
+                   WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=?
                      AND c.corner_id=? AND d.detector=? AND l.session_key IS NOT NULL""",
-                (driver, car, track, corner_id, detector),
+                (driver, car, track, db.user_pk, corner_id, detector),
             ).fetchone()["n"]
             shown, reason = _gate(total, int(sessions), config)
             if shown and rate < config.detectors.min_trigger_rate:

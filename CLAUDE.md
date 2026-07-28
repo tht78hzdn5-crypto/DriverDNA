@@ -358,6 +358,33 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   wrapper; Sync lives on driver home only, not duplicated onto Garage. Five
   trust gates green, no route-list changes needed; suite 518 → 530 (12 new
   tests, `test_cockpit_api.py` + `test_cockpit_ui.py`).
+- **Single-driver auth built (2026-07-27, SPEC.md A31)** — `docs/DEPLOY-SPEC.md`
+  track H1, adopted 2026-07-26 and never built while the Cloud Run deploy
+  shipped anyway, so the live service had every `/api` route open behind
+  nothing but `--no-allow-unauthenticated`. `DRIVERDNA_ACCESS_TOKEN` (env-only,
+  same non-negotiable as every other secret) exchanges at `POST
+  /api/auth/login` for a signed, expiring, HttpOnly/SameSite cookie
+  (`hmac.compare_digest`; signing key derived from the passphrase, so rotation
+  *is* revocation; stateless, so it survives Cloud Run's N instances). One
+  app-level FastAPI dependency guards every route — so a future endpoint is
+  guarded by default, and DEPLOY-SPEC's done-criterion test enumerates
+  `app.routes` to keep it that way. `driverdna ui` now refuses a non-loopback
+  bind with no passphrase (`_is_loopback` fails closed); write-path hardening
+  landed with it (per-file upload cap + CSV type check, `/api/chat/*` rate
+  limit, `no-store` on every API response). SPA: a sign-in gate rendered
+  instead of the shell, and any 401 anywhere returns to it — no `credentials`
+  or header changes were needed, since every call is same-origin.
+  **Stdlib only, by constraint not preference:** a browser-side identity
+  provider (Auth0/Clerk/Firebase/Supabase Auth) is mechanically excluded by
+  `test_ui_static.py` (bundle contains no `https://` — fails in CI, no browser)
+  and `test_offline.py`; a server-side OIDC flow *would* pass both and was
+  rejected on cost/benefit, recorded rather than left implied. No third-party
+  origin at either level, so **no trust gate was amended**. Auth is off when no
+  passphrase is configured — the local instrument is unchanged and every
+  pre-existing test passed unmodified. 725 passed / 0 failed (from 644/1: the
+  `AGENTS.md` size-budget failure on `main` was pre-existing and is fixed).
+  ⚠️ `Dockerfile` binds `0.0.0.0`, so **Cloud Run needs the secret set before
+  this merges** or the service will not start; exposure itself is unchanged.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

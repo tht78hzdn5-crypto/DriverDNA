@@ -99,6 +99,26 @@ def test_every_migration_translates():
     for i, migration in enumerate(MIGRATIONS, start=1):
         out = to_pg_ddl(migration)
         assert "REAL" not in out, f"migration {i:03d} still has a REAL column"
+        assert "PRAGMA" not in out, f"migration {i:03d} still has a bare PRAGMA"
+
+
+def test_pragma_foreign_keys_is_stripped_for_postgres():
+    """SQLite-only syntax with no Postgres equivalent: Postgres enforces FK
+    constraints immediately and has no session-level switch to disable them
+    the way PRAGMA does."""
+    out = to_pg_ddl("PRAGMA foreign_keys=OFF;\nCREATE TABLE a (pk INTEGER PRIMARY KEY);\nPRAGMA foreign_keys=ON;")
+    assert "PRAGMA" not in out
+    assert "CREATE TABLE a" in out
+
+
+def test_drop_table_gets_cascade_for_postgres():
+    """A table-rebuild's DROP TABLE runs inside a PRAGMA foreign_keys=OFF
+    block on SQLite — exactly what lets it succeed despite another table's
+    dangling FK reference. CASCADE is the Postgres equivalent of that same
+    bypass, dropping the dependent constraint rather than refusing the drop;
+    the table being rebuilt recreates its own FK in its next CREATE TABLE."""
+    out = to_pg_ddl("DROP TABLE laps;")
+    assert "DROP TABLE laps CASCADE;" in out
 
 
 # --- secret handling -------------------------------------------------------
@@ -207,9 +227,9 @@ def test_transaction_block_does_not_close_the_connection(pg_schema):
     with Database.open(pg_schema) as pg:
         with pg.conn:
             pg.conn.execute(
-                """INSERT INTO laps (source_file, driver, car, track, role,
+                """INSERT INTO laps (owner_user_pk, source_file, driver, car, track, role,
                                      n_samples, duration_s, quality_flags)
-                   VALUES ('t.csv', 'owner', 'C', 'T', 'self', 1, 1.0, '[]')"""
+                   VALUES (1, 't.csv', 'owner', 'C', 'T', 'self', 1, 1.0, '[]')"""
             )
         assert pg.conn.closed is False
         # ...and the connection is still usable, which is the real assertion.

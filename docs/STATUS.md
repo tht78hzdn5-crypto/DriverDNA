@@ -1,4 +1,14 @@
-# DriverDNA — Status & Decision Log
+# DriverDNA - Status & Decision Log
+
+**Snapshot date: 2026-07-28.** Multi-tenant accounts merged (SPEC.md A32):
+Google OAuth, SMTP password resets (via SendGrid), and `owner_user_pk`
+partitioning across every table (`laps`, `incidents`, `driver_beliefs`, etc.),
+superseding the single-driver passphrase auth built the day before (A31). Row-
+level security and per-tenant data isolation are tested extensively; every
+deterministic grounding test stays strictly scoped per tenant. Landed via PR
+#11 alongside three real bugs found while fixing this branch's CI (below) —
+none were in the original CI failure report, which only got as far as the
+first.
 
 **Snapshot date: 2026-07-28.** Investigated three owner-reported problems
 (Cloud Run 500s + slow loading, "cloud actions flow did not run" emails,

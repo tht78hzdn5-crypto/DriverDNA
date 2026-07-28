@@ -49,8 +49,9 @@ def cohort_slug(car: str, track: str) -> str:
 
 def list_cohorts(db: Database) -> list[dict[str, str]]:
     rows = db.conn.execute(
-        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self'
-           ORDER BY driver, car, track"""
+        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self' AND owner_user_pk=?
+           ORDER BY driver, car, track""",
+        (db.user_pk,),
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -128,9 +129,9 @@ def build_cohort_payload(
 
     laps = db.conn.execute(
         """SELECT lap_pk, lap_id, duration_s, session_key, quality_flags
-           FROM laps WHERE role='self' AND driver=? AND car=? AND track=?
+           FROM laps WHERE role='self' AND driver=? AND car=? AND track=? AND owner_user_pk=?
            ORDER BY lap_pk""",
-        (driver, car, track),
+        (driver, car, track, db.user_pk),
     ).fetchall()
     sessions = {r["session_key"] for r in laps if r["session_key"] is not None}
 

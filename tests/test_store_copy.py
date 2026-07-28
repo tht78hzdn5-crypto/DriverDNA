@@ -97,9 +97,9 @@ def test_checksum_distinguishes_float_precision(tmp_path):
         for db, value in ((a, 0.1234567890123456), (b, 0.12345678)):
             db.conn.execute(
                 """INSERT INTO laps (source_file, driver, car, track, role,
-                                     n_samples, duration_s, quality_flags)
-                   VALUES ('p.csv','owner','C','T','self',1,?,'[]')""",
-                (value,),
+                                     n_samples, duration_s, quality_flags, owner_user_pk)
+                   VALUES ('p.csv','owner','C','T','self',1,?,'[]', ?)""",
+                (value, db.user_pk)
             )
             db.conn.commit()
         assert checksum(a)["laps"] != checksum(b)["laps"]
@@ -165,9 +165,9 @@ def test_identity_sequences_are_reset_after_copy(pg_schema, tmp_path):
                 "SELECT MAX(lap_pk) AS m FROM laps"
             ).fetchone()["m"]
             new_pk = dst._insert_returning(
-                """INSERT INTO laps (source_file, driver, car, track, role,
+                """INSERT INTO laps (owner_user_pk, source_file, driver, car, track, role,
                                      n_samples, duration_s, quality_flags)
-                   VALUES ('after.csv','owner','C','T','self',1,1.0,'[]')""",
+                   VALUES (1, 'after.csv','owner','C','T','self',1,1.0,'[]')""",
                 (),
                 "lap_pk",
             )

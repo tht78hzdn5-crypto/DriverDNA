@@ -287,3 +287,11 @@ a.btn-primary { color: var(--base); }
 }
 .upload-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .upload-field input[type="file"] { font-size: 0.82rem; color: var(--text); }
+
+/* --- Sign-in gate (DEPLOY-SPEC track H1) --------------------------------
+   Rendered instead of the shell, so it centres in the viewport rather than
+   sitting under a topbar that is not there yet. */
+.login { display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 1rem; }
+.login-panel { width: 100%; max-width: 22rem; }
+.login-panel h1 { margin-bottom: 0.2rem; }
+.login-panel .brand { display: flex; align-items: center; gap: 0.45rem; }

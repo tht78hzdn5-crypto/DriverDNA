@@ -13,8 +13,9 @@ from driverdna.metrics.technique import METRIC_DEFS, summarize
 
 def build_metrics_report(db: Database) -> str:
     cohorts = db.conn.execute(
-        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self'
-           ORDER BY driver, car, track"""
+        """SELECT DISTINCT driver, car, track FROM laps WHERE role='self' AND owner_user_pk=?
+           ORDER BY driver, car, track""",
+        (db.user_pk,),
     ).fetchall()
 
     lines = [
@@ -32,8 +33,8 @@ def build_metrics_report(db: Database) -> str:
         detectors = db.self_detector_table(driver=driver, car=car, track=track)
         n_laps = db.conn.execute(
             """SELECT COUNT(*) n FROM laps
-               WHERE role='self' AND driver=? AND car=? AND track=?""",
-            (driver, car, track),
+               WHERE role='self' AND driver=? AND car=? AND track=? AND owner_user_pk=?""",
+            (driver, car, track, db.user_pk),
         ).fetchone()["n"]
 
         lines += [
