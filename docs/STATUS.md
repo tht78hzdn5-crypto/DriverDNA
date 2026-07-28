@@ -1,14 +1,87 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-07-28.** On branch `antigravity/multi-user-accounts`.
-Completed multi-tenant, SaaS Productization, Google OAuth, and SMTP Password Resets (SPEC.md A32).
-A new `users` table backs both a Google OAuth TLS callback route and a standalone SMTP-based password reset flow (via SendGrid). Every data structure (`laps`, `incidents`, `model_cache`, etc.) is partitioned with `owner_user_pk`, and the row-level security is tested extensively. All deterministic grounding tests remain strictly isolated per tenant. All tests pass.
+**Snapshot date: 2026-07-28.** Multi-tenant accounts merged (SPEC.md A32):
+Google OAuth, SMTP password resets (via SendGrid), and `owner_user_pk`
+partitioning across every table (`laps`, `incidents`, `driver_beliefs`, etc.),
+superseding the single-driver passphrase auth built the day before (A31). Row-
+level security and per-tenant data isolation are tested extensively; every
+deterministic grounding test stays strictly scoped per tenant. Landed via PR
+#11 alongside three real bugs found while fixing this branch's CI (below) —
+none were in the original CI failure report, which only got as far as the
+first.
 
-**Single-driver auth built (2026-07-27, SPEC.md A31)** (Now superseded by A32).only; both
-browser trust gates ran and passed, Chromium being present in that
-environment). Baseline before this work was 644 passed / **1 failed** — a
-pre-existing `AGENTS.md` size-budget failure on `main`, fixed here by moving
-detail into the docs it duplicated, no rule removed.
+**Snapshot date: 2026-07-28.** Investigated three owner-reported problems
+(Cloud Run 500s + slow loading, "cloud actions flow did not run" emails,
+CI red on `antigravity/multi-user-accounts`) on `claude/driverdna-issues-analysis-gsuysa`.
+
+- **The "did not run" emails were a real, currently-red test, not a cosmetic
+  guardrail step as first assumed.** `deploy.yml` has no dependency on
+  `tests.yml` and deploys unconditionally on every push to `main` — that part
+  of the original read was right. But `tests.yml` itself was genuinely
+  failing on `main`: `test_agent_contract.py::test_agents_md_fits_antigravity_rule_limit`,
+  because `AGENTS.md` grew to 11405 chars in the TDD-guardrails merge, over
+  its 11000-char budget. Confirmed against the actual failed-job logs
+  (runs 30297184257, 30295013798), not inferred. Fixed by trimming prose
+  (no content removed, 10883 chars) and re-syncing the byte-for-byte mirror
+  in `.agents/rules/driverdna.md`, which had drifted on the one changed line.
+- **Issue 1 (500s / slow `/api/driver`) fixed**, building on
+  `claude/db-performance-review-28d3et` (a prior session's unmerged work:
+  migration 007 indexes, `build_driver_payload` skipping per-cohort
+  findings/coaching/incidents for the rollup, `compute_all_beliefs` cached
+  per cohort). Added on top: `GET /health` (no DB access, for Cloud Run's
+  liveness probe) and a global exception handler (structured JSON 500 +
+  logged traceback, instead of an unlogged bare crash). Replaced that
+  session's single-shared-Postgres-connection optimization with a real
+  `psycopg_pool.ConnectionPool` (`open_postgres_pool`, `Database.from_pool`):
+  the shared connection was a genuine thread-safety hazard, not just a missed
+  optimization — FastAPI dispatches sync routes to a thread pool, and psycopg
+  connections are not safe for concurrent use from multiple threads. Verified
+  with a real local Postgres (dedicated unit tests proving concurrent
+  checkouts get distinct connections, plus an API-level test asserting
+  `app.state.pool` is a real `ConnectionPool`). Full suite green on both
+  backends (`python3 -m pytest` with `DRIVERDNA_TEST_DATABASE_URL` set).
+- **Issue 3 (auth branch CI) fixed on `antigravity/multi-user-accounts`
+  itself**, not `main` — three real, distinct bugs, not just the one CI
+  reported:
+  1. `AUTOINCREMENT` (SQLite-only) left dangling after `sql.py`'s regex
+     already rewrote `INTEGER PRIMARY KEY` to Postgres's IDENTITY syntax —
+     the reported CI failure (runs on 30374413968).
+  2. One statement later: migration 008's SQLite-style table-rebuild
+     (`PRAGMA foreign_keys=OFF`, `DROP TABLE`, rename) has no Postgres
+     equivalent, and Postgres refuses a `DROP TABLE` another table's FK still
+     points at (`incidents.lap_pk -> laps`). `sql.py`'s `to_pg_ddl` now strips
+     `PRAGMA foreign_keys` statements and appends `CASCADE` to `DROP TABLE`
+     for Postgres — the rebuilt table's own `CREATE TABLE` re-declares the FK,
+     so nothing is lost.
+  3. `test_auth_ui.py` (Chromium-gated, so silently skipped whenever
+     Chromium/the built SPA is absent — the CI default, which is exactly why
+     this went unnoticed) still called `create_app(..., access_token=TOKEN)`,
+     a parameter the multi-tenant commit renamed to `session_secret`
+     everywhere else. Fixed the call sites, the stale docstring, and a
+     data-isolation trap the fix surfaced: the test's browser login used a
+     *newly inserted* user, which authenticates fine but owns none of the
+     imported fixture data (`owner_user_pk` isolation is real and working) —
+     the fixture now sets a password on the migration's pre-seeded
+     `owner@example.com` row (`user_pk` 1, the actual owner of imported data)
+     instead. Also fixed: `login.jsx` still posted `{token}` for a
+     single-driver passphrase; `LoginBody` has required `email`+`password`
+     since the multi-tenant commit. Added email+password fields, a
+     conditionally-rendered Google button (`/api/auth/status` gained
+     `google_enabled`, never the client secret), and renumbered this
+     branch's two new migrations (007→008, 008→009) around Issue 1's
+     migration 007 landing on `main` first, updating `tests/test_blobs.py`'s
+     hardcoded `schema_version == 11` to `== len(MIGRATIONS)` so it does not
+     silently drift again the same way.
+  Not fixed / flagged for the owner: there is still no way to set a real
+  password for a seeded user or create additional ones outside direct DB
+  access or Google OAuth — a real gap in the multi-tenant flow, out of this
+  fix's scope (it is a design decision, not a bug).
+- **Known, unrelated to all three issues above:** `test_offline.py`'s trust
+  gate still fails locally on a stale/rebuilt SPA (`svg.trackmap` not found)
+  — already documented below as invisible to CI (no Chromium there); not
+  investigated further this session.
+
+**Snapshot date: 2026-07-27.** On `main` after PR #6 (sync 404/403 guard A30, UI bug fixes), PR #7 & PR #8 & PR #9 (Cloud Run deploy pipeline WIF auth resolution, direct source build via `google-github-actions/deploy-cloudrun@v2`), and Phase 5 history purge (18 orphaned blob & report files removed, `*.blobs/` added to `.gitignore`). The Cloud Run service `driverdna` is live at `https://driverdna-b4wjnb2baa-nn.a.run.app`.
 Previous: branch consolidation merge, A24–A29, A23 storage migration, UI U0–U6.
 This is the single dated status doc; the verified counts below can be checked
 for consistency over time. Binding records remain `docs/SPEC.md` (engine +

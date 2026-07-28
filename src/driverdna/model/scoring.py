@@ -171,13 +171,17 @@ def _adherence_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     detector_names: tuple[str, ...],
     lap_pks: frozenset[int] | None = None,
+    detector_cache: dict[tuple[str, str], dict] | None = None,
 ) -> _Component:
     if not detector_names:
         return _Component(None, 0)
     triggered_total = 0
     n_total = 0
     for car, track in cohorts:
-        table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
+        if detector_cache is not None and lap_pks is None and (car, track) in detector_cache:
+            table = detector_cache[(car, track)]
+        else:
+            table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for detectors in table.values():
             for detector, (triggered, total) in detectors.items():
                 if detector in detector_names:
@@ -192,19 +196,27 @@ def _opportunity_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     phases: tuple[str, ...], config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
+    loss_cache: dict[tuple[str, str], dict] | None = None,
+    windows_cache: dict[tuple[str, str], dict] | None = None,
 ) -> _Component:
     if not phases:
         return _Component(None, 0)
     losses: list[float] = []
     n_total = 0
     for car, track in cohorts:
-        windows_by_corner = _cohort_windows_by_corner(db, car, track)
+        if windows_cache is not None and (car, track) in windows_cache:
+            windows_by_corner = windows_cache[(car, track)]
+        else:
+            windows_by_corner = _cohort_windows_by_corner(db, car, track)
         if not windows_by_corner:
             continue
-        loss = cumulative_loss(
-            db, driver=driver, car=car, track=track,
-            windows_by_corner=windows_by_corner, config=config, lap_pks=lap_pks,
-        )
+        if loss_cache is not None and lap_pks is None and (car, track) in loss_cache:
+            loss = loss_cache[(car, track)]
+        else:
+            loss = cumulative_loss(
+                db, driver=driver, car=car, track=track,
+                windows_by_corner=windows_by_corner, config=config, lap_pks=lap_pks,
+            )
         for corner_id, phase_losses in loss["per_corner"].items():
             for phase, seconds in phase_losses.items():
                 if phase not in phases:
@@ -223,6 +235,7 @@ def _consistency_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     fundamental_id: str, config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
+    metric_cache: dict[tuple[str, str], dict] | None = None,
 ) -> _Component:
     """dm-v2: each metric's raw CV is divided by its own unit's typical scale
     (module docstring, "Per-unit consistency normalization") before pooling,
@@ -252,7 +265,10 @@ def _consistency_component(
     by_unit: dict[str, list[float]] = {}
     n_total = 0
     for car, track in cohorts:
-        table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
+        if metric_cache is not None and lap_pks is None and (car, track) in metric_cache:
+            table = metric_cache[(car, track)]
+        else:
+            table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for metrics in table.values():
             for metric, values in metrics.items():
                 if metric not in metric_names or len(values) < 2:
@@ -260,7 +276,7 @@ def _consistency_component(
                 arr = np.asarray(values, dtype=float)
                 mean = float(np.mean(arr))
                 if mean == 0:
-                    continue  # CV is undefined at a zero mean; skip, don't fabricate
+                    continue
                 cv = float(np.std(arr, ddof=1) / abs(mean))
                 unit = METRIC_DEFS[metric][0]
                 normalized = cv / reference.get(unit, 1.0)
@@ -310,22 +326,58 @@ def _confidence(
     return confidence
 
 
+class _CohortCache:
+    """Pre-fetched per-cohort query results, shared across fundamentals."""
+    __slots__ = ("detectors", "metrics", "losses", "windows")
+
+    def __init__(self):
+        self.detectors: dict[tuple[str, str], dict] = {}
+        self.metrics: dict[tuple[str, str], dict] = {}
+        self.losses: dict[tuple[str, str], dict] = {}
+        self.windows: dict[tuple[str, str], dict] = {}
+
+    @classmethod
+    def build(cls, db: Database, driver: str, cohorts: list[tuple[str, str]],
+              config: DriverDNAConfig) -> "_CohortCache":
+        cache = cls()
+        for car, track in cohorts:
+            cache.detectors[(car, track)] = db.self_detector_table(
+                driver=driver, car=car, track=track)
+            cache.metrics[(car, track)] = db.self_metric_table(
+                driver=driver, car=car, track=track)
+            wbc = _cohort_windows_by_corner(db, car, track)
+            cache.windows[(car, track)] = wbc
+            if wbc:
+                cache.losses[(car, track)] = cumulative_loss(
+                    db, driver=driver, car=car, track=track,
+                    windows_by_corner=wbc, config=config,
+                )
+        return cache
+
+
 def _score_components(
     db: Database, driver: str, fundamental_id: str,
     cohorts: list[tuple[str, str]], config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
+    cache: _CohortCache | None = None,
 ) -> dict[str, _Component]:
     """The three score components for one fundamental. `lap_pks` (M6 trend)
     restricts the evidence to a date-bucket's laps; None = full history."""
     fundamental = FUNDAMENTALS[fundamental_id]
     detector_names = fundamental_detectors(fundamental_id)
     return {
-        "adherence": _adherence_component(db, driver, cohorts, detector_names, lap_pks),
+        "adherence": _adherence_component(
+            db, driver, cohorts, detector_names, lap_pks,
+            detector_cache=cache.detectors if cache else None,
+        ),
         "opportunity": _opportunity_component(
-            db, driver, cohorts, fundamental.phases, config, lap_pks
+            db, driver, cohorts, fundamental.phases, config, lap_pks,
+            loss_cache=cache.losses if cache else None,
+            windows_cache=cache.windows if cache else None,
         ),
         "consistency": _consistency_component(
-            db, driver, cohorts, fundamental_id, config, lap_pks
+            db, driver, cohorts, fundamental_id, config, lap_pks,
+            metric_cache=cache.metrics if cache else None,
         ),
     }
 
@@ -416,6 +468,8 @@ def _insufficient_belief(
 
 def compute_belief(
     db: Database, *, driver: str, fundamental_id: str, config: DriverDNAConfig,
+    cohorts: list[tuple[str, str]] | None = None,
+    cache: _CohortCache | None = None,
 ) -> Belief:
     """Deterministic belief for one (driver, fundamental) — pure function of
     the evidence currently persisted plus SCORING_MODEL_VERSION."""
@@ -425,7 +479,8 @@ def compute_belief(
     if signal_status is SignalStatus.NO_SIGNAL:
         return _no_signal_belief(fundamental_id)
 
-    cohorts = _driver_cohorts(db, driver)
+    if cohorts is None:
+        cohorts = _driver_cohorts(db, driver)
     metric_names = _scoring_metric_names(fundamental_id)
     detector_names = fundamental_detectors(fundamental_id)
     evidence_count = db.fundamental_evidence_lap_count(
@@ -439,12 +494,9 @@ def compute_belief(
             f"insufficient evidence: {evidence_count} lap(s) < minimum {floor}",
         )
 
-    components = _score_components(db, driver, fundamental_id, cohorts, config)
+    components = _score_components(db, driver, fundamental_id, cohorts, config, cache=cache)
     score = _weighted_score(components, config)
     if score is None:
-        # Reachable in principle (a lap could carry a metric value without
-        # ever clearing the >=2-samples-per-corner bar every component
-        # needs) — still an honest "insufficient", not a crash or a guess.
         return _insufficient_belief(
             fundamental_id, signal_status, evidence_count,
             "insufficient evidence: no scorable component had data",
@@ -464,8 +516,13 @@ def compute_belief(
 def compute_all_beliefs(
     db: Database, *, driver: str, config: DriverDNAConfig,
 ) -> dict[str, Belief]:
+    cohorts = _driver_cohorts(db, driver)
+    cache = _CohortCache.build(db, driver, cohorts, config)
     return {
-        fid: compute_belief(db, driver=driver, fundamental_id=fid, config=config)
+        fid: compute_belief(
+            db, driver=driver, fundamental_id=fid, config=config,
+            cohorts=cohorts, cache=cache,
+        )
         for fid in sorted(FUNDAMENTALS)
     }
 

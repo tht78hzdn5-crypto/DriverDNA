@@ -15,21 +15,26 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
-from driverdna.db import Database
-from driverdna.store import missing_reason
+from driverdna.blobs import open_blob_store
+from driverdna.db import Database, open_postgres_pool
+from driverdna.store import is_postgres_url, missing_reason
 from driverdna.ui import auth
 from driverdna.report.payload import (
     build_cohort_payload,
@@ -89,7 +94,10 @@ class ResetPasswordBody(BaseModel):
 #: the SPA uses to decide whether to draw the login gate. The static shell is
 #: also public — it is a `StaticFiles` mount rather than a route, so the guard
 #: never sees it, which is correct: the shell is what renders the login screen.
+#: `/health` is Cloud Run's liveness probe — it carries no session cookie, and
+#: must answer even while the store is unreachable or still migrating.
 PUBLIC_API_PATHS = frozenset({
+    "/health",
     "/api/auth/login",
     "/api/auth/status",
     "/api/auth/google/login",
@@ -130,6 +138,21 @@ def create_app(
     `DRIVERDNA_SESSION_SECRET` and refuses to bind a non-loopback address
     without it.
     """
+    _pool = None
+    _is_pg = is_postgres_url(db_path)
+    _pg_blobs = open_blob_store(db_path) if _is_pg else None
+
+    @asynccontextmanager
+    async def _lifespan(app: FastAPI):
+        nonlocal _pool
+        if _is_pg:
+            _pool = open_postgres_pool(str(db_path))
+            app.state.pool = _pool
+        yield
+        if _pool is not None:
+            _pool.close()
+            _pool = None
+
     # The throttle holds state, so its policy is fixed when the app is built:
     # changing login_max_attempts/login_lockout_seconds takes effect on
     # restart. Ordinary for a rate limiter, and stated rather than discovered.
@@ -200,8 +223,23 @@ def create_app(
         # model to anyone who asked. Disabled here and re-declared below as an
         # ordinary route, which the guard does see.
         openapi_url=None,
+        lifespan=_lifespan,
     )
     chat_sessions: dict[str, dict[str, Any]] = {}
+
+    @app.exception_handler(Exception)
+    async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        # Anything not already an HTTPException (a DB timeout, a connection
+        # refusal, a bad query) would otherwise surface as a bare, unlogged
+        # "Internal Server Error" with no trace of what happened.
+        logger.exception("unhandled exception on %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "internal server error"})
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        # No DB access: this is Cloud Run's liveness probe, and it must
+        # answer even while the store is unreachable or still migrating.
+        return {"status": "ok"}
 
     @app.get("/openapi.json", include_in_schema=False)
     def openapi_schema() -> dict[str, Any]:
@@ -465,15 +503,18 @@ def create_app(
         if reason:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
         user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
-        db = Database.open(db_path, check_same_thread=check_same_thread, user_pk=user_pk)
-        
+        if _pool is not None:
+            db = Database.from_pool(_pool, _pg_blobs, user_pk=user_pk)
+        else:
+            db = Database.open(db_path, check_same_thread=check_same_thread, user_pk=user_pk)
+
         if request and hasattr(request.state, "session_epoch"):
             # Ensure the session epoch hasn't been rotated
             expected = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()
             if not expected or request.state.session_epoch != expected["session_epoch"]:
                 db.close()
                 raise HTTPException(401, detail="session invalid or expired")
-                
+
         return db
 
     def resolve(db: Database, slug: str) -> dict[str, str]:
@@ -1008,14 +1049,19 @@ def create_app(
         return entry
 
     @app.post("/api/chat/sessions")
-    def create_chat_session(body: ChatCreateBody) -> dict[str, Any]:
+    def create_chat_session(body: ChatCreateBody, request: Request) -> dict[str, Any]:
         # check_same_thread=False: this connection outlives the request that
         # opens it (kept in `chat_sessions` for follow-up messages/confirm),
         # and FastAPI dispatches sync endpoints/StreamingResponse generators
         # to a thread pool — later calls on this session can legitimately
         # land on a different worker thread. Access stays sequential (one
         # request completes before the next starts), never concurrent.
-        db = open_db(check_same_thread=False)
+        #
+        # request is passed through so the session's connection is scoped to
+        # the signed-in driver's own user_pk — without it every chat session
+        # would silently read/write against user_pk 1 regardless of who
+        # signed in, a cross-tenant leak once more than one user exists.
+        db = open_db(request, check_same_thread=False)
         try:
             cohort = resolve(db, body.cohort)
             try:

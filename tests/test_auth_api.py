@@ -15,21 +15,10 @@ from typer.testing import CliRunner
 
 from driverdna.cli import app as cli_app
 from driverdna.ui import auth
-from driverdna.ui.api import create_app
+from driverdna.ui.api import PUBLIC_API_PATHS, create_app
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TOKEN = "a-long-random-passphrase-for-one-driver"
-
-#: The only endpoints reachable without a session — the login exchange itself
-#: and the status probe the SPA uses to decide whether to draw the login gate.
-PUBLIC_API_PATHS = {
-    "/api/auth/login", 
-    "/api/auth/status",
-    "/api/auth/google/login",
-    "/api/auth/google/callback",
-    "/api/auth/forgot-password",
-    "/api/auth/reset-password",
-}
 
 
 @pytest.fixture(scope="module")

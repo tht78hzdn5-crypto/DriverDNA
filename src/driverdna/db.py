@@ -249,12 +249,10 @@ MIGRATIONS: tuple[str, ...] = (
     """,
     # 007 — performance indexes on hot-path columns
     #
-    # Carried over from claude/driverdna-issues-analysis-gsuysa (Issue 1's
-    # DB-performance fix), which reached main first and claimed migration
-    # 007 there. Kept as its own migration rather than folded into 008, so
-    # this branch's schema_version stays meaningful against main's once both
-    # land: a database migrated on either branch ends up in the same state
-    # at each step, not just at the end.
+    # Landed on main first via PR #10 (Issue 1's DB-performance fix). Kept
+    # as its own migration rather than folded into 008 below, so a database
+    # migrated from either branch's history ends up in the same state at
+    # each step, not just at the end.
     """
     CREATE INDEX IF NOT EXISTS idx_laps_cohort ON laps(driver, car, track, role);
     CREATE INDEX IF NOT EXISTS idx_corner_obs_lap ON corner_observations(lap_pk);
@@ -655,6 +653,51 @@ def _namespace_postgres(conn) -> None:
     conn.execute(f'SET search_path TO "{PG_SCHEMA}"')
 
 
+def open_postgres_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> "ConnectionPool":
+    """A per-process pool: each request checks out its own connection
+    (`Database.from_pool`) instead of every request paying a fresh
+    TCP+TLS+migration round trip, or — the hazard a single shared connection
+    would introduce — multiple concurrent requests contending for the same
+    connection.
+
+    `configure` runs once per new physical connection, not per checkout: the
+    namespace switch, migration check, and RLS hardening all happen there,
+    so steady-state checkouts do none of that work.
+    """
+    try:
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+    except ModuleNotFoundError as exc:  # pragma: no cover - install hint
+        raise RuntimeError(
+            "Postgres support needs psycopg: pip install 'driverdna[pg]'"
+        ) from exc
+
+    def _configure(conn) -> None:
+        _namespace_postgres(conn)
+        database = Database(conn, dialect=_POSTGRES)  # runs _migrate()
+        database._harden_postgres()
+
+    try:
+        pool = ConnectionPool(
+            dsn,
+            min_size=min_size,
+            max_size=max_size,
+            kwargs={
+                "autocommit": True,
+                "row_factory": dict_row,
+                # See Database._connect_postgres: breaks behind a
+                # transaction-mode pooler (Supabase port 6543).
+                "prepare_threshold": None,
+            },
+            configure=_configure,
+            open=True,
+        )
+        pool.wait(timeout=10)
+    except Exception as exc:
+        raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
+    return pool
+
+
 class Database:
     """One connection, migrations applied, typed helpers over the schema."""
 
@@ -736,7 +779,40 @@ class Database:
         except Exception as exc:
             raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
+    @classmethod
+    def from_pool(cls, pool: "ConnectionPool", blobs: BlobStore, user_pk: int = 1) -> "Database":
+        """Check out a connection from a pool built by `open_postgres_pool`.
+
+        Each caller gets its own physical connection, never a shared one:
+        psycopg connections are not safe for concurrent use from multiple
+        threads, and FastAPI runs sync route handlers in a thread pool, so
+        two simultaneous requests sharing one connection would be a real
+        correctness hazard, not just a missed optimization. `close()` on the
+        returned instance returns the connection to the pool rather than
+        closing the socket. Already migrated and hardened — the pool's
+        `configure` callback does that once per physical connection, not per
+        checkout.
+
+        `user_pk` must be passed through explicitly (unlike `Database.open`,
+        this bypasses `__init__`) — every query below scopes to
+        `self.user_pk`, so a request's tenant would silently fall back to 1
+        without it.
+        """
+        raw = pool.getconn()
+        db = object.__new__(cls)
+        db.dialect = _POSTGRES
+        db.user_pk = user_pk
+        db.conn = _Conn(raw, _POSTGRES)
+        db.blobs = blobs
+        db._pool = pool
+        db._pool_raw = raw
+        return db
+
     def close(self) -> None:
+        pool = getattr(self, "_pool", None)
+        if pool is not None:
+            pool.putconn(self._pool_raw)
+            return
         self.conn.close()
 
     def __enter__(self) -> "Database":

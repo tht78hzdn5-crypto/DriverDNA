@@ -1,10 +1,10 @@
 # DriverDNA — build rules for every agent
 
 This file is **binding** for every agent working on this repository — Claude
-Code, Gemini CLI, Antigravity, or anything else. It is the single source of
+Code, Gemini CLI, Antigravity, or anything else — and the single source of
 these rules. `CLAUDE.md` imports it; `.agents/rules/driverdna.md` mirrors its
 non-negotiables for Antigravity; `.gemini/settings.json` loads it for Gemini
-CLI. A test (`tests/test_agent_contract.py`) keeps those copies from drifting.
+CLI. `tests/test_agent_contract.py` keeps those copies from drifting.
 
 Personal racing-telemetry instrument for one driver. The constitution (the
 *why*) is **docs/ARCHITECTURE_VISION.md**: DriverDNA measures the driver, not
@@ -34,8 +34,9 @@ convenience.
   `DATABASE_URL` fallback.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
-- Nothing is silently repaired at ingest except pedal clipping to [0,1], which is
-  quality-flagged with counts. Network/API errors (e.g., 404 vs 403) must be categorized and surfaced, never swallowed.
+- Nothing is silently repaired at ingest except pedal clipping to [0,1], which
+  is quality-flagged with counts. Network/API errors (e.g. 404 vs 403) are
+  categorized and surfaced, never swallowed.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
@@ -89,23 +90,23 @@ actually stands, and `docs/DEPLOY-SPEC.md` holds the open P/M/H tracks.
   detector edge cases.
 - API capabilities are documented from observed behavior (docs/garage61-api.md),
   never assumed.
-- The suite must stay runnable with `git clone && python3 -m pytest` — no
-  secrets, no server, no container. Postgres tests activate only when
-  `DRIVERDNA_TEST_DATABASE_URL` points at a *local* instance; browser tests skip
-  when Playwright or Chromium is absent.
+- The suite stays runnable with `git clone && python3 -m pytest` — no secrets,
+  no server, no container. Postgres tests activate only when
+  `DRIVERDNA_TEST_DATABASE_URL` points at a *local* instance; browser tests
+  skip when Playwright or Chromium is absent.
 
 ## Development workflow (TDD)
 
 New features and bug fixes follow Red → Green → Refactor:
 
-1. **Red:** write a failing test first. Run the suite; confirm it fails for the
-   expected reason and no existing test broke.
-2. **Green:** write minimum code to pass. Never modify test files during this
+1. **Red:** write a failing test first. Run the suite; confirm it fails for
+   the expected reason and nothing existing broke.
+2. **Green:** write minimum code to pass. Never modify test files in this
    step — fix the test in Red first, then return to Green.
 3. **Refactor:** clean up with all tests green.
 
-Exempt: docs-only, config-only, and unmerged spike work. The rule prevents an
-agent from writing both the answer and the grading rubric in one thought.
+Exempt: docs-only, config-only, and unmerged spike work. This stops an agent
+from writing both the answer and the grading rubric in one thought.
 
 ## Multi-agent working agreement
 
@@ -119,10 +120,10 @@ direction cheap, so no agent has to guess what the last one did.
 - **Every other agent works on a prefixed branch** and merges to `main` only
   after CI is green: `gemini/<topic>` for Gemini CLI, `antigravity/<topic>` for
   Antigravity.
-- Known property of this arrangement, not an oversight: CI gates *merges*, so a
-  direct push to `main` can still break it and a branch cut afterwards inherits
-  the breakage. Push-triggered CI makes that visible within a minute rather than
-  preventing it. If `main` is red, fix it before starting new work.
+- Known property, not an oversight: CI gates *merges*, so a direct push to
+  `main` can still break it, and a branch cut afterwards inherits the breakage.
+  Push-triggered CI surfaces that within a minute rather than preventing it.
+  If `main` is red, fix it before starting new work.
 
 ### Commit attribution
 
@@ -134,12 +135,10 @@ GitHub's attribution working:
 ```
 Agent: gemini-cli
 Co-Authored-By: Gemini CLI <noreply@google.com>
-```
-```
+
 Agent: antigravity
 Co-Authored-By: Antigravity <noreply@google.com>
-```
-```
+
 Agent: claude-code
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 ```
@@ -151,7 +150,8 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 3. `git log --oneline -20` — see what the previous agent did.
 4. Skim `docs/STATUS.md` "Verified counts" and `CLAUDE.md` "Current status".
 5. Run `python3 -m pytest` **before changing anything**, to establish a
-   baseline. Read the output; never blindly report it green. A suite that was already red is not yours to be surprised by later.
+   baseline. Read the output; never blindly report it green — a suite that
+   was already red is not yours to be surprised by later.
 
 ### End of session
 
@@ -178,36 +178,38 @@ than implying full coverage.
 
 ### Working with the durable docs
 
-- `docs/` is the project's memory and outranks anything in a chat transcript, a
-  tool's own "knowledge base", or a generated plan artifact. **If a decision
-  matters, it goes in the durable docs or it did not happen.**
+- `docs/` is the project's memory and outranks anything in a chat transcript,
+  a tool's own "knowledge base", or a generated plan artifact. **If a
+  decision matters, it goes in the durable docs or it did not happen.**
 - Antigravity's Knowledge Base and generated artifacts (task lists, plans,
-  walkthroughs) are scratch. They are not project truth and are not committed.
-- Do not restate this file's rules in another file. Reference it. The one
-  deliberate exception is the non-negotiables block mirrored into
-  `.agents/rules/driverdna.md`, which `tests/test_agent_contract.py` pins
-  byte-for-byte.
+  walkthroughs) are scratch, not project truth, and are not committed.
+- Do not restate this file's rules elsewhere — reference it. The one
+  exception is the non-negotiables block mirrored into
+  `.agents/rules/driverdna.md`, pinned byte-for-byte by
+  `tests/test_agent_contract.py`.
 
 ### Scope
 
 No area is off-limits to any agent — engine, AI layer, UI, docs. The
-guardrails are the constitution, the test suite, and CI, not a list of
-forbidden files. Which is exactly why the guardrails themselves are off-limits:
+guardrails are the constitution, the test suite, and CI, not a file list.
+That's exactly why the guardrails themselves are off-limits:
 
-- **Never weaken, delete, `skip`, `xfail`, or narrow an existing test to get to
-  green.** A failing test is a finding — record it and say so. Silencing it
-  converts a real defect into a false all-clear, and every gate downstream of it
+- **Never weaken, delete, `skip`, `xfail`, or narrow an existing test to get
+  to green.** A failing test is a finding — record it and say so. Silencing
+  it converts a real defect into a false all-clear, and every downstream gate
   starts lying.
-- **Never edit anything under `tests/fixtures/`.** Those are real recorded laps
-  and they are the regression anchor for the source contract and for the A18
-  blind acceptance test. Change the code to fit the evidence, never the reverse.
-- Changing a **number** the engine produces (a metric, a score, a threshold
-  default, a scoring model version) is a spec-level change. It needs a
-  `docs/SPEC.md` amendment and, where the formula or weights move, a model
-  version bump — never a quiet edit.
-- Changing the **grounding validator** (`coach/`, `chat/`) is the highest-risk
-  edit in the repo. Its whole job is to make "AI never produces a number"
-  mechanical rather than requested. Loosening it to make a test pass defeats
-  the point of the project.
-- **Investigate bug reports.** Cross-reference UI reports against `docs/SPEC.md` and engine payloads. Do not implement "fixes" that contradict engine rules (e.g., filtering outliers).
-- **Propose major changes.** Architectural changes (e.g., collapsing services) or destructive operations (history rewrites) require explicit owner approval before execution.
+- **Never edit anything under `tests/fixtures/`.** Those are real recorded
+  laps, the regression anchor for the source contract and the A18 blind
+  acceptance test. Change the code to fit the evidence, never the reverse.
+- Changing a **number** the engine produces (a metric, score, or threshold
+  default) is a spec-level change: a `docs/SPEC.md` amendment, plus a model
+  version bump if the formula or weights move — never a quiet edit.
+- Changing the **grounding validator** (`coach/`, `chat/`) is the
+  highest-risk edit here. Its job is making "AI never produces a number"
+  mechanical, not requested — loosening it to pass a test defeats the point.
+- **Investigate bug reports.** Cross-reference UI reports against `docs/SPEC.md`
+  and engine payloads. Never implement a "fix" that contradicts engine rules
+  (e.g. filtering outliers).
+- **Propose major changes.** Architectural changes (e.g. collapsing services)
+  or destructive operations (history rewrites) need explicit owner approval
+  first.

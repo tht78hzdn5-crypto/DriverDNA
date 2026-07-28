@@ -116,7 +116,8 @@ def incidents_section(
 
 
 def build_cohort_payload(
-    db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
+    db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig,
+    _for_driver_rollup: bool = False,
 ) -> dict[str, Any]:
     loaded = db.load_corner_map(car=car, track=track)
     map_pk, corner_map = loaded if loaded else (None, None)
@@ -132,11 +133,46 @@ def build_cohort_payload(
            ORDER BY lap_pk""",
         (driver, car, track, db.user_pk),
     ).fetchall()
+    sessions = {r["session_key"] for r in laps if r["session_key"] is not None}
+
+    cohort_dict = {
+        "driver": driver, "car": car, "track": track,
+        "n_laps": len(laps), "n_sessions": len(sessions),
+        "lap_durations_s": [round(float(r["duration_s"]), 4) for r in laps],
+        "lap_ids": [r["lap_id"] for r in laps],
+        "lap_delta_s": [
+            round(float(r["duration_s"]) - min(float(x["duration_s"]) for x in laps), 4)
+            for r in laps
+        ] if laps else [],
+    }
+
+    corner_map_list = [
+        {
+            "corner_id": c.corner_id,
+            "class": classes.get(c.corner_id),
+            "apex_pct": round(c.lap_dist * 100, 2),
+            "windows": stored_windows.get(c.corner_id),
+        }
+        for c in (corner_map.corners if corner_map else ())
+    ]
+
+    loss = cumulative_loss(
+        db, driver=driver, car=car, track=track,
+        windows_by_corner=windows_by_corner, config=config,
+    ) if windows_by_corner else {"per_corner": {}, "by_phase": {},
+                                 "by_class": {}, "outliers_screened": {}}
+
+    if _for_driver_rollup:
+        return {
+            "cohort": cohort_dict,
+            "corner_map": corner_map_list,
+            "cumulative_loss": loss,
+        }
+
     flag_counts: dict[str, int] = {}
     for r in laps:
         for flag in json.loads(r["quality_flags"]):
             flag_counts[flag["code"]] = flag_counts.get(flag["code"], 0) + 1
-    sessions = {r["session_key"] for r in laps if r["session_key"] is not None}
 
     metric_table = db.self_metric_table(driver=driver, car=car, track=track)
     metrics = {
@@ -187,39 +223,16 @@ def build_cohort_payload(
 
     return {
         "payload_version": PAYLOAD_VERSION,
-        "cohort": {
-            "driver": driver, "car": car, "track": track,
-            "n_laps": len(laps), "n_sessions": len(sessions),
-            "lap_durations_s": [round(float(r["duration_s"]), 4) for r in laps],
-            "lap_ids": [r["lap_id"] for r in laps],
-            # Deltas computed here, not in any renderer: the UI renders what
-            # the engine computed, it never derives a new number.
-            "lap_delta_s": [
-                round(float(r["duration_s"]) - min(float(x["duration_s"]) for x in laps), 4)
-                for r in laps
-            ] if laps else [],
-        },
+        "cohort": cohort_dict,
         "quality": {"flag_counts": flag_counts, "n_laps_flagged": sum(
             1 for r in laps if json.loads(r["quality_flags"])
         )},
-        "corner_map": [
-            {
-                "corner_id": c.corner_id,
-                "class": classes.get(c.corner_id),
-                "apex_pct": round(c.lap_dist * 100, 2),
-                "windows": stored_windows.get(c.corner_id),
-            }
-            for c in (corner_map.corners if corner_map else ())
-        ],
+        "corner_map": corner_map_list,
         "metrics": metrics,
         "metric_definitions": {k: {"unit": u, "description": d}
                                for k, (u, d) in METRIC_DEFS.items()},
         "phase_baselines": phase_baselines,
-        "cumulative_loss": cumulative_loss(
-            db, driver=driver, car=car, track=track,
-            windows_by_corner=windows_by_corner, config=config,
-        ) if windows_by_corner else {"per_corner": {}, "by_phase": {},
-                                     "by_class": {}, "outliers_screened": {}},
+        "cumulative_loss": loss,
         "findings": finding_dicts,
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
         "driver_model": driver_model_section(db, driver=driver, config=config),
@@ -233,10 +246,13 @@ def build_driver_payload(db: Database, config: DriverDNAConfig) -> dict[str, Any
     """Cross-cohort rollup. Cross-track aggregation only within car + class,
     and only with enough tracks (gated, stated)."""
     cohorts = list_cohorts(db)
-    payloads = [build_cohort_payload(db, **c, config=config) for c in cohorts]
+    rollup_payloads = [
+        build_cohort_payload(db, **c, config=config, _for_driver_rollup=True)
+        for c in cohorts
+    ]
 
     by_car_class: dict[str, dict[str, Any]] = {}
-    for p in payloads:
+    for p in rollup_payloads:
         car = p["cohort"]["car"]
         classes = {c["corner_id"]: c["class"] for c in p["corner_map"]}
         for corner_id, phases in p["cumulative_loss"]["per_corner"].items():
@@ -264,13 +280,14 @@ def build_driver_payload(db: Database, config: DriverDNAConfig) -> dict[str, Any
                 ),
             })
 
+    driver_name = cohorts[0]["driver"] if cohorts else None
+    driver_model = driver_model_section(db, driver=driver_name, config=config) if driver_name else None
+
     return {
         "payload_version": PAYLOAD_VERSION,
-        "cohorts": [p["cohort"] for p in payloads],
+        "cohorts": [p["cohort"] for p in rollup_payloads],
         "cross_track_rollups": rollups,
-        # Driver-level, so identical across every cohort payload for the
-        # same driver — take it from the first rather than recompute.
-        "driver_model": payloads[0]["driver_model"] if payloads else None,
+        "driver_model": driver_model,
         "note": "cross-car claims are computed but never reported in v1",
     }
 
