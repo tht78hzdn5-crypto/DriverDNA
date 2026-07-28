@@ -24,6 +24,12 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 STATIC = Path(__file__).parents[1] / "src" / "driverdna" / "ui" / "static"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TOKEN = "a-long-random-passphrase-for-one-driver"
+# The migration seeds this exact row as user_pk 1, and the partitioning
+# migration backfills every imported lap's owner_user_pk to 1 — so logging in
+# as a *different*, newly inserted user would authenticate fine but see none
+# of the fixture data (each user's rows are isolated by owner_user_pk). Only
+# this seeded identity owns what `driverdna import` puts in a fresh database.
+EMAIL = "owner@example.com"
 
 
 def _find_chrome() -> Path | None:
@@ -59,6 +65,16 @@ def locked_server(tmp_path):
         cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)]
     )
     assert result.exit_code == 0, result.output
+
+    from driverdna.db import Database
+    from driverdna.ui.auth import hash_password
+
+    with Database.open(db_path) as db:
+        with db.conn:
+            db.conn.execute(
+                "UPDATE users SET password_hash=? WHERE email=?",
+                (hash_password(TOKEN), EMAIL),
+            )
 
     app = create_app(db_path, tmp_path / "config.toml", session_secret=TOKEN)
     app.mount("/", StaticFiles(directory=STATIC, html=True), name="spa")
@@ -158,6 +174,7 @@ def test_the_right_passphrase_opens_the_cockpit(locked_server):
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
         page = _page(browser, locked_server)
+        page.fill("input[type=email]", EMAIL)
         page.fill("input[type=password]", TOKEN)
         page.click("button:has-text('Enter')")
 
@@ -172,11 +189,12 @@ def test_a_wrong_passphrase_says_so_and_stays_locked(locked_server):
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
         page = _page(browser, locked_server)
+        page.fill("input[type=email]", EMAIL)
         page.fill("input[type=password]", "hunter2")
         page.click("button:has-text('Enter')")
 
         page.wait_for_selector(".error", timeout=8000)
-        assert "incorrect passphrase" in page.locator(".error").inner_text()
+        assert "incorrect email or password" in page.locator(".error").inner_text()
         assert page.locator("input[type=password]").count() == 1
         assert page.locator("nav .tab").count() == 0
         browser.close()
@@ -186,6 +204,7 @@ def test_signing_out_returns_to_the_gate(locked_server):
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
         page = _page(browser, locked_server)
+        page.fill("input[type=email]", EMAIL)
         page.fill("input[type=password]", TOKEN)
         page.click("button:has-text('Enter')")
         page.wait_for_selector("nav .tab", timeout=8000)
@@ -205,6 +224,7 @@ def test_the_passphrase_is_not_readable_from_javascript(locked_server):
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
         page = _page(browser, locked_server)
+        page.fill("input[type=email]", EMAIL)
         page.fill("input[type=password]", TOKEN)
         page.click("button:has-text('Enter')")
         page.wait_for_selector("nav .tab", timeout=8000)
@@ -237,6 +257,7 @@ def test_the_gate_makes_no_third_party_requests(locked_server):
         page.route("**/*", guard)
         page.goto(f"{locked_server}/#/", wait_until="networkidle")
         page.wait_for_selector("input[type=password]", timeout=8000)
+        page.fill("input[type=email]", EMAIL)
         page.fill("input[type=password]", "hunter2")
         page.click("button:has-text('Enter')")
         page.wait_for_selector(".error", timeout=8000)

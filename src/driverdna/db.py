@@ -247,7 +247,24 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE lap_samples RENAME TO lap_samples_legacy;
     """,
-    # 007 — Identity Core (Phase 1)
+    # 007 — performance indexes on hot-path columns
+    #
+    # Carried over from claude/driverdna-issues-analysis-gsuysa (Issue 1's
+    # DB-performance fix), which reached main first and claimed migration
+    # 007 there. Kept as its own migration rather than folded into 008, so
+    # this branch's schema_version stays meaningful against main's once both
+    # land: a database migrated on either branch ends up in the same state
+    # at each step, not just at the end.
+    """
+    CREATE INDEX IF NOT EXISTS idx_laps_cohort ON laps(driver, car, track, role);
+    CREATE INDEX IF NOT EXISTS idx_corner_obs_lap ON corner_observations(lap_pk);
+    CREATE INDEX IF NOT EXISTS idx_corner_obs_corner ON corner_observations(corner_pk);
+    CREATE INDEX IF NOT EXISTS idx_metric_values_obs ON metric_values(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_detector_results_obs ON detector_results(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_phase_times_obs ON phase_times(obs_pk);
+    CREATE INDEX IF NOT EXISTS idx_corners_map ON corners(map_pk);
+    """,
+    # 008 — Identity Core (Phase 1)
     """
     CREATE TABLE users (
         user_pk INTEGER PRIMARY KEY,
@@ -264,7 +281,7 @@ MIGRATIONS: tuple[str, ...] = (
         expires_at TEXT NOT NULL
     );
     """,
-    # 008 — Data Partitioning (Phase 2)
+    # 009 — Data Partitioning (Phase 2)
     """
     PRAGMA foreign_keys=OFF;
     CREATE TABLE laps_new (
@@ -411,15 +428,15 @@ MIGRATIONS: tuple[str, ...] = (
     ALTER TABLE config_history_new RENAME TO config_history;
     PRAGMA foreign_keys=ON;
     """,
-    # 009 — track outline
+    # 010 — track outline
     """
     ALTER TABLE corner_maps ADD COLUMN track_outline_json TEXT;
     """,
-    # 010 - session_epoch for auth
+    # 011 - session_epoch for auth
     """
     ALTER TABLE users ADD COLUMN session_epoch TEXT NOT NULL DEFAULT '';
     """,
-    # 011 - password resets
+    # 012 - password resets
     """
     DROP TABLE IF EXISTS password_resets;
     CREATE TABLE password_resets (

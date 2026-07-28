@@ -220,19 +220,31 @@ def test_a_forged_cookie_does_not_open_anything(guarded):
 
 def test_status_reports_whether_auth_is_required_and_met(guarded, unguarded):
     assert guarded.get("/api/auth/status").json() == {
-        "required": True, "authenticated": False,
+        "required": True, "authenticated": False, "google_enabled": False,
     }
     guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     assert guarded.get("/api/auth/status").json() == {
-        "required": True, "authenticated": True,
+        "required": True, "authenticated": True, "google_enabled": False,
     }
     assert unguarded.get("/api/auth/status").json() == {
-        "required": False, "authenticated": True,
+        "required": False, "authenticated": True, "google_enabled": False,
     }
 
 
 def test_status_never_reveals_the_passphrase(guarded):
     assert TOKEN not in guarded.get("/api/auth/status").text
+
+
+def test_google_enabled_reflects_configuration_not_the_secret(db_path, tmp_path):
+    client = TestClient(
+        create_app(
+            db_path, tmp_path / "config.toml",
+            google_client_id="a-client-id", google_client_secret="a-client-secret",
+        )
+    )
+    body = client.get("/api/auth/status").text
+    assert client.get("/api/auth/status").json()["google_enabled"] is True
+    assert "a-client-secret" not in body
 
 
 # --- an unconfigured app is the app we had before -------------------------

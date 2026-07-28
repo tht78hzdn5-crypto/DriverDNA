@@ -56,7 +56,8 @@ export default function App() {
     checkSession();
     // Any 401 anywhere (an expired cookie mid-session, a rotated passphrase)
     // returns the whole shell to the gate instead of stranding one panel.
-    const onLost = () => setSession({ required: true, authenticated: false });
+    const onLost = () =>
+      setSession((s) => ({ ...s, required: true, authenticated: false }));
     window.addEventListener("driverdna:unauthenticated", onLost);
     return () => window.removeEventListener("driverdna:unauthenticated", onLost);
   }, []);
@@ -71,7 +72,7 @@ export default function App() {
 
   if (session === null) return <Loading />;
   if (session.required && !session.authenticated) {
-    return <Login onAuthenticated={checkSession} />;
+    return <Login onAuthenticated={checkSession} googleEnabled={session.google_enabled} />;
   }
 
   return (

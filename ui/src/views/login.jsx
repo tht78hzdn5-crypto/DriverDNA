@@ -11,26 +11,27 @@ import { send } from "../api.js";
 // every on-screen number traces to the payload, and a login screen has no
 // payload to trace to.
 //
-// The passphrase is posted once and exchanged for an HttpOnly cookie. It is
-// never stored in JS — no localStorage, no sessionStorage, no module state —
-// so nothing on the page can read the session back out afterwards.
-export default function Login({ onAuthenticated }) {
-  const [passphrase, setPassphrase] = useState("");
+// The credentials are posted once and exchanged for an HttpOnly cookie. They
+// are never stored in JS — no localStorage, no sessionStorage, no module
+// state — so nothing on the page can read the session back out afterwards.
+export default function Login({ onAuthenticated, googleEnabled }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
   async function submit(e) {
     e.preventDefault();
-    if (!passphrase || busy) return;
+    if (!email || !password || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await send("POST", "/api/auth/login", { token: passphrase });
-      setPassphrase("");
+      await send("POST", "/api/auth/login", { email, password });
+      setPassword("");
       onAuthenticated();
     } catch (e2) {
       setError(String(e2.message || e2));
-      setPassphrase("");
+      setPassword("");
     } finally {
       setBusy(false);
     }
@@ -49,26 +50,35 @@ export default function Login({ onAuthenticated }) {
           <span className="word">Driver<b>DNA</b></span>
         </div>
         <h1>Sign in</h1>
-        <div className="sub">This cockpit is locked to one driver.</div>
+        <div className="sub">Sign in to your cockpit.</div>
         <form onSubmit={submit}>
           <label className="upload-field">
-            <span className="upload-label">Passphrase</span>
+            <span className="upload-label">Email</span>
+            <input
+              className="in" style={{ width: "100%" }} type="email"
+              name="email" autoComplete="username" autoFocus
+              value={email} onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+          <label className="upload-field" style={{ marginTop: "0.6rem" }}>
+            <span className="upload-label">Password</span>
             <input
               className="in" style={{ width: "100%" }} type="password"
-              name="passphrase" autoComplete="current-password" autoFocus
-              value={passphrase} onChange={(e) => setPassphrase(e.target.value)}
+              name="password" autoComplete="current-password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
             />
           </label>
           <button className="btn-primary" type="submit"
-                  disabled={busy || !passphrase} style={{ marginTop: "0.8rem" }}>
+                  disabled={busy || !email || !password} style={{ marginTop: "0.8rem" }}>
             {busy ? "Checking…" : "Enter"}
           </button>
         </form>
+        {googleEnabled && (
+          <a className="btn" href="/api/auth/google/login" style={{ marginTop: "0.6rem", display: "block", textAlign: "center" }}>
+            Sign in with Google
+          </a>
+        )}
         {error && <div className="error" style={{ marginTop: "0.8rem" }}>{error}</div>}
-        <div className="reason" style={{ marginTop: "1rem" }}>
-          The passphrase is set on the server as DRIVERDNA_ACCESS_TOKEN. There
-          is no account and no reset — rotating that value ends every session.
-        </div>
       </section>
     </div>
   );

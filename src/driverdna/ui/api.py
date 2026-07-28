@@ -440,10 +440,12 @@ def create_app(
     def auth_status(request: Request) -> dict[str, bool]:
         """What the SPA asks before drawing anything, so it can show the login
         gate instead of ten failed panels. Deliberately says only whether a
-        sign-in is required and whether this caller has one."""
+        sign-in is required, whether this caller has one, and whether the
+        Google button has anything to call — never the client secret."""
         return {
             "required": session_secret is not None,
             "authenticated": authenticated(request),
+            "google_enabled": google_client_id is not None,
         }
 
     def make_chat_provider() -> ChatProvider:
