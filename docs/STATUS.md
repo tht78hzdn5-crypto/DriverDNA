@@ -1,5 +1,37 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-07-29.** Lap-analysis protocol built and its first
+calibration batch sealed (`docs/LAP-ANALYSIS-PROTOCOL.md`). Two new commands:
+`driverdna lap-digest` cuts a lap into readable per-corner slices and measures
+nothing (row/column selection only, asserted cell-for-cell), and `driverdna
+verify-observations` checks a reading's numbers against the digest bytes,
+reusing `coach.grounding`'s tolerance rather than defining a second one. Wired
+into both non-Claude hosts (`GEMINI.md`, `.agents/rules/driverdna.md`) plus one
+line in `AGENTS.md`, which now sits at 10,857 chars against the 11,000 test
+budget — 143 to spare, so the next edit there needs the count checked.
+
+Batch B01 (the 11 `spa-blind-2026-07/` laps, 198 slices) has its answer key
+pre-registered, the reviewer's own observations written, grounded 19/19, and
+committed as the seal — all before any reading agent ran. **Awaiting the owner
+to run Flash and to supply the 10 Mustang laps for B02.** One finding already,
+not in the answer key and not yet acted on: brake re-application after the
+corner's brake release, on 8 of 11 laps at C01, concentrated at five corners
+and absent at ten, counted by no metric — while `throttle_modulation_count`
+counts the exact throttle analogue. Also unmeasured: `gear` reaches the
+analysis chain in exactly one place, `segmenter.py:193`, where gear-0 spans are
+*excluded* from corner detection rather than measured.
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests | 726 passed / 16 skipped at session start; +29 added | `python3 -m pytest` |
+| Blind-batch slices | 198 (11 laps x 18 corners) | `driverdna lap-digest --db <db> --out-dir <dir>` |
+| Reviewer observations, B01 | 19 grounded / 0 rejected | `driverdna verify-observations --obs docs/lap-analysis/b01/claude-observations.jsonl --digest-dir <blind>` |
+| `AGENTS.md` size | 10,857 chars (budget 11,000) | `python3 -c "print(len(open('AGENTS.md',encoding='utf-8').read()))"` |
+
+The 16 skips are all Postgres-gated. Note that in this container Chromium *is*
+present, so `test_render_parity.py` and `test_offline.py` ran rather than
+skipping as they do in CI.
+
 **Snapshot date: 2026-07-28.** Multi-tenant accounts merged (SPEC.md A32):
 Google OAuth, SMTP password resets (via SendGrid), and `owner_user_pk`
 partitioning across every table (`laps`, `incidents`, `driver_beliefs`, etc.),

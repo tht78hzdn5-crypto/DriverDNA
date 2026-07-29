@@ -954,6 +954,90 @@ def corners(
     typer.echo(f"wrote {out}")
 
 
+@app.command("lap-digest")
+def lap_digest(
+    out_dir: Path = typer.Option(..., "--out-dir", help="Where to write the slices."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+    driver: str = typer.Option(None, help="Limit to one driver."),
+    car: str = typer.Option(None, help="Limit to one car."),
+    track: str = typer.Option(None, help="Limit to one track."),
+    stride: int = typer.Option(6, help="Emit every Nth sample (60 Hz / N)."),
+    margin: float = typer.Option(
+        0.01, help="Widen each corner window by this lap fraction on both sides."
+    ),
+) -> None:
+    """Readable per-corner slices of the raw trace (docs/LAP-ANALYSIS-PROTOCOL.md).
+
+    Row selection and column selection only — the digest measures nothing.
+    Self laps only; reference laps are never sliced.
+    """
+    from driverdna.analysis.digest import NoFrozenMap, build_digest
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path) as db:
+        try:
+            report = build_digest(
+                db, out_dir=out_dir, driver=driver, car=car, track=track,
+                stride=stride, margin=margin,
+            )
+        except NoFrozenMap as exc:
+            typer.secho(f"cannot build a digest: {exc}", fg="red", err=True)
+            raise typer.Exit(2)
+
+    for label in report.cohorts:
+        typer.echo(f"  {label}")
+    typer.echo(
+        f"wrote {report.corners_written} corner slices "
+        f"across {report.laps_written} lap(s) to {out_dir}"
+    )
+    # Never a silent hole in the evidence base.
+    for name in report.unavailable_laps:
+        typer.secho(f"  raw trace unavailable, not digested: {name}", fg="yellow")
+    for note in report.skipped:
+        typer.secho(f"  skipped {note}", fg="yellow")
+
+
+@app.command("verify-observations")
+def verify_observations_cmd(
+    obs: Path = typer.Option(..., "--obs", help="Observations JSONL to check."),
+    digest_dir: Path = typer.Option(
+        ..., "--digest-dir", help="The digest those observations were read from."
+    ),
+    out: Path = typer.Option(None, "--out", help="Where to write the report."),
+) -> None:
+    """Check a lap reading's numbers against the trace it claims to read.
+
+    Every quoted sample must equal the digest at the row it cites, and every
+    numeral in the claim must be one of that observation's quoted samples.
+    Exits 1 if anything is rejected, so a batch can be gated in a script.
+    """
+    from driverdna.analysis.verify import ObservationError, verify_observations
+
+    try:
+        report = verify_observations(obs, digest_dir)
+    except ObservationError as exc:
+        typer.secho(str(exc), fg="red", err=True)
+        raise typer.Exit(2)
+
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(report.to_markdown())
+        typer.echo(f"wrote {out}")
+    for result in report.results:
+        if not result.ok:
+            typer.secho(f"  REJECTED {result.obs_id}", fg="red")
+            for problem in result.problems:
+                typer.echo(f"    - {problem}")
+    typer.echo(f"{report.passed} grounded, {report.failed} rejected")
+    if report.failed:
+        raise typer.Exit(1)
+
+
 @app.command("rebuild-map")
 def rebuild_map(
     car: str = typer.Option(..., help="Car label of the cohort to rebuild."),

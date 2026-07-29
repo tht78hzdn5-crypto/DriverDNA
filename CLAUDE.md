@@ -418,6 +418,33 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   produces byte-identical artifacts. Four latent bugs were found and fixed on
   the way — see A23 and PROJECT-BRIEF.md's decision log.
 
+- **Lap-analysis protocol: built (2026-07-29)** — `docs/LAP-ANALYSIS-PROTOCOL.md`,
+  owner-directed: put cheap high-volume agents (Flash, via Antigravity or
+  Gemini CLI) on the grunt work of *reading traces* for things no metric
+  catches, with the reading checked mechanically before anyone believes it.
+  The reader gets no authority: observations only, never code, never a number
+  the engine uses. `driverdna lap-digest` cuts a lap into readable per-corner
+  slices and **measures nothing** — row and column selection only, asserted
+  cell-for-cell — because it is the shared evidence base for two independent
+  readers and a derived-column bug would corrupt both identically.
+  `driverdna verify-observations` rejects any numeral not quoted from the
+  digest, importing `coach.grounding`'s tolerance rather than defining a
+  second one (`matches_number` is that function, newly public, unchanged).
+  Reliability is measured per batch via known-outcome laps riding along
+  unmarked. Flagged: on a thin corpus the engine is *supposed* to be quiet
+  (gates at 10 phase samples / 2 sessions / 3 laps), so "engine silent" scores
+  as ungated there, never as a gap; and the reviewer must be blinded when the
+  batch is *designed*, not just when it is read (B01's reviewer already knew
+  which two laps carried incidents — excluded from its agreement count).
+  B01 sealed: answer key pre-registered, 19/19 reviewer observations grounded,
+  committed before any agent ran. First finding, not in the answer key: brake
+  re-application after the corner's brake release, 8 of 11 laps at C01,
+  concentrated at five corners and absent at ten, counted by no metric —
+  while `throttle_modulation_count` counts the exact throttle analogue.
+  Separately, `gear` reaches the analysis chain once, at `segmenter.py:193`,
+  where gear-0 spans are excluded from corner detection rather than measured.
+  Neither acted on: a finding is not an amendment.
+
 Update this section as milestones complete.
 
 ## UI layer (docs/UI-SPEC.md)

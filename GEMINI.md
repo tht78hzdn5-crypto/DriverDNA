@@ -17,3 +17,8 @@ Gemini-CLI specifics:
   `Co-Authored-By: Gemini CLI <noreply@google.com>`.
 - Run `python3 -m pytest` before you change anything and again before you push;
   merge only on green CI.
+- If your task is **reading laps to find gaps in the engine**, follow
+  `docs/LAP-ANALYSIS-PROTOCOL.md` Part 1 instead of the build workflow: it
+  produces observations only — no repository edits, no commits, and every
+  number quoted from the trace so `driverdna verify-observations` can check
+  it mechanically.
