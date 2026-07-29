@@ -278,6 +278,15 @@ Reliability is measured per batch, not assumed once.
   calibration, not value. Pre-registering them is what stops a reviewer from
   retro-fitting "we knew that" or "that's new" after the fact.
 
+**Pick canaries the reviewer does not already know about.** B01 learned this
+the hard way: its reviewer knew which two laps carried incidents before it read
+anything, so those observations had to be excluded from the agreement count.
+The corpus in fact contained two further incident laps nobody had flagged
+(`98D9NK`, `FS2F1N`), and one of them produced the batch's only genuinely
+blind hit. Draw canaries from `driverdna incidents` output that the reviewer
+has not seen, and keep the mapping out of the reviewer's reach until the seal
+is committed.
+
 ## Reading the comparison
 
 | | Engine says something | Engine silent |
