@@ -1,5 +1,24 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-07-29.** Plan adopted, nothing built:
+**`docs/UI-V3-PLAN.md`** — owner-directed UI v3 ("fun factor" + the mobile
+pass, merged because they touch the same CSS), incidents rewritten for
+newcomers, and the coach moved to Gemini with per-user bring-your-own-key.
+It schedules two already-adopted DEPLOY-SPEC designs (Track P: Gemini
+provider; Track M: mobile/PWA, renamed U7 to stop colliding with UI-SPEC's
+own U5) and adds three amendments to write before any code: **A33** design
+language v3, **A34** score history `dm-hist-v1`, **A35** per-user AI keys.
+
+One investigated finding worth recording here, because it reverses the
+premise of the original request: **"sign in with Google, use your own Gemini
+quota" is not available to third-party apps.** Google AI Pro/Ultra are chat
+subscriptions with no API access; Gemini API quota and billing always follow
+the Cloud project behind the key, never the signed-in user; and Google states
+that piggybacking Gemini CLI's OAuth to reach its backend services is a terms
+violation and grounds for account suspension, naming an AI Studio or Vertex
+API key as the supported path. The owner's decision (2026-07-29) is therefore
+bring-your-own-key with a server-side `GEMINI_API_KEY` fallback.
+
 **Snapshot date: 2026-07-28.** Multi-tenant accounts merged (SPEC.md A32):
 Google OAuth, SMTP password resets (via SendGrid), and `owner_user_pk`
 partitioning across every table (`laps`, `incidents`, `driver_beliefs`, etc.),
