@@ -49,4 +49,13 @@ never only here.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
+
+- Verification discipline:
+  1. A skipped test is not a pass. Check/report why tests skipped (missing Postgres/Chromium/SPA are gaps, not green results).
+  2. Never build on a red CI branch. If a push/CI turns red, fix it before adding new commits.
+  3. UI changes must be manually clicked. Load the page and run the flow (or use real browser tests) to verify frontend-backend parity.
+  4. Never silently reverse a "not adopted" decision. Implementing a previously rejected/shelved plan requires a documented re-decision.
+  5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
+  6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
+  7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
 <!-- /shared:non-negotiables -->
