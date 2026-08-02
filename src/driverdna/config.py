@@ -482,6 +482,15 @@ class ModelConfig(_Section):
         "improving/declining; within +/- this band it is 'stable'. Guards "
         "against calling ordinary noise a trend.",
     )
+    history_buckets: int = Field(
+        default=6,
+        description="Number of contiguous, date-ordered, equal-count buckets "
+        "the score-history chart (SPEC.md A34) splits a driver's dated laps "
+        "into. The whole series reads 'unavailable' unless there are at "
+        "least history_buckets x trend_min_laps_per_bucket dated laps in "
+        "total — the same per-bucket floor M6 trend already uses for its own "
+        "two buckets, generalized rather than duplicated with a new number.",
+    )
 
     @model_validator(mode="after")
     def _weights_sum_to_one(self) -> "ModelConfig":

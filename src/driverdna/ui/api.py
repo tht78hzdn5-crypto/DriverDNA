@@ -534,6 +534,32 @@ def create_app(
         with open_db(request) as db:
             return normalized(build_driver_payload(db, load_config(config_path)))
 
+    @app.get("/api/driver/score-history")
+    def driver_score_history(request: Request) -> Response:
+        """Pass-through of model.history.score_history (SPEC.md A34) — the
+        score-over-time chart's data. Same "driver = the first cohort's
+        driver label" resolution build_driver_payload uses; None (no
+        cohorts yet) returns the same unavailable shape score_history
+        itself returns for too-few-dated-laps, so the chart's empty state
+        needs no separate cold-start branch."""
+        from driverdna.model.history import CAVEATS, SERIES_VERSION, score_history
+        from driverdna.model.scoring import SCORING_MODEL_VERSION
+
+        with open_db(request) as db:
+            cohorts_list = list_cohorts(db)
+            driver_name = cohorts_list[0]["driver"] if cohorts_list else None
+            if driver_name is None:
+                return normalized({
+                    "series_version": SERIES_VERSION,
+                    "scoring_model_version": SCORING_MODEL_VERSION,
+                    "x_axis": {"kind": "unavailable", "labels": [], "bucket_lap_counts": []},
+                    "series": {},
+                    "caveats": list(CAVEATS),
+                })
+            return normalized(
+                score_history(db, driver=driver_name, config=load_config(config_path))
+            )
+
     @app.get("/api/cohorts")
     def cohorts(request: Request) -> list[dict[str, str]]:
         with open_db(request) as db:

@@ -1812,6 +1812,20 @@ class Database:
         ).fetchall()
         return [int(r["lap_pk"]) for r in rows]
 
+    def dated_self_laps(self, driver: str) -> list[tuple[int, str]]:
+        """Same rows and ordering as `dated_self_lap_pks`, paired with each
+        lap's `lap_date` string — A34 score history's bucket-label source
+        (the date range a bucket actually spans), kept as a sibling method
+        rather than changing `dated_self_lap_pks`'s return shape so its
+        existing callers (M6 trend) are untouched."""
+        rows = self.conn.execute(
+            """SELECT lap_pk, lap_date FROM laps
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL AND owner_user_pk=?
+               ORDER BY lap_date, lap_pk""",
+            (driver, self.user_pk),
+        ).fetchall()
+        return [(int(r["lap_pk"]), str(r["lap_date"])) for r in rows]
+
     # --- garage61 sync state (M0b+) ------------------------------------------
 
     def record_sync_state(

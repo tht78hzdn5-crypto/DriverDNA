@@ -14,6 +14,8 @@ from driverdna.db import Database
 from driverdna.model.scoring import (
     SCORING_MODEL_VERSION,
     _Component,
+    _CohortCache,
+    _bucket_score,
     _consistency_component,
     _weighted_score,
     compute_all_beliefs,
@@ -425,6 +427,54 @@ def test_trend_ignores_undated_laps_in_bucketing(db):
         )
     belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
     assert belief.trend == "unavailable"
+
+
+# --- _CohortCache: a per-bucket cache must never answer a different
+# bucket's query (A34 score history's one dangerous edit) ------------------
+
+
+def test_bucket_score_cache_is_scoped_to_its_own_lap_pks(db):
+    # Earlier bucket varied (noisy braking), recent flat (repeatable) — the
+    # same fixture the trend tests above use, chosen because it guarantees
+    # the two buckets' consistency components, and therefore their scores,
+    # genuinely differ (a degenerate fixture where they happened to match
+    # would let a broken cache pass this test by accident).
+    _dated_brake_cohort(db, _VARIED_PEAKS + _FLAT_PEAKS)
+    cohorts = [(COHORT["car"], COHORT["track"])]
+    dated = db.dated_self_lap_pks("owner")
+    half = len(dated) // 2
+    earlier = frozenset(dated[:half])
+    recent = frozenset(dated[half:])
+
+    uncached_earlier = _bucket_score(db, "owner", "braking", cohorts, CONFIG, earlier)
+    uncached_recent = _bucket_score(db, "owner", "braking", cohorts, CONFIG, recent)
+    assert uncached_earlier is not None and uncached_recent is not None
+    assert uncached_earlier != uncached_recent  # the fixture's whole point
+
+    cache_earlier = _CohortCache.build(db, "owner", cohorts, CONFIG, lap_pks=earlier)
+    cache_recent = _CohortCache.build(db, "owner", cohorts, CONFIG, lap_pks=recent)
+
+    # A cache built for the SAME bucket reproduces the uncached score exactly
+    # — the whole point of caching is that it changes nothing about the
+    # answer, only how many queries it took to get there.
+    assert _bucket_score(
+        db, "owner", "braking", cohorts, CONFIG, earlier, cache=cache_earlier
+    ) == uncached_earlier
+    assert _bucket_score(
+        db, "owner", "braking", cohorts, CONFIG, recent, cache=cache_recent
+    ) == uncached_recent
+
+    # The dangerous case this test exists for: querying `recent` while
+    # holding `earlier`'s cache (or vice versa) must fall through to a
+    # fresh, correct query rather than silently serving the wrong bucket's
+    # cached rows — the failure mode that would otherwise draw a plausible
+    # but wrong flat line across the whole score-history chart.
+    assert _bucket_score(
+        db, "owner", "braking", cohorts, CONFIG, recent, cache=cache_earlier
+    ) == uncached_recent
+    assert _bucket_score(
+        db, "owner", "braking", cohorts, CONFIG, earlier, cache=cache_recent
+    ) == uncached_earlier
 
 
 def test_trend_is_deterministic(db):

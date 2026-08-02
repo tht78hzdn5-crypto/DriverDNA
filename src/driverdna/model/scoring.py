@@ -171,15 +171,16 @@ def _adherence_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     detector_names: tuple[str, ...],
     lap_pks: frozenset[int] | None = None,
-    detector_cache: dict[tuple[str, str], dict] | None = None,
+    cache: "_CohortCache | None" = None,
 ) -> _Component:
     if not detector_names:
         return _Component(None, 0)
     triggered_total = 0
     n_total = 0
+    reusable = cache is not None and cache.lap_pks == lap_pks
     for car, track in cohorts:
-        if detector_cache is not None and lap_pks is None and (car, track) in detector_cache:
-            table = detector_cache[(car, track)]
+        if reusable and (car, track) in cache.detectors:
+            table = cache.detectors[(car, track)]
         else:
             table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for detectors in table.values():
@@ -196,22 +197,28 @@ def _opportunity_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     phases: tuple[str, ...], config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
-    loss_cache: dict[tuple[str, str], dict] | None = None,
-    windows_cache: dict[tuple[str, str], dict] | None = None,
+    cache: "_CohortCache | None" = None,
 ) -> _Component:
     if not phases:
         return _Component(None, 0)
     losses: list[float] = []
     n_total = 0
+    # Windows are the frozen corner map's geometry, independent of which
+    # laps are in scope — reusable regardless of lap_pks, unlike the other
+    # two caches below (a bucket's cache is still worth building once and
+    # sharing across a bucket's 7 fundamentals, since windows are looked up
+    # per fundamental too).
+    windows_reusable = cache is not None
+    loss_reusable = cache is not None and cache.lap_pks == lap_pks
     for car, track in cohorts:
-        if windows_cache is not None and (car, track) in windows_cache:
-            windows_by_corner = windows_cache[(car, track)]
+        if windows_reusable and (car, track) in cache.windows:
+            windows_by_corner = cache.windows[(car, track)]
         else:
             windows_by_corner = _cohort_windows_by_corner(db, car, track)
         if not windows_by_corner:
             continue
-        if loss_cache is not None and lap_pks is None and (car, track) in loss_cache:
-            loss = loss_cache[(car, track)]
+        if loss_reusable and (car, track) in cache.losses:
+            loss = cache.losses[(car, track)]
         else:
             loss = cumulative_loss(
                 db, driver=driver, car=car, track=track,
@@ -235,7 +242,7 @@ def _consistency_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     fundamental_id: str, config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
-    metric_cache: dict[tuple[str, str], dict] | None = None,
+    cache: "_CohortCache | None" = None,
 ) -> _Component:
     """dm-v2: each metric's raw CV is divided by its own unit's typical scale
     (module docstring, "Per-unit consistency normalization") before pooling,
@@ -264,9 +271,10 @@ def _consistency_component(
     reference = config.model.consistency_unit_reference_cv
     by_unit: dict[str, list[float]] = {}
     n_total = 0
+    reusable = cache is not None and cache.lap_pks == lap_pks
     for car, track in cohorts:
-        if metric_cache is not None and lap_pks is None and (car, track) in metric_cache:
-            table = metric_cache[(car, track)]
+        if reusable and (car, track) in cache.metrics:
+            table = cache.metrics[(car, track)]
         else:
             table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         for metrics in table.values():
@@ -327,30 +335,46 @@ def _confidence(
 
 
 class _CohortCache:
-    """Pre-fetched per-cohort query results, shared across fundamentals."""
-    __slots__ = ("detectors", "metrics", "losses", "windows")
+    """Pre-fetched per-cohort query results, shared across fundamentals.
 
-    def __init__(self):
+    `lap_pks` records which evidence scope this instance was built for
+    (None = full history; a frozenset = one date-bucket, M6 trend / A34
+    score history). The three component functions above only reuse
+    `detectors`/`metrics`/`losses` from a cache whose `lap_pks` matches the
+    call's own `lap_pks` exactly — a cache built for one bucket must never
+    silently answer a different bucket's (or the full-history's) query, or
+    every fundamental after the first would read stale evidence and the
+    resulting score would be a plausible-looking flat line instead of a
+    real per-bucket number (tests/test_scoring.py's cache-equivalence
+    test guards exactly this). `windows` has no such scoping — canonical
+    windows are the frozen corner map's geometry, not lap data, so they're
+    valid to reuse regardless of `lap_pks`.
+    """
+    __slots__ = ("detectors", "metrics", "losses", "windows", "lap_pks")
+
+    def __init__(self, lap_pks: frozenset[int] | None = None):
         self.detectors: dict[tuple[str, str], dict] = {}
         self.metrics: dict[tuple[str, str], dict] = {}
         self.losses: dict[tuple[str, str], dict] = {}
         self.windows: dict[tuple[str, str], dict] = {}
+        self.lap_pks = lap_pks
 
     @classmethod
     def build(cls, db: Database, driver: str, cohorts: list[tuple[str, str]],
-              config: DriverDNAConfig) -> "_CohortCache":
-        cache = cls()
+              config: DriverDNAConfig,
+              lap_pks: frozenset[int] | None = None) -> "_CohortCache":
+        cache = cls(lap_pks)
         for car, track in cohorts:
             cache.detectors[(car, track)] = db.self_detector_table(
-                driver=driver, car=car, track=track)
+                driver=driver, car=car, track=track, lap_pks=lap_pks)
             cache.metrics[(car, track)] = db.self_metric_table(
-                driver=driver, car=car, track=track)
+                driver=driver, car=car, track=track, lap_pks=lap_pks)
             wbc = _cohort_windows_by_corner(db, car, track)
             cache.windows[(car, track)] = wbc
             if wbc:
                 cache.losses[(car, track)] = cumulative_loss(
                     db, driver=driver, car=car, track=track,
-                    windows_by_corner=wbc, config=config,
+                    windows_by_corner=wbc, config=config, lap_pks=lap_pks,
                 )
         return cache
 
@@ -361,23 +385,24 @@ def _score_components(
     lap_pks: frozenset[int] | None = None,
     cache: _CohortCache | None = None,
 ) -> dict[str, _Component]:
-    """The three score components for one fundamental. `lap_pks` (M6 trend)
-    restricts the evidence to a date-bucket's laps; None = full history."""
+    """The three score components for one fundamental. `lap_pks` (M6 trend,
+    A34 score history) restricts the evidence to a date-bucket's laps; None
+    = full history. `cache`, if given, must have been built for this same
+    `lap_pks` scope (or be windows-only-reusable — see `_CohortCache`) —
+    each component function checks `cache.lap_pks == lap_pks` itself rather
+    than trusting the caller, so passing a mismatched cache degrades to an
+    uncached (correct, just slower) query instead of a wrong answer."""
     fundamental = FUNDAMENTALS[fundamental_id]
     detector_names = fundamental_detectors(fundamental_id)
     return {
         "adherence": _adherence_component(
-            db, driver, cohorts, detector_names, lap_pks,
-            detector_cache=cache.detectors if cache else None,
+            db, driver, cohorts, detector_names, lap_pks, cache=cache,
         ),
         "opportunity": _opportunity_component(
-            db, driver, cohorts, fundamental.phases, config, lap_pks,
-            loss_cache=cache.losses if cache else None,
-            windows_cache=cache.windows if cache else None,
+            db, driver, cohorts, fundamental.phases, config, lap_pks, cache=cache,
         ),
         "consistency": _consistency_component(
-            db, driver, cohorts, fundamental_id, config, lap_pks,
-            metric_cache=cache.metrics if cache else None,
+            db, driver, cohorts, fundamental_id, config, lap_pks, cache=cache,
         ),
     }
 
@@ -385,11 +410,18 @@ def _score_components(
 def _bucket_score(
     db: Database, driver: str, fundamental_id: str,
     cohorts: list[tuple[str, str]], config: DriverDNAConfig, lap_pks: frozenset[int],
+    cache: _CohortCache | None = None,
 ) -> float | None:
     """This fundamental's score computed over one date-bucket's laps only —
-    same machinery as the full-history score, just lap-pk-filtered."""
+    same machinery as the full-history score, just lap-pk-filtered. `cache`
+    is optional (M6's `_trend`, computing exactly two buckets, doesn't
+    bother); A34's score history builds one `_CohortCache` per bucket and
+    reuses it across all 7 fundamentals' calls for that bucket, which is
+    what turns N buckets x 7 fundamentals from N*7 uncached per-cohort query
+    sets into just N."""
     return _weighted_score(
-        _score_components(db, driver, fundamental_id, cohorts, config, lap_pks), config
+        _score_components(db, driver, fundamental_id, cohorts, config, lap_pks, cache=cache),
+        config,
     )
 
 
