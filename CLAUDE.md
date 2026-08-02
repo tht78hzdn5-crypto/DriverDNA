@@ -385,6 +385,30 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   `AGENTS.md` size-budget failure on `main` was pre-existing and is fixed).
   ⚠️ `Dockerfile` binds `0.0.0.0`, so **Cloud Run needs the secret set before
   this merges** or the service will not start; exposure itself is unchanged.
+- **`driverdna census` built (2026-08-02, SPEC.md A33)** — the corpus answers
+  "do I need more lap data?" itself, instead of an agent hand-reading a payload
+  and re-deriving the confidence formula. `census.py` reports have-vs-need for
+  every gate (the four confidence floors, `min_evidence_for_score`, trend's
+  dated-lap buckets, `min_phase_samples`/`min_sessions`/`min_tracks_for_rollup`,
+  reference-lap presence) and ranks what to add next. Applies **no gate of its
+  own**: thresholds are read from config and every suppression reason is the
+  exact string the engine emitted, read back off `build_cohort_payload`'s
+  findings and `build_driver_payload`'s rollups — paraphrasing was rejected
+  because a census that explains a suppression in its own words can drift from
+  the real gate and call a corpus ready when it is not (two tests pin the
+  strings against the payload, not against literals). Where a gain is not
+  computable it prints `—`: closing a corpus-level term (sessions/tracks/cars)
+  moves it by an amount identical for every fundamental and is stated as a
+  number, but how much a lap raises `evidence_count` depends on which corners
+  it produces, so census refuses to project it. One refactor enabled it —
+  `_confidence`'s four ratios are now exposed as `confidence_terms()`, with
+  `_confidence` their mean plus the unchanged proxy cap; **number-neutral and
+  proven so**, all six committed `docs/*-report.md` regenerate byte-identical
+  and `test_scoring.py` passes unmodified. First real-fixture run: confidence
+  ceiling 60.2%, **15 of 177 findings shown**, 75 of them blocked by the
+  single-lap Mustang cohort. Deliberately no UI surface; the corner-map
+  admission gate is not reported (no read-only pending-candidate query exists).
+  Suite 726 → 744.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

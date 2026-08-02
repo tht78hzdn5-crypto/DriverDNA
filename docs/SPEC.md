@@ -1573,3 +1573,57 @@ Accepted at owner plan review; rationale recorded in the review:
   Trust gate 5a remains untouched, ensuring telemetry blobs are only fetched
   from trusted domains. Data remains fully isolated per user, and deterministic
   measurements remain strictly independent per account.
+
+- **A33** (2026-08-02): **`driverdna census` — the corpus answers "do I need
+  more laps?" itself.** Asked whether more lap data would help validate the
+  engine, answering it meant hand-reading `reports_hosted/driver.json` and
+  re-deriving the confidence formula by hand. That is a question the store can
+  answer, so it now does.
+
+  **No principle is refined and no number moves.** Census applies no gate of
+  its own: every threshold is read from `DriverDNAConfig`, and every
+  suppression reason is the *exact string the engine emitted*, read back off
+  `build_cohort_payload`'s findings and `build_driver_payload`'s rollups.
+  Paraphrasing them was rejected deliberately — a census that explains a
+  suppression in its own words can drift from the real gate and report a
+  corpus as ready when it is not. Two tests pin the quoted strings against the
+  payload rather than against literals.
+
+  **The one refactor**, `model/scoring.py`: `_confidence` computed its four
+  ratios inline, and census needs them individually. `confidence_terms()` now
+  returns `(label, have, floor)` per term and `_confidence` is the mean of
+  their ratios plus the unchanged proxy cap. Number-neutral, and proven so
+  rather than asserted: `tests/test_scoring.py` passes unmodified, a test
+  asserts `_confidence` equals the mean of the exposed terms, and all six
+  committed `docs/*-report.md` artifacts regenerate **byte-identical** from
+  the real fixtures.
+
+  **Where it refuses to guess.** Closing a corpus-level term
+  (sessions/tracks/cars) moves that term by an amount identical for every
+  fundamental, so census states the gain as a number. How much a new lap
+  raises `evidence_count` depends on which corners and metrics that lap
+  actually produces, so census states the shortfall and prints `—` instead of
+  projecting — philosophy #2 ("insufficient data over guessing") applied to
+  census's own output. It also distinguishes suppressions that more laps
+  *will* clear (sample/track counts) from those they will not ("no effect",
+  "below pattern floor"), so the report cannot be read as "more laps fixes
+  everything".
+
+  **First real-fixture run** (`docs/census-report.md`, 12 laps / 2 cohorts):
+  confidence ceiling 60.2%, and **15 of 177 findings shown** — 75 of them
+  blocked by `insufficient data: 1 phase samples < 10`, which is the
+  single-lap Mustang/Laguna Seca cohort. The dominant blocker is a cohort with
+  one lap in it, not the engine.
+
+  **Known cost, accepted:** census calls `build_cohort_payload` per cohort to
+  quote real suppression reasons, so it recomputes what `report` computes —
+  the price of quoting the engine instead of paraphrasing it, and the same
+  full-recomputation shape `metrics`/`model`/`coaching` already have. Not yet
+  measured on a corpus of hundreds of laps; if it becomes slow there, that is
+  a real observation to record rather than something to pre-optimize.
+
+  **Deliberately out of scope:** no UI surface (UI-SPEC.md is not amended);
+  the data/render split in `census.py` makes a later payload section cheap.
+  The corner-map admission gate (`identity.min_laps_for_admission`) is not
+  reported — there is no read-only pending-candidate query, and adding one was
+  scope the question did not ask for.

@@ -388,6 +388,29 @@ def model(
 
 
 @app.command()
+def census(
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+    out: Path = typer.Option(
+        Path("docs/census-report.md"), help="Where to write the report."
+    ),
+) -> None:
+    """Corpus readiness: have-vs-need for every gate, and what to add next."""
+    from driverdna.census import build_census_report
+    from driverdna.config import load_config
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    config = load_config()
+    with Database.open(db_path) as db:
+        out.write_text(build_census_report(db, config))
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
 def coaching(
     db_path: str = typer.Option(
         None, "--db",

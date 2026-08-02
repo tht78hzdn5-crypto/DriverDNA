@@ -306,23 +306,61 @@ def _weighted_score(
     return sum(c.value * weights[k] for k, c in available.items()) / total_w * 100.0
 
 
+@dataclass(frozen=True)
+class ConfidenceTerm:
+    """One of the four evidence-breadth terms behind a belief's confidence.
+
+    Exposed rather than computed inline so `driverdna census` can report
+    have-vs-floor per term without forking the formula: the mean of these
+    ratios *is* the confidence, pinned by tests/test_census.py. Nothing here
+    changes a number — the terms, their order, and their capping are exactly
+    what `_confidence` computed before the extraction.
+    """
+
+    label: str
+    have: int
+    floor: int
+
+    @property
+    def ratio(self) -> float:
+        return min(1.0, self.have / self.floor)
+
+
+def confidence_terms(
+    db: Database, driver: str, cohorts: list[tuple[str, str]],
+    evidence_count: int, config: DriverDNAConfig,
+) -> list[ConfidenceTerm]:
+    """Evidence volume, then the three breadth terms. Order is load-bearing
+    only in that it must stay stable for report output; the mean is
+    order-independent."""
+    m = config.model
+    return [
+        ConfidenceTerm("evidence laps", evidence_count, m.confidence_evidence_floor),
+        ConfidenceTerm(
+            "sessions", db.driver_session_count(driver), m.confidence_session_floor
+        ),
+        ConfidenceTerm(
+            "tracks", len({track for _, track in cohorts}), m.confidence_track_floor
+        ),
+        ConfidenceTerm(
+            "cars", len({car for car, _ in cohorts}), m.confidence_car_floor
+        ),
+    ]
+
+
+def confidence_from_terms(terms: list[ConfidenceTerm]) -> float:
+    return float(np.mean([t.ratio for t in terms]))
+
+
 def _confidence(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     evidence_count: int, signal_status: SignalStatus, config: DriverDNAConfig,
 ) -> float:
-    m = config.model
-    n_sessions = db.driver_session_count(driver)
-    n_tracks = len({track for _, track in cohorts})
-    n_cars = len({car for car, _ in cohorts})
-    ratios = [
-        min(1.0, evidence_count / m.confidence_evidence_floor),
-        min(1.0, n_sessions / m.confidence_session_floor),
-        min(1.0, n_tracks / m.confidence_track_floor),
-        min(1.0, n_cars / m.confidence_car_floor),
-    ]
-    confidence = float(np.mean(ratios))
+    confidence = confidence_from_terms(
+        confidence_terms(db, driver, cohorts, evidence_count, config)
+    )
     if signal_status is SignalStatus.PROXY:
-        confidence = min(confidence, m.proxy_confidence_cap)
+        confidence = min(confidence, config.model.proxy_confidence_cap)
     return confidence
 
 

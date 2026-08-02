@@ -1,5 +1,49 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-02.** `driverdna census` built (SPEC.md A33), on
+`claude/engine-validation-lap-data-388xct`. The owner asked whether more lap
+data would help validate the engine; the corpus now answers that itself
+instead of an agent hand-reading a payload. Census reports have-vs-need for
+every gate and ranks what to add next, applying no gate of its own — thresholds
+come from config, suppression reasons are quoted verbatim off the engine's
+payload, and a gain it cannot compute prints `—` rather than a guess.
+
+One refactor made it possible: `_confidence` computed its four ratios inline,
+so `confidence_terms()` now exposes them and `_confidence` is their mean plus
+the unchanged proxy cap. Proven number-neutral rather than asserted — see the
+counts below.
+
+What the first real-fixture run says about the actual question:
+
+| Finding | Value |
+| --- | --- |
+| Confidence ceiling, measured fundamental (12 laps, 2 cohorts) | **60.2%** |
+| Findings shown | **15 of 177 computed** |
+| Dominant blocker | **`insufficient data: 1 phase samples < 10`, 75 findings** — the single-lap Mustang/Laguna Seca cohort |
+| Saturated terms (more buys nothing) | none yet at 12 laps; `sessions` saturates at 6 and is already there on the live 11-lap instrument |
+| Reference laps ever imported | **0** — the vs-reference path has still never run on real data |
+| Dated laps | **0 of 8** needed, so `trend` is unavailable on every fundamental |
+
+Separately established while answering the question, and worth acting on: the
+live/hosted instrument (`reports_hosted/driver.json`) runs on **11 laps, 1 car,
+1 track**, while a real `group=none` sync listed **~928 laps across 9 cohorts**
+(A30) whose importable yield was never recorded. Re-running `sync` is the
+cheapest available evidence by a wide margin and requires no driving.
+
+### Verified counts (2026-08-02)
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests, before any change (baseline) | **726 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **744 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests this session | **18** in `tests/test_census.py` | `python3 -m pytest tests/test_census.py` |
+| Committed `docs/*-report.md` regenerated from real fixtures | **6/6 byte-identical** — the proof the `confidence_terms` extraction moved no number | `driverdna import tests/fixtures --db <tmp>` then each report command, diffed |
+| `docs/census-report.md` across two separate processes | **byte-identical** | `driverdna census --db <tmp> --out a.md` twice, diffed |
+| Skips | 16, all Postgres-absent or Chromium-absent | — |
+
+The 16 skips mean the two UI-SPEC browser trust gates did not run here, as in
+CI. Green above is not evidence they hold.
+
 **Snapshot date: 2026-07-28.** Multi-tenant accounts merged (SPEC.md A32):
 Google OAuth, SMTP password resets (via SendGrid), and `owner_user_pk`
 partitioning across every table (`laps`, `incidents`, `driver_beliefs`, etc.),
