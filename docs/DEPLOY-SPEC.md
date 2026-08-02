@@ -172,6 +172,114 @@ machinery.
   say so plainly rather than tuning the validator to accept it.
 - Tests still never call a live API and never require a secret.
 
+**Built 2026-08-02** (docs/UI-V3-PLAN.md Track C1) — the seam, translation,
+and BYOK layer are built and mock-tested; the live acceptance run is **not
+verified**, flagged rather than assumed:
+
+- `coach.provider` (default `"gemini"`, matching this doc's own text) and
+  `coach.gemini_model` (default `gemini-3.5-flash`) landed in `config.py`.
+  Model pinned from `ai.google.dev/gemini-api/docs/pricing`, verified
+  2026-08-02: `gemini-3.5-flash`/`gemini-3.5-flash-lite` are the current
+  free-tier Flash-class models; Pro is paid-only. Per this doc's own
+  standing rule, this is a live-fetched pin, not a memorized name.
+- `GeminiCoachProvider`/`GeminiChatProvider` built exactly to this doc's
+  design (lazy SDK import, env-only key, transcript translation inside the
+  provider). The real `google-genai` SDK's actual surface was verified by
+  direct introspection of the installed 1.x/2.x package (`Client`,
+  `models.generate_content`, `types.GenerateContentConfig/Tool/
+  FunctionDeclaration/Content/Part/FunctionCall/FunctionResponse`,
+  `AutomaticFunctionCallingConfig`, `errors.ClientError.code`) rather than
+  assumed from training data or possibly-stale fetched docs — a newer
+  `client.interactions.create` API surface also exists in the current SDK
+  and was deliberately NOT used, since this doc's own design (
+  "FunctionDeclaration... OpenAPI-subset parameters") assumes the classic
+  `generate_content` shape, which remains present and is the lower-risk,
+  more conservative choice.
+- Tool-schema translation (`chat/gemini_tools.py`) is a real function
+  (`translate_tool_schema`) tested against every real TOOL_DEFS schema
+  (`tests/test_gemini_tool_translation.py`) and against real
+  `google.genai.types.Schema`/`FunctionDeclaration`/`Tool` construction
+  (SDK-validated, not just a plain-dict shape check) — raises on any
+  keyword it doesn't recognize, per this doc's own requirement.
+  `tests/test_gemini_chat_provider.py` proves the message translation both
+  ways (plain text turns, a two-tool-call turn, a tool-result round trip
+  that recovers the original function name Anthropic's own tool_result
+  block doesn't carry, rate-limit backoff-then-succeed, backoff exhaustion,
+  a non-429 error propagating without retry, and a silently-empty response
+  raising rather than entering the validator) — all against real SDK
+  response objects, only the network call itself mocked.
+  `tests/test_gemini_coach_provider.py` covers the coach's single-turn path
+  the same way.
+- Migration 013: `coach_outputs.provider TEXT NOT NULL DEFAULT 'claude'`,
+  surfaced in `driverdna history`'s output and `store_coach_output`'s new
+  `provider` parameter.
+- Packaging: `anthropic` moved out of hard `dependencies` into an
+  `ai-claude` extra; `google-genai` is a new `ai-gemini` extra. Neither SDK
+  is imported at module level anywhere in this codebase (verified by grep),
+  so the move is additive — an existing install with `anthropic` already
+  present is unaffected.
+- **Not done, and not claimed done:** the live acceptance run against a
+  real `GEMINI_API_KEY` (this section's own binding criterion) did not
+  happen — no such key was available in the building agent's environment.
+  This is the one criterion above that genuinely requires it; everything
+  else is verified by real SDK objects with the network boundary mocked,
+  which is a different and weaker guarantee than a live round trip.
+  **This remains the acceptance gate that matters and is still open.**
+  Whoever holds a real `GEMINI_API_KEY` next should run `driverdna coach`
+  against the fixture cohort and record the observed rejection/
+  regeneration rate in STATUS.md, exactly as this section originally asked.
+
+**Track C2 built 2026-08-02** (SPEC.md A35, docs/UI-V3-PLAN.md Track C2) —
+the per-user BYOK layer this doc didn't originally design (it predates the
+owner's decision that "own usage" means bring-your-own-key, not Google
+OAuth — see SPEC.md A35 for the investigation that produced that call):
+
+- Migration 014: `user_api_keys` (`owner_user_pk`, `provider`, `ciphertext`,
+  `nonce`, `fingerprint`, `created_at`), unique on `(owner_user_pk,
+  provider)`. `src/driverdna/coach/keystore.py`: AES-256-GCM
+  (`cryptography`, newly explicit in the `ui` extra — stdlib ships no AEAD),
+  key-encryption key derived from `DRIVERDNA_SESSION_SECRET` via
+  `hashlib.scrypt` with its own fixed domain-separation salt (distinct from
+  `ui/auth.py`'s session-signing derivation off the same secret, so the two
+  keys can never collide). A fixed, not random, salt is correct for this
+  KDF-over-one-shared-secret use (not a password hash) — it must be
+  deterministic across restarts or every previously-encrypted key becomes
+  undecryptable.
+- Every provider class (`ClaudeCoachProvider`, `GeminiCoachProvider`,
+  `ClaudeChatProvider`, `GeminiChatProvider`) gained an `api_key: str |
+  None = None` constructor parameter, passed straight to the SDK client;
+  `None` (every non-BYOK caller, including the CLI) is byte-identical to
+  the original env-only behavior. `coach.provider.make_coach_provider` /
+  `chat.session.make_chat_provider` centralize the Claude-vs-Gemini branch
+  in one place each, reused by the CLI and `ui/api.py`.
+  `PUT/GET/DELETE /api/settings/ai-key`: write-only in one direction (PUT
+  accepts the raw key once; GET returns only a fingerprint, e.g.
+  "AIza...7f3c", never the key); BYOK requires a configured
+  `DRIVERDNA_SESSION_SECRET` and returns a directive 400 when absent rather
+  than silently deriving an insecure key. `ui/api.py`'s chat-session
+  creation resolves the caller's own decrypted key before falling back to
+  the server env key; a stored key that fails to decrypt (a rotated
+  secret) logs a warning and falls back rather than hard-failing the
+  session.
+- `tests/test_keystore.py` (round-trip, wrong-secret failure, ciphertext
+  never contains the plaintext, nonce is fresh every call) and
+  `tests/test_byok_api.py` (real two-user login via the actual auth flow,
+  not mocked: one account's key is invisible to another's GET, each sets
+  independently, deleting one doesn't touch the other, the raw ciphertext
+  column never contains the plaintext, unauthenticated access is 401 like
+  every other route per the existing route-enumeration done-criterion).
+- SPA: a "Your own AI keys" panel on `#/config`, one row per provider,
+  `type="password"` input, a fingerprint + link to get a free key, never a
+  plaintext readout. One real bug the render-parity crawler caught and
+  this fixed properly rather than working around: the config panel's
+  generic value renderer applied the `.num` (traceable-measurement) CSS
+  class to every config value regardless of type, and the new
+  `gemini-3.5-flash` string value contains a decimal-shaped substring
+  ("3.5") that the crawler correctly flagged as an uncited number — fixed
+  by only applying `.num` to values that are actually numbers, which was
+  the correct rule all along and had just never been tested by a string
+  value that happened to look numeric.
+
 ## Data exposure — stated, not buried
 
 With decision 2, on every `coach` or `chat` invocation the following leaves
@@ -183,6 +291,14 @@ arrays are not sent unless the owner explicitly turns that on.
 `GARAGE61_TOKEN`, API keys and the DB itself never leave. Switching
 `coach.provider` back to `claude`, or to a paid Gemini tier, changes this and
 is a one-key config change through the audited path.
+
+**BYOK (Track C2, SPEC.md A35)**: when an account has set its own key, that
+account's coach/chat calls run against Google's free tier under *that
+key's own* project — the same data-exposure tradeoff above applies, just
+billed and rate-limited against the user's own quota rather than the
+server's. The key itself never leaves the server once set (encrypted at
+rest, decrypted only in-process to make the call) and is never included in
+the payload sent to Google.
 
 ---
 

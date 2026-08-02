@@ -20,6 +20,7 @@ import tempfile
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
+from driverdna.coach import keystore
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
 from driverdna.explain import METHODOLOGY
 from driverdna.blobs import open_blob_store
@@ -75,6 +77,11 @@ class ChatCreateBody(BaseModel):
 
 class ChatMessageBody(BaseModel):
     text: str
+
+
+class ApiKeyBody(BaseModel):
+    provider: str  # "claude" | "gemini"
+    key: str
 
 
 class LoginBody(BaseModel):
@@ -125,10 +132,11 @@ def create_app(
     google_client_secret: str | None = None,
     smtp_config: dict[str, str] | None = None,
 ) -> FastAPI:
-    """`chat_provider_factory` defaults to the real `ClaudeChatProvider`
-    (env-only `ANTHROPIC_API_KEY`, lazy-imported so nothing else needs the
-    SDK installed); tests inject a mocked provider here, same pattern as
-    the CLI's `chat` command — no test ever calls a live model.
+    """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
+    (Claude or Gemini per `config.coach.provider`, env-only API key,
+    lazy-imported so nothing else needs either SDK installed); tests inject
+    a mocked provider here, same pattern as the CLI's `chat` command — no
+    test ever calls a live model.
 
     `session_secret` is the single-driver passphrase / session-signing key
     (docs/DEPLOY-SPEC.md H1), injected the same way rather than read from the
@@ -487,13 +495,45 @@ def create_app(
             "google_enabled": google_client_id is not None,
         }
 
-    def make_chat_provider() -> ChatProvider:
+    def make_chat_provider(*, api_key: str | None = None) -> ChatProvider:
+        """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
+        (Claude or Gemini per `config.coach.provider`); tests inject a
+        mocked provider here, same pattern as the CLI's `chat` command.
+        `api_key`, given (SPEC.md A35, BYOK), is the caller's own decrypted
+        key, resolved by the caller from `user_api_keys` — never read from
+        a request body here."""
         if chat_provider_factory is not None:
             return chat_provider_factory()
-        from driverdna.chat.session import ClaudeChatProvider
+        from driverdna.chat.session import make_chat_provider as _make_chat_provider
 
         cfg = load_config(config_path)
-        return ClaudeChatProvider(cfg.coach.model, cfg.coach.max_tokens)
+        return _make_chat_provider(cfg, api_key=api_key)
+
+    def _resolve_byok_key(db: Database, provider_name: str) -> str | None:
+        """This account's own decrypted key for `provider_name` (SPEC.md
+        A35), or None to fall through to the server-side env key/error —
+        the exact meaning `api_key=None` already carries in every provider
+        class. None (not an exception) whenever BYOK genuinely isn't
+        available here: no session_secret configured, no key set, or a
+        stored row that fails to decrypt (a rotated secret) — the driver
+        can always re-set their key from #/config; this must never hard-fail
+        a chat session that the server's own env key could still serve."""
+        if session_secret is None:
+            return None
+        row = db.get_user_api_key(provider=provider_name)
+        if row is None:
+            return None
+        try:
+            return keystore.decrypt_api_key(
+                row["ciphertext"], row["nonce"], session_secret=session_secret
+            )
+        except ValueError:
+            logger.warning(
+                "stored BYOK key for provider=%s could not be decrypted "
+                "(rotated secret?) — falling back to the server key",
+                provider_name,
+            )
+            return None
 
     def open_db(request: Request | None = None, *, check_same_thread: bool = True) -> Database:
         # A hosted store has no file to stat and creates its schema on
@@ -876,6 +916,70 @@ def create_app(
                 )
             ]
 
+    # --- per-user AI keys (SPEC.md A35, BYOK) --------------------------------
+    #
+    # A user's own provider key, encrypted at rest (coach/keystore.py).
+    # Write-only in one direction: PUT accepts the raw key over HTTPS, once;
+    # GET returns only a fingerprint, never the key, matching the U6
+    # precedent for GARAGE61_TOKEN ("secrets never transit the browser") —
+    # narrowed here (SPEC.md A35) for exactly the case where the secret is
+    # by definition supplied by the browser, but it is still NEVER echoed
+    # back by a read endpoint. BYOK requires a configured
+    # DRIVERDNA_SESSION_SECRET (the key-encryption key's source); the local,
+    # no-auth `driverdna ui` path has none, and these endpoints say so
+    # rather than falling back to an insecure default.
+
+    _BYOK_PROVIDERS = ("claude", "gemini")
+
+    def _require_byok_secret() -> str:
+        if session_secret is None:
+            raise HTTPException(
+                400,
+                detail="BYOK requires a configured DRIVERDNA_SESSION_SECRET "
+                       "(the key-encryption key's source) — not available on "
+                       "the local, no-auth driverdna ui path.",
+            )
+        return session_secret
+
+    @app.put("/api/settings/ai-key")
+    def set_api_key(body: ApiKeyBody, request: Request) -> dict[str, Any]:
+        if body.provider not in _BYOK_PROVIDERS:
+            raise HTTPException(422, detail=f"provider must be one of {_BYOK_PROVIDERS}")
+        if not body.key.strip():
+            raise HTTPException(422, detail="key must not be empty")
+        secret = _require_byok_secret()
+        ciphertext, nonce = keystore.encrypt_api_key(body.key.strip(), session_secret=secret)
+        hint = keystore.fingerprint(body.key.strip())
+        with open_db(request) as db:
+            db.store_user_api_key(
+                provider=body.provider, ciphertext=ciphertext, nonce=nonce,
+                fingerprint=hint, created_at=datetime.now(UTC).isoformat(),
+            )
+        return {"provider": body.provider, "configured": True, "fingerprint": hint}
+
+    @app.get("/api/settings/ai-key")
+    def get_api_key_status(provider: str, request: Request) -> dict[str, Any]:
+        if provider not in _BYOK_PROVIDERS:
+            raise HTTPException(422, detail=f"provider must be one of {_BYOK_PROVIDERS}")
+        with open_db(request) as db:
+            row = db.get_user_api_key(provider=provider)
+        if row is None:
+            return {"provider": provider, "configured": False}
+        return {
+            "provider": provider, "configured": True,
+            "fingerprint": row["fingerprint"], "set_at": row["created_at"],
+        }
+
+    @app.delete("/api/settings/ai-key")
+    def delete_api_key(provider: str, request: Request) -> dict[str, Any]:
+        if provider not in _BYOK_PROVIDERS:
+            raise HTTPException(422, detail=f"provider must be one of {_BYOK_PROVIDERS}")
+        with open_db(request) as db:
+            if db.get_user_api_key(provider=provider) is None:
+                raise HTTPException(404, detail=f"no key configured for {provider}")
+            db.delete_user_api_key(provider=provider)
+        return {"provider": provider, "configured": False}
+
     # --- writes (wrappers over the audited paths only) ----------------------
 
     @app.post("/api/findings/{finding_id}/annotate")
@@ -1099,7 +1203,9 @@ def create_app(
         try:
             cohort = resolve(db, body.cohort)
             try:
-                provider = make_chat_provider()
+                cfg = load_config(config_path)
+                byok_key = _resolve_byok_key(db, cfg.coach.provider)
+                provider = make_chat_provider(api_key=byok_key)
             except RuntimeError as e:
                 raise HTTPException(503, detail=str(e)) from None
             session_id = uuid.uuid4().hex[:12]

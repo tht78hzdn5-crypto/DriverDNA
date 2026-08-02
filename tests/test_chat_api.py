@@ -79,10 +79,12 @@ def shown_finding_id(db_path, config_path):
 
 
 def test_create_session_without_provider_returns_503(env):
+    # coach.provider defaults to 'gemini' (DEPLOY-SPEC Track P), so the
+    # missing-key error names GEMINI_API_KEY, not ANTHROPIC_API_KEY.
     client = TestClient(create_app(env["db_path"], env["config_path"]))
     resp = client.post("/api/chat/sessions", json={"cohort": SPA_SLUG})
     assert resp.status_code == 503
-    assert "ANTHROPIC_API_KEY" in resp.text
+    assert "GEMINI_API_KEY" in resp.text
 
 
 def test_create_session_unknown_cohort_404s(env):

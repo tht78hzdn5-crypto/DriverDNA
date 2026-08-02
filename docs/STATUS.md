@@ -1,5 +1,89 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-02.** `docs/UI-V3-PLAN.md` built end to end except
+one explicitly-flagged item (below). All three tracks landed in this
+session, each committed separately with its own tests, on
+`claude/ui-incidents-gemini-coach-93l5h7`.
+
+- **Track A (UI v3 "cockpit feel" + U7 mobile) — built.** A1-A6 all done:
+  a chrome-only accent token (`#3FC7DE`, chosen over a documented magenta
+  alternative, owner's call still open — see the v3 mockup) plus
+  interactive micro-motion; the `.disclosure` "methodology arrow" pattern
+  (`src/driverdna/explain.py`'s `METHODOLOGY` dict, one `GET /api/explain`
+  pass-through, reused by both A3 and Track B); a wide-viewport two-column
+  layout with zero DOM reordering; the score-history chart (`dm-hist-v1`,
+  SPEC.md A34) — see its own entry below; the mobile responsive pass +
+  PWA shell (manifest, service worker, an offline banner); and
+  `docs/ui-redesign-mockup-v3.html`, assembled from real Playwright
+  screenshots of the built SPA rather than hand-drawn placeholders.
+- **SPEC.md A34 — score history (`dm-hist-v1`) — built.**
+  `model/history.py` generalizes M6 trend's own 2-bucket `_bucket_score`
+  machinery to N buckets (`config.model.history_buckets`, default 6),
+  producing no new kind of number (SCORING_MODEL_VERSION untouched). The one
+  dangerous edit the plan flagged — bucketed scoring was entirely uncached
+  before this — is fixed by giving `_CohortCache` a `lap_pks` scope it
+  checks before ever reusing a row, with a dedicated test proving a cache
+  built for one bucket can't silently answer another's query (the failure
+  mode that would draw a plausible-looking flat line). A second, subtler
+  correctness detail: `_trend`'s own 2-way split always gives the *recent*
+  bucket the remainder lap on an odd count, so the new N-way bucketer had
+  to match that convention or `history_buckets=2` would silently diverge
+  from `_trend` on the owner's real 25-lap (odd) history — caught and
+  tested before it shipped, not after.
+- **Track B (incidents for newcomers) — built.** B1-B4: `IncidentCard`
+  (visible: what happened, corner, N=1 line; behind one disclosure click:
+  an empathy line, the mechanism in plain language, a real drill, and the
+  engine's full raw-evidence rationale) and `IncidentMechanismCounts`
+  (counting, not computing). B3 lifts the M5-era boundary that kept
+  incidents out of chat's grounding entirely — additive only: a classified
+  incident becomes citable, an unclassified one stays structurally
+  uncitable (absent from `ChatSession._known_ids`, not merely
+  rule-forbidden), `CHAT_PROMPT_VERSION` chat-v2 -> chat-v3. B4 regenerated
+  `docs/incidents-report.md` and diffed byte-identical (payload additions
+  don't touch that generator).
+- **DEPLOY-SPEC Track P (Gemini provider) — built, mock-tested; live
+  acceptance run NOT performed — flagged, not assumed.** `GeminiCoachProvider`
+  / `GeminiChatProvider` built against the real installed `google-genai` SDK,
+  verified by direct introspection (not memory or possibly-stale fetched
+  docs) — a newer `client.interactions.create` surface also exists in the
+  current SDK and was deliberately not used, since this doc's own design
+  assumes the classic `generate_content` shape. `coach.provider` now
+  defaults to `"gemini"` (`gemini-3.5-flash`, pinned from
+  `ai.google.dev/gemini-api/docs/pricing`, verified 2026-08-02). Tool-schema
+  translation, message translation (including the tool-result round trip
+  that recovers a function name Anthropic's own block doesn't carry), and
+  429 backoff are all tested against real SDK response objects with only
+  the network call mocked. **What's genuinely missing**: DEPLOY-SPEC's own
+  acceptance gate — a live run against a real `GEMINI_API_KEY` proving
+  `driverdna coach` passes the strict validator unmodified — did not happen;
+  no such key was available. This is a materially weaker guarantee than a
+  live round trip and is recorded as open in `docs/DEPLOY-SPEC.md`, not
+  quietly implied to be done.
+- **SPEC.md A35 (per-user AI keys, BYOK) — built.** AES-256-GCM
+  (`cryptography`, newly explicit in the `ui` extra), key-encryption key
+  derived from `DRIVERDNA_SESSION_SECRET` via `hashlib.scrypt` with its own
+  domain-separation salt (distinct from `ui/auth.py`'s session-signing
+  derivation off the same secret). `PUT/GET/DELETE /api/settings/ai-key`;
+  GET returns only a fingerprint, never the key. Two real bugs the render-
+  parity and offline trust gates caught during this build, both fixed
+  properly rather than routed around: (1) the config panel's generic value
+  renderer tagged every value `.num` regardless of type, and the new
+  `gemini-3.5-flash` string contains a decimal-shaped substring the
+  crawler correctly flagged as an uncited number — fixed by only tagging
+  actual numbers; (2) an initial "get a free key" link put a literal
+  `https://` URL into the built bundle, which trust gate 5's stricter-than-
+  requests bundle-content check forbids — fixed by making it plain,
+  unlinked attribution text instead of walking back the guarantee.
+- **Two environment-level things fixed while building, worth recording
+  since they'd otherwise resurface for the next agent**: the container's
+  system `cryptography` package was missing `cffi`, which crashed (a Rust
+  panic, not a catchable ImportError) on first import of `google-genai` —
+  fixed by installing `cffi`; and `python3 -m driverdna.cli <args>` silently
+  does nothing (no `__main__` guard in `cli.py`) — use the installed
+  `driverdna` console script or `python3 -m driverdna` instead.
+- **Not done, by design, this session**: Track C3's live Gemini acceptance
+  run (above). Everything else in `docs/UI-V3-PLAN.md` is built and tested.
+
 **Snapshot date: 2026-07-29.** Plan adopted, nothing built:
 **`docs/UI-V3-PLAN.md`** — owner-directed UI v3 ("fun factor" + the mobile
 pass, merged because they touch the same CSS), incidents rewritten for

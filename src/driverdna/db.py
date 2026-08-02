@@ -444,7 +444,33 @@ MIGRATIONS: tuple[str, ...] = (
         FOREIGN KEY(user_pk) REFERENCES users(user_pk) ON DELETE CASCADE
     );
     CREATE INDEX idx_password_resets_hash ON password_resets(reset_token_hash);
+    """,
+    # 013 - Gemini provider (DEPLOY-SPEC Track P item 6): which model
+    # produced a stored coach explanation is part of the audit trail, not
+    # incidental. Default is honest, not aspirational -- every row that
+    # already exists in any real database was produced by Claude, since
+    # Gemini support didn't exist until this migration.
     """
+    ALTER TABLE coach_outputs ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude';
+    """,
+    # 014 - per-user AI provider keys, BYOK (SPEC.md A35). Reverses the
+    # env-only-secrets non-negotiable for exactly this one case, recorded
+    # there rather than left implied. ciphertext/nonce are AES-GCM
+    # (cryptography, coach/keystore.py); fingerprint is a short, non-secret
+    # display hint (e.g. "AIza...7f3c"), never the key itself. One key per
+    # (account, provider) -- a fresh PUT overwrites, it doesn't accumulate.
+    """
+    CREATE TABLE user_api_keys (
+        key_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        nonce TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (owner_user_pk, provider)
+    );
+    """,
 )
 
 
@@ -1563,27 +1589,66 @@ class Database:
                 admitted.append(corner_id)
         return admitted
 
+    # --- per-user AI provider keys (SPEC.md A35, BYOK) -----------------------
+
+    def store_user_api_key(
+        self, *, provider: str, ciphertext: str, nonce: str, fingerprint: str,
+        created_at: str | None = None,
+    ) -> None:
+        """One key per (account, provider) — a fresh PUT overwrites, it
+        never accumulates. `ON CONFLICT` targets the same UNIQUE
+        (owner_user_pk, provider) constraint migration 014 declares."""
+        with self.conn:
+            self.conn.execute(
+                f"""INSERT INTO user_api_keys
+                    (owner_user_pk, provider, ciphertext, nonce, fingerprint, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (owner_user_pk, provider) DO UPDATE SET
+                        ciphertext=excluded.ciphertext, nonce=excluded.nonce,
+                        fingerprint=excluded.fingerprint, created_at=excluded.created_at""",
+                (self.user_pk, provider, ciphertext, nonce, fingerprint, created_at),
+            )
+
+    def get_user_api_key(self, *, provider: str) -> dict[str, Any] | None:
+        """Raw (ciphertext, nonce, fingerprint, created_at) for this
+        account's key, or None if unset. Decryption happens in
+        coach/keystore.py, given the session secret — never here."""
+        row = self.conn.execute(
+            """SELECT ciphertext, nonce, fingerprint, created_at FROM user_api_keys
+               WHERE owner_user_pk=? AND provider=?""",
+            (self.user_pk, provider),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def delete_user_api_key(self, *, provider: str) -> bool:
+        with self.conn:
+            cur = self.conn.execute(
+                "DELETE FROM user_api_keys WHERE owner_user_pk=? AND provider=?",
+                (self.user_pk, provider),
+            )
+            return cur.rowcount > 0
+
     # --- coach outputs ------------------------------------------------------
 
     def store_coach_output(
         self, *, driver: str, car: str, track: str, payload_version: int,
         prompt_version: str, model: str, output_json: str,
-        created_at: str | None = None,
+        provider: str = "claude", created_at: str | None = None,
     ) -> int:
         with self.conn:
             return self._insert_returning(
                 """INSERT INTO coach_outputs
                    (driver, car, track, owner_user_pk, payload_version, prompt_version, model,
-                    output_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    provider, output_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (driver, car, track, self.user_pk, payload_version, prompt_version, model,
-                 output_json, created_at),
+                 provider, output_json, created_at),
                 "output_pk",
             )
 
     def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
-            """SELECT output_pk, output_json FROM coach_outputs
+            """SELECT output_pk, provider, output_json FROM coach_outputs
                WHERE driver=? AND car=? AND track=? AND owner_user_pk=? ORDER BY output_pk""",
             (driver, car, track, self.user_pk),
         ).fetchall()
@@ -1592,6 +1657,7 @@ class Database:
             output = json.loads(r["output_json"])
             history.append({
                 "output_pk": int(r["output_pk"]),
+                "provider": r["provider"],
                 "plan_titles": [p.get("title") for p in output.get("coaching_plan", [])],
             })
         return history

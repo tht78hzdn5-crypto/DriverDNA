@@ -422,16 +422,16 @@ def coach(
     ),
     driver: str = typer.Option("owner", help="Driver label."),
     out_dir: Path = typer.Option(Path("reports"), help="Where the plan is written."),
+    config_path: Path = typer.Option(
+        Path("driverdna.toml"), "--config", help="TOML config file (ConfigStore target)."
+    ),
 ) -> None:
-    """Generate a one-shot coaching plan (requires ANTHROPIC_API_KEY)."""
+    """Generate a one-shot coaching plan (requires ANTHROPIC_API_KEY or
+    GEMINI_API_KEY, per config.coach.provider)."""
     import re
 
     from driverdna.coach.payload import build_coach_payload
-    from driverdna.coach.provider import (
-        PROMPT_VERSION,
-        SYSTEM_PROMPT,
-        ClaudeCoachProvider,
-    )
+    from driverdna.coach.provider import PROMPT_VERSION, SYSTEM_PROMPT, make_coach_provider
     from driverdna.coach.validate import (
         CoachValidationError,
         render_plan_markdown,
@@ -443,7 +443,7 @@ def coach(
 
     db_path = _require_store(db_path)
 
-    config = load_config()
+    config = load_config(config_path)
     with Database.open(db_path) as db:
         cohorts = list_cohorts(db)
         if cohort:
@@ -459,7 +459,7 @@ def coach(
         c = cohorts[0] | {"driver": driver}
         payload = build_coach_payload(db, **c, config=config)
         try:
-            provider = ClaudeCoachProvider(config.coach.model, config.coach.max_tokens)
+            provider = make_coach_provider(config)
         except RuntimeError as e:
             typer.echo(f"error: {e}")
             raise typer.Exit(code=2) from None
@@ -473,9 +473,13 @@ def coach(
             raise typer.Exit(code=1) from None
         import json as _json
 
+        model_used = (
+            config.coach.gemini_model if config.coach.provider == "gemini" else config.coach.model
+        )
         db.store_coach_output(
             **c, payload_version=payload["report"]["payload_version"],
-            prompt_version=PROMPT_VERSION, model=config.coach.model,
+            prompt_version=PROMPT_VERSION, model=model_used,
+            provider=config.coach.provider,
             output_json=_json.dumps(output, sort_keys=True),
         )
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -696,10 +700,11 @@ def chat(
         Path("driverdna.toml"), "--config", help="TOML config file (ConfigStore target)."
     ),
 ) -> None:
-    """Interactive grounded coaching chat (requires ANTHROPIC_API_KEY)."""
+    """Interactive grounded coaching chat (requires ANTHROPIC_API_KEY or
+    GEMINI_API_KEY, per config.coach.provider)."""
     import uuid
 
-    from driverdna.chat.session import ChatSession, ClaudeChatProvider
+    from driverdna.chat.session import ChatSession, make_chat_provider
     from driverdna.config import ConfigStore, load_config
     from driverdna.db import Database
     from driverdna.report.payload import list_cohorts
@@ -718,7 +723,7 @@ def chat(
             )
             raise typer.Exit(code=2)
         try:
-            provider = ClaudeChatProvider(config.coach.model, config.coach.max_tokens)
+            provider = make_chat_provider(config)
         except RuntimeError as e:
             typer.echo(f"error: {e}")
             raise typer.Exit(code=2) from None
@@ -793,7 +798,7 @@ def history(
             )
             for h in db.coach_history(**c):
                 titles = ", ".join(t for t in h["plan_titles"] if t) or "(untitled)"
-                typer.echo(f"  coach #{h['output_pk']}: {titles}")
+                typer.echo(f"  coach #{h['output_pk']} ({h['provider']}): {titles}")
         changes = db.conn.execute(
             "SELECT * FROM config_history ORDER BY change_pk"
         ).fetchall()

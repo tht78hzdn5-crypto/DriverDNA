@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -263,9 +264,26 @@ class GatesConfig(_Section):
 class CoachConfig(_Section):
     """AI coaching layer (M4 coach, M5 chat). On-demand only; env-only key."""
 
+    provider: Literal["claude", "gemini"] = Field(
+        default="gemini",
+        description="Which AI provider backs coach/chat (DEPLOY-SPEC Track P). "
+        "Both are provider-abstracted behind the same grounding validator — "
+        "a different model gets the same rejection machinery, never looser "
+        "rules. Switching providers, or back to claude, is a one-key config "
+        "change through the audited ConfigStore path.",
+    )
     model: str = Field(
         default="claude-sonnet-5",
-        description="Claude model used for coach and chat runs.",
+        description="Claude model used for coach and chat runs when "
+        "coach.provider is 'claude'.",
+    )
+    gemini_model: str = Field(
+        default="gemini-3.5-flash",
+        description="Gemini model used for coach and chat runs when "
+        "coach.provider is 'gemini'. Pinned to a free-tier Flash-class model "
+        "(read from ai.google.dev/gemini-api/docs/pricing, verified "
+        "2026-08-02, per DEPLOY-SPEC's standing rule against pinning a "
+        "model name from memory) — never Pro, which is paid-only.",
     )
     max_tokens: int = Field(
         default=4000, description="Response token budget per provider call."
