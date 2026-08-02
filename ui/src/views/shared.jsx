@@ -14,18 +14,27 @@ function loadMethodology() {
   return _methodologyPromise;
 }
 
-// Fails closed: an id absent from the engine's dict renders nothing rather
-// than a disclosure with no text. tests/test_explain.py catches a typo'd id
-// at test time by cross-referencing every literal usage of this component's
-// id prop, across the codebase, against the real key set — silence here is
-// a caught bug, not a swallowed one.
-export function Methodology({ id, label = "How is this measured?" }) {
+// The raw text for one explain.py id, or null while loading/absent. Shared
+// by <Methodology> (wraps it in a disclosure) and anything that needs the
+// text rendered plainly instead — e.g. IncidentCard's inline empathy line,
+// which reads oddly nested inside its own second <details>.
+export function useMethodologyText(id) {
   const [text, setText] = useState(null);
   useEffect(() => {
     let alive = true;
     loadMethodology().then((all) => { if (alive) setText(all[id] || null); });
     return () => { alive = false; };
   }, [id]);
+  return text;
+}
+
+// Fails closed: an id absent from the engine's dict renders nothing rather
+// than a disclosure with no text. tests/test_explain.py catches a typo'd id
+// at test time by cross-referencing every literal usage of this component's
+// id prop, across the codebase, against the real key set — silence here is
+// a caught bug, not a swallowed one.
+export function Methodology({ id, label = "How is this measured?" }) {
+  const text = useMethodologyText(id);
   if (!text) return null;
   return (
     <details className="disclosure">
@@ -231,6 +240,84 @@ export function CoachingSelfChecks({ items }) {
       </div>
     </div>
   ));
+}
+
+// Incident cards (Track B, docs/UI-V3-PLAN.md): the engine already
+// classifies each spin/off/near-stop AND deterministically decides which
+// (if any) coaching principle explains it (report/payload.py's
+// incidents_section, incidents/coaching.py) — this only renders that,
+// following the same "complicated numbers behind the arrow" pattern as
+// A3's methodology disclosures. Nothing here computes or guesses a cause;
+// unclassified/external get no principle, no drill, and no guessed
+// mechanism, exactly as the engine itself withheld one.
+const INCIDENT_LABEL = {
+  trail_brake_oversteer: "Trail-brake oversteer",
+  lift_off_oversteer: "Lift-off oversteer",
+  power_on_oversteer: "Power-on oversteer",
+  understeer_off: "Understeer off",
+  external: "Possible external cause",
+  unclassified: "Cause not identified",
+};
+
+// Mechanism counts (Track B2): a tally by classification — counting, not
+// computing (the same precedent as the existing shownCount elsewhere in
+// this file). A count of past events, never a claim about the driver in
+// general; the "never a trait" line sits right next to it so the tally
+// can't be read as a verdict on its own.
+export function IncidentMechanismCounts({ events }) {
+  if (!events.length) return null;
+  const counts = new Map();
+  for (const e of events) {
+    counts.set(e.classification, (counts.get(e.classification) || 0) + 1);
+  }
+  return (
+    <div className="chips" style={{ marginTop: 0, marginBottom: "0.6rem" }}>
+      {[...counts.entries()].map(([cls, n]) => (
+        <span key={cls} className="chip num">
+          {n} {INCIDENT_LABEL[cls] || cls.replace(/_/g, " ")}
+        </span>
+      ))}
+      <span className="chip dim">events, not traits</span>
+    </div>
+  );
+}
+
+export function IncidentCard({ event, slug }) {
+  const named = event.coaching_principle_id != null;
+  const empathy = useMethodologyText(named ? `incident.empathy.${event.classification}` : null);
+  const mechanism = useMethodologyText(`incident.${event.classification}`);
+
+  return (
+    <div className={`finding incident-card ${named ? "" : "suppressed"}`}>
+      <div className="head">
+        <span className="desc">
+          {event.corner_id ? <a href={`#/corner/${slug}/${event.corner_id}`}>{event.corner_id}</a> : "this lap"}
+          {" · "}{INCIDENT_LABEL[event.classification] || event.classification.replace(/_/g, " ")}
+        </span>
+        <span className="val">{event.confidence}</span>
+      </div>
+      <div className="meta">single event, not a trait</div>
+
+      <details className="disclosure">
+        <summary><span className="chev" aria-hidden="true">▸</span> What happened, and what to practise</summary>
+        <div className="disclosure-body">
+          {empathy && <p style={{ margin: "0 0 0.5rem" }}>{empathy}</p>}
+          {mechanism && <p style={{ margin: "0 0 0.5rem" }}>{mechanism}</p>}
+          {named && (event.drill || event.coaching_expression) && (
+            <div className="coach-drill">
+              <b>Try this:</b> {event.drill || event.coaching_expression}
+            </div>
+          )}
+          <div className="meta num" style={{ marginTop: "0.5rem" }}>
+            min <span className="num">{fmt(event.min_speed_kmh, 0)}</span> km/h ·
+            peak yaw <span className="num">{fmt(event.peak_yaw_rate)}</span> rad/s ·{" "}
+            <span className="dim" title={event.lap_id}>{event.lap_id.slice(0, 6)}…</span>
+          </div>
+          <div className="reason" style={{ marginTop: "0.3rem" }}>{event.rationale}</div>
+        </div>
+      </details>
+    </div>
+  );
 }
 
 export function LossBars({ entries, unit = "s" }) {

@@ -25,7 +25,7 @@ from driverdna.db import Database
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v2"
+CHAT_PROMPT_VERSION = "chat-v3"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -45,6 +45,16 @@ Hard rules:
   on measured ground; stay tentative on proxy ground; on a no_signal
   principle (self_check present), offer it as a labeled hypothesis and
   NEVER attach a confidence value or percentage to it, at any level.
+- Incidents: bundle.report.incidents.events lists detected spins/offs/
+  near-stops, each already carrying the engine's own classification. Only
+  an incident whose coaching_principle_id is not null is even citable — if
+  the driver asks about one that isn't in your known IDs, that means the
+  engine itself could not name a clean cause; say so plainly ("detected,
+  but the trace wasn't clean enough to name a cause") rather than guessing
+  one. When an incident IS citable, explain the engine's own classification
+  and what it suggests practicing — you narrate its verdict, you never
+  pick or override it. Every incident is one lap's event (N=1), never a
+  claim about the driver in general.
 - You may annotate a finding (acknowledged/intentional) only when the
   driver clearly asks; annotation suppresses framing, never deletes data.
 - Config changes are only ever STAGED via propose_config_change; the driver
@@ -57,7 +67,7 @@ Hard rules:
 """
 
 _ID_TOKEN = re.compile(
-    r"\b(?:obs:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
+    r"\b(?:obs:\d+|incident:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
     r"|cp\.[A-Za-z_]+\.[A-Za-z_]+)"
 )
 
@@ -104,13 +114,17 @@ class ClaudeChatProvider:
 def build_chat_bundle(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
 ) -> dict[str, Any]:
-    """Deterministic context bundle — a known, inspectable state."""
+    """Deterministic context bundle — a known, inspectable state. chat-v3
+    (Track B3, docs/UI-V3-PLAN.md) lifts the M5-era exclusion: incidents now
+    ride in the bundle like every other section, citable through the same
+    ChatSession._known_ids mechanism as findings and coaching principles —
+    but only the classified ones (ChatSession.__init__ only admits an
+    incident_id whose coaching_principle_id is not null), so an
+    unclassified/external incident is structurally uncitable rather than
+    citable-but-rule-forbidden — the same "engine names it or it doesn't
+    exist to the model" discipline the rest of the grounding contract uses."""
     report = build_cohort_payload(db, driver=driver, car=car, track=track, config=config)
-    # Incidents stay out of the chat context until Layer 3 gives the model a
-    # grounded way to cite them (incident evidence IDs in the citable
-    # universe); bundle_version still reflects the full payload version.
     bundle_version = report["payload_version"]
-    report = {k: v for k, v in report.items() if k != "incidents"}
     coach_runs = db.coach_history(driver=driver, car=car, track=track)
     return {
         "prompt_version": CHAT_PROMPT_VERSION,
@@ -160,6 +174,20 @@ class ChatSession:
         for c in self._coaching_candidates:
             self._known_ids.add(c["coaching_principle_id"])
             self._known_ids.update(c["evidence_ids"])
+        # Track B3: only a classified incident becomes citable — an
+        # unclassified/external one (coaching_principle_id null) is
+        # structurally absent from _known_ids, so citing its incident_id
+        # is rejected the same way an unknown finding ID already is. This
+        # is stricter than the coach's own structured-output rule (which
+        # lets the AI mention an unclassified incident's bare facts while
+        # forbidding only an explained cause) but is the mechanically
+        # simple, unambiguous enforcement for chat's free-text grounding —
+        # additive only, never loosening an existing rejection.
+        for e in self.bundle["report"].get("incidents", {}).get("events", []):
+            principle_id = e.get("coaching_principle_id")
+            if principle_id:
+                self._known_ids.add(e["incident_id"])
+                self._known_ids.add(principle_id)
 
     # -- one driver turn ----------------------------------------------------
 

@@ -74,6 +74,18 @@ TOOL_DEFS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "get_incident",
+        "description": "Fetch one detected incident (spin/off/near-stop) by "
+                       "its incident_id, with its classification, confidence, "
+                       "and coaching_principle_id (null when the engine named "
+                       "no cause — never explain those).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"incident_id": {"type": "string"}},
+            "required": ["incident_id"],
+        },
+    },
+    {
         "name": "propose_config_change",
         "description": "STAGE a config change (dotted key) with the reason. "
                        "It is NOT applied: the driver must explicitly confirm. "
@@ -145,6 +157,13 @@ def execute_tool(
         return {"annotated": finding_id, "status": args.get("status"),
                 "effect": "suppressed from future priority framing; the "
                           "measurement itself is kept"}
+
+    if name == "get_incident":
+        incident_id = args.get("incident_id", "")
+        for e in bundle["report"].get("incidents", {}).get("events", []):
+            if e["incident_id"] == incident_id:
+                return e
+        return {"error": f"unknown incident: {incident_id}"}
 
     if name == "propose_config_change":
         try:

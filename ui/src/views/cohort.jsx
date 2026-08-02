@@ -3,7 +3,8 @@ import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
-  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, Methodology, SourceSections,
+  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, IncidentCard,
+  IncidentMechanismCounts, LossBars, Methodology, SourceSections,
 } from "./shared.jsx";
 
 // Cohort view (UI-SPEC view 2). The signature element: the track outline
@@ -260,23 +261,9 @@ export default function Cohort({ slug }) {
       {p.incidents && p.incidents.n > 0 && (
         <section className="panel grid-span">
           <p className="eyebrow">Incidents — single events, not traits</p>
+          <IncidentMechanismCounts events={p.incidents.events} />
           {p.incidents.events.map((e) => (
-            <div key={e.incident_id}
-                 className={`finding ${e.classification === "unclassified" ? "suppressed" : ""}`}>
-              <div className="head">
-                <span className="desc">
-                  {e.corner_id ? <a href={`#/corner/${slug}/${e.corner_id}`}>{e.corner_id}</a> : "—"}
-                  {" · "}{e.classification.replace(/_/g, " ")}
-                </span>
-                <span className="val">{e.confidence}</span>
-              </div>
-              <div className="meta">
-                {e.kinds} · min <span className="num">{fmt(e.min_speed_kmh, 0)}</span> km/h ·
-                peak yaw <span className="num">{fmt(e.peak_yaw_rate)}</span> rad/s ·{" "}
-                <span className="dim" title={e.lap_id}>{e.lap_id.slice(0, 6)}…</span>
-              </div>
-              <div className="reason">{e.rationale}</div>
-            </div>
+            <IncidentCard key={e.incident_id} event={e} slug={slug} />
           ))}
         </section>
       )}

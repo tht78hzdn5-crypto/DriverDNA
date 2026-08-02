@@ -174,6 +174,29 @@ METHODOLOGY: dict[str, str] = {
         "rather than guessed — 'insufficient data' is a real answer here, "
         "not a gap in the tool."
     ),
+    # --- the newcomer register (SPEC.md A33) --------------------------------
+    # One short, non-patronizing line acknowledging the moment — separate
+    # from the mechanism explanations above, and never attached to a
+    # number. Deliberately plain rather than idiom-heavy (A33's "at most
+    # one idiom per screen" is a ceiling, not a quota to hit). No entry for
+    # unclassified/external: there's no clean cause to acknowledge, and a
+    # generic "don't worry about it" for a lap the engine itself couldn't
+    # read would be exactly the guessing the constitution forbids, one
+    # level up.
+    "incident.empathy.trail_brake_oversteer": (
+        "Everyone's had this one — it's a squeeze, not a switch."
+    ),
+    "incident.empathy.lift_off_oversteer": (
+        "A common one when you're pushing entry speed. It fades with reps."
+    ),
+    "incident.empathy.power_on_oversteer": (
+        "A sign you're trying to get the power down earlier, which is the "
+        "right instinct."
+    ),
+    "incident.empathy.understeer_off": (
+        "Not a bad instinct — just more speed than the front had grip for "
+        "right there."
+    ),
 }
 
 
