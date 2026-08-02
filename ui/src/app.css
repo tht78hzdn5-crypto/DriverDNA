@@ -48,6 +48,13 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   text-transform: uppercase; color: var(--dim); margin: 0 0 0.55rem; font-weight: 600;
 }
 
+/* --- Offline banner (U7 mobile/PWA) — direction, never a stale number --- */
+.offline-banner {
+  background: var(--raised); border-bottom: 1px solid var(--warn);
+  color: var(--text); font-size: 0.78rem; text-align: center;
+  padding: 0.4rem 0.6rem;
+}
+
 /* --- Shell: fixed six-tab bar, wordmark + helix/racing-line mark --------- */
 .topbar {
   display: flex; align-items: center; gap: 1.4rem;

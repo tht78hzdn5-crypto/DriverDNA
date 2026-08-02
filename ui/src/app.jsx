@@ -38,6 +38,25 @@ export default function App() {
   // server. Asked once before anything renders, so a locked cockpit shows a
   // sign-in rather than every panel failing its own fetch in turn.
   const [session, setSession] = useState(null);
+  // U7 mobile/PWA (DEPLOY-SPEC Track M item 4): the service worker's
+  // binding rule is "cache the shell, never the numbers" — it never
+  // serves /api/* from cache, so going offline means every data fetch
+  // simply fails. This banner states that plainly instead of letting the
+  // driver stare at whatever numbers happened to be on screen already,
+  // wondering if they're current. It never shows the last numbers seen.
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const onHash = () => setRoute(parseHash());
@@ -77,6 +96,11 @@ export default function App() {
 
   return (
     <>
+      {!online && (
+        <div className="offline-banner" role="status">
+          Not connected — no current data.
+        </div>
+      )}
       <header className="topbar">
         <a href="#/" className="brand" aria-label="DriverDNA home">
           {/* Helix half-twist that reads equally as two racing lines through a

@@ -28,4 +28,24 @@ for (const group of Object.values(tokens)) {
   }
 }
 
+// index.html's static <meta name="theme-color"> is read by the browser
+// before any JS runs, so it's hardcoded there and can't be sourced from
+// tokens.json at parse time (a real, documented duplication, checked
+// mechanically by tests/test_ui_static.py). This re-asserts the same
+// value from the single source of truth as defense in depth, so a future
+// token change is at least caught here even if the static HTML drifts.
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+if (themeColorMeta) themeColorMeta.setAttribute("content", tokens.color.base);
+
+// U7 mobile/PWA (DEPLOY-SPEC Track M item 4, docs/UI-V3-PLAN.md Track A5):
+// registers the runtime-caching service worker (ui/public/sw.js). Same-
+// origin only, and only over a secure context — `serviceWorker` is simply
+// undefined on plain HTTP, so this is a no-op on the local `driverdna ui`
+// loopback path, exactly matching the existing offline/local behavior.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 createRoot(document.getElementById("root")).render(<App />);
