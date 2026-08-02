@@ -1,5 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { get } from "../api.js";
 import { fmt } from "../format.js";
+
+// Methodology disclosure ("the arrow", SPEC.md A33): text comes from the
+// engine (GET /api/explain), never hand-written per view, so the SPA and a
+// future static-report equivalent can't drift onto two different
+// explanations of the same figure. One shared fetch — every <Methodology>
+// instance on a page reuses the same module-level promise instead of each
+// firing its own request.
+let _methodologyPromise = null;
+function loadMethodology() {
+  if (!_methodologyPromise) _methodologyPromise = get("/api/explain").catch(() => ({}));
+  return _methodologyPromise;
+}
+
+// Fails closed: an id absent from the engine's dict renders nothing rather
+// than a disclosure with no text. tests/test_explain.py catches a typo'd id
+// at test time by cross-referencing every literal usage of this component's
+// id prop, across the codebase, against the real key set — silence here is
+// a caught bug, not a swallowed one.
+export function Methodology({ id, label = "How is this measured?" }) {
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    loadMethodology().then((all) => { if (alive) setText(all[id] || null); });
+    return () => { alive = false; };
+  }, [id]);
+  if (!text) return null;
+  return (
+    <details className="disclosure">
+      <summary><span className="chev" aria-hidden="true">▸</span> {label}</summary>
+      <div className="disclosure-body">{text}</div>
+    </details>
+  );
+}
 
 // Findings grouped exactly as the payload states them: shown (priorities),
 // annotated (driver's call, measurement visible), suppressed (reason shown).
@@ -48,6 +82,7 @@ export function SourceSections({ findings, slug }) {
     return (
       <div key={source} className={`source-section ${source}`}>
         <p className="eyebrow"><span className="src-tag">{source}</span>{labels[source]}</p>
+        <Methodology id={`source.${source}`} label="How does this source work?" />
         {shown.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
         {!shown.length && (
           <div className="dim" style={{ fontSize: "0.8rem", padding: "0.2rem 0 0.4rem" }}>

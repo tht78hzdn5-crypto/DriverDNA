@@ -2,6 +2,7 @@ import React from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
+import { Methodology } from "./shared.jsx";
 
 // Driver Model (M6) — the constitution's centre of gravity, made visible.
 // Render-only: every number here is straight from the payload's driver_model
@@ -140,6 +141,8 @@ export default function DriverModel() {
 
       <section className="panel">
         <p className="eyebrow">Fundamentals — score · confidence · evidence · trend</p>
+        <Methodology id="model.confidence" label="How is confidence calculated?" />
+        <Methodology id="model.trend" label="How is trend calculated?" />
         {measured.map((id) => <Meter key={id} id={id} b={beliefs[id]} />)}
       </section>
 

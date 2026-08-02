@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.config import ConfigStore, config_snapshot, describe_key, load_config
+from driverdna.explain import METHODOLOGY
 from driverdna.blobs import open_blob_store
 from driverdna.db import Database, open_postgres_pool
 from driverdna.store import is_postgres_url, missing_reason
@@ -831,6 +832,13 @@ def create_app(
             key: {"value": value, "description": describe_key(key)}
             for key, value in sorted(config_snapshot(config).items())
         }
+
+    @app.get("/api/explain")
+    def explain_view() -> dict[str, str]:
+        """The methodology text behind the v3 disclosure pattern (SPEC.md
+        A33) — a static dict, no DB, no computation; same shape as
+        /api/config's pass-through of describe_key."""
+        return dict(sorted(METHODOLOGY.items()))
 
     @app.get("/api/config/history")
     def config_history(request: Request) -> list[dict[str, Any]]:

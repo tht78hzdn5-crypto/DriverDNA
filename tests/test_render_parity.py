@@ -126,6 +126,7 @@ def _number_pool(base: str, slug: str) -> set[float]:
     get = lambda path: httpx.get(f"{base}{path}", timeout=10).json()
     number_pool(get("/api/driver"), pool)
     number_pool(get("/api/config"), pool)
+    number_pool(get("/api/explain"), pool)
     for cohort in get("/api/cohorts"):
         s = cohort["slug"]
         number_pool(get(f"/api/cohorts/{s}/payload"), pool)

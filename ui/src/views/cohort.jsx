@@ -3,7 +3,7 @@ import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
-  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, SourceSections,
+  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, Methodology, SourceSections,
 } from "./shared.jsx";
 
 // Cohort view (UI-SPEC view 2). The signature element: the track outline
@@ -238,6 +238,7 @@ export default function Cohort({ slug }) {
 
       <section className="panel grid-span">
         <p className="eyebrow">Typical loss vs robust baseline (s/lap)</p>
+        <Methodology id="loss.cumulative" />
         {Object.keys(p.cumulative_loss.by_phase).length > 0 ? (
           <>
             <LossBars entries={Object.entries(p.cumulative_loss.by_phase).sort()} />

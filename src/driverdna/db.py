@@ -1749,11 +1749,16 @@ class Database:
     def fundamental_evidence_lap_count(
         self, *, driver: str, metric_names: tuple[str, ...],
         detector_names: tuple[str, ...],
+        lap_pks: frozenset[int] | None = None,
     ) -> int:
         """Distinct self-role laps that contributed >=1 metric value or
         detector result relevant to a fundamental's mapped techniques — the
         driver-facing "how many of your laps taught me something" count.
         Empty metric/detector sets (e.g. vision) return 0, honestly.
+
+        `lap_pks` (M6 trend / score-history, A34) restricts to a date
+        bucket's laps, same mechanism as `phase_history`/`self_metric_table`;
+        None (every non-bucketed caller) means no restriction.
         """
         if not metric_names and not detector_names:
             return 0
@@ -1772,11 +1777,13 @@ class Database:
                      WHERE detector IN ({placeholders}))"""
             )
             params.extend(detector_names)
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
         row = self.conn.execute(
             f"""SELECT COUNT(DISTINCT o.lap_pk) n FROM corner_observations o
                 JOIN laps l ON l.lap_pk = o.lap_pk
-                WHERE l.role='self' AND l.driver=? AND l.owner_user_pk=? AND ({' OR '.join(clauses)})""",
-            [driver, self.user_pk, *params],
+                WHERE l.role='self' AND l.driver=? AND l.owner_user_pk=?
+                  AND ({' OR '.join(clauses)}){pk_clause}""",
+            [driver, self.user_pk, *params, *pk_params],
         ).fetchone()
         return int(row["n"])
 
