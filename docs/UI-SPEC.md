@@ -217,6 +217,110 @@ gate requires a `.num` per route, so garage is excluded there exactly as
 construction (integer counts + pooled `/api/laps` lap times), and seeding
 the shared fixture would perturb the determinism and report-snapshot tests.
 
+## Design language v3 — "cockpit feel" (owner-directed, 2026-07-29, SPEC.md A33)
+
+Owner directive: the v2 language is correct and joyless — buttons with no
+press feel, no way to ask *how was that computed*, no view of progress over
+time. v3 is a **presentation amendment** exactly like v2 was: everything in
+the base grammar and in "Design language v2" stays binding except where this
+section explicitly amends it. Full design and sequencing:
+`docs/UI-V3-PLAN.md`.
+
+**Untouched, stated so nobody re-litigates it:** all eleven original color
+values; the three color-grammar rules (purple/green/amber semantics, red
+never driver pace, source identity structural); mono tabular numerals; the
+chamfer; suppression/annotation rendering; table density; dark-only; all
+five trust gates.
+
+**Palette.** New **chrome-only** accent token(s) may be added to
+`ui/tokens.json`, picked from the two hue regions v2 left free (cyan ~185°,
+magenta ~325°). Binding: a new accent may never encode a measurement — legal
+on the wordmark, active-tab underline, hover/press states, disclosure
+chevrons, empty-state ribbons; illegal on any figure, bar, chart series,
+tile value, or finding row. Any new colour key added to `ui/tokens.json`'s
+`color` group must be added to `report/builder.py`'s `_TOKENS` mirror in the
+same commit, or the byte-match test goes red.
+
+**Motion.** v2's "≤150 ms, functional only" extends to interactive-feedback
+micro-motion ≤180 ms: press displacement, hover lift, disclosure
+open/close, tab-underline slide. Still no data-entrance animation, no chart
+animation, `prefers-reduced-motion` still fully honored.
+
+**Buttons, feel.** `.btn` / `.btn-primary` / `.btn.small` / `.btn.confirm`
+gain `:active` press displacement and hover lift within the motion budget
+above. The chamfer `clip-path` and the inset focus ring are unchanged and
+non-negotiable — `clip-path` clips outlines, so the inset ring remains the
+visible-focus floor.
+
+**Progressive disclosure — the methodology arrow.** A new `.disclosure`
+component (native `<details>/<summary>`, free keyboard/screen-reader
+behavior) lets a panel collapse *derivation detail and methodology* behind
+a labelled, chevron-marked control. **Binding: this is disclosure, not
+suppression** — the headline number, its `n`, and any `gate_reason` stay
+visible uncollapsed on every render; only the "how was this computed"
+explanation and raw derivation detail may collapse. UI-SPEC decision 7
+(suppression is visible, with its reason and progress) is unchanged. Text
+inside a disclosure comes from the engine (`explain.py`), not hand-written
+per view, so the SPA and the static HTML reports can eventually say the
+same thing from one source. The render-parity crawler reads `.num`
+`textContent` regardless of visibility, so numbers inside a *collapsed*
+disclosure are still crawled and must still trace to the payload — this is
+correct behavior, not a gap to work around.
+
+**Copy — two new bounded registers.** A **methodology register**
+(explanatory prose) is allowed only inside a collapsed disclosure. A
+**newcomer register** (one short empathetic line, incidents only) is
+allowed only inside a disclosure and never attached to a number. v2's
+"labels not paragraphs" rule continues to bind everything on the default
+render.
+
+**Use of space.** `#root`'s `max-width: 64rem` single-column stack gains a
+two-column layout above that width via CSS grid (driver home: tiles/rollup
+beside sync; cohort: track map beside the findings column) — pure layout,
+no view-logic change, and the same single-column stack below ~48rem that
+U7 (mobile) requires anyway.
+
+**Score-over-time chart (SPEC.md A34, `dm-hist-v1`).** A new panel on the
+existing `#/model` route (not a new route — the six-tab shell is a v2
+invariant, and `#/model` is already covered by both browser trust-gate
+route lists). Plots each Driver Model fundamental's own score across N
+date-ordered buckets of the driver's dated laps, hand-rolled inline SVG
+like the existing pyramid and track map — no chart library, so the
+same-origin/offline guarantee holds. All series share one 0–100 score axis
+(never normalized, never blended); a multi-select toggle overlays any
+subset. A bucket with no scorable evidence renders as a stated gap, never
+interpolated — no line is drawn across a null point. **Deliberately not a
+radar/spider chart**: its shaded area would read as an overall score
+nobody computed and that cannot be decomposed to its sources (philosophy
+#4 / A14), and the area is not even a well-defined statistic since it
+changes when the spokes are reordered — the same reasoning that made the
+Driver Model tab a pyramid (2026-07-21).
+
+**Test consequences.** `tests/test_render_parity.py`'s `_number_pool()`
+builds its pool from a hardcoded endpoint list — `GET
+/api/driver/score-history` and `GET /api/explain` must be added there or
+every chart/disclosure figure fails the gate as an invented number. The
+committed fixture manifest is deliberately undated, so the chart renders
+its *unavailable* state in the browser gates — parity-clean by
+construction, but it means the populated chart path needs a dedicated
+Python-level test against a synthetic dated DB, never an edit to
+`tests/fixtures/`.
+
+## U7 — Mobile / PWA (owner-directed, 2026-07-29; absorbs DEPLOY-SPEC Track M)
+
+Renamed from DEPLOY-SPEC's "U5" to stop colliding with this document's own
+U5 (the pit-wall restyle). Builds DEPLOY-SPEC Track M as already adopted:
+a responsive CSS pass (fluid padding, single-column stacking below ~48rem,
+fixed-column grids collapse, ≥44px tap targets everywhere including chat
+input, wide tables keep their own `overflow-x` container, `env(safe-area-inset-*)`
+respected); `manifest.webmanifest` + maskable icons + `apple-touch-icon`
+emitted by Vite into the in-package static dir (node stays build-time
+only); a service worker whose one binding rule is **cache the shell, never
+the numbers** — hashed build assets precached, every `/api/*` response
+network-only (the API already sets `no-store`), an explicit "not connected
+— no current data" offline state that never shows stale figures. Full
+detail: `docs/UI-V3-PLAN.md` Track A5, `docs/DEPLOY-SPEC.md` Track M.
+
 ## Milestones
 
 - **U0 — API layer.** All endpoints above; contract tests: payload endpoints byte-identical to `driverdna report` JSON on a fixture DB; each write endpoint's effects identical to the CLI equivalent; nothing importable from the SPA to compute.
@@ -244,6 +348,8 @@ the shared fixture would perturb the determinism and report-snapshot tests.
   - The **Sync** button lives on driver home only, not duplicated onto Garage (condition 5 allowed "driver home and/or Garage"); **Rebuild map** sits in the cohort context strip behind a purely client-side confirm/cancel gate (no server-side staging — there is no engine-level "propose" step for a map rebuild the way `ConfigStore` has one for config).
 
   Tests: `tests/test_cockpit_api.py` (10 cases — the binding parity/token tests plus idempotency and body-scoping coverage) and `tests/test_cockpit_ui.py` (2 browser-driven cases: the no-token guidance state, and the rebuild confirm/cancel-then-confirm flow), mirroring `test_upload_api.py` / `test_upload_ui.py`'s own split. No route-list changes were needed (condition 6): both buttons live on already-covered routes (`#/`, `#/cohort/:slug`), and their result panels render only after a click, so the static crawlers never see them — consistent with `#/upload`'s existing exclusion.
+
+- **U7 — Design language v3 + Mobile/PWA (owner-directed 2026-07-29, specced above; SPEC.md A33/A34; absorbs DEPLOY-SPEC Track M, renamed to avoid colliding with this document's own U5).** Chrome-only accent tokens, ≤180ms interactive micro-motion, the methodology disclosure (`.disclosure`, `GET /api/explain`), the Driver Model score-history chart (`GET /api/driver/score-history`, `dm-hist-v1`), wide-viewport two-column layout, and the mobile responsive pass + PWA shell (manifest, service worker, cache-the-shell-never-the-numbers). Full plan: `docs/UI-V3-PLAN.md`.
 
 Strict order; a milestone begins only when the prior one's gates pass.
 
@@ -322,3 +428,17 @@ philosophy are untouched. Mockup: `docs/ui-redesign-mockup.html`
 (placeholder numbers, labeled as such). Build follows the standing
 discipline: U5 begins on the owner's go, U6 only after U5's gates pass.
 Full record: PROJECT-BRIEF.md decision log, 2026-07-22.
+
+**Owner amendment (2026-07-29):** design language v3 ("cockpit feel") and
+mobile/PWA (U7) adopted at spec stage — owner directive: the UI isn't fun to
+engage with, mobile still has to ship, and both were merged into one build
+pass because they touch the same CSS and the same views (SPEC.md A33/A34,
+`docs/UI-V3-PLAN.md`). Adds the score-history chart (SPEC.md A34), the
+methodology disclosure pattern, and absorbs DEPLOY-SPEC Track M as U7.
+Colors, color grammar, trust gates, and the philosophy are untouched; the
+one addition to trust-gate scope is the two new endpoints
+(`/api/explain`, `/api/driver/score-history`) that
+`tests/test_render_parity.py`'s number pool must include. Mockup:
+`docs/ui-redesign-mockup-v3.html` (placeholder numbers, labeled as such, to
+be produced alongside the build). Full record: `docs/UI-V3-PLAN.md`,
+PROJECT-BRIEF.md decision log, 2026-07-29.

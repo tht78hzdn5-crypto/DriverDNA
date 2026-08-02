@@ -69,6 +69,14 @@ discipline, mirrored in SPEC.md A23 and PROJECT-BRIEF.md's decision log.
 
 # Track P — Provider abstraction + Gemini
 
+> **2026-07-29 update (SPEC.md A35, `docs/UI-SPEC.md` A35, `docs/UI-V3-PLAN.md`
+> Track C):** built as scheduled below, plus a new bring-your-own-key layer
+> not in this document's original design — the owner's Gemini identity ask
+> ("users spend their own usage") turned out not to be deliverable via
+> Google OAuth for a third-party app, so BYOK is the resolution. Track P
+> below is otherwise unchanged and remains the design of record for the
+> provider swap itself.
+
 ## P0 — what already makes this cheap
 
 The provider seam exists and is clean:
@@ -179,6 +187,13 @@ is a one-key config change through the audited path.
 ---
 
 # Track M — Mobile (U5)
+
+> **2026-07-29 update:** this track is absorbed into `docs/UI-SPEC.md`'s
+> **U7** milestone (renamed from "U5" here to stop colliding with UI-SPEC's
+> own U5, the pit-wall restyle), merged with the "design language v3" UI
+> pass into one build because both touch the same CSS and views. Design
+> below is unchanged and remains the source of truth for the mobile/PWA
+> work; `docs/UI-V3-PLAN.md` Track A5 schedules it.
 
 The SPA is closer to mobile-ready than expected: `index.html` already carries
 the viewport meta, layout is mostly CSS grid with `auto-fill` minmax, and the

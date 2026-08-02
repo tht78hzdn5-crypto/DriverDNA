@@ -1573,3 +1573,78 @@ Accepted at owner plan review; rationale recorded in the review:
   Trust gate 5a remains untouched, ensuring telemetry blobs are only fetched
   from trusted domains. Data remains fully isolated per user, and deterministic
   measurements remain strictly independent per account.
+
+- **A33** (2026-07-29, owner-directed): **Design language v3 ("cockpit
+  feel").** A presentation amendment to UI-SPEC's "Design language v2"
+  section, which currently declares all eleven token colours and the motion
+  rule untouched — v3 changes four things there and nothing else, and none
+  of them touch a measurement:
+
+  1. **Palette** — new **chrome-only** accent tokens may be added to
+     `ui/tokens.json`. The three colour-grammar rules stand verbatim:
+     semantic colours (purple/green/amber/red) keep their exclusive
+     meanings, red still never means driver pace, source identity stays
+     structural. A new accent may never encode a measurement — legal on the
+     wordmark, active-tab underline, hover/press states, disclosure
+     chevrons, empty-state ribbons; illegal on any figure, bar, chart
+     series, tile value, or finding row.
+  2. **Motion** — v2's "≤150 ms, functional only" extends to
+     interactive-feedback micro-motion ≤180 ms (press, hover, disclosure
+     open/close, tab underline). Still no data-entrance animation, no chart
+     animation, `prefers-reduced-motion` still fully honored.
+  3. **Copy** — two new, tightly bounded registers: a **methodology
+     register** (explanatory prose, allowed only inside a collapsed
+     disclosure) and a **newcomer register** (one short empathetic line,
+     incidents only, inside the disclosure, never attached to a number).
+     v2's "labels not paragraphs" rule continues to bind the default render.
+  4. **Progressive disclosure is not suppression.** Binding: the headline
+     number, its `n`, and any `gate_reason` stay visible uncollapsed — only
+     derivation detail and methodology may collapse, behind a visible,
+     keyboard-reachable, labelled control. UI-SPEC decision 7 (suppression
+     is visible, with its reason and progress) is unchanged.
+
+  Full record: `docs/UI-V3-PLAN.md`, `docs/PROJECT-BRIEF.md` decision log.
+
+- **A34** (2026-07-29): **Score history (`dm-hist-v1`).** A new
+  deterministic engine output: each Driver Model fundamental's own score
+  over N contiguous date-ordered buckets of the driver's dated laps, from
+  the same `_bucket_score` machinery `trend` (M6) already uses. **Produces
+  no new kind of number** — no formula changes, no weight moves, so
+  `dm-v2`'s scoring model version is *not* bumped; only a new
+  `series_version` (`dm-hist-v1`) is introduced for the series shape
+  itself. Carries verbatim the two limitations `_trend` already documents
+  (era-relative opportunity baseline; cross-cohort bucket composition when
+  dated laps are thin-per-cohort) — a chart makes them more visible, not
+  less true. Binding: a bucket with no scorable evidence is a null with a
+  stated reason and renders as a gap, never interpolated, and no line is
+  drawn across it. Full record: `docs/UI-V3-PLAN.md`.
+
+- **A35** (2026-07-29, owner-directed): **Per-user AI keys (BYOK).**
+  Investigated first: the owner's original ask — "users logged into their
+  own Google accounts use their own Gemini usage" — is not available to
+  third-party apps. Google AI Pro/Ultra are chat subscriptions with no API
+  access; Gemini API quota and billing always follow the Cloud project
+  behind the key, never the signed-in user; and Google states that
+  piggybacking Gemini CLI's OAuth to reach its backend services is a terms
+  violation and grounds for account suspension, naming an AI Studio or
+  Vertex API key as the supported third-party path. The owner's resolution:
+  a user may supply their own free AI Studio key, used only for that
+  account's coach/chat calls, falling back to a server-wide
+  `GEMINI_API_KEY` when unset.
+
+  **This reverses two written rules, and says so rather than eliding it:**
+  - `AGENTS.md`'s non-negotiable *"secrets are env-only: never persisted,
+    printed, or logged"* is **refined**: a *user-supplied provider key* may
+    now be persisted, encrypted at rest, scoped to one account. Every
+    server-side secret (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`,
+    `GEMINI_API_KEY`, `DRIVERDNA_DATABASE_URL`, `DRIVERDNA_SESSION_SECRET`)
+    stays env-only, unchanged, never printed, never logged, never returned
+    by any endpoint.
+  - UI-SPEC U6 condition 4 *"secrets never transit the browser"* is
+    **narrowed**: that rule was written about `GARAGE61_TOKEN` — a
+    server-side credential the UI must never ask for — and it stands for
+    every server-side secret. A user's own provider key is by definition
+    supplied by that user and can only arrive through their browser, over
+    HTTPS, once, write-only; it is never sent back by any read endpoint.
+
+  Full record: `docs/UI-V3-PLAN.md`, `docs/PROJECT-BRIEF.md` decision log.

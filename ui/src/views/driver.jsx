@@ -115,12 +115,12 @@ export default function DriverHome() {
   const gated = rollups.filter((r) => !r.shown);
 
   return (
-    <div className="grid">
-      <section className="panel">
+    <div className="grid grid-wide">
+      <section className="panel grid-span">
         <h1>Driver</h1>
       </section>
 
-      <div className="tiles">
+      <div className="tiles grid-span">
         <div className="tile"><div className="v num">{cohorts.data.length}</div><div className="k">Cohorts</div></div>
         <div className="tile"><div className="v num">{shown.length}</div><div className="k">Rollups shown</div></div>
         <div className="tile"><div className="v num">{gated.length}</div><div className="k">Gated</div>
