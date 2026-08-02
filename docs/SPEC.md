@@ -1648,3 +1648,42 @@ Accepted at owner plan review; rationale recorded in the review:
     HTTPS, once, write-only; it is never sent back by any read endpoint.
 
   Full record: `docs/UI-V3-PLAN.md`, `docs/PROJECT-BRIEF.md` decision log.
+
+- **A36** (2026-08-02): **Track C3 live Gemini acceptance run — two real
+  defects found and fixed, never by loosening the validator.** Run against
+  the real fixture cohort (`GR86:Spa-Francorchamps`, 11 laps) with a live
+  `GEMINI_API_KEY` supplied by the owner for this run only (rotated
+  immediately after, per the owner's own instruction — never persisted,
+  never committed).
+  1. **`coach.max_tokens` default (4000) was silently broken for the
+     default provider.** `gemini-3.5-flash` is a thinking model whose
+     internal reasoning tokens are drawn from the same budget as
+     `max_output_tokens`; a real coach/chat payload exhausted 4000 tokens
+     on thinking alone, returning `finish_reason=MAX_TOKENS` with **empty**
+     response text — which the grounding validator correctly rejected as
+     "not valid JSON," but for the wrong underlying reason (a token-budget
+     bug presenting as a grounding failure). Fixed: default raised to
+     16000 (`config.py`), harmless for Claude, which simply uses less of
+     the budget than it's given.
+  2. **`coach`'s `SYSTEM_PROMPT` had two real compliance ambiguities**,
+     invisible against Claude but hit reliably by Gemini across 5/5 raw
+     attempts: (a) the no_signal principle's "never attach a confidence
+     value, at any level" instruction was general enough that Gemini
+     applied it to ordinary `hypotheses[]` entries too, emitting
+     `confidence: null` where the schema requires low/medium/high; (b)
+     nothing told the model that an `incident_explanations[]` entry must
+     cite its own `incident_id` inside its own `evidence_ids` — an
+     unusual, easy-to-miss convention. Both are now stated explicitly and
+     scoped precisely in the prompt (`coach/provider.py`); `PROMPT_VERSION`
+     bumped `coach-v2` → `coach-v3` (no schema change, no validator change
+     — wording only, so no schema-version bump). **The validator itself was
+     never touched** — same absolute rule as everywhere else in this repo;
+     fixing the model's inputs is always in bounds, fixing the gate to
+     tolerate a wrong answer never is.
+  Result after both fixes: **2/2** live `driverdna coach` runs against
+  Gemini passed the strict validator unmodified on the first attempt
+  (before the fixes: 0/5). One live grounded chat turn through
+  `GeminiChatProvider` (the primary interactive surface, which already had
+  chat's regenerate-once loop and needed no prompt change) also passed,
+  citing real `obs:<n>` evidence. Full detail: `docs/STATUS.md`'s
+  2026-08-02 snapshot.

@@ -173,8 +173,8 @@ machinery.
 - Tests still never call a live API and never require a secret.
 
 **Built 2026-08-02** (docs/UI-V3-PLAN.md Track C1) — the seam, translation,
-and BYOK layer are built and mock-tested; the live acceptance run is **not
-verified**, flagged rather than assumed:
+and BYOK layer are built and mock-tested; the live acceptance run
+**completed 2026-08-02** (Track C3, SPEC.md A36) — see below:
 
 - `coach.provider` (default `"gemini"`, matching this doc's own text) and
   `coach.gemini_model` (default `gemini-3.5-flash`) landed in `config.py`.
@@ -218,16 +218,34 @@ verified**, flagged rather than assumed:
   is imported at module level anywhere in this codebase (verified by grep),
   so the move is additive — an existing install with `anthropic` already
   present is unaffected.
-- **Not done, and not claimed done:** the live acceptance run against a
-  real `GEMINI_API_KEY` (this section's own binding criterion) did not
-  happen — no such key was available in the building agent's environment.
-  This is the one criterion above that genuinely requires it; everything
-  else is verified by real SDK objects with the network boundary mocked,
-  which is a different and weaker guarantee than a live round trip.
-  **This remains the acceptance gate that matters and is still open.**
-  Whoever holds a real `GEMINI_API_KEY` next should run `driverdna coach`
-  against the fixture cohort and record the observed rejection/
-  regeneration rate in STATUS.md, exactly as this section originally asked.
+- **Done 2026-08-02 (Track C3, SPEC.md A36):** the owner supplied a real
+  `GEMINI_API_KEY` for one live session (rotated immediately after — never
+  persisted, never committed, used only as a transient env var, never
+  written to any file in this repo). `driverdna coach` was run against the
+  real fixture cohort (`GR86:Spa-Francorchamps`, 11 laps). The first raw
+  attempts (5/5) were rejected — but investigation showed the rejections
+  traced to two real, fixable defects, not to Gemini being structurally
+  unable to satisfy the grounding contract:
+  1. `coach.max_tokens` default (4000) silently starved `gemini-3.5-flash`
+     (a thinking model whose reasoning tokens share the same budget as
+     output text) — empty response, `finish_reason=MAX_TOKENS`. Raised to
+     16000; a live diagnostic call proved this alone (with the old prompt)
+     restores non-empty structured output.
+  2. `coach/provider.py`'s `SYSTEM_PROMPT` had two real ambiguities Gemini
+     hit consistently (Claude apparently never triggered either): it read
+     the no_signal "never attach confidence" rule as covering ordinary
+     `hypotheses[]` entries too (emitting `confidence: null`), and nothing
+     told it an `incident_explanations[]` entry must cite its own
+     `incident_id` inside its own `evidence_ids`. Both clarified in the
+     prompt; `PROMPT_VERSION` `coach-v2` → `coach-v3` — wording only, the
+     validator (`coach/validate.py`) was never touched, per this
+     repository's absolute rule against loosening it to fit a weaker model.
+  **After both fixes: 2/2** live `driverdna coach` runs passed the strict
+  validator unmodified on the first attempt. One live grounded chat turn
+  through `GeminiChatProvider` also passed on the first attempt (chat
+  already had its regenerate-once loop and needed no prompt change),
+  citing real evidence. **The acceptance gate this section named is now
+  met.** Full detail: SPEC.md A36, `docs/STATUS.md`'s 2026-08-02 snapshot.
 
 **Track C2 built 2026-08-02** (SPEC.md A35, docs/UI-V3-PLAN.md Track C2) —
 the per-user BYOK layer this doc didn't originally design (it predates the

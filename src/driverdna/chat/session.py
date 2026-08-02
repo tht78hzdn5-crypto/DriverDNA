@@ -81,7 +81,7 @@ class ChatProvider(Protocol):
 
 
 class ClaudeChatProvider:
-    def __init__(self, model: str, max_tokens: int = 4000, api_key: str | None = None):
+    def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
         A35). `api_key=None` (every non-BYOK caller): `ANTHROPIC_API_KEY`,
         env-only, unchanged."""
@@ -194,7 +194,7 @@ class GeminiChatProvider:
     appears. Same lazy-import and env-only-key discipline as every other
     provider in this codebase."""
 
-    def __init__(self, model: str, max_tokens: int = 4000, api_key: str | None = None):
+    def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
         A35). `api_key=None` (every non-BYOK caller): `GEMINI_API_KEY`,
         env-only, unchanged."""

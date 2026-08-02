@@ -1,9 +1,9 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-08-02.** `docs/UI-V3-PLAN.md` built end to end except
-one explicitly-flagged item (below). All three tracks landed in this
-session, each committed separately with its own tests, on
-`claude/ui-incidents-gemini-coach-93l5h7`.
+**Snapshot date: 2026-08-02 (updated).** `docs/UI-V3-PLAN.md` built end to
+end, **including Track C3** — see the update at the end of this entry.
+All three tracks landed in this session, each committed separately with
+its own tests, on `claude/ui-incidents-gemini-coach-93l5h7`.
 
 - **Track A (UI v3 "cockpit feel" + U7 mobile) — built.** A1-A6 all done:
   a chrome-only accent token (`#3FC7DE`, chosen over a documented magenta
@@ -41,9 +41,9 @@ session, each committed separately with its own tests, on
   rule-forbidden), `CHAT_PROMPT_VERSION` chat-v2 -> chat-v3. B4 regenerated
   `docs/incidents-report.md` and diffed byte-identical (payload additions
   don't touch that generator).
-- **DEPLOY-SPEC Track P (Gemini provider) — built, mock-tested; live
-  acceptance run NOT performed — flagged, not assumed.** `GeminiCoachProvider`
-  / `GeminiChatProvider` built against the real installed `google-genai` SDK,
+- **DEPLOY-SPEC Track P (Gemini provider) — built, mock-tested, AND now
+  live-verified (Track C3, SPEC.md A36).** `GeminiCoachProvider` /
+  `GeminiChatProvider` built against the real installed `google-genai` SDK,
   verified by direct introspection (not memory or possibly-stale fetched
   docs) — a newer `client.interactions.create` surface also exists in the
   current SDK and was deliberately not used, since this doc's own design
@@ -53,12 +53,32 @@ session, each committed separately with its own tests, on
   translation, message translation (including the tool-result round trip
   that recovers a function name Anthropic's own block doesn't carry), and
   429 backoff are all tested against real SDK response objects with only
-  the network call mocked. **What's genuinely missing**: DEPLOY-SPEC's own
-  acceptance gate — a live run against a real `GEMINI_API_KEY` proving
-  `driverdna coach` passes the strict validator unmodified — did not happen;
-  no such key was available. This is a materially weaker guarantee than a
-  live round trip and is recorded as open in `docs/DEPLOY-SPEC.md`, not
-  quietly implied to be done.
+  the network call mocked.
+  **Track C3, completed 2026-08-02**: the owner supplied a real
+  `GEMINI_API_KEY` for one session (rotated immediately after — never
+  persisted, never committed, used only as a transient env var). The live
+  run surfaced two real defects, both fixed in the code (never in the
+  validator — see SPEC.md A36 for full detail):
+  1. `coach.max_tokens` default (4000) silently starved `gemini-3.5-flash`
+     — a thinking model whose reasoning tokens share the output budget —
+     producing an empty response (`finish_reason=MAX_TOKENS`) that the
+     validator correctly rejected as "not valid JSON" for the wrong
+     underlying reason. Raised to 16000; harmless for Claude.
+  2. `coach`'s `SYSTEM_PROMPT` had two real ambiguities that Gemini hit on
+     5/5 raw attempts (Claude apparently never triggered either): the
+     no_signal "never attach confidence" rule read as applying to ordinary
+     `hypotheses[]` too, and nothing said an `incident_explanations[]`
+     entry must cite its own `incident_id` in its own `evidence_ids`. Both
+     clarified; `PROMPT_VERSION` `coach-v2` → `coach-v3` (wording only, no
+     schema/validator change).
+  **Result: 2/2** live `driverdna coach` runs against the real fixture
+  cohort (`GR86:Spa-Francorchamps`) passed the strict validator unmodified
+  on the first attempt after both fixes (0/5 before). One live grounded
+  chat turn through `GeminiChatProvider` — the primary interactive
+  surface, unaffected by the prompt issue since it already had chat's
+  regenerate-once loop — also passed on the first attempt, citing real
+  `obs:<n>` evidence and real `cp.*` coaching principle IDs. The acceptance
+  gate DEPLOY-SPEC named is now met, not just designed.
 - **SPEC.md A35 (per-user AI keys, BYOK) — built.** AES-256-GCM
   (`cryptography`, newly explicit in the `ui` extra), key-encryption key
   derived from `DRIVERDNA_SESSION_SECRET` via `hashlib.scrypt` with its own
@@ -81,8 +101,8 @@ session, each committed separately with its own tests, on
   fixed by installing `cffi`; and `python3 -m driverdna.cli <args>` silently
   does nothing (no `__main__` guard in `cli.py`) — use the installed
   `driverdna` console script or `python3 -m driverdna` instead.
-- **Not done, by design, this session**: Track C3's live Gemini acceptance
-  run (above). Everything else in `docs/UI-V3-PLAN.md` is built and tested.
+- **Track C3 (above) is now done.** `docs/UI-V3-PLAN.md` is built and
+  tested end to end, with no remaining flagged gaps.
 
 **Snapshot date: 2026-07-29.** Plan adopted, nothing built:
 **`docs/UI-V3-PLAN.md`** — owner-directed UI v3 ("fun factor" + the mobile

@@ -286,7 +286,15 @@ class CoachConfig(_Section):
         "model name from memory) — never Pro, which is paid-only.",
     )
     max_tokens: int = Field(
-        default=4000, description="Response token budget per provider call."
+        default=16000,
+        description="Response token budget per provider call. Raised from "
+        "4000 (SPEC.md A33's live acceptance run, 2026-08-02): "
+        "gemini-3.5-flash is a thinking model whose internal reasoning "
+        "tokens count against this same budget, so 4000 was silently "
+        "exhausted by thinking with zero output text on a real coach/chat "
+        "payload (finish_reason MAX_TOKENS, empty response). 16000 covers "
+        "the observed thinking overhead with room for a full structured "
+        "reply; harmless for Claude, which simply uses less of the budget.",
     )
     include_raw_traces: bool = Field(
         default=False,

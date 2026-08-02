@@ -86,7 +86,7 @@ def _valid_output(payload):
 
 
 def test_payload_carries_report_and_history(db, payload):
-    assert payload["prompt_version"] == "coach-v2"
+    assert payload["prompt_version"] == "coach-v3"
     assert payload["report"]["cohort"]["n_laps"] == 12
     assert payload["focus_history"] == []
     shown, evidence = evidence_universe(payload["report"])
