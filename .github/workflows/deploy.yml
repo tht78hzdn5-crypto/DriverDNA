@@ -37,4 +37,5 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           source: .
-          flags: '--no-allow-unauthenticated'
+          flags: '--no-allow-unauthenticated --cpu-boost'
+          timeout: '600'

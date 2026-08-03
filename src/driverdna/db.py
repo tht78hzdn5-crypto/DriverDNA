@@ -718,7 +718,7 @@ def open_postgres_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> "C
             configure=_configure,
             open=True,
         )
-        pool.wait(timeout=10)
+        pool.wait(timeout=30)
     except Exception as exc:
         raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
     return pool
@@ -849,21 +849,33 @@ class Database:
 
     def _migrate(self) -> None:
         migrations = self.dialect.migrations()
-        with self.conn:
-            self.conn.execute(
-                "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
-            )
-            row = self.conn.execute("SELECT MAX(version) v FROM schema_version").fetchone()
-            current = row["v"] or 0
-            if current >= len(migrations):
-                return
-        # Each migration is its own transaction: `executescript` commits on
-        # SQLite, and on Postgres the dialect wraps the script itself, so the
-        # version row is recorded alongside rather than inside that block.
-        for i, script in enumerate(migrations[current:], start=current + 1):
-            self.conn.executescript(script)
+        # Serialize migrations across concurrent pool connections (Postgres
+        # only — SQLite has no pool). Without this, min_size=2 means two
+        # connections call _configure → _migrate concurrently; both see
+        # the same schema_version and both try to run the same DDL, crashing
+        # the second one ("relation already exists" / table dropped mid-use).
+        _pg = self.dialect is _POSTGRES
+        if _pg:
+            self.conn.execute("SELECT pg_advisory_lock(1)")
+        try:
             with self.conn:
-                self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
+                self.conn.execute(
+                    "CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)"
+                )
+                row = self.conn.execute("SELECT MAX(version) v FROM schema_version").fetchone()
+                current = row["v"] or 0
+                if current >= len(migrations):
+                    return
+            # Each migration is its own transaction: `executescript` commits on
+            # SQLite, and on Postgres the dialect wraps the script itself, so the
+            # version row is recorded alongside rather than inside that block.
+            for i, script in enumerate(migrations[current:], start=current + 1):
+                self.conn.executescript(script)
+                with self.conn:
+                    self.conn.execute("INSERT INTO schema_version VALUES (?)", (i,))
+        finally:
+            if _pg:
+                self.conn.execute("SELECT pg_advisory_unlock(1)")
 
     def _harden_postgres(self) -> None:
         """Enable row-level security, with no policies, on every table.
