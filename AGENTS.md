@@ -40,23 +40,23 @@ convenience.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
+
+- Verification discipline:
+  1. A skipped test is not a pass. Check/report why tests skipped (missing Postgres/Chromium/SPA are gaps, not green results).
+  2. Never build on a red CI branch. If a push/CI turns red, fix it before adding new commits.
+  3. UI changes must be manually clicked. Load the page and run the flow (or use real browser tests) to verify frontend-backend parity.
+  4. Never silently reverse a "not adopted" decision. Implementing a previously rejected/shelved plan requires a documented re-decision.
+  5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
+  6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
+  7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
 <!-- /shared:non-negotiables -->
 
 ## Decision discipline (standing rule)
 
-When a decision is made — especially one an agent surfaced as a fork (scoring
-approach, M7 adoption, a threshold default) — the pick **and its reason** are
-recorded in the durable docs at decision time, never left only in chat:
-
-- The resolution goes in `docs/SPEC.md` (amendment log) and/or
-  `docs/PROJECT-BRIEF.md` (Decision log), dated.
-- If the decision touches the **nine philosophy points** or the **out-of-scope
-  list**, the record must *name the principle or item it refines and why*, in
-  the same edit — flagged at decision time, not left to be caught later. A14
-  (scores refine philosophy #4) is the model.
-- `docs/STATUS.md` is the single dated snapshot; verified counts (tests, laps,
-  sessions, findings, commits) live there so they can be checked over time.
-  Do not create a second status or handoff document — this is the one.
+Record decisions (e.g., scoring forks, M7 adoption, threshold defaults) and reasons in durable docs at decision time:
+- Log resolutions in `docs/SPEC.md` (amendment log) and/or `docs/PROJECT-BRIEF.md` (Decision log), dated.
+- If touching the **nine philosophy points** or **out-of-scope list**, name the refined item and why (A14 is the model).
+- `docs/STATUS.md` is the single dated snapshot for verified counts. Do not create other status/handoff docs.
 
 ## Build order (strict)
 
@@ -74,146 +74,75 @@ actually stands, and `docs/DEPLOY-SPEC.md` holds the open P/M/H tracks.
 - Install: `python3 -m pip install -e ".[dev]"`
 - Test: `python3 -m pytest`
 - CLI: `driverdna --help`
-- The owner runs the CLI from a local Windows shell. Any command block given to
-  them must be PowerShell-ready: full paths (not relative to some assumed cwd),
-  and no bash-only syntax (`&&` chaining, `$(...)`, POSIX env-var syntax).
-  `;` chains commands in PowerShell; `$env:NAME` reads/sets an env var.
+- Commands given to the owner (Windows shell) must be PowerShell-ready: full paths, no bash-only syntax (`&&`, `$(...)`, POSIX env vars). Use `;` to chain, `$env:NAME` for env vars.
 
 ## Testing rules
 
-- Provider (coach/chat) tests use the mocked provider only; tests never call live
-  APIs and never require secrets.
-- Determinism is tested mechanically: run the pipeline twice, byte-diff the
-  normalized JSON (sorted keys, fixed float precision, no wall-clock timestamps).
-- The fixture CSVs in `tests/fixtures/` are the regression anchor for the source
-  contract; synthetic traces cover landmark shapes, double-apex handling, and
-  detector edge cases.
-- API capabilities are documented from observed behavior (docs/garage61-api.md),
-  never assumed.
-- The suite stays runnable with `git clone && python3 -m pytest` — no secrets,
-  no server, no container. Postgres tests activate only when
-  `DRIVERDNA_TEST_DATABASE_URL` points at a *local* instance; browser tests
-  skip when Playwright or Chromium is absent.
+- Provider (coach/chat) tests use the mocked provider; tests never call live APIs or require secrets.
+- Determinism test: run pipeline twice, byte-diff normalized JSON (sorted keys, fixed precision, no wall-clock timestamps).
+- Fixture CSVs in `tests/fixtures/` anchor the source contract; synthetic traces cover landmark shapes and edge cases.
+- API capabilities are documented from observed behavior (`docs/garage61-api.md`), never assumed.
+- The suite stays runnable with `git clone && python3 -m pytest` (no secrets/server/container). Postgres tests run only if `DRIVERDNA_TEST_DATABASE_URL` is set; browser tests skip when Playwright/Chromium is absent.
 
 ## Development workflow (TDD)
 
-New features and bug fixes follow Red → Green → Refactor:
-
-1. **Red:** write a failing test first. Run the suite; confirm it fails for
-   the expected reason and nothing existing broke.
-2. **Green:** write minimum code to pass. Never modify test files in this
-   step — fix the test in Red first, then return to Green.
-3. **Refactor:** clean up with all tests green.
-
-Exempt: docs-only, config-only, and unmerged spike work. This stops an agent
-from writing both the answer and the grading rubric in one thought.
+New features/fixes use Red → Green → Refactor:
+1. **Red:** Write failing test. Confirm it fails as expected and breaks nothing else.
+2. **Green:** Write minimal code to pass. Do not edit test files here.
+3. **Refactor:** Clean up code with all tests green.
+Exempt: docs/config-only and unmerged spike work. Stops writing answer and rubric in one thought.
 
 ## Multi-agent working agreement
 
-More than one agent works on this repository, one at a time (usually because the
-owner hit a usage limit on another). The rules below make a handoff in either
-direction cheap, so no agent has to guess what the last one did.
+One agent works at a time. The rules below ensure cheap handoffs.
 
 ### Branches and merging
 
 - **Claude Code commits directly to `main`** (owner instruction, 2026-07-21).
   **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
   session by merging to `main`, or saying plainly why not.
-- **Every other agent works on a prefixed branch** and merges to `main` only
-  after CI is green: `gemini/<topic>` for Gemini CLI, `antigravity/<topic>` for
-  Antigravity.
-- Known property, not an oversight: CI gates *merges*, so a direct push to
-  `main` can still break it, and a branch cut afterwards inherits the breakage.
-  Push-triggered CI surfaces that within a minute rather than preventing it.
-  If `main` is red, fix it before starting new work.
+- **Other agents work on prefixed branch** (`gemini/<topic>` or `antigravity/<topic>`) and merge only after CI is green.
+- CI gates *merges*, so a direct push to `main` can break it. If `main` is red, fix it before starting new work.
 
 ### Commit attribution
 
-Every commit names the agent that wrote it, so `git log` alone answers "who did
-this and when". Use both trailers — `Agent:` is the machine-readable one
-(`git log --grep='^Agent: gemini-cli'` is exact), `Co-Authored-By:` keeps
-GitHub's attribution working:
-
+Every commit names the agent that wrote it. Use both trailers:
 ```
 Agent: gemini-cli
 Co-Authored-By: Gemini CLI <noreply@google.com>
-
-Agent: antigravity
-Co-Authored-By: Antigravity <noreply@google.com>
-
-Agent: claude-code
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+# Similarly for: antigravity (Antigravity <noreply@google.com>), claude-code (Claude Opus 5 <noreply@anthropic.com>)
 ```
 
 ### Start of session — every agent, every time
 
-1. `git pull`
-2. Read this file.
-3. `git log --oneline -20` — see what the previous agent did.
-4. Skim `docs/STATUS.md` "Verified counts" and `CLAUDE.md` "Current status".
-5. Run `python3 -m pytest` **before changing anything**, to establish a
-   baseline. Read the output; never blindly report it green — a suite that
-   was already red is not yours to be surprised by later.
+1. `git pull` and read this file.
+2. `git log --oneline -20` to see previous work.
+3. Skim `docs/STATUS.md` "Verified counts" and `CLAUDE.md` "Current status".
+4. Run `python3 -m pytest` before changing anything to establish a baseline. Never report it green blindly.
 
 ### End of session
 
-- Update `docs/STATUS.md`'s dated snapshot.
-- Record any decision per "Decision discipline" above — `docs/SPEC.md`
-  amendment log (next `A<n>`) and/or `docs/PROJECT-BRIEF.md` decision log,
-  dated.
-- Commit and push before the owner switches tools. **Two agents on one working
-  tree is the one failure mode no test can catch.**
+- Update `docs/STATUS.md` and log decisions per "Decision discipline" above.
+- Commit and push before the owner switches tools. Never leave local modifications unpushed.
 
 ### What CI does and does not cover
 
-`.github/workflows/tests.yml` runs the full suite on every push and on PRs to
-`main`, across Python 3.11 and 3.12, with a Postgres service container so the
-dual-backend tests actually execute — and a step fails the job if any test
-skipped for "no local Postgres configured", so a container that never came up
-cannot leave the A23 guards silently unrun. Rationale: the workflow's comments.
-
-It does **not** install Chromium, so the two UI-SPEC trust-gate tests
-(`tests/test_render_parity.py`, `tests/test_offline.py`) skip in CI — the
-owner's to run locally. Deliberate (a gate red by default gets ignored), but it
-means **green CI is not proof the browser trust gates hold**. Say so rather
-than implying full coverage.
+CI (`tests.yml`) runs the suite on pushes/PRs (Python 3.11/3.12) with a Postgres service container. It fails if Postgres tests skip due to missing infra.
+CI does NOT install Chromium; the two UI-SPEC tests (`test_render_parity.py`, `test_offline.py`) skip in CI. Green CI does not prove browser gates hold.
 
 ### Working with the durable docs
 
-- `docs/` is the project's memory and outranks anything in a chat transcript,
-  a tool's own "knowledge base", or a generated plan artifact. **If a
-  decision matters, it goes in the durable docs or it did not happen.**
-- Antigravity's Knowledge Base and generated artifacts (task lists, plans,
-  walkthroughs) are scratch, not project truth, and are not committed.
-- Do not restate this file's rules elsewhere — reference it. The one
-  exception is the non-negotiables block mirrored into
-  `.agents/rules/driverdna.md`, pinned byte-for-byte by
-  `tests/test_agent_contract.py`.
+- `docs/` is the project memory and outranks chat/transcripts/plans. Decisions must go in durable docs to count.
+- Antigravity's Knowledge Base and plans are scratch and not committed.
+- Reference rules; do not duplicate them except mirroring the non-negotiables block into `.agents/rules/driverdna.md`.
 
 ### Scope
 
-No area is off-limits to any agent — engine, AI layer, UI, docs. The
-guardrails are the constitution, the test suite, and CI, not a file list.
-That's exactly why the guardrails themselves are off-limits:
-
-- **Never weaken, delete, `skip`, `xfail`, or narrow an existing test to get
-  to green.** A failing test is a finding — record it and say so. Silencing
-  it converts a real defect into a false all-clear, and every downstream gate
-  starts lying.
-- **Never edit anything under `tests/fixtures/`.** Those are real recorded
-  laps, the regression anchor for the source contract and the A18 blind
-  acceptance test. Change the code to fit the evidence, never the reverse.
-- Changing a **number** the engine produces (a metric, score, or threshold
-  default) is a spec-level change: a `docs/SPEC.md` amendment, plus a model
-  version bump if the formula or weights move — never a quiet edit.
-- Changing the **grounding validator** (`coach/`, `chat/`) is the
-  highest-risk edit here. Its job is making "AI never produces a number"
-  mechanical, not requested — loosening it to pass a test defeats the point.
-- **Investigate bug reports.** Cross-reference UI reports against `docs/SPEC.md`
-  and engine payloads. Never implement a "fix" that contradicts engine rules
-  (e.g. filtering outliers).
-- **Propose major changes.** Architectural changes (e.g. collapsing services)
-  or destructive operations (history rewrites) need explicit owner approval
-  first.
-- **Reading laps to find engine gaps** follows `docs/LAP-ANALYSIS-PROTOCOL.md`
-  — observations only, every number quoted from the trace.
+All areas are open, but guardrails are off-limits:
+- **Never weaken, delete, `skip`, `xfail`, or narrow a test to pass.** Record failures instead.
+- **Never edit anything under `tests/fixtures/`**; change code to fit evidence.
+- Changing engine **numbers** (metrics, default thresholds) needs a `docs/SPEC.md` amendment and model version bump.
+- Never loosen the **grounding validator** (`coach/`, `chat/`) to pass a test.
+- Investigate bugs; never implement fixes that contradict engine rules (e.g. filtering outliers).
+- Propose major/architectural changes or history rewrites for explicit owner approval first.
+- Reading laps to find engine gaps follows `docs/LAP-ANALYSIS-PROTOCOL.md` — observations only, every number quoted from the trace.

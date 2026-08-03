@@ -658,16 +658,14 @@ rendering the rebuild report including the cleared-stale-phase notice. All
 five trust gates green; no route-list changes needed. Full record:
 PROJECT-BRIEF.md's decision log.
 
-## Verified counts (2026-07-27)
+## Verified counts (2026-07-29)
 
-Reproduced on this date after fixing the red test and adding the sync
-404/403 guard + UI bug fixes.
+Reproduced on this date after adding the Verification discipline rules.
 
 | Count | Value | How to reproduce |
 |---|---|---|
-| Tests | **passed, 1 failed** (the pre-existing `test_offline.py` Playwright timeout, unchanged). The 13 skips are all browser tests — Chromium absent; this is also why the known `test_offline` failure does not appear in some runs. | `python3 -m pytest` |
-| New tests this session | **3** in `tests/test_garage61_sync.py` (404/403 guard + auth-error propagation, A30) | `python3 -m pytest tests/test_garage61_sync.py -k "404 or 403 or auth_error"` |
-| `AGENTS.md` | **9,992 chars** (budget 11,000; Antigravity's silent cliff 12,000) | `python3 -c "print(len(open('AGENTS.md').read()))"` |
+| Tests | **710 passed, 32 skipped** (all skips due to missing Chromium/built SPA or local Postgres not configured). | `python3 -m pytest --basetemp=C:\Users\benja\driverdna\tmp\pytest` |
+| `AGENTS.md` | **8,341 chars** (budget 11,000; Antigravity's silent cliff 12,000) | `python3 -c "print(len(open('AGENTS.md', encoding='utf-8').read()))"` |
 
 ## Verified counts (2026-07-21; tests re-verified 2026-07-26)
 
