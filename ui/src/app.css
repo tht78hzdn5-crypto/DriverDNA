@@ -3,7 +3,7 @@
    "Design language v2"): condensed display face for structure labels, one
    top-right chamfer as the geometric tell, a real button system, pit-board
    stat tiles. Colours and colour grammar are unchanged from v1.
-   v3 "cockpit feel" + U7 mobile (SPEC.md A33, docs/UI-V3-PLAN.md): a
+   v3 "cockpit feel" + U7 mobile (SPEC.md A35, docs/UI-V3-PLAN.md): a
    chrome-only accent (--chrome, never a measurement), interactive
    micro-motion, a native <details> disclosure for methodology text, a
    wide-viewport two-column layout, and a mobile responsive pass at the
@@ -22,7 +22,7 @@ body {
   padding-left: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-right, 0px));
 }
-/* v3 "use of space" (SPEC.md A33): wide viewports get a two-column grid
+/* v3 "use of space" (SPEC.md A35): wide viewports get a two-column grid
    instead of one narrow stacked column; everything below ~48rem (U7
    mobile) stays a single stacked column, unchanged from v2. Pure layout —
    no view-logic change. */
@@ -167,7 +167,7 @@ a.btn-primary { color: var(--base); }
   .btn, .btn-primary { transform: none !important; }
 }
 
-/* --- Disclosure ("the methodology arrow", v3 SPEC.md A33) --------------
+/* --- Disclosure ("the methodology arrow", v3 SPEC.md A35) --------------
    Native <details>/<summary>: free keyboard + screen-reader behavior.
    Collapses derivation detail/methodology only — never the headline
    number, its n, or a gate_reason (UI-SPEC decision 7 stays binding). */
@@ -306,7 +306,7 @@ a.btn-primary { color: var(--base); }
 .chat-input { display: flex; gap: 0.5rem; }
 .chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }
 
-/* --- Score history chart (SPEC.md A34) — toggle chips + line chart ----- */
+/* --- Score history chart (SPEC.md A36) — toggle chips + line chart ----- */
 .history-legend { margin-top: 0; }
 .chip.toggle { cursor: pointer; background: var(--raised); border-width: 1px; }
 .chip.toggle.on { border-width: 2px; padding: 0.11rem 0.4rem; }

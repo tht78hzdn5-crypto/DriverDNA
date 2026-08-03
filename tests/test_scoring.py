@@ -430,7 +430,7 @@ def test_trend_ignores_undated_laps_in_bucketing(db):
 
 
 # --- _CohortCache: a per-bucket cache must never answer a different
-# bucket's query (A34 score history's one dangerous edit) ------------------
+# bucket's query (A36 score history's one dangerous edit) ------------------
 
 
 def test_bucket_score_cache_is_scoped_to_its_own_lap_pks(db):

@@ -31,7 +31,7 @@ _TOKENS = {
     "base": "#101318", "panel": "#171B22", "raised": "#1F242D", "line": "#2A303A",
     "text": "#E8EAED", "dim": "#8C93A0", "best": "#B48CFF", "ok": "#3ECF8E",
     "warn": "#E8A13C", "bad": "#E5484D", "accent": "#6EA8D8",
-    # v3 chrome-only accent (SPEC.md A33): never a measurement, so the
+    # v3 chrome-only accent (SPEC.md A35): never a measurement, so the
     # static reports have no legitimate use for it yet — present purely so
     # this dict stays byte-identical to ui/tokens.json's `color` group.
     "chrome": "#3FC7DE",

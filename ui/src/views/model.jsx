@@ -103,7 +103,7 @@ function Meter({ id, b }) {
   );
 }
 
-// Score history (SPEC.md A34, dm-hist-v1): each fundamental's own score
+// Score history (SPEC.md A36, dm-hist-v1): each fundamental's own score
 // across N date-ordered buckets of the driver's dated laps. All series
 // share one 0-100 axis (never normalized, never blended). Lines are
 // distinguished structurally (a neutral grey ramp + distinct dash
@@ -111,7 +111,7 @@ function Meter({ id, b }) {
 // accents — the same "identity is structural, never a verdict colour"
 // rule the three source-sections already follow. A null point (a bucket
 // with no scorable evidence) breaks the line rather than being
-// interpolated across or silently skipped (A34's binding rule) — enforced
+// interpolated across or silently skipped (A36's binding rule) — enforced
 // here by splitting each series into contiguous runs of non-null points
 // and drawing one <polyline> per run.
 const HISTORY_STYLE = {

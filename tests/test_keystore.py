@@ -1,4 +1,4 @@
-"""SPEC.md A35: per-user AI key encryption at rest (BYOK)."""
+"""SPEC.md A37: per-user AI key encryption at rest (BYOK)."""
 
 from __future__ import annotations
 

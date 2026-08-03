@@ -1,4 +1,4 @@
-"""Methodology text for the disclosure pattern (UI v3, SPEC.md A33).
+"""Methodology text for the disclosure pattern (UI v3, SPEC.md A35).
 
 The engine, not the SPA, owns the words: `ui/src/views/shared.jsx`'s
 `<Methodology id="..."/>` and the eventual static-report equivalent both
@@ -174,10 +174,10 @@ METHODOLOGY: dict[str, str] = {
         "rather than guessed — 'insufficient data' is a real answer here, "
         "not a gap in the tool."
     ),
-    # --- the newcomer register (SPEC.md A33) --------------------------------
+    # --- the newcomer register (SPEC.md A35) --------------------------------
     # One short, non-patronizing line acknowledging the moment — separate
     # from the mechanism explanations above, and never attached to a
-    # number. Deliberately plain rather than idiom-heavy (A33's "at most
+    # number. Deliberately plain rather than idiom-heavy (A35's "at most
     # one idiom per screen" is a ceiling, not a quota to hit). No entry for
     # unclassified/external: there's no clean cause to acknowledge, and a
     # generic "don't worry about it" for a lap the engine itself couldn't

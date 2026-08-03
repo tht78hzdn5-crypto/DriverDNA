@@ -1,4 +1,4 @@
-"""Per-user AI provider keys, encrypted at rest (SPEC.md A35, "BYOK").
+"""Per-user AI provider keys, encrypted at rest (SPEC.md A37, "BYOK").
 
 Reverses the env-only-secrets non-negotiable for exactly this one case, by
 owner decision, recorded there rather than left implied: a *user-supplied*
@@ -9,7 +9,7 @@ DRIVERDNA_DATABASE_URL, DRIVERDNA_SESSION_SECRET) stays env-only, unchanged
 
 AES-256-GCM (the `cryptography` package — stdlib ships no AEAD, and hand-
 rolling encryption would be strictly worse than the one well-reviewed
-dependency this justifies, SPEC.md A35's own recorded reasoning). The
+dependency this justifies, SPEC.md A37's own recorded reasoning). The
 key-encryption key is derived from `DRIVERDNA_SESSION_SECRET` via
 `hashlib.scrypt` — the same primitive `ui/auth.py` already uses for
 passwords, with its own fixed domain-separation salt so this derived key

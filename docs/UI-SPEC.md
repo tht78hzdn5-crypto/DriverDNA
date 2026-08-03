@@ -217,7 +217,7 @@ gate requires a `.num` per route, so garage is excluded there exactly as
 construction (integer counts + pooled `/api/laps` lap times), and seeding
 the shared fixture would perturb the determinism and report-snapshot tests.
 
-## Design language v3 — "cockpit feel" (owner-directed, 2026-07-29, SPEC.md A33)
+## Design language v3 — "cockpit feel" (owner-directed, 2026-07-29, SPEC.md A35)
 
 Owner directive: the v2 language is correct and joyless — buttons with no
 press feel, no way to ask *how was that computed*, no view of progress over
@@ -280,7 +280,7 @@ beside sync; cohort: track map beside the findings column) — pure layout,
 no view-logic change, and the same single-column stack below ~48rem that
 U7 (mobile) requires anyway.
 
-**Score-over-time chart (SPEC.md A34, `dm-hist-v1`).** A new panel on the
+**Score-over-time chart (SPEC.md A36, `dm-hist-v1`).** A new panel on the
 existing `#/model` route (not a new route — the six-tab shell is a v2
 invariant, and `#/model` is already covered by both browser trust-gate
 route lists). Plots each Driver Model fundamental's own score across N
@@ -349,7 +349,7 @@ detail: `docs/UI-V3-PLAN.md` Track A5, `docs/DEPLOY-SPEC.md` Track M.
 
   Tests: `tests/test_cockpit_api.py` (10 cases — the binding parity/token tests plus idempotency and body-scoping coverage) and `tests/test_cockpit_ui.py` (2 browser-driven cases: the no-token guidance state, and the rebuild confirm/cancel-then-confirm flow), mirroring `test_upload_api.py` / `test_upload_ui.py`'s own split. No route-list changes were needed (condition 6): both buttons live on already-covered routes (`#/`, `#/cohort/:slug`), and their result panels render only after a click, so the static crawlers never see them — consistent with `#/upload`'s existing exclusion.
 
-- **U7 — Design language v3 + Mobile/PWA (owner-directed 2026-07-29, specced above; SPEC.md A33/A34; absorbs DEPLOY-SPEC Track M, renamed to avoid colliding with this document's own U5).** Chrome-only accent tokens, ≤180ms interactive micro-motion, the methodology disclosure (`.disclosure`, `GET /api/explain`), the Driver Model score-history chart (`GET /api/driver/score-history`, `dm-hist-v1`), wide-viewport two-column layout, and the mobile responsive pass + PWA shell (manifest, service worker, cache-the-shell-never-the-numbers). Full plan: `docs/UI-V3-PLAN.md`.
+- **U7 — Design language v3 + Mobile/PWA (owner-directed 2026-07-29, specced above; SPEC.md A35/A36; absorbs DEPLOY-SPEC Track M, renamed to avoid colliding with this document's own U5).** Chrome-only accent tokens, ≤180ms interactive micro-motion, the methodology disclosure (`.disclosure`, `GET /api/explain`), the Driver Model score-history chart (`GET /api/driver/score-history`, `dm-hist-v1`), wide-viewport two-column layout, and the mobile responsive pass + PWA shell (manifest, service worker, cache-the-shell-never-the-numbers). Full plan: `docs/UI-V3-PLAN.md`.
 
 Strict order; a milestone begins only when the prior one's gates pass.
 
@@ -432,8 +432,8 @@ Full record: PROJECT-BRIEF.md decision log, 2026-07-22.
 **Owner amendment (2026-07-29):** design language v3 ("cockpit feel") and
 mobile/PWA (U7) adopted at spec stage — owner directive: the UI isn't fun to
 engage with, mobile still has to ship, and both were merged into one build
-pass because they touch the same CSS and the same views (SPEC.md A33/A34,
-`docs/UI-V3-PLAN.md`). Adds the score-history chart (SPEC.md A34), the
+pass because they touch the same CSS and the same views (SPEC.md A35/A36,
+`docs/UI-V3-PLAN.md`). Adds the score-history chart (SPEC.md A36), the
 methodology disclosure pattern, and absorbs DEPLOY-SPEC Track M as U7.
 Colors, color grammar, trust gates, and the philosophy are untouched; the
 one addition to trust-gate scope is the two new endpoints

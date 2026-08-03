@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { get, send } from "../api.js";
 import { Loading, useFetch } from "../app.jsx";
 
-// AI provider keys (SPEC.md A35, "BYOK"): write-only in one direction — the
+// AI provider keys (SPEC.md A37, "BYOK"): write-only in one direction — the
 // key is sent once over HTTPS and never read back; GET returns only a
 // fingerprint. A type="password" input, never a plain text field, and the
 // key is never logged to the browser console or held in component state

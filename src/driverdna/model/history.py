@@ -1,7 +1,7 @@
-"""A34: score history (`dm-hist-v1`) — each Driver Model fundamental's own
+"""A36: score history (`dm-hist-v1`) — each Driver Model fundamental's own
 score across N contiguous, date-ordered buckets of a driver's dated laps.
 
-This is the UI's score-over-time chart's engine source (SPEC.md A34,
+This is the UI's score-over-time chart's engine source (SPEC.md A36,
 docs/UI-V3-PLAN.md Track A4). It reuses `model/scoring.py`'s
 `_bucket_score`/`_CohortCache` — the exact machinery M6's `_trend` already
 uses for its own two buckets — generalized from 2 buckets to
@@ -9,7 +9,7 @@ uses for its own two buckets — generalized from 2 buckets to
 number**: no formula or weight changes, so `SCORING_MODEL_VERSION` is
 untouched; only this series' own shape gets a version (`SERIES_VERSION`).
 
-Binding (A34): a bucket with no scorable evidence for a fundamental is a
+Binding (A36): a bucket with no scorable evidence for a fundamental is a
 null with a stated reason — never interpolated, never averaged into a
 smooth line that didn't happen. A no_signal fundamental (the engine never
 scores it, M6 rule) has no series entry at all, same as it has no score

@@ -1,10 +1,10 @@
-"""A34: score history (dm-hist-v1) — model/history.py's score_history()
+"""A36: score history (dm-hist-v1) — model/history.py's score_history()
 generalizes M6 trend's own earlier/recent bucket machinery from 2 buckets
 to N, reusing _bucket_score/_CohortCache verbatim. Two things are load-
 bearing and tested directly: a 2-bucket run must reproduce _trend's own
 two scores exactly (proof the generalization didn't drift), and a bucket
 with no scorable evidence must render as a stated gap, never a guessed or
-interpolated number (SPEC.md A34's binding rule)."""
+interpolated number (SPEC.md A36's binding rule)."""
 
 from __future__ import annotations
 

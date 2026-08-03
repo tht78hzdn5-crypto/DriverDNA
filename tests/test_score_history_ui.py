@@ -1,4 +1,4 @@
-"""Browser-driven check for the populated score-history chart (SPEC.md A34).
+"""Browser-driven check for the populated score-history chart (SPEC.md A36).
 
 The shared `tests/fixtures/` DB is deliberately undated (per its own
 manifest comment and UI-SPEC's "Design language v2" precedent for the

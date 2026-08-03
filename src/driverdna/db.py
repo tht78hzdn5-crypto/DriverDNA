@@ -453,7 +453,7 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE coach_outputs ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude';
     """,
-    # 014 - per-user AI provider keys, BYOK (SPEC.md A35). Reverses the
+    # 014 - per-user AI provider keys, BYOK (SPEC.md A37). Reverses the
     # env-only-secrets non-negotiable for exactly this one case, recorded
     # there rather than left implied. ciphertext/nonce are AES-GCM
     # (cryptography, coach/keystore.py); fingerprint is a short, non-secret
@@ -1614,7 +1614,7 @@ class Database:
                 admitted.append(corner_id)
         return admitted
 
-    # --- per-user AI provider keys (SPEC.md A35, BYOK) -----------------------
+    # --- per-user AI provider keys (SPEC.md A37, BYOK) -----------------------
 
     def store_user_api_key(
         self, *, provider: str, ciphertext: str, nonce: str, fingerprint: str,
@@ -1847,7 +1847,7 @@ class Database:
         driver-facing "how many of your laps taught me something" count.
         Empty metric/detector sets (e.g. vision) return 0, honestly.
 
-        `lap_pks` (M6 trend / score-history, A34) restricts to a date
+        `lap_pks` (M6 trend / score-history, A36) restricts to a date
         bucket's laps, same mechanism as `phase_history`/`self_metric_table`;
         None (every non-bucketed caller) means no restriction.
         """
@@ -1905,7 +1905,7 @@ class Database:
 
     def dated_self_laps(self, driver: str) -> list[tuple[int, str]]:
         """Same rows and ordering as `dated_self_lap_pks`, paired with each
-        lap's `lap_date` string — A34 score history's bucket-label source
+        lap's `lap_date` string — A36 score history's bucket-label source
         (the date range a bucket actually spans), kept as a sibling method
         rather than changing `dated_self_lap_pks`'s return shape so its
         existing callers (M6 trend) are untouched."""

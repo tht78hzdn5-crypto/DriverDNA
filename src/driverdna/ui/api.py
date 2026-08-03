@@ -509,7 +509,7 @@ def create_app(
         """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
         (Claude or Gemini per `config.coach.provider`); tests inject a
         mocked provider here, same pattern as the CLI's `chat` command.
-        `api_key`, given (SPEC.md A35, BYOK), is the caller's own decrypted
+        `api_key`, given (SPEC.md A37, BYOK), is the caller's own decrypted
         key, resolved by the caller from `user_api_keys` — never read from
         a request body here."""
         if chat_provider_factory is not None:
@@ -521,7 +521,7 @@ def create_app(
 
     def _resolve_byok_key(db: Database, provider_name: str) -> str | None:
         """This account's own decrypted key for `provider_name` (SPEC.md
-        A35), or None to fall through to the server-side env key/error —
+        A37), or None to fall through to the server-side env key/error —
         the exact meaning `api_key=None` already carries in every provider
         class. None (not an exception) whenever BYOK genuinely isn't
         available here: no session_secret configured, no key set, or a
@@ -586,7 +586,7 @@ def create_app(
 
     @app.get("/api/driver/score-history")
     def driver_score_history(request: Request) -> Response:
-        """Pass-through of model.history.score_history (SPEC.md A34) — the
+        """Pass-through of model.history.score_history (SPEC.md A36) — the
         score-over-time chart's data. Same "driver = the first cohort's
         driver label" resolution build_driver_payload uses; None (no
         cohorts yet) returns the same unavailable shape score_history
@@ -935,7 +935,7 @@ def create_app(
     @app.get("/api/explain")
     def explain_view() -> dict[str, str]:
         """The methodology text behind the v3 disclosure pattern (SPEC.md
-        A33) — a static dict, no DB, no computation; same shape as
+        A35) — a static dict, no DB, no computation; same shape as
         /api/config's pass-through of describe_key."""
         return dict(sorted(METHODOLOGY.items()))
 
@@ -949,13 +949,13 @@ def create_app(
                 )
             ]
 
-    # --- per-user AI keys (SPEC.md A35, BYOK) --------------------------------
+    # --- per-user AI keys (SPEC.md A37, BYOK) --------------------------------
     #
     # A user's own provider key, encrypted at rest (coach/keystore.py).
     # Write-only in one direction: PUT accepts the raw key over HTTPS, once;
     # GET returns only a fingerprint, never the key, matching the U6
     # precedent for GARAGE61_TOKEN ("secrets never transit the browser") —
-    # narrowed here (SPEC.md A35) for exactly the case where the secret is
+    # narrowed here (SPEC.md A37) for exactly the case where the secret is
     # by definition supplied by the browser, but it is still NEVER echoed
     # back by a read endpoint. BYOK requires a configured
     # DRIVERDNA_SESSION_SECRET (the key-encryption key's source); the local,

@@ -69,7 +69,7 @@ discipline, mirrored in SPEC.md A23 and PROJECT-BRIEF.md's decision log.
 
 # Track P — Provider abstraction + Gemini
 
-> **2026-07-29 update (SPEC.md A35, `docs/UI-SPEC.md` A35, `docs/UI-V3-PLAN.md`
+> **2026-07-29 update (SPEC.md A37, `docs/UI-SPEC.md` A37, `docs/UI-V3-PLAN.md`
 > Track C):** built as scheduled below, plus a new bring-your-own-key layer
 > not in this document's original design — the owner's Gemini identity ask
 > ("users spend their own usage") turned out not to be deliverable via
@@ -174,7 +174,7 @@ machinery.
 
 **Built 2026-08-02** (docs/UI-V3-PLAN.md Track C1) — the seam, translation,
 and BYOK layer are built and mock-tested; the live acceptance run
-**completed 2026-08-02** (Track C3, SPEC.md A36) — see below:
+**completed 2026-08-02** (Track C3, SPEC.md A38) — see below:
 
 - `coach.provider` (default `"gemini"`, matching this doc's own text) and
   `coach.gemini_model` (default `gemini-3.5-flash`) landed in `config.py`.
@@ -218,7 +218,7 @@ and BYOK layer are built and mock-tested; the live acceptance run
   is imported at module level anywhere in this codebase (verified by grep),
   so the move is additive — an existing install with `anthropic` already
   present is unaffected.
-- **Done 2026-08-02 (Track C3, SPEC.md A36):** the owner supplied a real
+- **Done 2026-08-02 (Track C3, SPEC.md A38):** the owner supplied a real
   `GEMINI_API_KEY` for one live session (rotated immediately after — never
   persisted, never committed, used only as a transient env var, never
   written to any file in this repo). `driverdna coach` was run against the
@@ -245,12 +245,12 @@ and BYOK layer are built and mock-tested; the live acceptance run
   through `GeminiChatProvider` also passed on the first attempt (chat
   already had its regenerate-once loop and needed no prompt change),
   citing real evidence. **The acceptance gate this section named is now
-  met.** Full detail: SPEC.md A36, `docs/STATUS.md`'s 2026-08-02 snapshot.
+  met.** Full detail: SPEC.md A38, `docs/STATUS.md`'s 2026-08-02 snapshot.
 
-**Track C2 built 2026-08-02** (SPEC.md A35, docs/UI-V3-PLAN.md Track C2) —
+**Track C2 built 2026-08-02** (SPEC.md A37, docs/UI-V3-PLAN.md Track C2) —
 the per-user BYOK layer this doc didn't originally design (it predates the
 owner's decision that "own usage" means bring-your-own-key, not Google
-OAuth — see SPEC.md A35 for the investigation that produced that call):
+OAuth — see SPEC.md A37 for the investigation that produced that call):
 
 - Migration 014: `user_api_keys` (`owner_user_pk`, `provider`, `ciphertext`,
   `nonce`, `fingerprint`, `created_at`), unique on `(owner_user_pk,
@@ -310,7 +310,7 @@ arrays are not sent unless the owner explicitly turns that on.
 `coach.provider` back to `claude`, or to a paid Gemini tier, changes this and
 is a one-key config change through the audited path.
 
-**BYOK (Track C2, SPEC.md A35)**: when an account has set its own key, that
+**BYOK (Track C2, SPEC.md A37)**: when an account has set its own key, that
 account's coach/chat calls run against Google's free tier under *that
 key's own* project — the same data-exposure tradeoff above applies, just
 billed and rate-limited against the user's own quota rather than the

@@ -1,4 +1,4 @@
-"""GET /api/explain (methodology disclosure, SPEC.md A33): the endpoint is a
+"""GET /api/explain (methodology disclosure, SPEC.md A35): the endpoint is a
 pass-through of driverdna.explain.METHODOLOGY, and every id a JSX view
 actually references must exist in that dict — a typo'd id must fail here,
 at test time, not render silently as nothing in the browser."""

@@ -1,4 +1,4 @@
-"""SPEC.md A35: per-user AI keys (BYOK) — write-only in one direction (PUT
+"""SPEC.md A37: per-user AI keys (BYOK) — write-only in one direction (PUT
 accepts the raw key; GET/nothing ever echoes it back), encrypted at rest,
 and isolated per account. Mirrors test_auth_api.py's real-login pattern
 rather than mocking the auth layer, so the account isolation is genuine.

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 
-// Methodology disclosure ("the arrow", SPEC.md A33): text comes from the
+// Methodology disclosure ("the arrow", SPEC.md A35): text comes from the
 // engine (GET /api/explain), never hand-written per view, so the SPA and a
 // future static-report equivalent can't drift onto two different
 // explanations of the same figure. One shared fetch — every <Methodology>

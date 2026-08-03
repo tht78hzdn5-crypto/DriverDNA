@@ -376,7 +376,7 @@ class _CohortCache:
     """Pre-fetched per-cohort query results, shared across fundamentals.
 
     `lap_pks` records which evidence scope this instance was built for
-    (None = full history; a frozenset = one date-bucket, M6 trend / A34
+    (None = full history; a frozenset = one date-bucket, M6 trend / A36
     score history). The three component functions above only reuse
     `detectors`/`metrics`/`losses` from a cache whose `lap_pks` matches the
     call's own `lap_pks` exactly — a cache built for one bucket must never
@@ -424,7 +424,7 @@ def _score_components(
     cache: _CohortCache | None = None,
 ) -> dict[str, _Component]:
     """The three score components for one fundamental. `lap_pks` (M6 trend,
-    A34 score history) restricts the evidence to a date-bucket's laps; None
+    A36 score history) restricts the evidence to a date-bucket's laps; None
     = full history. `cache`, if given, must have been built for this same
     `lap_pks` scope (or be windows-only-reusable — see `_CohortCache`) —
     each component function checks `cache.lap_pks == lap_pks` itself rather
@@ -453,7 +453,7 @@ def _bucket_score(
     """This fundamental's score computed over one date-bucket's laps only —
     same machinery as the full-history score, just lap-pk-filtered. `cache`
     is optional (M6's `_trend`, computing exactly two buckets, doesn't
-    bother); A34's score history builds one `_CohortCache` per bucket and
+    bother); A36's score history builds one `_CohortCache` per bucket and
     reuses it across all 7 fundamentals' calls for that bucket, which is
     what turns N buckets x 7 fundamentals from N*7 uncached per-cohort query
     sets into just N."""

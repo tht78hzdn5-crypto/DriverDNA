@@ -121,7 +121,7 @@ Nothing in Tracks A–C builds until these are written, because each later step
 cites them. Add to `docs/SPEC.md`'s amendment log (last entry is **A32**) and
 mirror the design detail into `docs/UI-SPEC.md` / `docs/DEPLOY-SPEC.md`.
 
-**A33 — Design language v3 ("cockpit feel").** A presentation amendment to
+**A35 — Design language v3 ("cockpit feel").** A presentation amendment to
 UI-SPEC's v2 section, which currently declares all eleven token colours and the
 motion rule untouched. v3 changes four things and nothing else:
 
@@ -148,7 +148,7 @@ motion rule untouched. v3 changes four things and nothing else:
   visible, keyboard-reachable, and labelled. Nothing about UI-SPEC decision 7
   (suppression is visible, with its reason and progress) changes.
 
-**A34 — score history (`dm-hist-v1`).** A new deterministic engine output: each
+**A36 — score history (`dm-hist-v1`).** A new deterministic engine output: each
 fundamental's own score over N contiguous date-ordered buckets of the driver's
 dated laps, from the same `_bucket_score` machinery `trend` already uses. It
 **produces no new kind of number** — no formula changes, no weights move, so
@@ -158,7 +158,7 @@ because a chart makes them more visible, not less true. Binding: **a bucket with
 no scorable evidence is a null with a stated reason and renders as a gap — never
 interpolated, and no line is drawn across it.**
 
-**A35 — per-user AI keys (BYOK).** Reverses two written rules, by owner decision
+**A37 — per-user AI keys (BYOK).** Reverses two written rules, by owner decision
 (D1), and must say so rather than eliding it:
 
 - `AGENTS.md` non-negotiable *"secrets are env-only: never persisted, printed, or
@@ -262,7 +262,7 @@ score_history(db, *, driver, config) -> {
   `(lap_date, lap_pk)` — **the exact ordering `_trend` uses.** Add a test that a
   2-bucket run reproduces `_trend`'s own two scores exactly; that is what proves
   the generalisation didn't drift.
-- Each bucket's score via the existing `_bucket_score`. No new maths (A34).
+- Each bucket's score via the existing `_bucket_score`. No new maths (A36).
 - **Performance, and the one dangerous edit in this plan.** Bucketed scoring is
   currently uncached by construction (every cache branch is gated on
   `lap_pks is None`), so 6 buckets × 7 fundamentals re-queries per cohort every
@@ -295,7 +295,7 @@ lists, so the chart is covered by the existing gates with no route-list edit.
   area is not even a well-defined statistic, since it changes when the spokes are
   reordered. Same reasoning that made the Driver Model tab a pyramid on
   2026-07-21. (`CLAUDE.md` cites "philosophy #6" for that earlier decision; the
-  principle it actually rests on is **#4** — fix that citation when writing A33.)
+  principle it actually rests on is **#4** — fix that citation when writing A35.)
 
 **Two test-gate consequences, both easy to miss:**
 
@@ -354,7 +354,7 @@ Add to each event, from `coaching/ontology.py`: `coaching_expression`, `drill`,
 the payload).
 
 Add to `explain.py`, keyed by classification: `plain_what`, `plain_why`,
-`what_to_practise`, and the **one** newcomer-register line (A33). Deterministic
+`what_to_practise`, and the **one** newcomer-register line (A35). Deterministic
 static text — works offline, with no API key, and cannot fail a validator.
 
 New `IncidentCard` in `ui/src/views/shared.jsx`, replacing the raw block in
@@ -434,7 +434,7 @@ DEFAULT 'claude'` (honest — every existing row was Claude), surfaced in
 plus the date it was verified — DEPLOY-SPEC's own standing rule, and A28's
 standing lesson about inference presented as fact.
 
-### C2 — the BYOK layer (new; A35)
+### C2 — the BYOK layer (new; A37)
 
 - Migration: `user_api_keys` (`owner_user_pk`, `provider`, `ciphertext`, `nonce`,
   `fingerprint`, `created_at`), unique on (`owner_user_pk`, `provider`).
@@ -492,7 +492,7 @@ the entire point of the grounding contract.
 - **The UI never computes a measurement.** Every on-screen number must exist in
   the payload or a read endpoint. Layout math only.
 - Changing a number the engine produces is a spec-level change: a SPEC.md
-  amendment, plus a model-version bump if a formula or weight moves. A34 is
+  amendment, plus a model-version bump if a formula or weight moves. A36 is
   explicit that the score history moves neither.
 - The grounding validator (`coach/`, `chat/`) is the highest-risk edit here.
   Additive only.

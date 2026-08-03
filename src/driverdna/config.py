@@ -288,7 +288,7 @@ class CoachConfig(_Section):
     max_tokens: int = Field(
         default=16000,
         description="Response token budget per provider call. Raised from "
-        "4000 (SPEC.md A33's live acceptance run, 2026-08-02): "
+        "4000 (SPEC.md A35's live acceptance run, 2026-08-02): "
         "gemini-3.5-flash is a thinking model whose internal reasoning "
         "tokens count against this same budget, so 4000 was silently "
         "exhausted by thinking with zero output text on a real coach/chat "
@@ -511,7 +511,7 @@ class ModelConfig(_Section):
     history_buckets: int = Field(
         default=6,
         description="Number of contiguous, date-ordered, equal-count buckets "
-        "the score-history chart (SPEC.md A34) splits a driver's dated laps "
+        "the score-history chart (SPEC.md A36) splits a driver's dated laps "
         "into. The whole series reads 'unavailable' unless there are at "
         "least history_buckets x trend_min_laps_per_bucket dated laps in "
         "total — the same per-bucket floor M6 trend already uses for its own "

@@ -94,7 +94,7 @@ class CoachProvider(Protocol):
 class ClaudeCoachProvider:
     def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is passed straight to the SDK client instead of
-        the env var (SPEC.md A35, BYOK) — a user's own decrypted key,
+        the env var (SPEC.md A37, BYOK) — a user's own decrypted key,
         already resolved by the caller (never read from a request body
         here). `api_key=None` (every non-BYOK caller) is the original
         behavior: `ANTHROPIC_API_KEY`, env-only, unchanged."""
@@ -133,7 +133,7 @@ class GeminiCoachProvider:
 
     def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
-        A35), passed straight to the SDK client instead of the env var.
+        A37), passed straight to the SDK client instead of the env var.
         `api_key=None` (every non-BYOK caller): `GEMINI_API_KEY`, env-only,
         unchanged."""
         if api_key is None and not os.environ.get("GEMINI_API_KEY"):
@@ -167,7 +167,7 @@ def make_coach_provider(
 ) -> CoachProvider:
     """Selects Claude or Gemini per `config.coach.provider` — the one place
     this branch lives, reused by the CLI's `coach` command and the API's
-    equivalent factory (SPEC.md A35: `api_key`, given, is a user's own
+    equivalent factory (SPEC.md A37: `api_key`, given, is a user's own
     decrypted BYOK key; None uses the env-only server key/fallback, the
     original behavior)."""
     if config.coach.provider == "gemini":

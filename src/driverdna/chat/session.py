@@ -83,7 +83,7 @@ class ChatProvider(Protocol):
 class ClaudeChatProvider:
     def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
-        A35). `api_key=None` (every non-BYOK caller): `ANTHROPIC_API_KEY`,
+        A37). `api_key=None` (every non-BYOK caller): `ANTHROPIC_API_KEY`,
         env-only, unchanged."""
         import os
 
@@ -196,7 +196,7 @@ class GeminiChatProvider:
 
     def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
         """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
-        A35). `api_key=None` (every non-BYOK caller): `GEMINI_API_KEY`,
+        A37). `api_key=None` (every non-BYOK caller): `GEMINI_API_KEY`,
         env-only, unchanged."""
         import os
 
@@ -281,7 +281,7 @@ def make_chat_provider(
 ) -> ChatProvider:
     """Selects Claude or Gemini per `config.coach.provider` — the one place
     this branch lives, reused by the CLI's `chat` command and `ui/api.py`'s
-    equivalent factory (SPEC.md A35: `api_key`, given, is a user's own
+    equivalent factory (SPEC.md A37: `api_key`, given, is a user's own
     decrypted BYOK key; None uses the env-only server key/fallback, the
     original behavior)."""
     if config.coach.provider == "gemini":
