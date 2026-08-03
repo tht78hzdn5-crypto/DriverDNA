@@ -258,6 +258,24 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-08-03 — Reference-geometry adoption drafted at design stage (R4,
+  docs/REFERENCE-LAPS.md), awaiting owner go.** After A34 (below), the owner
+  asked the fair follow-up: isn't a reference lap the gold standard? Answer
+  given: yes for *what to aim at*, not for *the ruler* — the corner map is the
+  coordinate system measurements are taken in, and A34 exists so it stays the
+  driver's own. But there is a legitimate version of the owner's intuition (a
+  driver who has always run a corner wide would benefit from a better line
+  replacing their own map), so R4 drafts it as an explicit, opt-in, versioned,
+  reversible capability — never a side effect of a normal reference import.
+  **Not built. Flagged, not decided:** R4 is in real tension with AGENTS.md's
+  non-negotiable ("reference laps never enter self history, trends, or
+  consistency statistics") — building it changes self phase times from
+  reference data, the same on-screen shape as the bug A34 just fixed, even
+  though the mechanism (explicit driver-initiated action, auditable, versioned)
+  is closer in kind to `ConfigStore`'s propose/confirm/revert than to a silent
+  leak. That reading requires the owner's explicit sign-off before any code —
+  recorded as open in REFERENCE-LAPS.md rather than resolved here, per
+  decision discipline.
 - **2026-08-03 — The reference-lap feature's first real run broke its own
   guarantee (A34).** The owner supplied a reference lap and six matching Mustang
   GT4 laps at Spa, so the vs-reference path finally ran on real data. It works

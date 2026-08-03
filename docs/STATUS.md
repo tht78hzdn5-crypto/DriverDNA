@@ -1,5 +1,36 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-03 (later).** Owner supplied 4 more real Mustang GT4
+laps at Spa (one landed as a content-hash duplicate of an already-imported
+lap, correctly caught), taking the self cohort from 6 to **10 laps**. Rerun
+against a scratch DB with the A34 fix live: at 10 laps, `min_phase_samples=10`
+finally clears for **43 of 150 findings** — the first time volume alone has
+cleared that gate on this cohort. All 43 are still hidden, now behind a
+*different* wall: `insufficient data: 0 session(s) < 2`. Manually-imported
+laps carry no `session_key` (only `sync` populates it from the API), so a
+cohort built entirely by upload can satisfy every sample-count gate and still
+show nothing. Not a bug — the gate is doing its job — but a concrete, specific
+answer to "what's blocking me now": sync this car/track instead of
+uploading it, or the sample-count win is wasted.
+
+Also asked, reasonably: isn't a reference lap the gold standard, so why can't
+it define the map? Answered and recorded as **R4** in
+`docs/REFERENCE-LAPS.md` (design stage, **not built**, owner's explicit go
+required before any code): a reference lap is the right target to aim at, but
+the corner map is the ruler measurements are taken through, and A34 exists
+precisely so the ruler stays the driver's own. R4 drafts a legitimate,
+opt-in, versioned, reversible path to deliberately adopt a reference's
+geometry — explicitly flagged as being in tension with AGENTS.md's
+"reference laps never enter self history" non-negotiable, since the
+on-screen effect (self phase times changing from reference data) is the same
+shape as the bug just fixed, even though the mechanism is closer to
+`ConfigStore`'s driver-initiated propose/confirm/revert. See
+`docs/PROJECT-BRIEF.md`'s 2026-08-03 decision-log entry.
+
+`docs/REFERENCE-LAPS.md` also corrected: R0's "reference-first-in-empty-cohort
+... untested" note was true when written and is false now — A34 both tested
+and refused it. R0 and R1 marked done in that doc for the first time.
+
 **Snapshot date: 2026-08-03.** Reference-lap isolation restored at the corner
 map (SPEC.md A34), on `claude/engine-validation-lap-data-388xct`. The owner
 supplied a reference lap and then six of their own Mustang GT4 laps at Spa, so

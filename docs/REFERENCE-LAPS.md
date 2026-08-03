@@ -85,9 +85,13 @@ possible (gap G1 below).
 
 Constraint to respect: the cohort's corner map freezes from laps present at
 build time. Import your own laps first so the map is *yours*, then add
-references — the reference then joins onto your corner identities. (What
-happens if a reference lap is the *first ever* lap in a cohort is untested;
-R0 below pins it rather than guessing.)
+references — the reference then joins onto your corner identities. **A
+reference lap can no longer be the first lap in a cohort — it is refused,
+itemized, before anything is written (SPEC.md A34).** Before A34 this was
+untested and, worse, silently wrong: a reference lap founded the map outright,
+and two other paths (corner admission, `rebuild-map`'s refreeze) let reference
+observations pull the map's centroids and phase windows even in an
+already-self-founded cohort. Fixed self-only at all three; see A34.
 
 ## 3. Gaps
 
@@ -115,14 +119,25 @@ R0 below pins it rather than guessing.)
 
 ## 4. The plan — R-track (design stage; build on owner go)
 
-- **R0 — Feed it and pin it (no code).** Owner runs the recipe above with
-  one real reference CSV. Acceptance: the vs-reference section appears;
-  self numbers byte-identical before/after (trust condition 3, observed
-  live); the reference-first-in-empty-cohort question answered by a small
-  test, documented here. R0 is the gate for everything below — no UI work
-  for a feature the instrument's owner hasn't exercised once.
-- **R1 — See & understand (UI-only; folded into U5, see UI-SPEC.md
-  "Reference-lap visibility").** The owner's ask restated: reference laps
+- **R0 — Feed it and pin it (no code). Done (2026-08-03, SPEC.md A34).**
+  The owner ran the recipe for real: a Mustang GT4 reference lap (10.73 s
+  faster) against a real, growing self cohort at the same car/track. All
+  three acceptance criteria are now met, the last two only after a genuine
+  bug was found and fixed by running this for the first time: the
+  vs-reference section appears (31 findings on 6 self laps, 30 on 10, still
+  gated below `min_phase_samples`); self numbers are byte-identical
+  before/after **once A34 landed** — before it, they were not (11/14
+  corners moved, 154/191 of the owner's own phase times changed, up to
+  1.57 s, purely from the reference lap's presence); and the
+  reference-first-in-empty-cohort question is answered by refusal, not
+  guessing (`ReferenceCannotFoundMap`, both import surfaces, itemized,
+  nothing partially written). R0 was the gate for R1 (built, see below) —
+  it is also, retroactively, the reason A34 exists: **a feature that has
+  never run on real data has never been tested, however green its tests
+  are.**
+- **R1 — See & understand. Built (2026-07-22, folded into U5 — see
+  UI-SPEC.md "Reference-lap visibility" and CLAUDE.md's U5 status entry).**
+  The owner's ask restated: reference laps
   are currently *invisible until fed and unexplained once present*. R1 fixes
   both, in two halves split by their data dependency:
 
@@ -177,6 +192,76 @@ R0 below pins it rather than guessing.)
   record. (B) No mechanism — document the re-import stance instead.
   Recommendation: A; it is the smallest mechanism consistent with "nothing
   is silently hidden."
+
+- **R4 — Deliberate reference-geometry adoption (design stage, NOT built;
+  drafted 2026-08-03 at owner request after A34).** A34 makes the default
+  absolute: a reference lap never moves a corner's centroid or phase windows,
+  full stop. R4 is the *legitimate* case that default forecloses — a driver
+  who has, say, always run wide at C08 has a corner map that faithfully
+  encodes their own habit, and a known-good reference's line would place the
+  corner better. Unlike A34's leaks, this is not a bug to fix; it would be a
+  new, named capability, and it has to be opt-in by construction or it
+  re-opens exactly what A34 just closed.
+
+  **This needs the owner's explicit go before any code is written — flagged
+  here, not decided.** The reason is stronger than the usual "architectural
+  changes need approval" rule: AGENTS.md's non-negotiables state flatly that
+  "reference laps never enter self history, trends, or consistency
+  statistics." R4 is in real tension with that sentence's letter, even though
+  its spirit is different — see "The tension" below. Building R4 without a
+  clear owner decision would be exactly the kind of silent judgment call this
+  project's decision-discipline rule exists to prevent.
+
+  **The tension, stated plainly.** A34's leaks were *reference laps quietly
+  affecting self numbers as a side effect of import order* — categorically
+  bad, no exceptions, and now refused. R4 would be *the driver explicitly and
+  auditably asking a reference lap to redefine the measuring instrument* —
+  structurally closer to `ConfigStore`'s propose/confirm/revert (the driver
+  changes how their own drives are measured, on purpose, on the record) than
+  to the self-history leaks A34 closed. But the on-screen effect is the same
+  shape either way: a reference lap's data changes self phase times. Anyone
+  reading AGENTS.md's non-negotiable without this doc would reasonably expect
+  R4 to be forbidden outright. That reading is not obviously wrong. This is
+  the fork; the owner resolves it, not this doc.
+
+  **Why adoption is safely reversible, and why that matters for the decision.**
+  Self observations are never deleted — geometry adoption would only overwrite
+  `corners.lat/lon/lap_dist` and `corner_windows`. So "undo" doesn't need a new
+  history table: the existing self-only `rebuild-map` (A22, A34) already
+  regenerates the self-derived map from scratch on demand. Adoption and
+  reversion are the same operation with a different observation set —
+  reference-only vs. self-only — which is a small, well-understood diff on top
+  of A34's now-self-only `rebuild-map`, not a new subsystem. That lowers the
+  implementation risk *if* adoption is approved; it does not settle whether it
+  should be.
+
+  **Open decisions, if the owner says go (not picked here):**
+  1. **Versioning shape.** (A) In-place, like A22/A34's refreeze: same
+     `corner_pk`/`corner_id`, geometry overwritten, but `corner_maps` gains a
+     `geometry_source` column (`self` | `reference:<lap_pk>`) and an
+     `adopted_at` timestamp, so the payload/coach/chat can cite "this cohort's
+     map uses <driver>'s line" instead of silently implying self-only. (B) A
+     new, versioned `map_pk` per adoption, old evidence IDs frozen against the
+     old map forever. A22 rejected (B)'s shape for ordinary refreezes as not
+     worth the query-layer cost "at this scale"; R4 is a rarer, more
+     consequential operation than an ordinary refreeze, so that tradeoff may
+     land differently here. Leaning (A) for the reversibility argument above,
+     not decided.
+  2. **Adopt from what.** A single driver-designated reference lap, or a
+     driver-chosen subset — never silently "every reference lap in the
+     cohort," which would reproduce A34's own bug (an unreviewed median
+     silently shifting) one level up, for reference laps instead of self
+     ones.
+  3. **Confirmation shape.** At minimum a named, itemized report before commit
+     — the same per-corner shift/window-changed/re-measured/cleared shape
+     `rebuild-map` already reports — behind an explicit confirm gate (CLI
+     flag or U6's client-side confirm/cancel pattern), never a bare flag that
+     silently applies.
+  4. **Grounding.** If `geometry_source` lands on the payload, the coach/chat
+     grounding validator's job is unchanged in kind (cite what's in the
+     payload) but the payload itself grows a fact that needs citing when
+     present — a small, mechanical addition to an already-mechanical system,
+     not a new validator.
 
 **Non-goals (binding, restated so this plan can't drift):** references in
 the Driver Model, trends, classes, consistency, or incidents; any
