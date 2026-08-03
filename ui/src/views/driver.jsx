@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { get, send } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
-import { LossBars } from "./shared.jsx";
+import { LossBars, Methodology } from "./shared.jsx";
 
 // Driver home (UI-SPEC view 1, v2): the rollup and its gates panel. The
 // cohort list moved to the Garage tab; home is purely the driver-wide view.
@@ -115,12 +115,12 @@ export default function DriverHome() {
   const gated = rollups.filter((r) => !r.shown);
 
   return (
-    <div className="grid">
-      <section className="panel">
+    <div className="grid grid-wide">
+      <section className="panel grid-span">
         <h1>Driver</h1>
       </section>
 
-      <div className="tiles">
+      <div className="tiles grid-span">
         <div className="tile"><div className="v num">{cohorts.data.length}</div><div className="k">Cohorts</div></div>
         <div className="tile"><div className="v num">{shown.length}</div><div className="k">Rollups shown</div></div>
         <div className="tile"><div className="v num">{gated.length}</div><div className="k">Gated</div>
@@ -132,6 +132,7 @@ export default function DriverHome() {
         <div className="sub" style={{ marginTop: 0, marginBottom: "0.6rem" }}>
           Aggregated within one car and one class, at two or more tracks.
         </div>
+        <Methodology id="gate.confidence" label="Why are some rollups gated?" />
         {shown.length > 0
           ? <LossBars entries={shown.map((r) => [`${r.car} · ${r.class}`, r.loss_s])} />
           : <div className="dim" style={{ fontSize: "0.82rem" }}>Nothing clears the gate yet.</div>}

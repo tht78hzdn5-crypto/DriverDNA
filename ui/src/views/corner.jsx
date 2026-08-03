@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
+import { Methodology } from "./shared.jsx";
 
 // Corner drill (UI-SPEC view 3): phase baselines with their labels intact
 // (robust primary, single-best labeled), metric summaries, and a live
@@ -30,6 +31,7 @@ export default function CornerDrill({ slug, cornerId }) {
 
       <section className="panel">
         <p className="eyebrow">Phase times over the frozen canonical windows (s)</p>
+        <Methodology id="baseline.robust" label="How are these baselines calculated?" />
         <div className="scroll-x">
           <table>
             <thead><tr><th>phase</th><th className="right">n</th><th className="right">median</th>

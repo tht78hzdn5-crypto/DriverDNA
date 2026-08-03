@@ -2,7 +2,13 @@
    Dark timing-screen world; v2 "pit wall" design language (UI-SPEC.md
    "Design language v2"): condensed display face for structure labels, one
    top-right chamfer as the geometric tell, a real button system, pit-board
-   stat tiles. Colours and colour grammar are unchanged from v1. */
+   stat tiles. Colours and colour grammar are unchanged from v1.
+   v3 "cockpit feel" + U7 mobile (SPEC.md A33, docs/UI-V3-PLAN.md): a
+   chrome-only accent (--chrome, never a measurement), interactive
+   micro-motion, a native <details> disclosure for methodology text, a
+   wide-viewport two-column layout, and a mobile responsive pass at the
+   bottom of this file. Semantic colours and the color grammar are
+   unchanged. */
 
 * { box-sizing: border-box; }
 html { background: var(--base); }
@@ -10,7 +16,21 @@ body {
   margin: 0; background: var(--base); color: var(--text);
   font-family: var(--sans); line-height: 1.45; font-size: 15px;
 }
-#root { max-width: 64rem; margin: 0 auto; padding: 0 1rem 4rem; }
+#root {
+  max-width: 64rem; margin: 0 auto;
+  padding: 0 clamp(0.75rem, 3vw, 1rem) calc(4rem + env(safe-area-inset-bottom, 0px));
+  padding-left: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-right, 0px));
+}
+/* v3 "use of space" (SPEC.md A33): wide viewports get a two-column grid
+   instead of one narrow stacked column; everything below ~48rem (U7
+   mobile) stays a single stacked column, unchanged from v2. Pure layout —
+   no view-logic change. */
+@media (min-width: 64rem) {
+  #root { max-width: var(--wide, 72rem); }
+  .grid.grid-wide { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.1rem; align-items: start; }
+  .grid.grid-wide > .grid-span { grid-column: 1 / -1; }
+}
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
@@ -28,6 +48,13 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   text-transform: uppercase; color: var(--dim); margin: 0 0 0.55rem; font-weight: 600;
 }
 
+/* --- Offline banner (U7 mobile/PWA) — direction, never a stale number --- */
+.offline-banner {
+  background: var(--raised); border-bottom: 1px solid var(--warn);
+  color: var(--text); font-size: 0.78rem; text-align: center;
+  padding: 0.4rem 0.6rem;
+}
+
 /* --- Shell: fixed six-tab bar, wordmark + helix/racing-line mark --------- */
 .topbar {
   display: flex; align-items: center; gap: 1.4rem;
@@ -42,12 +69,14 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   letter-spacing: 0.08em; color: var(--text); text-transform: uppercase;
 }
 .brand .word b { color: var(--accent); font-weight: 700; }
-.topbar nav { display: flex; gap: 0.15rem; overflow-x: auto; }
+.topbar nav { display: flex; gap: 0.15rem; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.topbar nav .tab { scroll-snap-align: start; }
 .tab {
   font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
   font-weight: 600; font-size: 0.82rem; color: var(--dim);
   padding: 0.3rem 0.7rem 0.85rem; border-bottom: 2px solid transparent;
   white-space: nowrap;
+  transition: color var(--motionFast) ease, border-color var(--motionBase) ease;
 }
 .tab:hover { color: var(--text); text-decoration: none; }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -116,11 +145,13 @@ td.right, th.right { text-align: right; }
   min-height: 2.5rem; padding: 0.5rem 1.1rem; border: 1px solid var(--line);
   color: var(--text); background: var(--raised);
   clip-path: polygon(0 0, calc(100% - var(--chamferSmall)) 0, 100% var(--chamferSmall), 100% 100%, 0 100%);
-  transition: border-color 120ms, color 120ms, background 120ms;
+  transition: border-color var(--motionBase) ease, color var(--motionBase) ease,
+              background var(--motionBase) ease, transform var(--motionFast) ease;
 }
 .btn-primary { background: var(--accent); color: var(--base); border-color: var(--accent); }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.08); text-decoration: none; }
-.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); text-decoration: none; transform: translateY(-1px); }
+.btn:hover:not(:disabled) { border-color: var(--chrome); color: var(--chrome); text-decoration: none; transform: translateY(-1px); }
+.btn:active:not(:disabled), .btn-primary:active:not(:disabled) { transform: translateY(0.5px); filter: brightness(0.97); }
 .btn:disabled, .btn-primary:disabled { opacity: 0.45; cursor: default; }
 .btn.small { min-height: 0; padding: 0.28rem 0.6rem; font-size: 0.72rem; }
 .btn.confirm { border-color: var(--ok); color: var(--ok); background: var(--raised); }
@@ -132,6 +163,38 @@ td.right, th.right { text-align: right; }
 /* Anchor styled as a button keeps button ink, not link blue. */
 a.btn, a.btn-primary { display: inline-flex; align-items: center; }
 a.btn-primary { color: var(--base); }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn-primary { transform: none !important; }
+}
+
+/* --- Disclosure ("the methodology arrow", v3 SPEC.md A33) --------------
+   Native <details>/<summary>: free keyboard + screen-reader behavior.
+   Collapses derivation detail/methodology only — never the headline
+   number, its n, or a gate_reason (UI-SPEC decision 7 stays binding). */
+.disclosure { margin-top: 0.5rem; }
+.disclosure > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center;
+  gap: 0.35rem; color: var(--dim); font-size: 0.74rem;
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+  min-height: 1.6rem; user-select: none;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary:hover { color: var(--chrome); }
+.disclosure > summary:focus-visible {
+  outline: none; box-shadow: inset 0 0 0 2px var(--accent);
+}
+.disclosure > summary .chev {
+  display: inline-block; transition: transform var(--motionBase) ease;
+  color: var(--chrome);
+}
+.disclosure[open] > summary .chev { transform: rotate(90deg); }
+.disclosure-body {
+  color: var(--dim); font-size: 0.8rem; line-height: 1.5;
+  padding: 0.4rem 0 0.1rem 0.05rem; max-width: 42rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .disclosure > summary .chev { transition: none; }
+}
 
 /* --- Empty-state kit: checkered ribbon + direction + a real CTA --------- */
 .empty .checker {
@@ -243,6 +306,16 @@ a.btn-primary { color: var(--base); }
 .chat-input { display: flex; gap: 0.5rem; }
 .chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }
 
+/* --- Score history chart (SPEC.md A34) — toggle chips + line chart ----- */
+.history-legend { margin-top: 0; }
+.chip.toggle { cursor: pointer; background: var(--raised); border-width: 1px; }
+.chip.toggle.on { border-width: 2px; padding: 0.11rem 0.4rem; }
+.chip.toggle:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.history-chart { width: 100%; height: auto; display: block; margin: 0.6rem 0; }
+.history-grid { stroke: var(--line); stroke-width: 0.25; }
+.history-axis { fill: var(--dim); font-family: var(--mono); font-size: 2.6px; }
+.history-line { fill: none; stroke-width: 0.7; stroke-linejoin: round; stroke-linecap: round; }
+
 /* --- Driver Model pyramid (M6) — the one bold element on that tab ------- */
 .pyramid-panel { text-align: center; }
 .pyramid { width: 100%; max-width: 30rem; height: auto; display: block; margin: 0.5rem auto 0.4rem; }
@@ -295,3 +368,24 @@ a.btn-primary { color: var(--base); }
 .login-panel { width: 100%; max-width: 22rem; }
 .login-panel h1 { margin-bottom: 0.2rem; }
 .login-panel .brand { display: flex; align-items: center; gap: 0.45rem; }
+
+/* --- Mobile / PWA responsive pass (U7, DEPLOY-SPEC Track M item 1) -----
+   Single-column stacking already holds by default (the base grid rules
+   above); below ~48rem, fixed-column grids collapse to stacked rows and
+   every interactive control grows to a real 44px tap target. Wide tables
+   already scroll in their own `.scroll-x` container, never the page body. */
+@media (max-width: 48rem) {
+  body { font-size: 15.5px; }
+  .tiles { grid-template-columns: repeat(auto-fit, minmax(7.2rem, 1fr)); }
+  .lossrow { grid-template-columns: 1fr; row-gap: 0.15rem; }
+  .lossrow .k { font-size: 0.78rem; }
+  .lossrow .bar { order: 3; }
+  .lossrow .v { order: 2; text-align: left; }
+  .btn, .btn-primary { min-height: 44px; }
+  .btn.small { min-height: 40px; }
+  .in { min-height: 44px; }
+  .chat-input .in { min-height: 44px; }
+  a.btn, a.btn-primary { min-height: 44px; }
+  .context { gap: 0.5rem; }
+}
+

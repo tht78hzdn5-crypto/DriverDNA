@@ -14,24 +14,35 @@ dependencies = [
     "scipy>=1.11",
     "pydantic>=2.5",
     "typer>=0.9",
-    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
 # python-multipart: FastAPI's Form()/File()/UploadFile support (the laps
 # upload endpoint) requires it at runtime; a clean install-time dependency,
 # not a vendored parser.
-ui = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9"]
+ui = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9",
+      "cryptography>=42"]
 # pg: the hosted-Postgres backend. Optional on purpose — SQLite remains a
 # first-class backend, so a local-only install needs no database driver and
 # `pip install -e .` is unchanged.
 pg = ["psycopg[binary]>=3.1", "psycopg-pool>=3.2"]
+# ai-claude / ai-gemini (DEPLOY-SPEC Track P item 7): neither provider SDK
+# is needed to run the engine, and the engine is the product. Both classes
+# in coach/provider.py and chat/session.py lazy-import their own SDK inside
+# __init__, so a driver running only the other provider (or neither) never
+# needs to install this. `anthropic` was a hard dependency before this
+# split; nothing at module level in this codebase imports it eagerly, so
+# removing it from `dependencies` is additive, not a behavior change for an
+# existing install that already has it.
+ai-claude = ["anthropic>=0.40"]
+ai-gemini = ["google-genai>=1.0"]
 # playwright is optional: the render-parity test skips if it or Chromium is
 # absent. httpx ships with fastapi's test client. psycopg is here so the
 # dual-backend tests can run; they skip when no local Postgres is configured.
 dev = ["pytest>=8", "fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.27",
        "playwright>=1.40", "python-multipart>=0.0.9",
-       "psycopg[binary]>=3.1", "psycopg-pool>=3.2"]
+       "psycopg[binary]>=3.1", "psycopg-pool>=3.2", "cryptography>=42",
+       "anthropic>=0.40", "google-genai>=1.0"]
 
 [project.scripts]
 driverdna = "driverdna.cli:app"

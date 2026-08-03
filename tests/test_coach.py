@@ -86,7 +86,7 @@ def _valid_output(payload):
 
 
 def test_payload_carries_report_and_history(db, payload):
-    assert payload["prompt_version"] == "coach-v2"
+    assert payload["prompt_version"] == "coach-v3"
     assert payload["report"]["cohort"]["n_laps"] == 12
     assert payload["focus_history"] == []
     shown, evidence = evidence_universe(payload["report"])
@@ -291,7 +291,7 @@ def test_accepted_output_enters_focus_history(db, payload):
     )
     payload2 = build_coach_payload(db, **COHORT, config=CONFIG)
     assert payload2["focus_history"] == [
-        {"output_pk": 1, "plan_titles": ["Commit to one entry"]}
+        {"output_pk": 1, "provider": "claude", "plan_titles": ["Commit to one entry"]}
     ]
 
 
@@ -303,6 +303,30 @@ def test_numeric_validator_units_only():
 
 
 def test_coach_cli_requires_key(tmp_path, monkeypatch):
+    """coach.provider defaults to 'gemini' (DEPLOY-SPEC Track P), so the
+    default missing-key error names GEMINI_API_KEY now, not ANTHROPIC_API_KEY
+    — see test_coach_cli_requires_key_for_claude_provider below for the
+    Claude path."""
+    from pathlib import Path
+
+    from typer.testing import CliRunner
+
+    from driverdna.cli import app
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    db_path = tmp_path / "c.db"
+    runner = CliRunner()
+    runner.invoke(
+        app, ["import", str(Path(__file__).parent / "fixtures"), "--db", str(db_path)]
+    )
+    result = runner.invoke(
+        app, ["coach", "--db", str(db_path), "--cohort", "GR86:Spa-Francorchamps"]
+    )
+    assert result.exit_code == 2
+    assert "GEMINI_API_KEY" in result.output
+
+
+def test_coach_cli_requires_key_for_claude_provider(tmp_path, monkeypatch):
     from pathlib import Path
 
     from typer.testing import CliRunner
@@ -311,12 +335,15 @@ def test_coach_cli_requires_key(tmp_path, monkeypatch):
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     db_path = tmp_path / "c.db"
+    config_path = tmp_path / "driverdna.toml"
+    config_path.write_text('[coach]\nprovider = "claude"\n')
     runner = CliRunner()
     runner.invoke(
         app, ["import", str(Path(__file__).parent / "fixtures"), "--db", str(db_path)]
     )
     result = runner.invoke(
-        app, ["coach", "--db", str(db_path), "--cohort", "GR86:Spa-Francorchamps"]
+        app, ["coach", "--db", str(db_path), "--cohort", "GR86:Spa-Francorchamps",
+              "--config", str(config_path)]
     )
     assert result.exit_code == 2
     assert "ANTHROPIC_API_KEY" in result.output

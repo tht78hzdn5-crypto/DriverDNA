@@ -3,7 +3,8 @@ import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
-  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, LossBars, SourceSections,
+  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, IncidentCard,
+  IncidentMechanismCounts, LossBars, Methodology, SourceSections,
 } from "./shared.jsx";
 
 // Cohort view (UI-SPEC view 2). The signature element: the track outline
@@ -83,7 +84,7 @@ function RebuildMapReport({ phase, result, error, onConfirm, onCancel, busy }) {
   return (
     <>
       {phase === "confirm" && (
-        <section className="panel staged">
+        <section className="panel staged grid-span">
           <p className="eyebrow">Rebuild map — confirm to proceed</p>
           <div className="sub" style={{ marginTop: 0 }}>
             Re-derives every corner's centroid and canonical window from this
@@ -98,10 +99,10 @@ function RebuildMapReport({ phase, result, error, onConfirm, onCancel, busy }) {
         </section>
       )}
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error grid-span">{error}</div>}
 
       {phase === "done" && result && (
-        <section className="panel">
+        <section className="panel grid-span">
           <p className="eyebrow">Rebuild report — {result.car} @ {result.track}</p>
           <div className="scroll-x">
             <table>
@@ -178,8 +179,8 @@ export default function Cohort({ slug }) {
   const refLaps = (laps.data || []).filter((l) => l.role === "reference");
 
   return (
-    <div className="grid">
-      <section className="panel">
+    <div className="grid grid-wide">
+      <section className="panel grid-span">
         <h1>{c.car} @ {c.track}</h1>
         <ContextStrip slug={slug} here="cohort">
           <button
@@ -197,7 +198,7 @@ export default function Cohort({ slug }) {
         onCancel={() => setRebuild({ phase: "idle", result: null, error: null, busy: false })}
       />
 
-      <div className="tiles">
+      <div className="tiles grid-span">
         <div className="tile"><div className="v num">{c.n_laps}</div><div className="k">Laps</div></div>
         <div className="tile">
           <div className="v num">{c.n_sessions || "—"}</div>
@@ -236,8 +237,9 @@ export default function Cohort({ slug }) {
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel grid-span">
         <p className="eyebrow">Typical loss vs robust baseline (s/lap)</p>
+        <Methodology id="loss.cumulative" />
         {Object.keys(p.cumulative_loss.by_phase).length > 0 ? (
           <>
             <LossBars entries={Object.entries(p.cumulative_loss.by_phase).sort()} />
@@ -249,38 +251,24 @@ export default function Cohort({ slug }) {
         )}
       </section>
 
-      <section className="panel">
+      <section className="panel grid-span">
         <p className="eyebrow">Findings — three sources, never blended</p>
         <SourceSections findings={p.findings} slug={slug} />
       </section>
 
-      <ReferenceLaps refLaps={refLaps} />
+      <div className="grid-span"><ReferenceLaps refLaps={refLaps} /></div>
 
       {p.incidents && p.incidents.n > 0 && (
-        <section className="panel">
+        <section className="panel grid-span">
           <p className="eyebrow">Incidents — single events, not traits</p>
+          <IncidentMechanismCounts events={p.incidents.events} />
           {p.incidents.events.map((e) => (
-            <div key={e.incident_id}
-                 className={`finding ${e.classification === "unclassified" ? "suppressed" : ""}`}>
-              <div className="head">
-                <span className="desc">
-                  {e.corner_id ? <a href={`#/corner/${slug}/${e.corner_id}`}>{e.corner_id}</a> : "—"}
-                  {" · "}{e.classification.replace(/_/g, " ")}
-                </span>
-                <span className="val">{e.confidence}</span>
-              </div>
-              <div className="meta">
-                {e.kinds} · min <span className="num">{fmt(e.min_speed_kmh, 0)}</span> km/h ·
-                peak yaw <span className="num">{fmt(e.peak_yaw_rate)}</span> rad/s ·{" "}
-                <span className="dim" title={e.lap_id}>{e.lap_id.slice(0, 6)}…</span>
-              </div>
-              <div className="reason">{e.rationale}</div>
-            </div>
+            <IncidentCard key={e.incident_id} event={e} slug={slug} />
           ))}
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel grid-span">
         <p className="eyebrow">Corners</p>
         <div className="scroll-x">
           <table>
@@ -301,7 +289,7 @@ export default function Cohort({ slug }) {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel grid-span">
         <p className="eyebrow">Lap board</p>
         <div className="scroll-x">
           <table>

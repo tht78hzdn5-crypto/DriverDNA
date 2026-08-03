@@ -486,6 +486,29 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   Equivalence is tested, not claimed: the same corpus in either backend
   produces byte-identical artifacts. Four latent bugs were found and fixed on
   the way — see A23 and PROJECT-BRIEF.md's decision log.
+- **UI v3 "cockpit feel" + U7 mobile + incidents-for-newcomers + Gemini
+  provider + BYOK: built (2026-08-02, `docs/UI-V3-PLAN.md`, SPEC.md
+  A35/A36/A37/A38)** — owner-directed. Chrome-accent tokens + micro-motion;
+  the engine-sourced `.disclosure` "methodology arrow" pattern
+  (`explain.py`/`GET /api/explain`); a wide-viewport two-column layout; the
+  score-history chart (`dm-hist-v1`, generalizes M6 trend's 2-bucket
+  machinery to N, no new kind of number); the mobile responsive pass + PWA
+  shell; incident cards with plain-language mechanisms/drills behind one
+  disclosure click, unclassified incidents still honestly causeless; chat's
+  M5-era incidents boundary lifted, additively (a classified incident
+  becomes citable, an unclassified one stays structurally uncitable);
+  `GeminiCoachProvider`/`GeminiChatProvider` (default provider, built and
+  mock-tested against the real installed SDK's actual objects, **then
+  live-verified (A38)**: a real, owner-supplied `GEMINI_API_KEY`, used
+  once and rotated immediately after, surfaced two real defects —
+  `coach.max_tokens`'s 4000 default silently starved the thinking-model
+  provider (raised to 16000), and `coach`'s system prompt had two
+  ambiguities Gemini hit reliably (`PROMPT_VERSION` coach-v2→coach-v3,
+  wording only). Fixed both without touching the validator; 2/2 live
+  `driverdna coach` runs and one live chat turn then passed grounding
+  cleanly); per-user encrypted API keys (BYOK) with a `#/config` panel.
+  Full detail, and the real bugs the trust gates and the live run caught,
+  all fixed properly: `docs/STATUS.md`'s 2026-08-02 snapshot.
 
 - **Lap-analysis protocol: built (2026-07-29)** — `docs/LAP-ANALYSIS-PROTOCOL.md`,
   owner-directed: put cheap high-volume agents (Flash, via Antigravity or

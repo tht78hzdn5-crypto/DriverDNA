@@ -195,6 +195,7 @@ def _v5_database_with_inline_blobs(db_path: Path) -> list[int]:
     raw.execute("DELETE FROM schema_version WHERE version >= 6")
     raw.execute("DROP TABLE IF EXISTS password_resets")
     raw.execute("DROP TABLE IF EXISTS users")
+    raw.execute("DROP TABLE IF EXISTS user_api_keys")
     try:
         raw.execute("ALTER TABLE laps DROP COLUMN owner_user_pk")
     except sqlite3.OperationalError:

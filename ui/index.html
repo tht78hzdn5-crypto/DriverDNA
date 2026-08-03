@@ -2,8 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
+    <!-- Must match ui/tokens.json's color.base — checked mechanically by
+         tests/test_ui_static.py::test_theme_color_matches_tokens_json
+         (this attribute is read by the browser before any JS runs, so it
+         can't be injected from tokens.json at parse time; main.jsx
+         re-asserts the same value at runtime as defense in depth). -->
+    <meta name="theme-color" content="#101318" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/icon-192.png" />
     <title>DriverDNA</title>
   </head>
   <body>

@@ -444,7 +444,33 @@ MIGRATIONS: tuple[str, ...] = (
         FOREIGN KEY(user_pk) REFERENCES users(user_pk) ON DELETE CASCADE
     );
     CREATE INDEX idx_password_resets_hash ON password_resets(reset_token_hash);
+    """,
+    # 013 - Gemini provider (DEPLOY-SPEC Track P item 6): which model
+    # produced a stored coach explanation is part of the audit trail, not
+    # incidental. Default is honest, not aspirational -- every row that
+    # already exists in any real database was produced by Claude, since
+    # Gemini support didn't exist until this migration.
     """
+    ALTER TABLE coach_outputs ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude';
+    """,
+    # 014 - per-user AI provider keys, BYOK (SPEC.md A35). Reverses the
+    # env-only-secrets non-negotiable for exactly this one case, recorded
+    # there rather than left implied. ciphertext/nonce are AES-GCM
+    # (cryptography, coach/keystore.py); fingerprint is a short, non-secret
+    # display hint (e.g. "AIza...7f3c"), never the key itself. One key per
+    # (account, provider) -- a fresh PUT overwrites, it doesn't accumulate.
+    """
+    CREATE TABLE user_api_keys (
+        key_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        nonce TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (owner_user_pk, provider)
+    );
+    """,
 )
 
 
@@ -1588,27 +1614,66 @@ class Database:
                 admitted.append(corner_id)
         return admitted
 
+    # --- per-user AI provider keys (SPEC.md A35, BYOK) -----------------------
+
+    def store_user_api_key(
+        self, *, provider: str, ciphertext: str, nonce: str, fingerprint: str,
+        created_at: str | None = None,
+    ) -> None:
+        """One key per (account, provider) — a fresh PUT overwrites, it
+        never accumulates. `ON CONFLICT` targets the same UNIQUE
+        (owner_user_pk, provider) constraint migration 014 declares."""
+        with self.conn:
+            self.conn.execute(
+                f"""INSERT INTO user_api_keys
+                    (owner_user_pk, provider, ciphertext, nonce, fingerprint, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (owner_user_pk, provider) DO UPDATE SET
+                        ciphertext=excluded.ciphertext, nonce=excluded.nonce,
+                        fingerprint=excluded.fingerprint, created_at=excluded.created_at""",
+                (self.user_pk, provider, ciphertext, nonce, fingerprint, created_at),
+            )
+
+    def get_user_api_key(self, *, provider: str) -> dict[str, Any] | None:
+        """Raw (ciphertext, nonce, fingerprint, created_at) for this
+        account's key, or None if unset. Decryption happens in
+        coach/keystore.py, given the session secret — never here."""
+        row = self.conn.execute(
+            """SELECT ciphertext, nonce, fingerprint, created_at FROM user_api_keys
+               WHERE owner_user_pk=? AND provider=?""",
+            (self.user_pk, provider),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def delete_user_api_key(self, *, provider: str) -> bool:
+        with self.conn:
+            cur = self.conn.execute(
+                "DELETE FROM user_api_keys WHERE owner_user_pk=? AND provider=?",
+                (self.user_pk, provider),
+            )
+            return cur.rowcount > 0
+
     # --- coach outputs ------------------------------------------------------
 
     def store_coach_output(
         self, *, driver: str, car: str, track: str, payload_version: int,
         prompt_version: str, model: str, output_json: str,
-        created_at: str | None = None,
+        provider: str = "claude", created_at: str | None = None,
     ) -> int:
         with self.conn:
             return self._insert_returning(
                 """INSERT INTO coach_outputs
                    (driver, car, track, owner_user_pk, payload_version, prompt_version, model,
-                    output_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    provider, output_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (driver, car, track, self.user_pk, payload_version, prompt_version, model,
-                 output_json, created_at),
+                 provider, output_json, created_at),
                 "output_pk",
             )
 
     def coach_history(self, *, driver: str, car: str, track: str) -> list[dict[str, Any]]:
         rows = self.conn.execute(
-            """SELECT output_pk, output_json FROM coach_outputs
+            """SELECT output_pk, provider, output_json FROM coach_outputs
                WHERE driver=? AND car=? AND track=? AND owner_user_pk=? ORDER BY output_pk""",
             (driver, car, track, self.user_pk),
         ).fetchall()
@@ -1617,6 +1682,7 @@ class Database:
             output = json.loads(r["output_json"])
             history.append({
                 "output_pk": int(r["output_pk"]),
+                "provider": r["provider"],
                 "plan_titles": [p.get("title") for p in output.get("coaching_plan", [])],
             })
         return history
@@ -1774,11 +1840,16 @@ class Database:
     def fundamental_evidence_lap_count(
         self, *, driver: str, metric_names: tuple[str, ...],
         detector_names: tuple[str, ...],
+        lap_pks: frozenset[int] | None = None,
     ) -> int:
         """Distinct self-role laps that contributed >=1 metric value or
         detector result relevant to a fundamental's mapped techniques — the
         driver-facing "how many of your laps taught me something" count.
         Empty metric/detector sets (e.g. vision) return 0, honestly.
+
+        `lap_pks` (M6 trend / score-history, A34) restricts to a date
+        bucket's laps, same mechanism as `phase_history`/`self_metric_table`;
+        None (every non-bucketed caller) means no restriction.
         """
         if not metric_names and not detector_names:
             return 0
@@ -1797,11 +1868,13 @@ class Database:
                      WHERE detector IN ({placeholders}))"""
             )
             params.extend(detector_names)
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
         row = self.conn.execute(
             f"""SELECT COUNT(DISTINCT o.lap_pk) n FROM corner_observations o
                 JOIN laps l ON l.lap_pk = o.lap_pk
-                WHERE l.role='self' AND l.driver=? AND l.owner_user_pk=? AND ({' OR '.join(clauses)})""",
-            [driver, self.user_pk, *params],
+                WHERE l.role='self' AND l.driver=? AND l.owner_user_pk=?
+                  AND ({' OR '.join(clauses)}){pk_clause}""",
+            [driver, self.user_pk, *params, *pk_params],
         ).fetchone()
         return int(row["n"])
 
@@ -1829,6 +1902,20 @@ class Database:
             (driver, self.user_pk),
         ).fetchall()
         return [int(r["lap_pk"]) for r in rows]
+
+    def dated_self_laps(self, driver: str) -> list[tuple[int, str]]:
+        """Same rows and ordering as `dated_self_lap_pks`, paired with each
+        lap's `lap_date` string — A34 score history's bucket-label source
+        (the date range a bucket actually spans), kept as a sibling method
+        rather than changing `dated_self_lap_pks`'s return shape so its
+        existing callers (M6 trend) are untouched."""
+        rows = self.conn.execute(
+            """SELECT lap_pk, lap_date FROM laps
+               WHERE role='self' AND driver=? AND lap_date IS NOT NULL AND owner_user_pk=?
+               ORDER BY lap_date, lap_pk""",
+            (driver, self.user_pk),
+        ).fetchall()
+        return [(int(r["lap_pk"]), str(r["lap_date"])) for r in rows]
 
     # --- garage61 sync state (M0b+) ------------------------------------------
 

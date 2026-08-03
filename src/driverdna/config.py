@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -263,12 +264,37 @@ class GatesConfig(_Section):
 class CoachConfig(_Section):
     """AI coaching layer (M4 coach, M5 chat). On-demand only; env-only key."""
 
+    provider: Literal["claude", "gemini"] = Field(
+        default="gemini",
+        description="Which AI provider backs coach/chat (DEPLOY-SPEC Track P). "
+        "Both are provider-abstracted behind the same grounding validator — "
+        "a different model gets the same rejection machinery, never looser "
+        "rules. Switching providers, or back to claude, is a one-key config "
+        "change through the audited ConfigStore path.",
+    )
     model: str = Field(
         default="claude-sonnet-5",
-        description="Claude model used for coach and chat runs.",
+        description="Claude model used for coach and chat runs when "
+        "coach.provider is 'claude'.",
+    )
+    gemini_model: str = Field(
+        default="gemini-3.5-flash",
+        description="Gemini model used for coach and chat runs when "
+        "coach.provider is 'gemini'. Pinned to a free-tier Flash-class model "
+        "(read from ai.google.dev/gemini-api/docs/pricing, verified "
+        "2026-08-02, per DEPLOY-SPEC's standing rule against pinning a "
+        "model name from memory) — never Pro, which is paid-only.",
     )
     max_tokens: int = Field(
-        default=4000, description="Response token budget per provider call."
+        default=16000,
+        description="Response token budget per provider call. Raised from "
+        "4000 (SPEC.md A33's live acceptance run, 2026-08-02): "
+        "gemini-3.5-flash is a thinking model whose internal reasoning "
+        "tokens count against this same budget, so 4000 was silently "
+        "exhausted by thinking with zero output text on a real coach/chat "
+        "payload (finish_reason MAX_TOKENS, empty response). 16000 covers "
+        "the observed thinking overhead with room for a full structured "
+        "reply; harmless for Claude, which simply uses less of the budget.",
     )
     include_raw_traces: bool = Field(
         default=False,
@@ -481,6 +507,15 @@ class ModelConfig(_Section):
         "scale) must move more than this many points to read as "
         "improving/declining; within +/- this band it is 'stable'. Guards "
         "against calling ordinary noise a trend.",
+    )
+    history_buckets: int = Field(
+        default=6,
+        description="Number of contiguous, date-ordered, equal-count buckets "
+        "the score-history chart (SPEC.md A34) splits a driver's dated laps "
+        "into. The whole series reads 'unavailable' unless there are at "
+        "least history_buckets x trend_min_laps_per_bucket dated laps in "
+        "total — the same per-bucket floor M6 trend already uses for its own "
+        "two buckets, generalized rather than duplicated with a new number.",
     )
 
     @model_validator(mode="after")

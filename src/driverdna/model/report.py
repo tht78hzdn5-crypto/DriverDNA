@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.model.history import SERIES_VERSION, score_history
 from driverdna.model.scoring import SCORING_MODEL_VERSION, store_all_beliefs
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 
@@ -63,5 +64,33 @@ def build_model_report(db: Database, config: DriverDNAConfig) -> str:
                 f"{b.trend} | {note} |"
             )
         lines.append("")
+
+        history = score_history(db, driver=driver, config=config)
+        lines += [
+            f"### {driver} — score history (`{SERIES_VERSION}`)",
+            "",
+        ]
+        if history["x_axis"]["kind"] == "unavailable":
+            lines += [
+                "Unavailable: too few dated laps to fill "
+                f"`model.history_buckets` ({config.model.history_buckets}) buckets at "
+                f"`model.trend_min_laps_per_bucket` ({config.model.trend_min_laps_per_bucket}) "
+                "laps each — stated, not guessed.",
+                "",
+            ]
+        else:
+            header = "| fundamental | " + " | ".join(history["x_axis"]["labels"]) + " |"
+            sep = "|---|" + "---|" * len(history["x_axis"]["labels"])
+            lines += [header, sep]
+            for fid in sorted(history["series"]):
+                points = history["series"][fid]["points"]
+                row = " | ".join(_fmt_score(p["score"]) for p in points)
+                lines.append(f"| {fid} | {row} |")
+            lines += [
+                "",
+                "lap counts per bucket: "
+                + ", ".join(str(n) for n in history["x_axis"]["bucket_lap_counts"]),
+                "",
+            ]
 
     return "\n".join(lines) + "\n"

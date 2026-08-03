@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
+import { Methodology } from "./shared.jsx";
 
 // Driver Model (M6) — the constitution's centre of gravity, made visible.
 // Render-only: every number here is straight from the payload's driver_model
@@ -102,8 +103,161 @@ function Meter({ id, b }) {
   );
 }
 
+// Score history (SPEC.md A34, dm-hist-v1): each fundamental's own score
+// across N date-ordered buckets of the driver's dated laps. All series
+// share one 0-100 axis (never normalized, never blended). Lines are
+// distinguished structurally (a neutral grey ramp + distinct dash
+// patterns), never by the reserved semantic hues or the interactive
+// accents — the same "identity is structural, never a verdict colour"
+// rule the three source-sections already follow. A null point (a bucket
+// with no scorable evidence) breaks the line rather than being
+// interpolated across or silently skipped (A34's binding rule) — enforced
+// here by splitting each series into contiguous runs of non-null points
+// and drawing one <polyline> per run.
+const HISTORY_STYLE = {
+  braking: { stroke: "#C7CCD4", dash: "" },
+  rotation: { stroke: "#A9B0BC", dash: "6,3" },
+  corner_exit: { stroke: "#8C93A0", dash: "2,2" },
+  commitment: { stroke: "#767E8E", dash: "8,2,2,2" },
+  consistency: { stroke: "#5E6678", dash: "10,4" },
+  vehicle_management: { stroke: "#464E60", dash: "4,4,1,4" },
+  vision: { stroke: "#2E3548", dash: "1,3" },
+};
+
+function _runs(points) {
+  // Contiguous runs of non-null scores, as [{x, y}] index/value pairs;
+  // consecutive runs are gaps a line is never drawn across.
+  const out = [];
+  let current = [];
+  for (const p of points) {
+    if (p.score === null) {
+      if (current.length) out.push(current);
+      current = [];
+    } else {
+      current.push(p);
+    }
+  }
+  if (current.length) out.push(current);
+  return out;
+}
+
+function ScoreHistoryChart({ history }) {
+  const seriesKeys = Object.keys(history.series);
+  const [selected, setSelected] = useState(() => new Set(seriesKeys));
+
+  if (history.x_axis.kind === "unavailable") {
+    return (
+      <section className="panel">
+        <p className="eyebrow">Score history — over time</p>
+        <Methodology id="model.history" label="How is score history calculated?" />
+        <div className="empty">
+          <div className="checker" aria-hidden="true" />
+          <p>Not enough dated laps yet to bucket a history — keep syncing.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const labels = history.x_axis.labels;
+  const n = labels.length;
+  const W = 100, H = 46, padL = 6, padR = 2, padT = 4, padB = 8;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const px = (i) => padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const py = (score) => padT + plotH * (1 - score / 100);
+
+  function toggle(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <section className="panel">
+      <p className="eyebrow">Score history — over time</p>
+      <Methodology id="model.history" label="How is score history calculated?" />
+      <div className="chips history-legend">
+        {seriesKeys.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={`chip toggle ${selected.has(id) ? "on" : ""}`}
+            style={selected.has(id) ? { borderColor: HISTORY_STYLE[id]?.stroke, color: "var(--text)" } : undefined}
+            onClick={() => toggle(id)}
+            aria-pressed={selected.has(id)}
+          >
+            {LABEL[id] || id}
+          </button>
+        ))}
+      </div>
+
+      <svg className="history-chart" viewBox={`0 0 ${W} ${H}`} role="img"
+           aria-label="Driver Model fundamental scores over time, one line per selected fundamental">
+        {[0, 50, 100].map((tick) => (
+          <g key={tick}>
+            <line x1={padL} x2={W - padR} y1={py(tick)} y2={py(tick)} className="history-grid" />
+            <text x={padL - 1} y={py(tick) + 1} className="history-axis" textAnchor="end">{tick}</text>
+          </g>
+        ))}
+        {seriesKeys.filter((id) => selected.has(id)).map((id) => {
+          const style = HISTORY_STYLE[id] || HISTORY_STYLE.braking;
+          const points = history.series[id].points;
+          return (
+            <g key={id}>
+              {_runs(points).map((run, ri) => (
+                <polyline
+                  key={ri}
+                  className="history-line"
+                  style={{ stroke: style.stroke, strokeDasharray: style.dash || "none" }}
+                  points={run.map((p) => `${px(p.x).toFixed(2)},${py(p.score).toFixed(2)}`).join(" ")}
+                />
+              ))}
+              {points.filter((p) => p.score !== null).map((p) => (
+                <circle key={p.x} cx={px(p.x)} cy={py(p.score)} r="0.9" style={{ fill: style.stroke }}>
+                  <title>{`${LABEL[id] || id}: ${fmt(p.score, 1)} · n=${p.n} · ${labels[p.x]}`}</title>
+                </circle>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+
+      <div className="scroll-x">
+        <table>
+          <thead>
+            <tr>
+              <th>bucket</th>
+              {seriesKeys.filter((id) => selected.has(id)).map((id) => (
+                <th key={id} className="right">{LABEL[id] || id}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {labels.map((label, i) => (
+              <tr key={i}>
+                <td className="dim">{label} <span className="num dim">n={history.x_axis.bucket_lap_counts[i]}</span></td>
+                {seriesKeys.filter((id) => selected.has(id)).map((id) => {
+                  const p = history.series[id].points[i];
+                  return (
+                    <td key={id} className="right num" title={p.reason || undefined}>
+                      {p.score === null ? "—" : fmt(p.score, 1)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="sub">Same 0-100 axis for every fundamental — nothing normalized, nothing blended.</div>
+    </section>
+  );
+}
+
 export default function DriverModel() {
   const driver = useFetch(() => get("/api/driver"), []);
+  const history = useFetch(() => get("/api/driver/score-history"), []);
   if (!driver.data) return <Loading error={driver.error} />;
   const model = driver.data.driver_model;
   if (!model) {
@@ -140,6 +294,8 @@ export default function DriverModel() {
 
       <section className="panel">
         <p className="eyebrow">Fundamentals — score · confidence · evidence · trend</p>
+        <Methodology id="model.confidence" label="How is confidence calculated?" />
+        <Methodology id="model.trend" label="How is trend calculated?" />
         {measured.map((id) => <Meter key={id} id={id} b={beliefs[id]} />)}
       </section>
 
@@ -149,6 +305,8 @@ export default function DriverModel() {
           {noSignal.map((id) => <Meter key={id} id={id} b={beliefs[id]} />)}
         </section>
       )}
+
+      {history.data && <ScoreHistoryChart history={history.data} />}
     </div>
   );
 }

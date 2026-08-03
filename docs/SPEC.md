@@ -1698,3 +1698,117 @@ Accepted at owner plan review; rationale recorded in the review:
   alone (the map records no founding role), so nothing is auto-repaired;
   `rebuild-map` now re-derives that cohort's geometry self-only, which is the
   recovery path. No such cohort is known to exist.
+
+- **A35** (2026-07-29, owner-directed): **Design language v3 ("cockpit
+  feel").** A presentation amendment to UI-SPEC's "Design language v2"
+  section, which currently declares all eleven token colours and the motion
+  rule untouched — v3 changes four things there and nothing else, and none
+  of them touch a measurement:
+
+  1. **Palette** — new **chrome-only** accent tokens may be added to
+     `ui/tokens.json`. The three colour-grammar rules stand verbatim:
+     semantic colours (purple/green/amber/red) keep their exclusive
+     meanings, red still never means driver pace, source identity stays
+     structural. A new accent may never encode a measurement — legal on the
+     wordmark, active-tab underline, hover/press states, disclosure
+     chevrons, empty-state ribbons; illegal on any figure, bar, chart
+     series, tile value, or finding row.
+  2. **Motion** — v2's "≤150 ms, functional only" extends to
+     interactive-feedback micro-motion ≤180 ms (press, hover, disclosure
+     open/close, tab underline). Still no data-entrance animation, no chart
+     animation, `prefers-reduced-motion` still fully honored.
+  3. **Copy** — two new, tightly bounded registers: a **methodology
+     register** (explanatory prose, allowed only inside a collapsed
+     disclosure) and a **newcomer register** (one short empathetic line,
+     incidents only, inside the disclosure, never attached to a number).
+     v2's "labels not paragraphs" rule continues to bind the default render.
+  4. **Progressive disclosure is not suppression.** Binding: the headline
+     number, its `n`, and any `gate_reason` stay visible uncollapsed — only
+     derivation detail and methodology may collapse, behind a visible,
+     keyboard-reachable, labelled control. UI-SPEC decision 7 (suppression
+     is visible, with its reason and progress) is unchanged.
+
+  Full record: `docs/UI-V3-PLAN.md`, `docs/PROJECT-BRIEF.md` decision log.
+
+- **A36** (2026-07-29): **Score history (`dm-hist-v1`).** A new
+  deterministic engine output: each Driver Model fundamental's own score
+  over N contiguous date-ordered buckets of the driver's dated laps, from
+  the same `_bucket_score` machinery `trend` (M6) already uses. **Produces
+  no new kind of number** — no formula changes, no weight moves, so
+  `dm-v2`'s scoring model version is *not* bumped; only a new
+  `series_version` (`dm-hist-v1`) is introduced for the series shape
+  itself. Carries verbatim the two limitations `_trend` already documents
+  (era-relative opportunity baseline; cross-cohort bucket composition when
+  dated laps are thin-per-cohort) — a chart makes them more visible, not
+  less true. Binding: a bucket with no scorable evidence is a null with a
+  stated reason and renders as a gap, never interpolated, and no line is
+  drawn across it. Full record: `docs/UI-V3-PLAN.md`.
+
+- **A37** (2026-07-29, owner-directed): **Per-user AI keys (BYOK).**
+  Investigated first: the owner's original ask — "users logged into their
+  own Google accounts use their own Gemini usage" — is not available to
+  third-party apps. Google AI Pro/Ultra are chat subscriptions with no API
+  access; Gemini API quota and billing always follow the Cloud project
+  behind the key, never the signed-in user; and Google states that
+  piggybacking Gemini CLI's OAuth to reach its backend services is a terms
+  violation and grounds for account suspension, naming an AI Studio or
+  Vertex API key as the supported third-party path. The owner's resolution:
+  a user may supply their own free AI Studio key, used only for that
+  account's coach/chat calls, falling back to a server-wide
+  `GEMINI_API_KEY` when unset.
+
+  **This reverses two written rules, and says so rather than eliding it:**
+  - `AGENTS.md`'s non-negotiable *"secrets are env-only: never persisted,
+    printed, or logged"* is **refined**: a *user-supplied provider key* may
+    now be persisted, encrypted at rest, scoped to one account. Every
+    server-side secret (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`,
+    `GEMINI_API_KEY`, `DRIVERDNA_DATABASE_URL`, `DRIVERDNA_SESSION_SECRET`)
+    stays env-only, unchanged, never printed, never logged, never returned
+    by any endpoint.
+  - UI-SPEC U6 condition 4 *"secrets never transit the browser"* is
+    **narrowed**: that rule was written about `GARAGE61_TOKEN` — a
+    server-side credential the UI must never ask for — and it stands for
+    every server-side secret. A user's own provider key is by definition
+    supplied by that user and can only arrive through their browser, over
+    HTTPS, once, write-only; it is never sent back by any read endpoint.
+
+  Full record: `docs/UI-V3-PLAN.md`, `docs/PROJECT-BRIEF.md` decision log.
+
+- **A38** (2026-08-02): **Track C3 live Gemini acceptance run — two real
+  defects found and fixed, never by loosening the validator.** Run against
+  the real fixture cohort (`GR86:Spa-Francorchamps`, 11 laps) with a live
+  `GEMINI_API_KEY` supplied by the owner for this run only (rotated
+  immediately after, per the owner's own instruction — never persisted,
+  never committed).
+  1. **`coach.max_tokens` default (4000) was silently broken for the
+     default provider.** `gemini-3.5-flash` is a thinking model whose
+     internal reasoning tokens are drawn from the same budget as
+     `max_output_tokens`; a real coach/chat payload exhausted 4000 tokens
+     on thinking alone, returning `finish_reason=MAX_TOKENS` with **empty**
+     response text — which the grounding validator correctly rejected as
+     "not valid JSON," but for the wrong underlying reason (a token-budget
+     bug presenting as a grounding failure). Fixed: default raised to
+     16000 (`config.py`), harmless for Claude, which simply uses less of
+     the budget than it's given.
+  2. **`coach`'s `SYSTEM_PROMPT` had two real compliance ambiguities**,
+     invisible against Claude but hit reliably by Gemini across 5/5 raw
+     attempts: (a) the no_signal principle's "never attach a confidence
+     value, at any level" instruction was general enough that Gemini
+     applied it to ordinary `hypotheses[]` entries too, emitting
+     `confidence: null` where the schema requires low/medium/high; (b)
+     nothing told the model that an `incident_explanations[]` entry must
+     cite its own `incident_id` inside its own `evidence_ids` — an
+     unusual, easy-to-miss convention. Both are now stated explicitly and
+     scoped precisely in the prompt (`coach/provider.py`); `PROMPT_VERSION`
+     bumped `coach-v2` → `coach-v3` (no schema change, no validator change
+     — wording only, so no schema-version bump). **The validator itself was
+     never touched** — same absolute rule as everywhere else in this repo;
+     fixing the model's inputs is always in bounds, fixing the gate to
+     tolerate a wrong answer never is.
+  Result after both fixes: **2/2** live `driverdna coach` runs against
+  Gemini passed the strict validator unmodified on the first attempt
+  (before the fixes: 0/5). One live grounded chat turn through
+  `GeminiChatProvider` (the primary interactive surface, which already had
+  chat's regenerate-once loop and needed no prompt change) also passed,
+  citing real `obs:<n>` evidence. Full detail: `docs/STATUS.md`'s
+  2026-08-02 snapshot.

@@ -25,7 +25,7 @@ from driverdna.db import Database
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v2"
+CHAT_PROMPT_VERSION = "chat-v3"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -45,6 +45,16 @@ Hard rules:
   on measured ground; stay tentative on proxy ground; on a no_signal
   principle (self_check present), offer it as a labeled hypothesis and
   NEVER attach a confidence value or percentage to it, at any level.
+- Incidents: bundle.report.incidents.events lists detected spins/offs/
+  near-stops, each already carrying the engine's own classification. Only
+  an incident whose coaching_principle_id is not null is even citable — if
+  the driver asks about one that isn't in your known IDs, that means the
+  engine itself could not name a clean cause; say so plainly ("detected,
+  but the trace wasn't clean enough to name a cause") rather than guessing
+  one. When an incident IS citable, explain the engine's own classification
+  and what it suggests practicing — you narrate its verdict, you never
+  pick or override it. Every incident is one lap's event (N=1), never a
+  claim about the driver in general.
 - You may annotate a finding (acknowledged/intentional) only when the
   driver clearly asks; annotation suppresses framing, never deletes data.
 - Config changes are only ever STAGED via propose_config_change; the driver
@@ -57,7 +67,7 @@ Hard rules:
 """
 
 _ID_TOKEN = re.compile(
-    r"\b(?:obs:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
+    r"\b(?:obs:\d+|incident:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
     r"|cp\.[A-Za-z_]+\.[A-Za-z_]+)"
 )
 
@@ -71,17 +81,20 @@ class ChatProvider(Protocol):
 
 
 class ClaudeChatProvider:
-    def __init__(self, model: str, max_tokens: int = 4000):
+    def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
+        """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
+        A35). `api_key=None` (every non-BYOK caller): `ANTHROPIC_API_KEY`,
+        env-only, unchanged."""
         import os
 
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        if api_key is None and not os.environ.get("ANTHROPIC_API_KEY"):
             raise RuntimeError(
                 "ANTHROPIC_API_KEY is not set. Chat requires it (env only; "
                 "never persisted or logged). Tests use the mocked provider."
             )
         import anthropic
 
-        self._client = anthropic.Anthropic()
+        self._client = anthropic.Anthropic(api_key=api_key)
         self._model = model
         self._max_tokens = max_tokens
 
@@ -101,16 +114,195 @@ class ClaudeChatProvider:
                 "raw_content": response.content}
 
 
+def _gemini_contents_from_messages(messages: list[dict[str, Any]]):
+    """DEPLOY-SPEC Track P item 3: translate the Anthropic-shaped running
+    transcript to Gemini's `contents` on every call (not incrementally —
+    `messages` is the full history each time, same as ClaudeChatProvider
+    receives it). Three message shapes appear in `ChatSession._messages`:
+
+      1. `{"role": "user"|"assistant", "content": "<str>"}` — a plain text
+         turn (the context bundle, the driver's message, a no-tool-call
+         reply, the grounding-violation follow-up).
+      2. `{"role": "assistant", "content": <raw_content>}` where
+         `raw_content` is exactly what THIS module's own `chat_step` set on
+         a prior call — a `types.Content` object already Gemini-shaped, so
+         it round-trips by being echoed back as-is (the same reason
+         ClaudeChatProvider stores Anthropic's own `response.content` as
+         `raw_content`: each provider only ever has to understand its own
+         echo).
+      3. `{"role": "user", "content": [{"type": "tool_result",
+         "tool_use_id": ..., "content": <json str>}, ...]}` — tool results,
+         Anthropic-shaped as `ChatSession._drive_provider_stream` builds
+         them. Gemini's FunctionResponse needs the ORIGINAL function name,
+         which Anthropic's tool_result block doesn't carry — recovered here
+         from the function_call parts seen earlier in the same walk.
+    """
+    from google.genai import types
+
+    contents: list[types.Content] = []
+    call_id_to_name: dict[str, str] = {}
+
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+
+        if isinstance(content, types.Content):
+            contents.append(content)
+            for part in content.parts or []:
+                if part.function_call is not None:
+                    fc = part.function_call
+                    call_id_to_name[fc.id or fc.name] = fc.name
+            continue
+
+        if isinstance(content, str):
+            gemini_role = "model" if role == "assistant" else "user"
+            contents.append(types.Content(role=gemini_role, parts=[types.Part(text=content)]))
+            continue
+
+        if isinstance(content, list) and content and isinstance(content[0], dict) \
+                and content[0].get("type") == "tool_result":
+            parts = []
+            for block in content:
+                call_id = block["tool_use_id"]
+                name = call_id_to_name.get(call_id, "")
+                try:
+                    response_value = json.loads(block["content"])
+                except (TypeError, json.JSONDecodeError):
+                    response_value = block["content"]
+                if not isinstance(response_value, dict):
+                    response_value = {"result": response_value}
+                parts.append(types.Part(function_response=types.FunctionResponse(
+                    id=call_id, name=name, response=response_value,
+                )))
+            contents.append(types.Content(role="user", parts=parts))
+            continue
+
+        raise ValueError(
+            f"GeminiChatProvider: unrecognized message content shape: {content!r}"
+        )
+
+    return contents
+
+
+class GeminiChatProvider:
+    """DEPLOY-SPEC Track P item 3: translates the Anthropic-shaped
+    transcript inside this provider rather than refactoring
+    `ChatSession._messages` to a neutral shape — the rejected alternative
+    (a neutral internal transcript with per-provider adapters) is cleaner
+    long-term but would turn M5's already-tested chat/session.py into a
+    rewrite instead of a no-change; revisit if a third provider ever
+    appears. Same lazy-import and env-only-key discipline as every other
+    provider in this codebase."""
+
+    def __init__(self, model: str, max_tokens: int = 16000, api_key: str | None = None):
+        """`api_key`, given, is a user's own decrypted BYOK key (SPEC.md
+        A35). `api_key=None` (every non-BYOK caller): `GEMINI_API_KEY`,
+        env-only, unchanged."""
+        import os
+
+        if api_key is None and not os.environ.get("GEMINI_API_KEY"):
+            raise RuntimeError(
+                "GEMINI_API_KEY is not set. Chat requires it (env only; "
+                "never persisted or logged). Tests use the mocked provider."
+            )
+        from google import genai
+
+        self._client = genai.Client(api_key=api_key)
+        self._model = model
+        self._max_tokens = max_tokens
+
+    def chat_step(self, system, messages, tools):
+        from google.genai import types
+
+        from driverdna.chat.gemini_tools import translate_tools
+
+        contents = _gemini_contents_from_messages(messages)
+        gemini_tools = [translate_tools(tools)] if tools else None
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            max_output_tokens=self._max_tokens,
+            tools=gemini_tools,
+            # DriverDNA drives its own tool loop (ChatSession
+            # ._drive_provider_stream) with full grounding/audit on each
+            # call — the SDK must never execute a function itself.
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+        )
+        response = self._generate_with_backoff(contents, config)
+
+        function_calls = response.function_calls or []
+        if function_calls:
+            tool_calls = [
+                {"id": fc.id or f"{fc.name}:{i}", "name": fc.name, "args": dict(fc.args or {})}
+                for i, fc in enumerate(function_calls)
+            ]
+            model_content = (
+                response.candidates[0].content if response.candidates else None
+            )
+            return {"text": None, "tool_calls": tool_calls, "raw_content": model_content}
+
+        text = response.text or ""
+        if not text:
+            # DEPLOY-SPEC Track P item 5: never a silently empty reply — it
+            # would enter the grounding validator and be rejected, blaming
+            # the wrong thing (a violation, not a provider failure).
+            raise RuntimeError(
+                "Gemini returned neither text nor a tool call for this turn"
+            )
+        return {"text": text, "tool_calls": [], "raw_content": None}
+
+    def _generate_with_backoff(self, contents, config):
+        """Bounded exponential backoff on HTTP 429 (DEPLOY-SPEC Track P
+        item 5: free-tier RPM is low). Any other error propagates
+        immediately — only rate-limiting is retried here."""
+        import time
+
+        from google.genai import errors as genai_errors
+
+        delay_s = 1.0
+        last_error: Exception | None = None
+        for _ in range(5):
+            try:
+                return self._client.models.generate_content(
+                    model=self._model, contents=contents, config=config,
+                )
+            except genai_errors.ClientError as e:
+                if getattr(e, "code", None) != 429:
+                    raise
+                last_error = e
+                time.sleep(delay_s)
+                delay_s *= 2
+        raise RuntimeError(
+            "Gemini rate limited (429) after repeated backoff"
+        ) from last_error
+
+
+def make_chat_provider(
+    config: DriverDNAConfig, *, api_key: str | None = None
+) -> ChatProvider:
+    """Selects Claude or Gemini per `config.coach.provider` — the one place
+    this branch lives, reused by the CLI's `chat` command and `ui/api.py`'s
+    equivalent factory (SPEC.md A35: `api_key`, given, is a user's own
+    decrypted BYOK key; None uses the env-only server key/fallback, the
+    original behavior)."""
+    if config.coach.provider == "gemini":
+        return GeminiChatProvider(config.coach.gemini_model, config.coach.max_tokens, api_key=api_key)
+    return ClaudeChatProvider(config.coach.model, config.coach.max_tokens, api_key=api_key)
+
+
 def build_chat_bundle(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig
 ) -> dict[str, Any]:
-    """Deterministic context bundle — a known, inspectable state."""
+    """Deterministic context bundle — a known, inspectable state. chat-v3
+    (Track B3, docs/UI-V3-PLAN.md) lifts the M5-era exclusion: incidents now
+    ride in the bundle like every other section, citable through the same
+    ChatSession._known_ids mechanism as findings and coaching principles —
+    but only the classified ones (ChatSession.__init__ only admits an
+    incident_id whose coaching_principle_id is not null), so an
+    unclassified/external incident is structurally uncitable rather than
+    citable-but-rule-forbidden — the same "engine names it or it doesn't
+    exist to the model" discipline the rest of the grounding contract uses."""
     report = build_cohort_payload(db, driver=driver, car=car, track=track, config=config)
-    # Incidents stay out of the chat context until Layer 3 gives the model a
-    # grounded way to cite them (incident evidence IDs in the citable
-    # universe); bundle_version still reflects the full payload version.
     bundle_version = report["payload_version"]
-    report = {k: v for k, v in report.items() if k != "incidents"}
     coach_runs = db.coach_history(driver=driver, car=car, track=track)
     return {
         "prompt_version": CHAT_PROMPT_VERSION,
@@ -160,6 +352,20 @@ class ChatSession:
         for c in self._coaching_candidates:
             self._known_ids.add(c["coaching_principle_id"])
             self._known_ids.update(c["evidence_ids"])
+        # Track B3: only a classified incident becomes citable — an
+        # unclassified/external one (coaching_principle_id null) is
+        # structurally absent from _known_ids, so citing its incident_id
+        # is rejected the same way an unknown finding ID already is. This
+        # is stricter than the coach's own structured-output rule (which
+        # lets the AI mention an unclassified incident's bare facts while
+        # forbidding only an explained cause) but is the mechanically
+        # simple, unambiguous enforcement for chat's free-text grounding —
+        # additive only, never loosening an existing rejection.
+        for e in self.bundle["report"].get("incidents", {}).get("events", []):
+            principle_id = e.get("coaching_principle_id")
+            if principle_id:
+                self._known_ids.add(e["incident_id"])
+                self._known_ids.add(principle_id)
 
     # -- one driver turn ----------------------------------------------------
 

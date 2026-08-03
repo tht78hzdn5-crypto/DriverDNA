@@ -97,12 +97,25 @@ def incidents_section(
     """Detected incidents for this cohort's self laps. Each is a single event
     (N=1) — characterised, never generalised into a trait; a repeated pattern
     would need N and go through the finding gates like everything else."""
+    from driverdna.coaching.ontology import PRINCIPLES
     from driverdna.incidents.coaching import eligible_principle_for
 
     events = db.incidents_for_cohort(driver=driver, car=car, track=track)
     for e in events:
         # Deterministic: the engine decides eligibility, never the AI.
-        e["coaching_principle_id"] = eligible_principle_for(e["classification"])
+        principle_id = eligible_principle_for(e["classification"])
+        e["coaching_principle_id"] = principle_id
+        # The SPA can't import coaching/ontology.py (Python-only), so a
+        # newcomer-legible mechanism/drill needs to travel through the
+        # payload itself — same principle text `coaching.headline` etc.
+        # already surface for findings, just also attached here, once,
+        # deterministically (Track B, docs/UI-V3-PLAN.md). unclassified/
+        # external incidents (principle_id is None) get none of this: the
+        # engine itself named no cause, so there is nothing to coach.
+        principle = PRINCIPLES.get(principle_id) if principle_id else None
+        e["coaching_expression"] = principle.coaching_expression if principle else None
+        e["drill"] = principle.drill if principle else None
+        e["driving_principle"] = principle.driving_principle if principle else None
     return {
         "n": len(events),
         "events": events,
