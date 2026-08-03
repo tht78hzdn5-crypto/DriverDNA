@@ -1,5 +1,49 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-03 (later still).** Closed the loop this doc itself
+posed: "re-running `sync` is the cheapest available evidence... requires no
+driving." Owner supplied `GARAGE61_TOKEN` for a one-off run against a scratch
+DB in this session (never persisted, never committed — no DB has ever been in
+this repo per `.gitignore`). Two attempts failed instantly with `Connection
+reset by peer` before any request reached the API; a bare `curl`/`urllib` call
+through the same path succeeded seconds later, so this was a transport-layer
+flake in how the CLI's console-script binary opened its first connection, not
+a bad token. Running the same logic in-process got to 318 laps before one
+further reset, then a resumable retry-with-backoff loop finished cleanly.
+
+**Real yield: 992 self laps, 31 cohorts, 0 reference laps, every lap dated.**
+Confidence terms are now saturated on every corpus-breadth gate (evidence
+985/50, sessions 212/6, tracks 19/3, cars 10/2 — all "met"); census's own
+"what to add next" table has nothing left on it but a reference lap. Findings
+shown jumped from 15/177 (fixture data) to **564/3149** on the real corpus.
+
+This also resolved the open question about this session's manually-uploaded
+Mustang GT4 laps: merging them into the synced data showed **all 10 are
+content-hash duplicates of laps already synced** — the real Spa GT4 cohort is
+26 laps / 6 sessions (36 findings now shown), not the 10-lap / 0-session
+cohort this session had been testing the A34 fix against. No actual A27
+label-drift split existed here; it was moot because it was the same
+underlying laps under `sync`'s API-sourced label the whole time.
+
+**One mistake, caught before it landed:** `driverdna model` run without
+`--out` from the repo root defaulted to writing the tracked
+`docs/driver-model-report.md` — meant to be regenerated from the committed
+fixtures only — with real-account output. Caught via `git status` before
+any commit; reverted with `git checkout --`. Every real-data query after that
+point went through the payload API directly or into the session scratchpad,
+never a bare CLI default path. Worth restating for the next agent: **any CLI
+command that writes a report defaults into `docs/`** — always pass an
+explicit `--out` when running one against anything other than the committed
+fixtures.
+
+**Not done:** the sync ran against an ephemeral scratch DB, not a real
+production store — nothing here is the owner's actual running instrument
+until they choose to point `driverdna` at a persisted DB and sync there
+themselves (or ask for that explicitly). R4 (`docs/REFERENCE-LAPS.md`,
+reference-geometry adoption) remains drafted and unbuilt, awaiting the
+owner's explicit go given its flagged tension with AGENTS.md's reference-
+isolation non-negotiable.
+
 **Snapshot date: 2026-08-03 (later).** Owner supplied 4 more real Mustang GT4
 laps at Spa (one landed as a content-hash duplicate of an already-imported
 lap, correctly caught), taking the self cohort from 6 to **10 laps**. Rerun
