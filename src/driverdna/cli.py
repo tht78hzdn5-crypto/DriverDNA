@@ -210,6 +210,38 @@ def import_cmd(
             raise typer.Exit(code=2)
 
     with Database.open(_store(db_path)) as db:
+        # Pre-flight (A34): the first lap in a cohort BUILDS its corner map, so
+        # a reference lap can never be that lap — the map is the coordinate
+        # system every later self measurement is taken in. Checked for the whole
+        # run up front, itemized, nothing imported, same contract as an
+        # unresolvable car/track above. A self lap earlier in this same run
+        # counts, so a mixed manifest (self laps then a reference lap) passes.
+        founded = {
+            (j["car"], j["track"])
+            for j in jobs
+            if db.load_corner_map(car=j["car"], track=j["track"]) is not None
+        }
+        orphans: list[str] = []
+        for job in jobs:
+            key = (job["car"], job["track"])
+            if job.get("role", "self") == "self":
+                founded.add(key)
+            elif key not in founded:
+                orphans.append(f"{job['path'].name} ({key[0]} @ {key[1]})")
+        if orphans:
+            typer.echo(
+                f"error: {len(orphans)} reference lap(s) would be the first lap "
+                f"in their cohort: {', '.join(orphans[:5])}"
+                f"{', ...' if len(orphans) > 5 else ''}\n"
+                "  The first lap in a cohort builds the corner map — every\n"
+                "  corner's position and every phase window. Built from another\n"
+                "  driver's line, that map becomes the coordinate system your\n"
+                "  own laps are then measured in.\n"
+                "  Import at least one of your own laps in that car/track first.\n"
+                "  Nothing has been imported."
+            )
+            raise typer.Exit(code=2)
+
         for job in jobs:
             path = job.pop("path")
             detected = job.pop("_detected", ())

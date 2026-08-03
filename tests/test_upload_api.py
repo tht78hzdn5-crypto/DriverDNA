@@ -87,9 +87,44 @@ def test_invalid_role_rejected(client):
 
 def test_reference_role_is_isolated_like_the_cli_path(client):
     c, db_path = client
-    _upload(c, ONE_LAP, role="reference")
+    # A self lap first: a reference lap can no longer found a cohort's corner
+    # map (SPEC.md A34), on this surface exactly as on the CLI's.
+    _upload(c, ONE_LAP)
+    _upload(c, FIXTURES_DIR / "Garage_61_W5JRZB.csv", role="reference")
     with Database.open(db_path) as db:
-        assert db.conn.execute("SELECT role FROM laps").fetchone()["role"] == "reference"
+        roles = [
+            r["role"]
+            for r in db.conn.execute("SELECT role FROM laps ORDER BY lap_pk")
+        ]
+    assert roles == ["self", "reference"]
+
+
+def test_upload_refuses_a_reference_lap_as_the_first_lap(client):
+    """The cold-start case: refused before the store is opened, so a rejected
+    upload leaves no database behind at all (A34)."""
+    c, db_path = client
+    r = _upload(c, ONE_LAP, role="reference")
+    assert r.status_code == 422
+    assert "cannot be the first lap" in r.json()["detail"]
+    assert not db_path.exists()
+
+
+def test_upload_refuses_a_reference_lap_into_a_cohort_with_no_self_laps(client):
+    """A populated store, but nothing of the driver's own in THIS cohort —
+    still refused, and named, and nothing imported."""
+    c, db_path = client
+    _upload(c, ONE_LAP)  # GR86 @ Spa-Francorchamps
+    before = _lap_count(db_path)
+    r = _upload(c, FIXTURES_DIR / "Garage_61_W5JRZB.csv",
+                role="reference", car="Other Car", track="Other Track")
+    assert r.status_code == 422
+    assert "Other Car @ Other Track" in r.json()["detail"]
+    assert _lap_count(db_path) == before
+
+
+def _lap_count(db_path):
+    with Database.open(db_path) as db:
+        return db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"]
 
 
 def test_multi_file_upload_in_one_request(client):

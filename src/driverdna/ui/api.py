@@ -46,6 +46,16 @@ from driverdna.report.payload import (
 
 TRACE_POINTS = 800  # transport downsampling only — layout math, not measurement
 
+# A34. Phrased for the browser, where this is the whole explanation the driver
+# gets — the CLI's own wording is in cli.py's import pre-flight.
+_REFERENCE_FIRST_LAP_DETAIL = (
+    "a reference lap cannot be the first lap in its cohort. The first lap "
+    "builds the corner map — every corner's position and every phase window — "
+    "and a map built from another driver's line becomes the coordinate system "
+    "your own laps are measured in. Upload one of your own laps in this "
+    "car/track first."
+)
+
 
 class AnnotateBody(BaseModel):
     status: str  # acknowledged | intentional
@@ -773,10 +783,33 @@ def create_app(
                 "which is then applied to every file.",
             )
 
+        # A34: a reference lap can never be the first lap in its cohort — the
+        # first lap builds the corner map. Checked before the store is opened
+        # when there is no SQLite store at all (a cold start has no map by
+        # definition), so a refused upload never leaves a database behind. A
+        # hosted store has no file to stat and creates its schema on connect,
+        # so it falls through to the per-cohort check below — same verdict.
+        if role != "self" and missing_reason(db_path):
+            raise HTTPException(422, detail=_REFERENCE_FIRST_LAP_DETAIL)
+
         config = load_config(config_path)
         results: list[dict[str, Any]] = []
         with tempfile.TemporaryDirectory() as tmp:
             with Database.open(db_path, user_pk=request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1) as db:
+                if role != "self":
+                    orphans = sorted(
+                        {
+                            f"{c} @ {t}"
+                            for _u, c, t, _d in resolved
+                            if db.load_corner_map(car=c, track=t) is None
+                        }
+                    )
+                    if orphans:
+                        raise HTTPException(
+                            422,
+                            detail=f"{_REFERENCE_FIRST_LAP_DETAIL} No laps of your "
+                            f"own yet in: {', '.join(orphans)}. Nothing was imported.",
+                        )
                 for upload, file_car, file_track, auto_detected in resolved:
                     # Original filename preserved (not a random temp name):
                     # parse_lap's Garage61 lap-ID regex reads it, same as a

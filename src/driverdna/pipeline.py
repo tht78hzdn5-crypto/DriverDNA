@@ -100,7 +100,16 @@ def import_parsed_lap(
     entry point; `sync` (M0b+) calls this directly with a lap parsed from an
     in-memory API CSV fetch (`parse_lap_text`), plus real session/run/date
     metadata the API supplies that a bare CSV file cannot.
+
+    Raises `ReferenceCannotFoundMap`, before writing anything, when a reference
+    lap would be the first lap in its cohort (SPEC.md A34): the first lap
+    *builds* the corner map, and a map built from someone else's line becomes
+    the coordinate system every one of the driver's own measurements is then
+    taken in.
     """
+    if role != "self" and db.load_corner_map(car=car, track=track) is None:
+        raise ReferenceCannotFoundMap(car, track)
+
     lap_pk, status = db.import_lap(
         lap, driver=driver, car=car, track=track, role=role,
         session_key=session_key, run_index=run_index, imported_at=imported_at,
@@ -271,6 +280,27 @@ class RebuildResult:
     @property
     def total_cleared(self) -> int:
         return sum(len(c.laps_cleared) for c in self.corners)
+
+
+class ReferenceCannotFoundMap(Exception):
+    """Refusing to import: a reference lap would be the first lap in this
+    cohort, so the corner map — every corner's centroid and every canonical
+    phase window — would be built from someone else's racing line (SPEC.md
+    A34).
+
+    Raised BEFORE the lap row is written, so a rejected import leaves nothing
+    behind. Import one of the driver's own laps in this car/track first; the
+    reference lap then matches that map, which is what a gap is measured
+    against.
+    """
+
+    def __init__(self, car: str, track: str) -> None:
+        self.car = car
+        self.track = track
+        super().__init__(
+            f"no self lap yet for {car} @ {track}: a reference lap cannot found "
+            "the corner map. Import one of your own laps in this car/track first."
+        )
 
 
 class RawTracesUnavailable(Exception):

@@ -1140,15 +1140,23 @@ class Database:
     def corner_apex_positions(
         self, corner_pk: int
     ) -> list[tuple[float, float, float]]:
-        """(apex_lat, apex_lon, apex_lap_dist) for every observation currently
+        """(apex_lat, apex_lon, apex_lap_dist) for every SELF observation
         assigned to this corner — the input to an in-place centroid refreeze
-        (`rebuild-map`). Compact rows only; survives blob eviction."""
+        (`rebuild-map`). Compact rows only; survives blob eviction.
+
+        Self-only (SPEC.md A34): a reference lap is linked to this corner and
+        measured against it, but where the corner *is* must be decided by the
+        driver's own laps. A stranger's line dragging the centroid moves the
+        phase windows, and the windows are where every self phase time is
+        measured — the isolation guarantee one level below the metrics."""
         rows = self.conn.execute(
             """SELECT o.apex_lat, o.apex_lon, o.apex_lap_dist
                FROM corner_observations o
                JOIN corners c ON c.corner_pk = o.corner_pk
                JOIN corner_maps m ON m.map_pk = c.map_pk
-               WHERE o.corner_pk=? AND m.owner_user_pk=? ORDER BY o.obs_pk""",
+               JOIN laps l ON l.lap_pk = o.lap_pk
+               WHERE o.corner_pk=? AND m.owner_user_pk=? AND l.role='self'
+               ORDER BY o.obs_pk""",
             (corner_pk, self.user_pk),
         ).fetchall()
         return [
@@ -1328,8 +1336,15 @@ class Database:
         ]
 
     def observation_positions(self, corner_pk: int) -> list[dict[str, Any]]:
+        """Landmark positions of this corner's SELF observations — the input to
+        `derive_windows` when a corner's canonical phase windows are frozen or
+        refrozen. Self-only for the same reason as `corner_apex_positions`
+        (SPEC.md A34): the windows define where the driver's own entry/mid/exit
+        times are measured, so a reference lap must not shift them."""
         rows = self.conn.execute(
-            "SELECT landmark_positions FROM corner_observations WHERE corner_pk=? ORDER BY obs_pk",
+            """SELECT o.landmark_positions FROM corner_observations o
+               JOIN laps l ON l.lap_pk = o.lap_pk
+               WHERE o.corner_pk=? AND l.role='self' ORDER BY o.obs_pk""",
             (corner_pk,),
         ).fetchall()
         return [json.loads(r["landmark_positions"]) for r in rows]
@@ -1495,10 +1510,16 @@ class Database:
         """Admit consistently-unmatched corners to the frozen map.
 
         Clusters unmatched observations in the cohort; a cluster seen on at
-        least cfg.min_laps_for_admission DISTINCT laps becomes a new corner
-        with the next ID (existing IDs never renumber). Re-links the
+        least cfg.min_laps_for_admission DISTINCT SELF laps becomes a new
+        corner with the next ID (existing IDs never renumber). Re-links the
         observations and returns the admitted corner IDs — the caller must
         surface them; the map never changes silently.
+
+        Reference observations join a cluster and are linked to the corner it
+        becomes — a gap needs them — but they neither count toward the distinct
+        -lap threshold nor feed the new centroid (SPEC.md A34). Otherwise a
+        corner the driver has driven twice and a stranger once enters the map
+        at the stranger's apex, and every later self lap is measured there.
         """
         loaded = self.load_corner_map(car=car, track=track)
         if loaded is None:
@@ -1506,7 +1527,8 @@ class Database:
         map_pk, corner_map = loaded
 
         rows = self.conn.execute(
-            """SELECT o.obs_pk, o.apex_lat, o.apex_lon, o.apex_lap_dist, o.lap_pk
+            """SELECT o.obs_pk, o.apex_lat, o.apex_lon, o.apex_lap_dist, o.lap_pk,
+                      l.role
                FROM corner_observations o JOIN laps l ON l.lap_pk = o.lap_pk
                WHERE o.corner_pk IS NULL AND l.car=? AND l.track=? AND l.owner_user_pk=?
                ORDER BY o.obs_pk""",
@@ -1540,7 +1562,10 @@ class Database:
         )
         with self.conn:
             for cl in clusters:
-                lap_pks = {r["lap_pk"] for r in cl["obs"]}
+                # Only the driver's own laps decide that a corner exists and
+                # where it sits; reference observations ride along (below).
+                own = [r for r in cl["obs"] if r["role"] == "self"]
+                lap_pks = {r["lap_pk"] for r in own}
                 if len(lap_pks) < cfg.min_laps_for_admission:
                     continue
                 corner_id = f"C{next_num:02d}"
@@ -1550,10 +1575,10 @@ class Database:
                                             n_build_observations)
                        VALUES (?, ?, ?, ?, ?, ?)""",
                     (map_pk, corner_id,
-                     float(np.median([r["apex_lat"] for r in cl["obs"]])),
-                     float(np.median([r["apex_lon"] for r in cl["obs"]])),
-                     float(np.median([r["apex_lap_dist"] for r in cl["obs"]])),
-                     len(cl["obs"])),
+                     float(np.median([r["apex_lat"] for r in own])),
+                     float(np.median([r["apex_lon"] for r in own])),
+                     float(np.median([r["apex_lap_dist"] for r in own])),
+                     len(own)),
                     "corner_pk",
                 )
                 self.conn.executemany(

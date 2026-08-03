@@ -258,6 +258,25 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-08-03 — The reference-lap feature's first real run broke its own
+  guarantee (A34).** The owner supplied a reference lap and six matching Mustang
+  GT4 laps at Spa, so the vs-reference path finally ran on real data. It works
+  — 30 gap findings, 6.54 s of a real 10.73 s lap-time gap. It also showed that
+  "reference laps never enter self history" was enforced only in the
+  *measurement* queries, not in the **corner map** those measurements are taken
+  in. A reference lap could found a cohort's map outright, count toward corner
+  admission, and feed `rebuild-map`'s refreeze. Measured: 11 of 14 corners
+  moved, 154 of the owner's 191 phase times changed by up to 1.57 s, and Driver
+  Model scores followed. Fixed self-only at all three, with the reference
+  observations still linked and measured — **isolation is not exclusion**.
+  Two things worth keeping: the existing M3 trust-gate test passed honestly the
+  whole time because its synthetic reference lap only ever matches corners that
+  already exist, so it never exercised admission or rebuild — *a guarantee
+  pinned one layer above where it can break is not pinned*; and no committed
+  number moved, because both fixture manifests hold zero reference laps, which
+  is exactly why the fixtures never caught it. **Standing lesson: a capability
+  that has never run on real data has never been tested, however green its
+  tests are.**
 - **2026-07-28 - Multi-tenant, SaaS Productization, Google OAuth, and SMTP Password Resets.** The strict "one driver's instrument" rule (Philosophy #8, A31) was overridden by explicit owner directive to productize the app as a SaaS platform (A32).
   A new `users` table was added, backing both a Google OAuth TLS callback route and a standalone SMTP-based password reset flow (via SendGrid). Every data structure (`laps`, `incidents`, `model_cache`, etc.) was partitioned with `owner_user_pk`, and the row-level security was tested extensively. Trust gate 5b was amended in A32 to permit outbound calls to `smtp.sendgrid.net` and Google OAuth endpoints. All deterministic grounding tests remain strictly isolated per tenant.
 

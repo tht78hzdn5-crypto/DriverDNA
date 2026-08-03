@@ -1,5 +1,63 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-03.** Reference-lap isolation restored at the corner
+map (SPEC.md A34), on `claude/engine-validation-lap-data-388xct`. The owner
+supplied a reference lap and then six of their own Mustang GT4 laps at Spa, so
+the vs-reference path ran on real data for the first time in the project's
+history — and running it exposed that reference laps were defining the driver's
+own geometry through three paths the measurement-layer `role='self'` filters
+never covered: founding a cohort's corner map, counting toward corner
+admission, and feeding A22's `rebuild-map` refreeze.
+
+Measured on the owner's real 6-lap GT4/Spa cohort by rebuilding a clean copy
+and a with-reference copy and diffing:
+
+| Before the fix (one reference lap present) | After |
+| --- | --- |
+| **11 of 14 corners moved**, largest 46.94 m (C08) | 0 moved (0.000000 m) |
+| **11 of 14 phase windows differed** | identical |
+| **154 of the owner's 191 phase times changed**, up to **1.57 s** | identical |
+| Driver Model `corner_exit` 67.5 → 67.4, `rotation` 61.6 → 61.1 | identical |
+| A reference CSV alone founded an 11-corner map in an empty store | refused, exit 2 / HTTP 422, nothing written |
+| Reference lap's own 31 phase times, 30 vs-reference gaps | unchanged — isolation is not exclusion |
+
+On the older GR86/Spa fixture cohort the admission path alone moved
+`consistency` 34.31 → 32.26. **Blast radius: none committed.** Both fixture
+manifests hold zero reference laps, so no committed corner map was ever
+influenced and all seven `docs/*-report.md` regenerate byte-identical.
+
+The existing guard (`test_reference_import_perturbs_gap_sections_only`, M3
+trust gate 3) passes honestly and always did — its synthetic reference lap
+matches corners that already exist, so the admission path never runs and it
+never rebuilds. The guarantee was pinned one layer above where it broke.
+
+### What the six new GT4 laps say about the original question
+
+The cohort now holds 6 self laps + 1 reference lap and produces **30
+vs-reference gap findings totalling 6.54 s** against a real 10.73 s lap-time
+gap — all of them still suppressed by `insufficient data: 5–6 phase samples <
+10`. So the concrete answer to "which laps do I need": **about 4–5 more Mustang
+GT4 laps at Spa** turns those 30 computed gaps into shown ones. Census also
+surfaced a distinct gap worth recording: manually-imported laps carry no
+`session_key`, so this cohort reports **sessions 0/6** and a full quarter of
+Driver Model confidence is unreachable through the import path alone (`sync`
+populates it from the API; manual import does not).
+
+### Verified counts (2026-08-03)
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests, before any change (baseline) | **744 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **761 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests this session | **17** — 13 in `tests/test_reference_isolation.py`, 2 in `test_import_cli.py`, 2 in `test_upload_api.py` | `python3 -m pytest tests/test_reference_isolation.py` |
+| Existing tests modified | **2**, setup only (`test_reference_lap_is_never_scanned_into_incidents`, `test_reference_role_is_isolated_like_the_cli_path`) — each imported a reference lap into an empty cohort as a convenience; a self lap now precedes it. Assertions unchanged. | `git diff tests/test_incidents.py tests/test_upload_api.py` |
+| Committed `docs/*-report.md` regenerated from real fixtures | **7/7 byte-identical** — the proof the fix moved no committed number | `driverdna import tests/fixtures --db <tmp>` then each report command, diffed |
+| Real GT4 cohort, rebuilt with vs. without the reference lap | corners, windows, all 191 self phase times and the Driver Model **identical** | two DB copies, `driverdna rebuild-map` on each, rows diffed |
+| Skips | 16, all Postgres-absent or Chromium-absent | — |
+
+The 16 skips mean the two UI-SPEC browser trust gates did not run here, as in
+CI. Green above is not evidence they hold.
+
 **Snapshot date: 2026-08-02.** `driverdna census` built (SPEC.md A33), on
 `claude/engine-validation-lap-data-388xct`. The owner asked whether more lap
 data would help validate the engine; the corpus now answers that itself

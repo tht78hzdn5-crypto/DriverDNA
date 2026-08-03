@@ -409,6 +409,40 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   single-lap Mustang cohort. Deliberately no UI surface; the corner-map
   admission gate is not reported (no read-only pending-candidate query exists).
   Suite 726 → 744.
+- **Reference-lap isolation restored at the corner map (2026-08-03, SPEC.md
+  A34)** — the owner supplied a reference lap plus six of their own Mustang GT4
+  laps at Spa, so the **vs-reference path ran on real data for the first time**
+  (30 gap findings, 6.54 s of a real 10.73 s lap-time gap; all still suppressed
+  at 5–6 phase samples < 10, so ~4–5 more GT4/Spa laps is the concrete ask).
+  Running it exposed that reference laps were defining the driver's own
+  geometry. The measurement layer's `role='self'` filters were never the whole
+  guarantee: the **corner map** is the coordinate system those measurements are
+  taken in, and three paths wrote reference geometry into it — **founding** (the
+  first lap in a cohort builds the map, and nothing checked its role: one
+  reference CSV into an empty store produced an 11-corner map), **admission**
+  (`admit_pending_candidates` counted reference laps toward
+  `min_laps_for_admission` and fed their apexes to the new centroid), and
+  **rebuild** (A22's refreeze read `corner_apex_positions` /
+  `observation_positions`, neither of which even joined `laps` — so an audit for
+  an unfiltered `JOIN laps` missed them). Measured on the real GT4 cohort:
+  **11 of 14 corners moved** (largest 46.94 m), **11 of 14 windows differed**,
+  **154 of the owner's 191 phase times changed** by up to **1.57 s**; on the
+  GR86 fixture cohort the admission path alone moved `consistency` 34.31 →
+  32.26. Fixed by refusing a reference lap as its cohort's first (before the
+  lap row is written; itemized exit 2 / HTTP 422, and on a cold start the
+  upload refuses before the store is created), and by making admission and both
+  refreeze queries self-only. **Isolation is not exclusion** — reference
+  observations are still linked and measured, they just never vote on where a
+  corner is. **No committed number moved**: 7/7 `docs/*-report.md`
+  byte-identical, because both fixture manifests hold zero reference laps —
+  which is also the blast radius. The existing M3 guard
+  (`test_reference_import_perturbs_gap_sections_only`) passes honestly and
+  always did: its synthetic reference lap matches existing corners, so the
+  admission path never runs and it never rebuilds — the guarantee was pinned
+  one layer above where it broke. Flagged: a cohort founded by a reference lap
+  *before* this fix keeps its stranger-built map (the refusal guards new
+  imports, not existing rows); `rebuild-map` is the recovery path. Suite
+  744 → 761.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

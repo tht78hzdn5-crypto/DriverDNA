@@ -183,8 +183,11 @@ def _lap_with_spin(src):
 def test_reference_lap_is_never_scanned_into_incidents(tmp_db):
     """A reference lap with an obvious incident produces no self incident
     record — reference driving is never analysed."""
-    from synth import run_synthetic_lap
+    from synth import run_synthetic_lap, track_lap
 
+    # A self lap first: a reference lap can no longer found a cohort's corner
+    # map (SPEC.md A34). It carries no incident, so it cannot mask the result.
+    run_synthetic_lap(tmp_db, track_lap(src="base.csv"))
     run_synthetic_lap(tmp_db, _lap_with_spin("ref.csv"), role="reference")
     assert tmp_db.incidents_for_cohort(driver="owner", car="TestCar", track="SynthRing") == []
 

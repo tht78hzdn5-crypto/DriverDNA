@@ -1627,3 +1627,74 @@ Accepted at owner plan review; rationale recorded in the review:
   The corner-map admission gate (`identity.min_laps_for_admission`) is not
   reported — there is no read-only pending-candidate query, and adding one was
   scope the question did not ask for.
+
+- **A34** (2026-08-03): **Reference laps never define the driver's own
+  geometry.** The non-negotiable is "reference laps never enter self history,
+  trends, or consistency statistics", and the *measurement* layer has honoured
+  it since M2 — every history/metric/detector/class query filters
+  `role='self'`. The **corner map** did not, and the corner map is the
+  coordinate system those measurements are taken in: a corner's centroid
+  decides which observations belong to it, and its frozen phase windows decide
+  where every entry/mid/exit time is measured. Three paths wrote reference
+  geometry into it:
+
+  1. **Founding.** The first lap in a cohort *builds* the map
+     (`pipeline.import_parsed_lap`). Nothing checked its role, so a reference
+     lap imported into an empty cohort founded the whole thing — verified live:
+     one reference CSV into an empty store produced 11 corners and 11 canonical
+     phase windows, every one of them somebody else's line.
+  2. **Admission.** `db.admit_pending_candidates` admits a cluster seen on
+     `min_laps_for_admission` distinct laps and takes the new centroid as the
+     median of the cluster's apexes. Both counted reference observations, so a
+     corner the driver had driven twice and a stranger once entered the map —
+     at a position the stranger's apex helped set.
+  3. **Rebuild.** A22's in-place refreeze re-derives every centroid
+     (`db.corner_apex_positions`) and every window
+     (`db.observation_positions`) from the corner's full observation set. Both
+     queries were role-agnostic; neither even joined `laps`, so an audit
+     looking for an unfiltered `JOIN laps` missed them.
+
+  **Measured consequence**, on the owner's real 6-lap Mustang GT4 @ Spa cohort
+  with one reference lap (10.73 s faster, same car, same track). Rebuilding a
+  clean copy and a with-reference copy and diffing: **11 of 14 corners moved**
+  (largest 46.94 m at C08), **11 of 14 phase windows differed**, and **154 of
+  the owner's own 191 phase times changed** — up to **1.57 s**, C08 moving that
+  much of a lap from `mid` into `exit`. Driver Model scores followed
+  (`corner_exit` 67.5 → 67.4, `rotation` 61.6 → 61.1). On the older GR86/Spa
+  fixture cohort the admission path alone moved `consistency` 34.31 → 32.26.
+
+  **Why the existing test missed it.**
+  `test_reference_import_perturbs_gap_sections_only` (M3, trust gate 3) is
+  exactly the right test and passes honestly — its synthetic reference lap
+  matches corners that already exist, so the admission path never runs and the
+  test never rebuilds. The guarantee was pinned one layer above where it broke.
+
+  **Fix.** `import_parsed_lap` raises `ReferenceCannotFoundMap` *before* the
+  lap row is written when a reference lap would be its cohort's first;
+  `admit_pending_candidates` counts distinct laps and takes its centroid over
+  self observations only; `corner_apex_positions` and `observation_positions`
+  filter `role='self'`. **Isolation is not exclusion**: reference observations
+  are still clustered, still linked to the corner they belong to, and still
+  measured — that is what a gap is made of. They just never vote on where a
+  corner is. Both import surfaces refuse up front and itemized, nothing
+  partially imported (`driverdna import` exits 2; `POST /api/laps/upload`
+  returns 422, and on a cold start refuses before the store is created so a
+  rejected upload leaves no database behind).
+
+  **No principle is refined** — this restores a non-negotiable that was already
+  written down, one level below where it had been enforced. **No committed
+  number moves**: all seven `docs/*-report.md` artifacts regenerate
+  byte-identical, because both committed fixture manifests contain zero
+  reference laps. That is also the blast radius: no committed corner map was
+  ever influenced, and the owner's live store has never held a reference lap.
+  After the fix, the same real GT4 experiment gives corner centroids, phase
+  windows, all 191 self phase times and the Driver Model **identical** with and
+  without the reference lap, while the reference lap keeps its 31 phase times
+  and its 30 vs-reference gap findings.
+
+  **Flagged, not silently accepted:** a cohort founded by a reference lap
+  *before* this fix keeps its stranger-built map — the refusal is a guard on
+  new imports, not a repair. Such a cohort cannot be detected from the rows
+  alone (the map records no founding role), so nothing is auto-repaired;
+  `rebuild-map` now re-derives that cohort's geometry self-only, which is the
+  recovery path. No such cohort is known to exist.

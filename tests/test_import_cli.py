@@ -208,6 +208,46 @@ def test_import_of_a_re_downloaded_copy_is_reported_duplicate_not_double_counted
         ).fetchone()["lap_id"] == "01KY31T54KGGQ351PDAGJDTZJM"
 
 
+def _csv_dir(tmp_path, name, *sources):
+    d = tmp_path / name
+    d.mkdir()
+    for src in sources:
+        (d / src.name).write_bytes(src.read_bytes())
+    return d
+
+
+def test_import_refuses_a_reference_lap_as_the_first_lap_in_a_cohort(tmp_path):
+    """A34: the first lap builds the corner map, so it must be the driver's
+    own. Itemized, exit 2, and nothing imported — same contract as an
+    unresolvable car/track."""
+    src = _csv_dir(tmp_path, "refs", FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    db_path = tmp_path / "ref-first.db"
+    result = CliRunner().invoke(app, [
+        "import", str(src), "--db", str(db_path), "--role", "reference",
+        "--car", "GR86", "--track", "Spa-Francorchamps",
+    ])
+    assert result.exit_code == 2
+    assert "would be the first lap in their cohort" in result.output
+    assert "Garage_61_HKWPXX.csv (GR86 @ Spa-Francorchamps)" in result.output
+    with Database.open(db_path) as db:
+        assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 0
+
+
+def test_import_accepts_a_reference_lap_once_the_cohort_has_a_self_lap(tmp_path):
+    db_path = tmp_path / "ref-second.db"
+    cohort = ["--car", "GR86", "--track", "Spa-Francorchamps", "--db", str(db_path)]
+    own = _csv_dir(tmp_path, "own", FIXTURES_DIR / "Garage_61_HKWPXX.csv")
+    ref = _csv_dir(tmp_path, "ref", FIXTURES_DIR / "Garage_61_W5JRZB.csv")
+
+    assert CliRunner().invoke(app, ["import", str(own), *cohort]).exit_code == 0
+    result = CliRunner().invoke(app, ["import", str(ref), *cohort, "--role", "reference"])
+    assert result.exit_code == 0, result.output
+    with Database.open(db_path) as db:
+        assert [
+            r["role"] for r in db.conn.execute("SELECT role FROM laps ORDER BY lap_pk")
+        ] == ["self", "reference"]
+
+
 def test_metrics_without_db_fails_loudly(tmp_path):
     result = CliRunner().invoke(
         app, ["metrics", "--db", str(tmp_path / "missing.db")]
