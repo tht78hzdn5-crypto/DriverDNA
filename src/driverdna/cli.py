@@ -127,6 +127,13 @@ def import_cmd(
         "entry only. Mirrors what `sync` sets from the API — enables M6 "
         "trend on manually-imported laps.",
     ),
+    session: str = typer.Option(
+        None, "--session",
+        help="Session label applied to every imported file. With a manifest, "
+        "a per-entry `session` overrides this for that entry only. Mirrors "
+        "what `sync` sets from the API — enables the min_sessions gate "
+        "and within-session repeatability.",
+    ),
 ) -> None:
     """Import lap CSVs: parse, segment, identify, measure, persist."""
     from driverdna.config import load_config
@@ -148,7 +155,7 @@ def import_cmd(
                 "car": e["car"],
                 "track": e["track"],
                 "role": e["role"],
-                "session_key": e.get("session"),
+                "session_key": e.get("session", session),
                 "lap_date": _validate_lap_date(e["date"]) if "date" in e else date,
             }
             for e in load_fixture_manifest(directory)
@@ -186,7 +193,7 @@ def import_cmd(
                 continue
             jobs.append({
                 "path": p, "driver": driver, "car": file_car, "track": file_track,
-                "role": role, "lap_date": date,
+                "role": role, "session_key": session, "lap_date": date,
                 # Only the fields that actually came from the filename, so the
                 # per-file note never calls a value the driver typed "detected".
                 "_detected": () if detected is None else tuple(
