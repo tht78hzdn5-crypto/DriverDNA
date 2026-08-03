@@ -258,6 +258,16 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-08-03 — "Done" means merged to `main` (AGENTS.md, Branches and
+  merging).** A session did real, tested work (A33, A34 below) entirely on a
+  harness-assigned feature branch and reported it "done" while it sat
+  unmerged — a harness's branch assignment governs where commits land, it
+  does not redefine what counts as finished. New standing rule, owner
+  instruction: every session ends by merging its branch to `main`, or states
+  explicitly why not (an unresolved design fork like R4 is a legitimate why
+  not; untested or unreviewed work is not). Recorded in AGENTS.md's
+  Branches-and-merging section (binding copy, terse for the size budget) and
+  restated with the prompting case in CLAUDE.md.
 - **2026-08-03 — Reference-geometry adoption drafted at design stage (R4,
   docs/REFERENCE-LAPS.md), awaiting owner go.** After A34 (below), the owner
   asked the fair follow-up: isn't a reference lap the gold standard? Answer

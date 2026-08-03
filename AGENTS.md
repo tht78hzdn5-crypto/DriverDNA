@@ -117,6 +117,8 @@ direction cheap, so no agent has to guess what the last one did.
 ### Branches and merging
 
 - **Claude Code commits directly to `main`** (owner instruction, 2026-07-21).
+  **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
+  session by merging to `main`, or saying plainly why not.
 - **Every other agent works on a prefixed branch** and merges to `main` only
   after CI is green: `gemini/<topic>` for Gemini CLI, `antigravity/<topic>` for
   Antigravity.

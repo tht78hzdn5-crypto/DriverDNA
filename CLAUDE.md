@@ -218,6 +218,17 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   fix so the pre-any-lap empty state reads as direction, not a raw 404.
 - **Git workflow (2026-07-21, owner instruction): commits go straight to
   `main`.** The branch + PR flow used earlier this session is retired.
+- **"Done" means merged (2026-08-03, owner instruction; AGENTS.md's
+  Branches-and-merging section is the binding copy).** A remote/CCR session
+  can be harness-assigned a feature branch instead of `main` directly — that
+  assignment governs where commits land mid-session, it does not change what
+  counts as finished. Prompted by a real case: a session did solid, tested
+  work (SPEC.md A33/A34 below) entirely on such a branch and reported it as
+  "done" while it sat unmerged. Going forward: every session ends by merging
+  its branch to `main`, or by saying plainly, in the chat, why not (a design
+  doc awaiting the owner's go, like R4 below, is a legitimate "why not" — an
+  untested change is not). Do not just report green tests and a push as
+  finished; state the merge outcome explicitly.
 - **Car/track auto-detect from filename (2026-07-21)** — Garage61's newer
   export filename shape (`Garage_61__<driver>__<car>__<track>__<laptime>__
   <id>.csv`) embeds car/track directly; `parse_garage61_filename`
