@@ -1461,13 +1461,14 @@ Accepted at owner plan review; rationale recorded in the review:
   invariant in this project is enforced by pytest and nothing else — no linter,
   no formatter, no type checker — and nothing ran it on push.
 
-  **Stated limitation, not papered over:** CI does not install Chromium, so the
-  two UI-SPEC trust-gate tests (`test_render_parity.py`, `test_offline.py`)
-  skip there, which also means the known pre-existing `test_offline` failure
-  does not turn CI red. Chosen so the gate is green-by-default and therefore
-  worth trusting, but it means green CI is not evidence the browser trust gates
-  hold. Recorded in `AGENTS.md` so no agent claims otherwise. Installing
-  Chromium in a separate non-blocking job is the honest next step.
+  **Resolved (2026-08-03):** A separate `browser-tests` job now installs
+  Chromium via Playwright, builds the SPA, and runs the six Chromium-gated test
+  files (`test_render_parity`, `test_offline`, `test_upload_ui`, `test_auth_ui`,
+  `test_cockpit_ui`, `test_score_history_ui`). Non-blocking
+  (`continue-on-error: true`): a failure is visible but does not block merges,
+  so the main gate stays green-by-default. A follow-up "Confirm browser tests
+  actually ran" step fails the job if the skip guard still triggers despite the
+  install — silent coverage loss was the original gap, and this closes it.
 
   **Branch discipline:** Claude Code continues to commit directly to `main`
   (the 2026-07-21 owner instruction stands); Gemini CLI and Antigravity work on

@@ -127,8 +127,10 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 
 ### What CI does and does not cover
 
-CI (`tests.yml`) runs the suite on pushes/PRs (Python 3.11/3.12) with a Postgres service container. It fails if Postgres tests skip due to missing infra.
-CI does NOT install Chromium; the two UI-SPEC tests (`test_render_parity.py`, `test_offline.py`) skip in CI. Green CI does not prove browser gates hold.
+CI (`tests.yml`) runs two jobs on pushes/PRs:
+
+1. **`pytest`** (Python 3.11 + 3.12, merge gate): the full suite with a Postgres service container. Fails if Postgres tests skip due to missing infra. Browser tests skip here (no Chromium).
+2. **`browser-tests`** (Python 3.12, non-blocking): installs Chromium via Playwright, builds the SPA, and runs the six Chromium-gated test files (`test_render_parity.py`, `test_offline.py`, `test_upload_ui.py`, `test_auth_ui.py`, `test_cockpit_ui.py`, `test_score_history_ui.py`). Fails if the skip guard still triggers despite installing Chromium. Non-blocking (`continue-on-error: true`): a red browser-tests check is visible but does not prevent merges.
 
 ### Working with the durable docs
 

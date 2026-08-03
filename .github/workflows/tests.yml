@@ -58,11 +58,9 @@ jobs:
       - name: Test
         env:
           DRIVERDNA_TEST_DATABASE_URL: postgresql://driverdna:driverdna@localhost:5432/driverdna_test
-        # Chromium is deliberately not installed, so the two UI-SPEC trust-gate
-        # tests (test_render_parity.py, test_offline.py) skip here. That keeps
-        # the gate green-by-default and therefore worth trusting — but it means
-        # green CI is NOT proof the browser trust gates hold. The owner runs
-        # those locally. See AGENTS.md, "What CI does and does not cover".
+        # Chromium is not installed in this job, so browser tests skip here.
+        # They run in the separate `browser-tests` job (non-blocking) which
+        # installs Chromium and builds the SPA.
         #
         # No extra -q: pyproject's addopts already sets it, and -qq suppresses
         # the "N passed, M skipped" summary line — which is the one line you
@@ -111,3 +109,76 @@ jobs:
           if [ "$test_changes" -gt 0 ] && [ "$src_changes" -eq 0 ]; then
             echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
           fi
+
+  # Browser trust gates — the Chromium-gated tests that the main pytest job
+  # deliberately skips. Runs in parallel, non-blocking: a failure here is
+  # visible (red check) but does not block merges, matching the spec's
+  # "separate non-blocking job" direction (SPEC.md A16). The main suite
+  # remains the merge gate; this is the honest signal that was missing.
+  #
+  # Single Python version (3.12) — browser tests exercise UI rendering and
+  # FastAPI routing, not Python-version compatibility. No Postgres — every
+  # browser test uses SQLite fixture DBs.
+  browser-tests:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install Python package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Install Chromium via Playwright
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        run: python -m playwright install chromium --with-deps
+
+      - name: Build SPA
+        working-directory: ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Confirm SPA built
+        run: |
+          if [ ! -f src/driverdna/ui/static/index.html ]; then
+            echo "::error::SPA build did not produce src/driverdna/ui/static/index.html"
+            exit 1
+          fi
+          echo "SPA built: $(find src/driverdna/ui/static -type f | wc -l) files"
+
+      - name: Browser tests
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        run: |
+          set -o pipefail
+          python -m pytest -rs \
+            tests/test_render_parity.py \
+            tests/test_offline.py \
+            tests/test_upload_ui.py \
+            tests/test_auth_ui.py \
+            tests/test_cockpit_ui.py \
+            tests/test_score_history_ui.py \
+            | tee browser-test-output.txt
+
+      - name: Confirm browser tests actually ran
+        run: |
+          if grep -q "Chromium binary or built SPA not present" browser-test-output.txt; then
+            echo "::error::Browser tests SKIPPED despite Chromium install — the"
+            echo "::error::skip guard still triggered. Check PLAYWRIGHT_BROWSERS_PATH"
+            echo "::error::and the SPA build output."
+            exit 1
+          fi
+          echo "Browser tests exercised: no Chromium/SPA-absent skips."
