@@ -215,3 +215,5 @@ That's exactly why the guardrails themselves are off-limits:
 - **Propose major changes.** Architectural changes (e.g. collapsing services)
   or destructive operations (history rewrites) need explicit owner approval
   first.
+- **Reading laps to find engine gaps** follows `docs/LAP-ANALYSIS-PROTOCOL.md`
+  — observations only, every number quoted from the trace.

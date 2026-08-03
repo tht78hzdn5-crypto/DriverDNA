@@ -47,6 +47,14 @@ def _matches(claim: float, pool: set[float]) -> bool:
     return any(abs(claim - v) <= tolerance for v in pool)
 
 
+#: Public alias, same function and same tolerance. The analysis-protocol
+#: verifier (`driverdna verify-observations`) checks a different kind of
+#: claim against a different pool, but "does this number match the data"
+#: has to mean exactly one thing in this repository — so it imports this
+#: rather than re-deriving a second tolerance that could drift.
+matches_number = _matches
+
+
 def unsupported_claims(text: str, pool: set[float]) -> list[str]:
     """Claims in `text` that no payload number supports."""
     violations = []

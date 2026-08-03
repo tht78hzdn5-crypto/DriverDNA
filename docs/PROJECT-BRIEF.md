@@ -305,6 +305,45 @@ in `AGENTS.md`). Newest first.
   is exactly why the fixtures never caught it. **Standing lesson: a capability
   that has never run on real data has never been tested, however green its
   tests are.**
+- **2026-07-29 — cheap agents get to read laps, under a protocol that checks
+  them mechanically (`docs/LAP-ANALYSIS-PROTOCOL.md`).** The owner asked to put
+  Antigravity's Flash agents on the grunt work of reading traces to improve the
+  engine — the thing promised at project start — with Claude checking whether
+  the work is any good.
+
+  **The fork was how much to trust the reader, and the answer is none.** A
+  cheap model reading a trace is confidently wrong often enough that an
+  unchecked reading is *worse* than no reading: it looks exactly like a
+  discovery. So the protocol grants the reader no authority at all. It produces
+  observations, never code, never numbers the engine uses, never a decision.
+  Every numeral it writes must be quoted from the trace, and
+  `driverdna verify-observations` checks each quote against the digest bytes —
+  a fabricated number is rejected before a human reads the sentence around it.
+  This is `coach/grounding.py`'s bargain applied to a new kind of claim, and it
+  imports that module's tolerance rather than defining a second one.
+
+  Two supporting decisions worth recording. **The digest measures nothing** —
+  row and column selection only, asserted cell-for-cell — not out of purity but
+  because it is the shared evidence base for two independent readers, and a bug
+  in a derived column would corrupt both readings identically and silence the
+  disagreement meant to catch it. **Reliability is measured per batch, not
+  assumed**: known-outcome laps ride along unmarked, and a reader that misses
+  them has its batch discarded unread.
+
+  Flagged rather than quietly accepted: on a thin corpus the engine is
+  *supposed* to be silent (`gates.min_phase_samples` 10, `min_sessions` 2,
+  vs-self needs 3 laps), so a prolific reader beside a quiet engine reads as a
+  discovery machine and is nothing of the kind. Batches that thin score "engine
+  silent" as ungated, never as a coverage gap. Also flagged: the reviewer must
+  be blinded when the batch is *designed*, not only when it is read — B01's
+  reviewer already knew which two laps carried incidents, so those are excluded
+  from its agreement count (`docs/lap-analysis/b01/answer-key.md`).
+
+  B01's first reading found one thing not in the pre-registered answer key:
+  brake re-application after the corner's brake release, present on 8 of 11
+  laps at C01 and concentrated at five corners while absent at ten, with no
+  metric counting it — against `throttle_modulation_count`, which counts the
+  exact throttle analogue. Not yet acted on; a finding is not an amendment.
 - **2026-07-28 - Multi-tenant, SaaS Productization, Google OAuth, and SMTP Password Resets.** The strict "one driver's instrument" rule (Philosophy #8, A31) was overridden by explicit owner directive to productize the app as a SaaS platform (A32).
   A new `users` table was added, backing both a Google OAuth TLS callback route and a standalone SMTP-based password reset flow (via SendGrid). Every data structure (`laps`, `incidents`, `model_cache`, etc.) was partitioned with `owner_user_pk`, and the row-level security was tested extensively. Trust gate 5b was amended in A32 to permit outbound calls to `smtp.sendgrid.net` and Google OAuth endpoints. All deterministic grounding tests remain strictly isolated per tenant.
 

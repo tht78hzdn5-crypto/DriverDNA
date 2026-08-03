@@ -14,6 +14,12 @@ build/
 reports/
 out/
 
+# Lap-analysis protocol working area (docs/LAP-ANALYSIS-PROTOCOL.md). The blind
+# digests and sealed engine output regenerate byte-identically from the
+# committed fixtures, so they are derived data, not record. The record — the
+# observations and the comparison — lives in docs/lap-analysis/ and IS committed.
+scratch/
+
 # Secrets — env-only, never committed (CLAUDE.md)
 .env
 .env.*

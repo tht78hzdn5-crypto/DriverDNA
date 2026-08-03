@@ -19,6 +19,13 @@ Two rules from `AGENTS.md` that matter before you write anything:
   only once CI is green.
 - Run `python3 -m pytest` before changing anything, to establish a baseline.
 
+If the task you were given is **reading laps to find gaps in the engine**
+(rather than building something), it is governed by
+`docs/LAP-ANALYSIS-PROTOCOL.md` — read Part 1 and follow it exactly. That
+work produces observations only: no edits to `src/`, `tests/`, `docs/` or
+`ui/`, no commits, and every number quoted from the trace so
+`driverdna verify-observations` can check it.
+
 The block below is mirrored verbatim from `AGENTS.md` and pinned byte-for-byte
 by `tests/test_agent_contract.py`. Edit it in `AGENTS.md`, then copy it here —
 never only here.
