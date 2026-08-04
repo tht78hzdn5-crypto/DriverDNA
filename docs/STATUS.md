@@ -38,6 +38,42 @@ failed), +29 tests. Full record: `docs/SPEC.md` A39.
 | Playwright: cohort page + corner drill against a real reference lap | **3/3 passed** — envelope/identity render, Exclude/Include updates live with no reload, corner-drill overlay columns show real values | `python3 -m pytest tests/test_reference_curation_ui.py` |
 | Committed `docs/*-report.md` | untouched — this session never ran a report command against the committed fixtures | — |
 | Skips | 16, all Postgres-absent (Chromium was present and exercised — the two browser trust gates plus the new Playwright suite all ran green) | — |
+
+**Snapshot date: 2026-08-03 (later still, Chromium CI).** Action item closed:
+CI now runs the browser trust gates instead of silently skipping them.
+`.github/workflows/tests.yml` gained a `browser-tests` job — installs Chromium
+via Playwright, builds the SPA (`npm ci && npm run build`), and runs the six
+Chromium-gated test files (`test_render_parity`, `test_offline`,
+`test_upload_ui`, `test_auth_ui`, `test_cockpit_ui`, `test_score_history_ui`).
+Non-blocking (`continue-on-error: true`), matching `docs/SPEC.md`'s stated
+next step: the main `pytest` job stays the merge gate, this job's red/green is
+now a visible, honest signal instead of an invisible skip. A guard step (same
+pattern as the existing Postgres-backend guard) fails the job outright if the
+skip reason still fires despite the Chromium install, so the job can't go
+green by silently skipping again.
+
+Verified before merging (`claude/chromium-ci-setup-3ru4mz` → `main`,
+fast-forward, no other pushes landed on `main` in between):
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Full suite, this container (Chromium + built SPA both present) | **850 passed, 16 skipped, 0 failed** | `python3 -m pytest -rs` |
+| Skips | 16, all Postgres-absent (no local Postgres in this container) — **zero Chromium/SPA-absent skips**, confirming the browser tests actually ran | — |
+| The six Chromium-gated files, run directly | **17 passed** | `python3 -m pytest tests/test_render_parity.py tests/test_offline.py tests/test_upload_ui.py tests/test_auth_ui.py tests/test_cockpit_ui.py tests/test_score_history_ui.py` |
+| `test_agent_contract.py` (incl. the AGENTS.md 11,000-char size budget) | **8/8 passed** — AGENTS.md is 9,025 chars after the edit | `python3 -m pytest tests/test_agent_contract.py` |
+
+Docs/workflow-only change (`tests.yml`, `AGENTS.md`, `docs/SPEC.md`); no
+`driverdna/` source touched, so this baseline is a completeness check, not a
+regression risk. `AGENTS.md`'s "What CI does and does not cover" section and
+`docs/SPEC.md`'s A16 note both updated to describe the new job rather than the
+old skip. **Not yet independently confirmed**: this session verified Chromium
+install + browser tests locally (this environment ships Chromium
+pre-installed) but did not watch a live GitHub Actions run of the new
+`browser-tests` job — the `actions/setup-node` + `playwright install
+--with-deps` steps are standard but unexercised in the real Actions
+environment until the next push triggers them.
+
+**Snapshot date: 2026-08-03 (later still).** Closed the loop this doc itself
 posed: "re-running `sync` is the cheapest available evidence... requires no
 driving." Owner supplied `GARAGE61_TOKEN` for a one-off run against a scratch
 DB in this session (never persisted, never committed — no DB has ever been in
