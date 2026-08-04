@@ -586,7 +586,7 @@ def ui(
     host: str = typer.Option(
         "127.0.0.1",
         help="Bind address. Use 0.0.0.0 for hosted/container deployments — "
-             "which requires DRIVERDNA_ACCESS_TOKEN to be set.",
+             "which requires DRIVERDNA_SESSION_SECRET (or DRIVERDNA_ACCESS_TOKEN) to be set.",
     ),
 ) -> None:
     """Serve the cockpit (API + built SPA)."""
