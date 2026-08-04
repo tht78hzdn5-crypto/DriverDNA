@@ -1,5 +1,68 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-04 (mobile UI improvement pass, owner-directed).**
+Extended U7's mobile CSS beyond its original single-breakpoint pass
+(`ui/src/app.css`, `ui/src/views/cohort.jsx`). Verified in a real browser,
+not just reviewed as CSS: `driverdna demo` + Playwright at 390×844 (the
+project's own reference viewport) and 320×700 (iPhone SE, the narrowest
+common width) across Driver home, Driver Model, Garage, Cohort, Chat, and
+Laps. **Zero horizontal body overflow at either width, on every route
+checked** (`document.body.scrollWidth > window.innerWidth` false
+throughout) — the trust-gate-5 property UI-V3-PLAN.md flagged as
+"specified but not yet built" as an automated 390×844 parity pass; this
+session's check was manual/one-off, not a committed test, so that gap
+still stands.
+
+What changed, and why (DEPLOY-SPEC D3's "mobile = read + chat subset"
+still governs which views got real phone treatment vs. stayed merely
+legible):
+- **Cohort view's lap board** (`ui/src/views/cohort.jsx`): was a
+  `.scroll-x`-wrapped table, the most-viewed table in the app and the
+  worst fit for sideways scrolling on a phone. Now stacked rows
+  (`.lap-row`) — verified legible at both widths, incident chips and
+  best-lap highlighting intact.
+- **Chat input**: `position: sticky; bottom: 0` below the 48rem
+  breakpoint (verified via computed style: `sticky` on a 390px viewport,
+  `static` on desktop — the media query is real, not just present in
+  source), so it no longer scrolls away during a long conversation;
+  `env(safe-area-inset-bottom)` respected. Chat log's fixed `max-height`
+  is dropped on mobile so the page scrolls naturally instead of
+  double-scrolling.
+- **Tab bar**: confirmed horizontally scrollable, not clipped — at
+  320px only 5 of 6 tabs fit in view, but `nav`'s own scrollWidth
+  (365px) exceeds its clientWidth (304px) and every tab, including
+  Config, is reachable by the existing scroll-snap. No hamburger, per
+  the standing "hiding where you are is the wrong trade" rule.
+- **Laps view's data-quality table** deliberately left as-is: confirmed
+  it already follows the intended pattern — the `.scroll-x` container
+  scrolls internally (table 500px in a 353px box) while the page body
+  never does. This is the desktop-shaped-but-legible tier D3 allows for
+  a secondary table; not converted to stacked rows.
+- Stat tiles, Driver Model meters, coaching cards, findings, config rows,
+  staged-change rows, and the upload form all gained `flex-wrap`/stacking
+  at 48rem so long labels and values don't collide. New ~26rem (415px)
+  breakpoint for small-phone refinement (2-column tiles, smaller
+  headings/tabs/chips).
+
+Full suite green throughout (**850 passed, 16 skipped**, same skip set as
+the 2026-08-03 baseline — all Postgres-absent). `test_ui_static.py`,
+`test_render_parity.py`, and `test_cockpit_ui.py` run directly and green.
+SPA rebuilt and reshipped (`npm run build`); confirmed the new mobile CSS
+(the 26rem breakpoint, `.lap-row`, sticky `.chat-input`) is present in the
+built, minified bundle, not just the source. Committed and pushed to
+`claude/mobile-ui-improvements-m51my0` (not yet merged to `main` or opened
+as a PR — awaiting the owner's go, per "done means merged" this is the
+stated why-not, not a silent gap).
+
+**Not done, flagged rather than silently skipped:** the 390×844
+render-parity pass UI-V3-PLAN.md's Track A done-criteria calls for was
+not added as a committed automated test — this session's browser
+verification was manual (screenshots + one-off Playwright scripts in the
+scratch dir, not `tests/`). Corner drill-down, finding evidence, config,
+and upload views were left in their "reachable and legible, not
+optimized" tier per D3 — not audited beyond confirming the existing
+44px-tap-target and flex-wrap rules already apply to them generically.
+
 **Snapshot date: 2026-08-03 (later still, Chromium CI).** Action item closed:
 CI now runs the browser trust gates instead of silently skipping them.
 `.github/workflows/tests.yml` gained a `browser-tests` job — installs Chromium
