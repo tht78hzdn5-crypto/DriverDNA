@@ -20,6 +20,7 @@ import tempfile
 import time
 import uuid
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
@@ -30,6 +31,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+from driverdna.attribution.engine import PHASES, reference_envelope
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
 from driverdna.coach import keystore
@@ -62,6 +64,10 @@ _REFERENCE_FIRST_LAP_DETAIL = (
 
 class AnnotateBody(BaseModel):
     status: str  # acknowledged | intentional
+    note: str | None = None
+
+
+class ExcludeReferenceBody(BaseModel):
     note: str | None = None
 
 
@@ -165,8 +171,12 @@ def create_app(
     async def _lifespan(app: FastAPI):
         nonlocal _pool
         if _is_pg:
-            _pool = open_postgres_pool(str(db_path))
-            app.state.pool = _pool
+            try:
+                _pool = open_postgres_pool(str(db_path))
+                app.state.pool = _pool
+            except Exception as exc:
+                import sys
+                print(f"WARNING: database pool failed: {exc}", file=sys.stderr)
         yield
         if _pool is not None:
             _pool.close()
@@ -546,6 +556,8 @@ def create_app(
             return None
 
     def open_db(request: Request | None = None, *, check_same_thread: bool = True) -> Database:
+        if _is_pg and _pool is None:
+            raise HTTPException(503, detail="database unavailable — check server logs")
         # A hosted store has no file to stat and creates its schema on
         # connect, so "not there yet" is reported by `missing_reason` only
         # for the SQLite case; an empty hosted store surfaces as the normal
@@ -648,6 +660,27 @@ def create_app(
                 for c in corner_map.corners
             ]
 
+    @app.get("/api/cohorts/{slug}/corners/{corner_id}/reference-phases")
+    def corner_reference_phases(slug: str, corner_id: str, request: Request) -> dict[str, Any]:
+        """Reference phase-time distributions for one corner (R2, SPEC.md
+        A39), beside the self baselines the cohort payload already carries
+        -- the same `db.phase_history(role='reference')` +
+        `reference_envelope` vs_reference_findings is built from, exposed
+        directly so the corner drill can show it without recomputing
+        anything. A lap R3 curation has excluded is already filtered out by
+        `phase_history` itself, so this always reflects the active pool."""
+        with open_db(request) as db:
+            cohort = resolve(db, slug)
+            result: dict[str, Any] = {}
+            for phase in PHASES:
+                history = db.phase_history(
+                    car=cohort["car"], track=cohort["track"], corner_id=corner_id,
+                    phase=phase, role="reference",
+                )
+                envelope = reference_envelope([h["time_s"] for h in history])
+                result[phase] = asdict(envelope) if envelope else None
+            return result
+
     @app.get("/api/cohorts/{slug}/track-trace")
     def track_trace(slug: str, request: Request) -> dict[str, Any]:
         """Lat/Lon of the newest retained self lap, downsampled for transport
@@ -747,13 +780,14 @@ def create_app(
             ) from None
 
     @app.post("/api/laps/upload")
-    async def upload_laps(request: Request, 
+    async def upload_laps(request: Request,
         files: list[UploadFile] = File(...),
         car: str | None = Form(None),
         track: str | None = Form(None),
         role: str = Form("self"),
         date: str | None = Form(None),
         session: str | None = Form(None),
+        driver: str | None = Form(None),
     ) -> dict[str, Any]:
         """Wraps `import_lap_file` — the exact function `driverdna import`
         calls per file (UI-SPEC decision 3: no business logic here). Unlike
@@ -817,6 +851,12 @@ def create_app(
 
         car = (car or "").strip() or None
         track = (track or "").strip() or None
+        # Same default the CLI's own --driver flag has. Reference laps are
+        # the case this matters for: without it, every uploaded reference
+        # lap would read as "owner" too, indistinguishable from the
+        # driver's own laps (R2, SPEC.md A39) — self uploads keep the same
+        # "owner" default they always had.
+        driver = (driver or "").strip() or "owner"
         # (upload, car, track, auto_detected)
         resolved: list[tuple[UploadFile, str, str, bool]] = []
         unresolved: list[str] = []
@@ -884,7 +924,7 @@ def create_app(
                     dest = Path(tmp) / (upload.filename or "upload.csv")
                     dest.write_bytes(await upload.read())
                     result = import_lap_file(
-                        db, dest, config=config, driver="owner", car=file_car,
+                        db, dest, config=config, driver=driver, car=file_car,
                         track=file_track, role=role, session_key=session, lap_date=date,
                     )
                     matched = sum(1 for a in result.assigned if a)
@@ -1045,6 +1085,44 @@ def create_app(
                 raise HTTPException(404, detail=f"no annotation on {finding_id}")
             db.clear_annotation(finding_id)
             return {"cleared": finding_id}
+
+    @app.post("/api/laps/{lap_pk}/exclude")
+    def exclude_reference_lap(
+        lap_pk: int, request: Request, body: ExcludeReferenceBody | None = None,
+    ) -> dict[str, Any]:
+        """R3 curation (SPEC.md A39): the audited-annotations pattern applied
+        to a reference lap. `db.exclude_reference_lap` itself validates that
+        `lap_pk` is this account's and is role='reference' — a self lap has
+        no exclusion concept — so the same ValueError covers both "unknown
+        lap" and "not a reference lap", both reported as 404 (unknown/
+        inapplicable identifier), same family as the annotate endpoint's own
+        unknown-finding 404."""
+        with open_db(request) as db:
+            try:
+                db.exclude_reference_lap(
+                    lap_pk=lap_pk, note=body.note if body else None,
+                    created_at=datetime.now(UTC).isoformat(),
+                )
+            except ValueError as e:
+                raise HTTPException(404, detail=str(e)) from None
+            return {
+                "excluded": lap_pk,
+                "exclusion": db.reference_exclusions()[lap_pk],
+                "effect": "removed from the reference envelope and every "
+                          "vs-reference finding; the lap and its measurements "
+                          "are kept",
+            }
+
+    @app.delete("/api/laps/{lap_pk}/exclude")
+    def include_reference_lap(lap_pk: int, request: Request) -> dict[str, Any]:
+        """Undo an exclusion — never touches the lap or its measurements.
+        Rejects a lap_pk that isn't currently excluded rather than silently
+        no-op-ing, same discipline as `clear_annotation`."""
+        with open_db(request) as db:
+            if lap_pk not in db.reference_exclusions():
+                raise HTTPException(404, detail=f"lap {lap_pk} is not excluded")
+            db.include_reference_lap(lap_pk)
+            return {"included": lap_pk}
 
     @app.post("/api/config/propose")
     def config_propose(body: ProposeBody, request: Request) -> dict[str, Any]:

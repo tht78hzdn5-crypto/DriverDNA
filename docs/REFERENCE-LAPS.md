@@ -174,24 +174,33 @@ already-self-founded cohort. Fixed self-only at all three; see A34.
   assertions on the cohort/laps markup updated in the same change. Deeper
   reference identity (date, per-lap distribution in the corner drill) stays
   in R2.
-- **R2 — Reference identity and depth (small engine + payload).** A
-  `references` block in the cohort payload: the envelope (n, median, best)
-  plus contributing laps (driver, lap time, date — already stored, never
-  yet surfaced); corner drill gains a reference distribution beside yours
-  via a read endpoint over `db.phase_times(role='reference')`, mirroring
-  the existing distribution endpoint. **Open decision (owner):** optional
-  import-time label (`--ref-label "teammate JD"` / upload field; nullable
-  column, migration) — and if labels exist, whether the envelope ever
-  splits per label or stays one pool with labeled contributors. Splitting
-  multiplies findings; the honest default is one pool, contributors
-  listed. Not picked here.
-- **R3 — Curation (owner decision required; options stated, one
-  recommended).** (A) An exclusion flag through an audited path — the
-  annotations pattern: reference lap stays visible, marked excluded, the
-  envelope recomputes without it, the exclusion is reversible and on the
-  record. (B) No mechanism — document the re-import stance instead.
-  Recommendation: A; it is the smallest mechanism consistent with "nothing
-  is silently hidden."
+- **R2 — Reference identity and depth. Built (2026-08-03, SPEC.md A39).** A
+  `references` block in the cohort payload: the envelope (n, median, best —
+  `reference_envelope` reused over whole-lap `duration_s`) plus contributing
+  laps (driver, lap time, date, each flagged excluded or not); the corner
+  drill gains a reference distribution beside yours via
+  `GET /api/cohorts/{slug}/corners/{corner_id}/reference-phases`, mirroring
+  the existing metric-distribution endpoint over
+  `db.phase_history(role='reference')`. **Owner decisions (asked, not
+  assumed):** no `--ref-label` column — the existing `driver` column
+  (settable per lap on the CLI path already; the upload path could not
+  actually set it, a real gap closed in the same change, see A39) is
+  sufficient identity; the envelope stays one aggregated pool with
+  contributors listed, never split per contributor. Corner-drill display:
+  overlay (three extra columns on the self phase-times table row), not a
+  separate section or side-by-side.
+- **R3 — Curation. Built (2026-08-03, SPEC.md A39).** Option A, as
+  recommended here: an exclusion flag through the audited-annotations
+  pattern (`reference_exclusions` table, migration 015) — a reference lap
+  stays visible, marked excluded, the envelope and every vs-reference
+  finding recompute without it, reversible via the same toggle. Enforced
+  once, at `db.phase_history`'s query surface (role='reference'), so
+  `attribution/ranker.py` needed no changes at all to honour it — the same
+  discipline A34 established for role isolation itself. Toggle lives in the
+  cohort view's References panel and as CLI commands
+  (`exclude-reference`/`include-reference`), both wrapping one DB write
+  path. Cascade is immediate: payloads are computed live on every fetch, so
+  there is no separate rebuild step to wait for.
 
 - **R4 — Deliberate reference-geometry adoption (design stage, NOT built;
   drafted 2026-08-03 at owner request after A34).** A34 makes the default

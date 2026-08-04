@@ -471,6 +471,24 @@ MIGRATIONS: tuple[str, ...] = (
         UNIQUE (owner_user_pk, provider)
     );
     """,
+    # 015 - reference-lap curation (R3, SPEC.md A39). An exclusion is the
+    # audited-annotations pattern (finding_annotations, migration 001)
+    # applied to a lap instead of a finding: reversible, never deletes the
+    # lap or its measurements -- it only removes it from the reference
+    # envelope and vs-reference findings until re-included. owner_user_pk
+    # follows the user_api_keys (014) shape rather than finding_annotations'
+    # (001, predates Data Partitioning) -- exclusion is scoped per account
+    # like every table created after migration 009.
+    """
+    CREATE TABLE reference_exclusions (
+        exclusion_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        lap_pk INTEGER NOT NULL,
+        note TEXT,
+        created_at TEXT,
+        UNIQUE (owner_user_pk, lap_pk)
+    );
+    """,
 )
 
 
@@ -1344,16 +1362,26 @@ class Database:
         """Per-lap phase times for one corner, filtered by role.
 
         role='self' additionally requires driver (self history is one
-        driver's); role='reference' aggregates all reference drivers.
+        driver's); role='reference' aggregates all reference drivers, minus
+        any lap R3 curation has excluded (`reference_exclusions`) -- enforced
+        here, at the query surface, so every reader (the envelope, the
+        corner drill, vs_reference_findings) inherits it automatically,
+        the same discipline role isolation itself uses (SPEC.md A34).
         `lap_pks` (M6 trend only) further restricts to a date-bucket's laps.
         """
         if role == "self" and driver is None:
             raise ValueError("self phase history requires a driver")
         clause = "AND l.driver = ?" if driver is not None else ""
+        exclusion_clause = (
+            " AND l.lap_pk NOT IN "
+            "(SELECT lap_pk FROM reference_exclusions WHERE owner_user_pk=?)"
+            if role == "reference" else ""
+        )
         pk_clause, pk_params = _lap_pk_filter(lap_pks)
         params = (
             [car, track, corner_id, phase, role, self.user_pk]
             + ([driver] if driver else [])
+            + ([self.user_pk] if role == "reference" else [])
             + pk_params
         )
         rows = self.conn.execute(
@@ -1363,13 +1391,39 @@ class Database:
                 JOIN corners c ON c.corner_pk = o.corner_pk
                 JOIN laps l ON l.lap_pk = o.lap_pk
                 WHERE l.car=? AND l.track=? AND c.corner_id=? AND p.phase=?
-                  AND l.role=? AND l.owner_user_pk=? {clause}{pk_clause}
+                  AND l.role=? AND l.owner_user_pk=? {clause}{exclusion_clause}{pk_clause}
                 ORDER BY l.lap_pk, o.span_start""",
             params,
         ).fetchall()
         return [
             {"time_s": float(r["time_s"]), "lap_pk": int(r["lap_pk"]),
              "session_key": r["session_key"], "obs_pk": int(r["obs_pk"])}
+            for r in rows
+        ]
+
+    def reference_laps_for_cohort(self, *, car: str, track: str) -> list[dict[str, Any]]:
+        """Every reference lap for this (car, track), each flagged with
+        whether R3 curation has excluded it. Excluded laps stay listed --
+        curation marks, it never hides (same contract as
+        `annotate_finding`) -- so the identity/depth payload section (R2)
+        can show the whole pool while the envelope itself (built from
+        `phase_history`) only ever reflects the active subset."""
+        exclusions = self.reference_exclusions()
+        rows = self.conn.execute(
+            """SELECT lap_pk, lap_id, driver, duration_s, lap_date
+               FROM laps WHERE role='reference' AND car=? AND track=? AND owner_user_pk=?
+               ORDER BY lap_pk""",
+            (car, track, self.user_pk),
+        ).fetchall()
+        return [
+            {
+                "lap_pk": int(r["lap_pk"]),
+                "lap_id": r["lap_id"],
+                "driver": r["driver"],
+                "duration_s": float(r["duration_s"]),
+                "lap_date": r["lap_date"],
+                "excluded": int(r["lap_pk"]) in exclusions,
+            }
             for r in rows
         ]
 
@@ -1738,6 +1792,60 @@ class Database:
         with self.conn:
             self.conn.execute(
                 "DELETE FROM finding_annotations WHERE finding_id = ?", (finding_id,)
+            )
+
+    # --- reference-lap curation (R3, SPEC.md A39) ---------------------------
+    #
+    # The audited-annotations pattern above, applied to a lap instead of a
+    # finding: reversible, upserts in place, never deletes the lap or its
+    # measurements. `exclude_reference_lap` validates (unlike
+    # `annotate_finding`, which trusts a caller-side check) because the
+    # validation here -- "does this lap_pk exist, is it this user's, is it
+    # actually a reference lap" -- is a single cheap query naturally owned
+    # by this layer, not something that needs the payload/finding-rebuild
+    # machinery `annotate`'s own 404 check requires.
+
+    def exclude_reference_lap(
+        self, *, lap_pk: int, note: str | None = None, created_at: str | None = None,
+    ) -> int:
+        """Mark a reference lap excluded from the envelope and
+        vs-reference findings. Raises ValueError if `lap_pk` isn't this
+        user's, or isn't role='reference' -- a self lap has no exclusion
+        concept, it IS the history."""
+        row = self.conn.execute(
+            "SELECT role FROM laps WHERE lap_pk=? AND owner_user_pk=?",
+            (lap_pk, self.user_pk),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"no such lap: {lap_pk}")
+        if row["role"] != "reference":
+            raise ValueError(f"lap {lap_pk} is not a reference lap")
+        with self.conn:
+            return self._insert_returning(
+                """INSERT INTO reference_exclusions
+                   (owner_user_pk, lap_pk, note, created_at) VALUES (?, ?, ?, ?)
+                   ON CONFLICT (owner_user_pk, lap_pk) DO UPDATE SET
+                       note       = excluded.note,
+                       created_at = excluded.created_at""",
+                (self.user_pk, lap_pk, note, created_at),
+                "exclusion_pk",
+            )
+
+    def reference_exclusions(self) -> dict[int, dict[str, Any]]:
+        return {
+            int(r["lap_pk"]): {"note": r["note"], "created_at": r["created_at"]}
+            for r in self.conn.execute(
+                "SELECT * FROM reference_exclusions WHERE owner_user_pk=? ORDER BY lap_pk",
+                (self.user_pk,),
+            )
+        }
+
+    def include_reference_lap(self, lap_pk: int) -> None:
+        """Undo an exclusion (never touches the lap or its measurements)."""
+        with self.conn:
+            self.conn.execute(
+                "DELETE FROM reference_exclusions WHERE owner_user_pk=? AND lap_pk=?",
+                (self.user_pk, lap_pk),
             )
 
     def add_chat_turn(

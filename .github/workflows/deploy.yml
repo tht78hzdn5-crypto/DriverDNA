@@ -39,3 +39,6 @@ jobs:
           source: .
           flags: '--no-allow-unauthenticated --cpu-boost'
           timeout: '600'
+          env_vars: |
+            DRIVERDNA_SESSION_SECRET=${{ secrets.DRIVERDNA_SESSION_SECRET }}
+            DRIVERDNA_DATABASE_URL=${{ secrets.DRIVERDNA_DATABASE_URL }}

@@ -1813,3 +1813,117 @@ Accepted at owner plan review; rationale recorded in the review:
   chat's regenerate-once loop and needed no prompt change) also passed,
   citing real `obs:<n>` evidence. Full detail: `docs/STATUS.md`'s
   2026-08-02 snapshot.
+
+- **A39** (2026-08-03): **Reference laps R2 (identity/depth) + R3
+  (curation) — built.** `docs/REFERENCE-LAPS.md`'s R-track picks up where R1
+  (visibility) left off: the pool is now inspectable (who's in it, how
+  many, what envelope they add up to) and manageable (a bad import can be
+  retired without deleting it). Six open decisions, all owner-confirmed
+  before any code was written (not picked silently):
+  1. **No `ref_label` column.** The existing `laps.driver` column (already
+     populated at import, and settable per lap via `--driver`/manifest
+     `driver` on the CLI path) is sufficient identity — no schema change.
+  2. **One aggregated envelope, not split per contributor.** Matches the
+     design doc's own stated default: findings don't multiply, a mixed-skill
+     reference pool honestly reads as a wider envelope.
+  3. **Corner drill: overlay, not a separate section or side-by-side.**
+     Reference n/median/best ride as three extra columns on the *same*
+     phase-times table row, never blended into the self numbers they sit
+     beside (source separability, SPEC.md decision 3, preserved by column
+     separation rather than by physical separation).
+  4. **Curation: Option A** — an exclusion flag through the audited-
+     annotations pattern (reversible, upserts in place, never deletes the
+     lap or its measurements), not Option B (no mechanism).
+  5. **Toggle location: cohort view + CLI**, both wrapping one DB-layer
+     write path.
+  6. **Cascade: immediate.** No caching layer exists for payloads —
+     `build_cohort_payload` already reads current DB state on every call, so
+     excluding a lap is visible on the very next fetch with no rebuild step.
+
+  **What got built, mapped to those decisions:**
+  - **Schema** (`db.py`, migration 015): `reference_exclusions` table
+    (`owner_user_pk`, `lap_pk`, `note`, `created_at`, `UNIQUE(owner_user_pk,
+    lap_pk)`) — the audited-annotations pattern (`finding_annotations`,
+    migration 001) applied to a lap instead of a finding. `owner_user_pk`
+    follows `user_api_keys`' (014) shape rather than `finding_annotations`'
+    own (001, predates Data Partitioning): every table created after
+    migration 009 scopes itself per account directly.
+  - **Exclusion enforced once, at the query surface.** `db.phase_history`
+    filters out any `reference_exclusions` row when `role='reference'` — the
+    exact discipline role isolation itself already uses (A34: "enforced at
+    the query surface, not in callers"). Consequence: `attribution/
+    ranker.py`'s `vs_reference_findings` and the new corner-drill endpoint
+    needed **zero code changes** to honour curation — both already read
+    through `phase_history`. A dedicated test
+    (`test_vs_reference_envelope_recomputes_without_an_excluded_lap`) proves
+    this by excluding a lap and re-running the unmodified ranker function
+    directly, then proves reversibility by re-including it and diffing the
+    findings list back to byte-identical.
+  - **Payload** (`report/payload.py`): a new `references` section on
+    `build_cohort_payload` (`PAYLOAD_VERSION` 4→5) —
+    `{n, n_excluded, envelope, contributors}`. `envelope` reuses
+    `attribution.engine.reference_envelope` (already built for per-corner
+    phase times) over whole-*lap* `duration_s` instead — no new statistic,
+    same function, a different input array. Excluded laps stay in
+    `contributors`, flagged, never dropped — curation marks, it never
+    hides, same contract as an annotated finding.
+  - **API** (`ui/api.py`): `GET /api/cohorts/{slug}/corners/{corner_id}/
+    reference-phases` (mirrors the existing metric-distribution endpoint,
+    per-phase `{n, median_s, best_s}` via `phase_history` +
+    `reference_envelope`); `POST`/`DELETE /api/laps/{lap_pk}/exclude`
+    (mirrors `/api/findings/{id}/annotate` exactly — 404 on an unknown or
+    non-reference lap_pk, 404 on un-excluding a lap that isn't excluded,
+    same "reversible, never silent" discipline as `clear_annotation`).
+  - **CLI** (`cli.py`): `exclude-reference LAP_PK [--note]` /
+    `include-reference LAP_PK`, thin wrappers over the same DB methods the
+    API uses, `typer.Exit(2)` on the same validation failures.
+  - **UI** (`cohort.jsx`, `corner.jsx`): the References panel now states the
+    envelope, lists each contributor (driver + lap time), and gives each an
+    Exclude/Include button (same `act()`-then-reload idiom `finding.jsx`'s
+    annotate buttons already use); an all-excluded pool gets its own honest
+    state ("N on record, all currently excluded — no envelope until one is
+    re-included"), distinct from the true empty state. The corner drill's
+    phase-times table gained the three overlay columns.
+
+  **A gap found and closed while wiring identity through, not part of the
+  original ask:** `POST /api/laps/upload` hardcoded `driver="owner"` for
+  every uploaded lap, self or reference — decision 1 ("the driver column is
+  sufficient identity") would have been only half true, since the browser
+  upload path (`#/upload`, one of the two documented reference-lap
+  ingestion routes per `docs/REFERENCE-LAPS.md`) could never actually *set*
+  a distinguishing name. Fixed with one optional `driver` form field
+  (defaults to `"owner"` when blank, so every existing self-upload behaves
+  identically) and one conditional input in `upload.jsx`, shown only when
+  role is reference — self uploads in this single-driver instrument have no
+  use for it. `driverdna import --driver`/manifest `driver` already covered
+  the CLI path; this closes the same gap on the other documented ingestion
+  surface.
+
+  **Verification.** New file `tests/test_reference_curation.py` (DB methods,
+  payload section, ranker-integration, CLI — 19 tests); new API/upload tests
+  appended to `tests/test_api.py` and `tests/test_upload_api.py` (7 tests);
+  a dedicated Playwright suite, `tests/test_reference_curation_ui.py` (3
+  tests, its own isolated DB — never the shared `tests/fixtures/` render-
+  parity DB, which stays at zero reference laps by design): the cohort page
+  renders the envelope and contributor identity from a real imported
+  reference lap, the Exclude/Include buttons update the page live with no
+  reload, and the corner drill's overlay columns render real values for a
+  corner the one reference lap actually measured. `tests/test_blobs.py`'s
+  `_v5_database_with_inline_blobs` helper (which manually rewinds specific
+  tables to simulate an old database) needed one line added — drop
+  `reference_exclusions` alongside the other post-006 tables it already
+  drops — the same maintenance every migration since 008 has required
+  there, not a workaround.
+
+  **No committed number moved**: nothing here touches self history, trends,
+  classes, consistency, incidents, or the Driver Model, and both committed
+  fixture manifests still hold zero reference laps. Suite 850 → 879 passed
+  (0 failed), +29 tests, run before and after.
+
+  **Not done, flagged rather than assumed:** the owner's real synced corpus
+  presently holds zero reference laps (`docs/STATUS.md`), so this is
+  verified against real fixture telemetry and a real Playwright browser, not
+  yet against the owner's own production store — the same "built but never
+  fired" gap R0 named for the original feature, one layer up. R4 (deliberate
+  reference-geometry adoption) remains untouched and still awaits its own
+  separate owner go, unaffected by any of this.

@@ -230,3 +230,170 @@ def test_config_apply_then_revert_from_ui(env):
         "/api/config/propose", json={"key": "detectors.nope", "new_value": 1}
     )
     assert r.status_code == 422
+
+
+# --- Reference laps R2/R3 (SPEC.md A39): identity + curation endpoints ------
+#
+# A dedicated fixture, not the shared module-scoped `env` above: curation
+# writes (exclude/include) mutate DB state, and building this needs a real
+# reference lap the shared fixture deliberately never carries (its
+# byte-identical report/render-parity anchors would be perturbed by one).
+
+
+@pytest.fixture()
+def ref_env(tmp_path):
+    """One self cohort (GR86 @ Spa-Francorchamps, from the shared fixtures)
+    plus one reference lap from the spa-blind-2026-07/ subdirectory, which
+    `driverdna import FIXTURES_DIR` never touches (non-recursive glob) —
+    so its content_hash was never claimed by the self import, and it can
+    import cleanly as a second, reference-role lap into the same cohort."""
+    result = CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", str(tmp_path / "ref.db")]
+    )
+    assert result.exit_code == 0, result.output
+    db_path = tmp_path / "ref.db"
+
+    ref_dir = tmp_path / "ref_import"
+    ref_dir.mkdir()
+    import shutil
+    shutil.copy(
+        FIXTURES_DIR / "spa-blind-2026-07" / "Garage_61_60GBCK.csv",
+        ref_dir / "Garage_61_60GBCK.csv",
+    )
+    result = CliRunner().invoke(cli_app, [
+        "import", str(ref_dir), "--db", str(db_path),
+        "--role", "reference", "--driver", "teammate JD",
+        "--car", "GR86", "--track", "Spa-Francorchamps",
+    ])
+    assert result.exit_code == 0, result.output
+
+    with Database.open(db_path) as db:
+        lap_pk = int(
+            db.conn.execute("SELECT lap_pk FROM laps WHERE role='reference'").fetchone()["lap_pk"]
+        )
+    client = TestClient(create_app(db_path, tmp_path / "config.toml"))
+    return {"client": client, "db_path": db_path, "lap_pk": lap_pk}
+
+
+def test_references_section_appears_in_the_payload_with_one_reference_lap(ref_env):
+    refs = ref_env["client"].get(f"/api/cohorts/{SPA_SLUG}/payload").json()["references"]
+    assert refs["n"] == 1 and refs["n_excluded"] == 0
+    assert refs["envelope"]["n"] == 1
+    assert refs["contributors"] == [{
+        "lap_pk": ref_env["lap_pk"], "lap_id": "60GBCK", "driver": "teammate JD",
+        "duration_s": refs["contributors"][0]["duration_s"],
+        "lap_date": None, "excluded": False,
+    }]
+
+
+def test_exclude_then_include_reference_lap_through_the_api_recomputes_live(ref_env):
+    c, db_path, lap_pk = ref_env["client"], ref_env["db_path"], ref_env["lap_pk"]
+
+    r = c.post(f"/api/laps/{lap_pk}/exclude", json={"note": "not representative"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["excluded"] == lap_pk
+    assert body["exclusion"]["note"] == "not representative"
+    with Database.open(db_path) as db:
+        assert lap_pk in db.reference_exclusions()
+
+    # Cascades immediately: the next payload fetch already reflects it, no
+    # separate rebuild step (SPEC.md A39 decision 6).
+    after = c.get(f"/api/cohorts/{SPA_SLUG}/payload").json()["references"]
+    assert after["n"] == 0 and after["n_excluded"] == 1
+    assert after["contributors"][0]["excluded"] is True  # still listed, marked
+
+    r = c.request("DELETE", f"/api/laps/{lap_pk}/exclude")
+    assert r.status_code == 200 and r.json()["included"] == lap_pk
+    with Database.open(db_path) as db:
+        assert lap_pk not in db.reference_exclusions()
+    restored = c.get(f"/api/cohorts/{SPA_SLUG}/payload").json()["references"]
+    assert restored["n"] == 1 and restored["n_excluded"] == 0
+
+    # Un-excluding a lap that isn't excluded is a 404, not a silent no-op —
+    # same discipline as clear_annotation.
+    r = c.request("DELETE", f"/api/laps/{lap_pk}/exclude")
+    assert r.status_code == 404
+    assert "not excluded" in r.json()["detail"]
+
+
+def test_exclude_reference_endpoint_404s_on_a_self_lap(ref_env):
+    with Database.open(ref_env["db_path"]) as db:
+        self_lap_pk = int(
+            db.conn.execute(
+                "SELECT lap_pk FROM laps WHERE role='self' LIMIT 1"
+            ).fetchone()["lap_pk"]
+        )
+    r = ref_env["client"].post(f"/api/laps/{self_lap_pk}/exclude")
+    assert r.status_code == 404
+    assert "not a reference lap" in r.json()["detail"]
+
+
+def test_exclude_reference_endpoint_404s_on_an_unknown_lap_pk(ref_env):
+    r = ref_env["client"].post("/api/laps/999999/exclude")
+    assert r.status_code == 404
+    assert "no such lap" in r.json()["detail"]
+
+
+def test_corner_reference_phases_endpoint_shape_and_exclusion(ref_env):
+    c, lap_pk = ref_env["client"], ref_env["lap_pk"]
+    r = c.get(f"/api/cohorts/{SPA_SLUG}/corners/C01/reference-phases")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) == {"entry", "mid", "exit"}
+    for phase_data in body.values():
+        assert phase_data is None or set(phase_data) == {"n", "median_s", "best_s"}
+
+    # At least one phase is populated by the one reference lap this fixture
+    # carries; excluding it must zero that phase out too (same query
+    # surface phase_history itself enforces).
+    populated = [p for p, v in body.items() if v is not None]
+    assert populated, "expected at least one phase to have reference data"
+    assert all(body[p]["n"] == 1 for p in populated)
+
+    c.post(f"/api/laps/{lap_pk}/exclude")
+    after = c.get(f"/api/cohorts/{SPA_SLUG}/corners/C01/reference-phases").json()
+    assert all(after[p] is None for p in populated)
+
+
+def test_corner_reference_phases_empty_when_no_reference_laps(env):
+    r = env["client"].get(f"/api/cohorts/{SPA_SLUG}/corners/C01/reference-phases")
+    assert r.status_code == 200
+    assert r.json() == {"entry": None, "mid": None, "exit": None}
+
+
+def test_upload_driver_field_names_a_reference_laps_identity(tmp_path):
+    """The gap R2 depends on: without a `driver` field, every uploaded
+    reference lap would read as "owner" -- indistinguishable from the
+    driver's own laps -- since the endpoint used to hardcode it."""
+    db_path = tmp_path / "upload.db"
+    app = create_app(db_path, tmp_path / "config.toml")
+    client = TestClient(app)
+    one_lap = FIXTURES_DIR / "Garage_61_HKWPXX.csv"
+    ref_lap = FIXTURES_DIR / "spa-blind-2026-07" / "Garage_61_60GBCK.csv"
+
+    with open(one_lap, "rb") as fh:
+        client.post(
+            "/api/laps/upload",
+            files=[("files", (one_lap.name, fh, "text/csv"))],
+            data={"car": "GR86", "track": "Spa-Francorchamps"},
+        )
+    with open(ref_lap, "rb") as fh:
+        r = client.post(
+            "/api/laps/upload",
+            files=[("files", (ref_lap.name, fh, "text/csv"))],
+            data={
+                "car": "GR86", "track": "Spa-Francorchamps",
+                "role": "reference", "driver": "teammate JD",
+            },
+        )
+    assert r.status_code == 200
+    with Database.open(db_path) as db:
+        row = db.conn.execute(
+            "SELECT driver FROM laps WHERE role='reference'"
+        ).fetchone()
+        assert row["driver"] == "teammate JD"
+        self_row = db.conn.execute(
+            "SELECT driver FROM laps WHERE role='self'"
+        ).fetchone()
+        assert self_row["driver"] == "owner"  # unchanged default when omitted

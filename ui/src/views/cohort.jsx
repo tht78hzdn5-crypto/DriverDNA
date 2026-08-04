@@ -48,28 +48,76 @@ function TrackMap({ trace, corners, perCornerLoss, slug }) {
   );
 }
 
-// Reference laps (v2): context made visible. Isolation stated once; the "who"
-// named. Zero references is a designed direction state, not a blank.
-function ReferenceLaps({ refLaps }) {
+// Reference laps (v2, extended R2/R3 — SPEC.md A39): context made visible
+// AND managed. Isolation stated once; the "who" named; the envelope stated
+// (n/median/best, not just a pooled number, G2); a bad import can be
+// excluded without deleting it (G4) — reversible, audited, same shape as
+// the finding-annotations pattern. Zero references (ever imported) is a
+// designed direction state, not a blank; zero ACTIVE references (all
+// excluded) is a different, honestly stated state, not the same empty one.
+function ReferenceLaps({ refs, onChanged }) {
+  const [busy, setBusy] = useState(null); // lap_pk currently in flight
+  const [error, setError] = useState(null);
+
+  async function toggle(lap) {
+    setBusy(lap.lap_pk);
+    setError(null);
+    try {
+      if (lap.excluded) {
+        await send("DELETE", `/api/laps/${lap.lap_pk}/exclude`);
+      } else {
+        await send("POST", `/api/laps/${lap.lap_pk}/exclude`);
+      }
+      onChanged();
+    } catch (e) {
+      setError(String(e.message || e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <section className="panel">
       <p className="eyebrow">Reference laps</p>
       <div className="guarantee">Context only — never enters your history, trends, or scores.</div>
-      {refLaps.length === 0 ? (
+      {refs.contributors.length === 0 ? (
         <div className="empty">
           <div className="ref-empty">No reference laps yet — add a faster driver's lap for gap context.</div>
           <a className="btn-primary" href="#/upload">Import a reference lap</a>
         </div>
       ) : (
-        <div className="ref-line">
-          {refLaps.map((l, i) => (
-            <span key={l.lap_pk}>
-              {i > 0 && " · "}
-              {l.driver && <b>{l.driver}</b>}{" "}
-              <span className="num">{lapTime(l.duration_s)}</span>
-            </span>
-          ))}
-        </div>
+        <>
+          {refs.envelope ? (
+            <div className="sub num" style={{ marginTop: 0 }}>
+              envelope: n={refs.envelope.n} · median {lapTime(refs.envelope.median_s)} ·
+              {" "}best {lapTime(refs.envelope.best_s)}
+            </div>
+          ) : (
+            <div className="reason">
+              {refs.n_excluded} reference lap{refs.n_excluded === 1 ? "" : "s"} on record, all
+              currently excluded — no envelope until one is re-included.
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.5rem" }}>
+            {refs.contributors.map((l) => (
+              <div key={l.lap_pk} className="ref-line" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 0 }}>
+                <span className={l.excluded ? "dim" : ""}>
+                  {l.driver && <b>{l.driver}</b>}{" "}
+                  <span className="num">{lapTime(l.duration_s)}</span>
+                  {l.excluded && <span className="chip" style={{ marginLeft: "0.4rem" }}>excluded</span>}
+                </span>
+                <button
+                  className="btn small" disabled={busy === l.lap_pk}
+                  onClick={() => toggle(l)}
+                  title={l.excluded ? "Re-include in the envelope" : "Exclude from the envelope"}
+                >
+                  {busy === l.lap_pk ? "…" : l.excluded ? "Include" : "Exclude"}
+                </button>
+              </div>
+            ))}
+          </div>
+          {error && <div className="error" style={{ marginTop: "0.5rem" }}>{error}</div>}
+        </>
       )}
     </section>
   );
@@ -154,7 +202,6 @@ export default function Cohort({ slug }) {
   const payload = useFetch(() => get(`/api/cohorts/${slug}/payload`), [slug, reload]);
   const corners = useFetch(() => get(`/api/cohorts/${slug}/corners`), [slug, reload]);
   const trace = useFetch(() => get(`/api/cohorts/${slug}/track-trace`).catch(() => null), [slug]);
-  const laps = useFetch(() => get(`/api/laps?cohort=${slug}`).catch(() => []), [slug, reload]);
 
   const [rebuild, setRebuild] = useState({ phase: "idle", result: null, error: null, busy: false });
 
@@ -176,7 +223,6 @@ export default function Cohort({ slug }) {
   const perCornerLoss = p.cumulative_loss.per_corner_total || {};
   const shownCount = p.findings.filter((f) => f.shown && !f.annotation).length;
   const suppressedCount = p.findings.filter((f) => !f.shown).length;
-  const refLaps = (laps.data || []).filter((l) => l.role === "reference");
 
   return (
     <div className="grid grid-wide">
@@ -208,8 +254,11 @@ export default function Cohort({ slug }) {
         <div className="tile"><div className="v num">{shownCount}</div><div className="k">Findings shown</div></div>
         <div className="tile"><div className="v num">{suppressedCount}</div><div className="k">Suppressed</div>
           <div className="s">reasons stated</div></div>
-        <div className="tile"><div className="v num">{refLaps.length}</div><div className="k">Reference laps</div>
-          <div className="s">context only</div></div>
+        <div className="tile"><div className="v num">{p.references.n}</div><div className="k">Reference laps</div>
+          <div className="s">
+            context only{p.references.n_excluded > 0 ? ` · ${p.references.n_excluded} excluded` : ""}
+          </div>
+        </div>
       </div>
 
       {trace.data && (
@@ -256,7 +305,9 @@ export default function Cohort({ slug }) {
         <SourceSections findings={p.findings} slug={slug} />
       </section>
 
-      <div className="grid-span"><ReferenceLaps refLaps={refLaps} /></div>
+      <div className="grid-span">
+        <ReferenceLaps refs={p.references} onChanged={() => setReload((n) => n + 1)} />
+      </div>
 
       {p.incidents && p.incidents.n > 0 && (
         <section className="panel grid-span">

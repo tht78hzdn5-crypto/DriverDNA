@@ -14,6 +14,7 @@ export default function Upload() {
   const [role, setRole] = useState("self");
   const [date, setDate] = useState("");
   const [session, setSession] = useState("");
+  const [driver, setDriver] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // {results, evicted}
@@ -36,6 +37,7 @@ export default function Upload() {
       form.append("role", role);
       if (date.trim()) form.append("date", date.trim());
       if (session.trim()) form.append("session", session.trim());
+      if (role === "reference" && driver.trim()) form.append("driver", driver.trim());
       const r = await uploadLaps(form);
       setResult(r);
       // The slug is server-truth, never computed here (UI-SPEC decision 2):
@@ -101,6 +103,13 @@ export default function Upload() {
                   <option value="reference">reference (gap context)</option>
                 </select>
               </label>
+              {role === "reference" && (
+                <label className="upload-field">
+                  <span className="upload-label">Driver (optional)</span>
+                  <input className="in" style={{ width: "100%" }} value={driver}
+                         onChange={(e) => setDriver(e.target.value)} placeholder="e.g. teammate JD" />
+                </label>
+              )}
               <label className="upload-field">
                 <span className="upload-label">Session (optional)</span>
                 <input className="in" style={{ width: "100%" }} value={session}

@@ -18,6 +18,7 @@ import secrets
 import time
 
 SESSION_SECRET_ENV = "DRIVERDNA_SESSION_SECRET"
+_ACCESS_TOKEN_ENV = "DRIVERDNA_ACCESS_TOKEN"
 GOOGLE_CLIENT_ID_ENV = "GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET_ENV = "GOOGLE_CLIENT_SECRET"
 SMTP_HOST_ENV = "SMTP_HOST"
@@ -34,6 +35,8 @@ def _now() -> float:
 
 def session_secret_from_env() -> str | None:
     token = os.environ.get(SESSION_SECRET_ENV, "").strip()
+    if not token:
+        token = os.environ.get(_ACCESS_TOKEN_ENV, "").strip()
     return token or None
 
 def google_client_id_from_env() -> str | None:

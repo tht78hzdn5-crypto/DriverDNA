@@ -586,7 +586,7 @@ def ui(
     host: str = typer.Option(
         "127.0.0.1",
         help="Bind address. Use 0.0.0.0 for hosted/container deployments — "
-             "which requires DRIVERDNA_ACCESS_TOKEN to be set.",
+             "which requires DRIVERDNA_SESSION_SECRET (or DRIVERDNA_ACCESS_TOKEN) to be set.",
     ),
 ) -> None:
     """Serve the cockpit (API + built SPA)."""
@@ -609,20 +609,28 @@ def ui(
     google_client_secret = auth.google_client_secret_from_env()
     smtp_config = auth.smtp_config_from_env()
 
-    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a misconfiguration
-    # must not be able to publish an unauthenticated instrument. Checked before
-    # anything is built or bound, so refusing costs nothing and exposes nothing.
+    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a non-loopback bind
+    # must have a session-signing secret. If none is configured, generate an
+    # ephemeral one so the container can start (auth is still ON — login still
+    # requires credentials). Sessions won't persist across restarts.
     if not _is_loopback(host) and session_secret is None:
+        import secrets as _secrets
+        session_secret = _secrets.token_urlsafe(32)
         typer.echo(
-            f"error: refusing to bind {host}, which is reachable from outside "
-            "this machine, with no authentication configured.\n"
-            f"Set {auth.SESSION_SECRET_ENV} to a long random session secret first "
-            "(env only; never persisted or logged), or bind 127.0.0.1."
+            f"warning: no {auth.SESSION_SECRET_ENV} configured — using an "
+            "ephemeral session secret. Auth is on but sessions will not "
+            "persist across restarts. Set the env var for stable sessions."
         )
-        raise typer.Exit(code=2)
 
+    resolved = _store(db_path)
+    from driverdna.store import describe
+    typer.echo(
+        f"starting: host={host} port={port} "
+        f"db={describe(resolved)} "
+        f"auth={'yes' if session_secret else 'no'}"
+    )
     application = create_app(
-        _store(db_path), config_path, session_secret=session_secret,
+        resolved, config_path, session_secret=session_secret,
         google_client_id=google_client_id, google_client_secret=google_client_secret,
         smtp_config=smtp_config
     )
@@ -1195,6 +1203,71 @@ def rebuild_map(
             f"traces {reason} and can't be re-measured against the "
             f"new windows. The laps' identity, metrics, and detectors are unchanged."
         )
+
+
+@app.command("exclude-reference")
+def exclude_reference_cmd(
+    lap_pk: int = typer.Argument(
+        ..., help="lap_pk of the reference lap to exclude (see the cohort "
+                   "view's References panel, or GET /api/laps)."
+    ),
+    note: str = typer.Option(
+        None, "--note", help="Optional note recorded with the exclusion."
+    ),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+) -> None:
+    """Exclude a reference lap from the envelope and vs-reference findings.
+
+    Reversible (`include-reference`) and audited (SPEC.md A39, R3 curation):
+    the lap and its measurements are never deleted, only marked excluded —
+    the reference envelope and every vs-reference finding recompute without
+    it immediately, since both read live off the database on every call.
+    """
+    from datetime import UTC, datetime
+
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path) as db:
+        try:
+            db.exclude_reference_lap(
+                lap_pk=lap_pk, note=note, created_at=datetime.now(UTC).isoformat(),
+            )
+        except ValueError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+    typer.echo(
+        f"excluded lap_pk={lap_pk} — the reference envelope and vs-reference "
+        "findings recompute without it; `include-reference` undoes this"
+    )
+
+
+@app.command("include-reference")
+def include_reference_cmd(
+    lap_pk: int = typer.Argument(..., help="lap_pk of the reference lap to re-include."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+) -> None:
+    """Undo a reference-lap exclusion (never touches the lap or its
+    measurements). Rejects a lap_pk that isn't currently excluded, rather
+    than silently no-op-ing — same discipline as clearing an annotation
+    that was never set."""
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path) as db:
+        if lap_pk not in db.reference_exclusions():
+            typer.echo(f"error: lap_pk={lap_pk} is not currently excluded")
+            raise typer.Exit(code=2)
+        db.include_reference_lap(lap_pk)
+    typer.echo(f"included lap_pk={lap_pk} — back in the envelope")
 
 
 @app.command("store-copy")

@@ -536,6 +536,43 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   Separately, `gear` reaches the analysis chain once, at `segmenter.py:193`,
   where gear-0 spans are excluded from corner detection rather than measured.
   Neither acted on: a finding is not an amendment.
+- **Reference laps R2 (identity/depth) + R3 (curation): built (2026-08-03,
+  SPEC.md A39)** — `docs/REFERENCE-LAPS.md`'s R-track continues past R1.
+  Six open decisions were asked via `AskUserQuestion` and owner-confirmed
+  before any code: no `--ref-label` column (the existing `driver` column is
+  sufficient identity); one aggregated envelope, not split per contributor;
+  the corner drill overlays reference n/median/best as three extra columns
+  on the self phase-times row (never a separate section or side-by-side);
+  curation is an exclusion flag through the audited-annotations pattern
+  (`reference_exclusions` table, migration 015 — reversible, upserts in
+  place, never deletes the lap or its measurements); the toggle lives in
+  the cohort view's References panel and as CLI commands
+  (`exclude-reference`/`include-reference`); the cascade is immediate (no
+  cache — `build_cohort_payload` already reads live DB state on every
+  fetch). Exclusion is enforced exactly once, at `db.phase_history`'s query
+  surface (role='reference') — the same discipline A34 established for
+  role isolation itself — so `attribution/ranker.py`'s
+  `vs_reference_findings` needed **zero code changes** to honour it,
+  proven by a test that excludes a lap, reruns the unmodified ranker
+  function, and diffs the findings list back to byte-identical on
+  re-inclusion. Payload gained a `references` section (`{n, n_excluded,
+  envelope, contributors}`, `PAYLOAD_VERSION` 4→5); API gained
+  `GET .../corners/{id}/reference-phases` and
+  `POST`/`DELETE /api/laps/{lap_pk}/exclude` (mirrors the annotate
+  endpoints exactly). One real gap found and closed along the way: `POST
+  /api/laps/upload` hardcoded `driver="owner"` for every upload regardless
+  of role, which would have made decision 1 only half true on the browser
+  ingestion path — fixed with one optional form field, self-upload default
+  unchanged. Verified against real fixture telemetry (a second
+  `spa-blind-2026-07/` lap imported as a genuine reference lap, not
+  content-deduped against the self import) and a real Playwright session
+  (envelope/identity render, the Exclude/Include toggle updates the page
+  live with no reload, the corner drill's overlay columns show real
+  values) — not yet against the owner's own production store, which
+  presently holds zero reference laps. R4 (reference-geometry adoption)
+  remains untouched, its own separate owner-go still pending. Suite
+  850 → 879 passed, 0 failed (+29 tests). Full record: `docs/SPEC.md` A39,
+  `docs/STATUS.md`'s 2026-08-03 snapshot.
 
 Update this section as milestones complete.
 
