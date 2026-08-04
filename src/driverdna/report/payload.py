@@ -15,7 +15,7 @@ from typing import Any
 
 import numpy as np
 
-from driverdna.attribution.engine import PHASES, baseline
+from driverdna.attribution.engine import PHASES, baseline, reference_envelope
 from driverdna.attribution.ranker import (
     cumulative_loss,
     vs_principle_findings,
@@ -30,7 +30,7 @@ from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
 from driverdna.model.taxonomy import TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 4  # +incidents
+PAYLOAD_VERSION = 5  # +references
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -125,6 +125,30 @@ def incidents_section(
             "time. An 'unclassified' incident is detected but its cause was "
             "not clean enough to name — stated, not guessed."
         ),
+    }
+
+
+def references_section(db: Database, *, car: str, track: str) -> dict[str, Any]:
+    """Reference-pool identity and depth (R2, SPEC.md A39): who is in the
+    envelope, how many, and the lap-time envelope (n/median/best) their
+    laps add up to — reusing `reference_envelope` (built for per-corner
+    phase times) over whole-lap `duration_s` instead. One aggregated pool,
+    not split per contributor (SPEC.md A39): the honest default when
+    identity comes from the existing `driver` column rather than a
+    dedicated label.
+
+    A lap R3 curation has excluded stays listed here, flagged — curation
+    marks, it never hides — but never counts toward `n` or the envelope,
+    which only ever reflects the active pool `phase_history` itself already
+    filters to."""
+    contributors = db.reference_laps_for_cohort(car=car, track=track)
+    active = [c for c in contributors if not c["excluded"]]
+    envelope = reference_envelope([c["duration_s"] for c in active])
+    return {
+        "n": len(active),
+        "n_excluded": len(contributors) - len(active),
+        "envelope": asdict(envelope) if envelope else None,
+        "contributors": contributors,
     }
 
 
@@ -251,6 +275,7 @@ def build_cohort_payload(
         "driver_model": driver_model_section(db, driver=driver, config=config),
         "coaching": coaching_section(db, driver=driver, car=car, track=track, config=config),
         "incidents": incidents_section(db, driver=driver, car=car, track=track),
+        "references": references_section(db, car=car, track=track),
         "caveats": caveats,
     }
 

@@ -1,6 +1,43 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-08-03 (later still).** Closed the loop this doc itself
+**Snapshot date: 2026-08-03 (reference laps R2/R3).**
+`docs/REFERENCE-LAPS.md`'s R2 (identity/depth) and R3 (curation)
+are built (SPEC.md A39) — six open decisions, all asked via `AskUserQuestion`
+and owner-confirmed before any code: no `--ref-label` column (the existing
+`driver` column is sufficient identity); one aggregated envelope, not split
+per contributor; the corner drill overlays reference n/median/best as extra
+columns on the self phase-times row; curation is an exclusion flag through
+the audited-annotations pattern (reversible, never deletes); the toggle lives
+in the cohort view's References panel and as CLI commands; the cascade is
+immediate (payloads read live DB state on every fetch, no rebuild step).
+Exclusion is enforced once, at `db.phase_history`'s query surface
+(role='reference') — the same place role isolation itself is enforced
+(A34) — so `attribution/ranker.py` needed no changes at all to honour it.
+One real gap found and closed along the way, not part of the original ask:
+`POST /api/laps/upload` hardcoded `driver="owner"` for every upload
+regardless of role, which would have made decision 1 only half true on the
+browser ingestion path; fixed with one optional form field, default
+unchanged for self uploads. Verified against real fixture telemetry (the
+`spa-blind-2026-07/` GR86/Spa laps, imported as a genuine second, reference-
+role lap) and a real Playwright browser session (cohort page envelope +
+identity, the Exclude/Include toggle updating live with no reload, the
+corner drill's overlay columns) — not yet against the owner's own production
+store, which presently holds zero reference laps (see the run below). R4
+(reference-geometry adoption) is untouched. Suite 850 → 879 passed (0
+failed), +29 tests. Full record: `docs/SPEC.md` A39.
+
+### Verified counts (2026-08-03, reference laps R2/R3)
+
+| Count | Value | How to reproduce |
+|---|---|---|
+| Tests, before any change (baseline) | **850 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **879 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests this session | **29** — 19 in `tests/test_reference_curation.py` (DB/payload/ranker/CLI), 7 appended to `tests/test_api.py` and `tests/test_upload_api.py` (endpoints, upload driver field), 3 in `tests/test_reference_curation_ui.py` (Playwright) | `python3 -m pytest tests/test_reference_curation.py tests/test_reference_curation_ui.py` |
+| Existing tests modified | **1 line**, `tests/test_blobs.py`'s `_v5_database_with_inline_blobs` helper now also drops `reference_exclusions` when simulating an old database — the same maintenance every migration since 008 has required there | `git diff tests/test_blobs.py` |
+| `vs_reference_findings` / `attribution/ranker.py` changes | **0** — exclusion enforced once in `db.phase_history`, proven by a test that excludes a lap, re-runs the unmodified ranker function, and diffs the findings list | `python3 -m pytest tests/test_reference_curation.py -k vs_reference_envelope` |
+| Playwright: cohort page + corner drill against a real reference lap | **3/3 passed** — envelope/identity render, Exclude/Include updates live with no reload, corner-drill overlay columns show real values | `python3 -m pytest tests/test_reference_curation_ui.py` |
+| Committed `docs/*-report.md` | untouched — this session never ran a report command against the committed fixtures | — |
+| Skips | 16, all Postgres-absent (Chromium was present and exercised — the two browser trust gates plus the new Playwright suite all ran green) | — |
 posed: "re-running `sync` is the cheapest available evidence... requires no
 driving." Owner supplied `GARAGE61_TOKEN` for a one-off run against a scratch
 DB in this session (never persisted, never committed — no DB has ever been in

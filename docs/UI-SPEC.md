@@ -214,8 +214,39 @@ the offline route list only (it renders no measurement; the render-parity
 gate requires a `.num` per route, so garage is excluded there exactly as
 `#/upload` is). The shared `tests/fixtures/` DB is **not** given a
 `role='reference'` lap — the reference figures are parity-clean by
-construction (integer counts + pooled `/api/laps` lap times), and seeding
-the shared fixture would perturb the determinism and report-snapshot tests.
+construction (integer counts, plus fractional envelope/lap-time figures
+that only ever render once at least one *active* reference lap exists), and
+seeding the shared fixture would perturb the determinism and report-snapshot
+tests.
+
+**Reference-lap visibility, extended: R2 (identity/depth) + R3 (curation)
+— built (2026-08-03, SPEC.md A39).** The References panel above now states
+the envelope (n/median/best, reusing `reference_envelope` over whole-lap
+duration instead of the per-corner-phase reads it was built for) and lists
+each contributor by driver + lap time, sourced from the payload's new
+`references` section rather than a separate `/api/laps` call (the earlier
+`driver` field addition there stays load-bearing for the general laps list,
+`laps.jsx`, which R2 doesn't touch). Each contributor gets an Exclude/
+Include button — the audited-annotations pattern applied to a lap instead
+of a finding, same `act()`-then-reload idiom `finding.jsx`'s annotate
+buttons already use, wired to `POST`/`DELETE /api/laps/{lap_pk}/exclude`.
+An excluded lap stays listed, marked, never hidden; an all-excluded pool
+gets its own honest state, distinct from true zero. The corner drill's
+phase-times table gains three columns (ref n/median/best) fed by
+`GET .../corners/{id}/reference-phases` — an overlay on the same row, per
+the owner's choice, not a separate section (open question resolved via
+`AskUserQuestion`, not assumed).
+
+Test consequences, same shape as above: no new routes (curation is a
+button on the existing cohort/corner views), so neither hardcoded route
+list changes. The shared `tests/fixtures/` DB stays at zero reference laps
+for the same reason as before; a **new**, separate Playwright suite
+(`tests/test_reference_curation_ui.py`) builds its own isolated DB (a real
+second lap from `spa-blind-2026-07/`, imported as reference) specifically
+to exercise the envelope, the live exclude/include toggle, and the corner
+drill's overlay columns against real rendered figures — the parity crawler
+itself was intentionally left unexercised for this feature rather than
+risking the shared fixture's byte-identical anchors.
 
 ## Design language v3 — "cockpit feel" (owner-directed, 2026-07-29, SPEC.md A35)
 

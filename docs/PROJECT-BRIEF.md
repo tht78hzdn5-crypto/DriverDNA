@@ -258,6 +258,27 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-08-03 — Reference laps R2/R3: six forks, all asked via
+  `AskUserQuestion`, none picked silently (SPEC.md A39).** Before writing any
+  code: (1) no `--ref-label` column — the existing `driver` column, already
+  populated at import, is sufficient identity; (2) the envelope stays one
+  aggregated pool, never split per contributor, matching
+  `docs/REFERENCE-LAPS.md`'s own stated default; (3) the corner drill
+  overlays reference n/median/best as extra columns on the self phase-times
+  row, not a separate section or side-by-side, even though the recommended
+  option carried a flagged tension with "sources never blend" (SPEC.md
+  decision 3) — resolved by column separation rather than physical
+  separation, so the two numbers sit together without merging into one; (4)
+  curation is Option A (an exclusion flag through the audited-annotations
+  pattern), the design doc's own recommendation, not Option B (no
+  mechanism); (5) the toggle lives in both the cohort view and the CLI, not
+  one or the other; (6) the cascade is immediate, since payloads already
+  read live DB state on every fetch — no rebuild step exists to wait for.
+  One gap found and closed while implementing, not part of the original
+  ask: `POST /api/laps/upload` hardcoded `driver="owner"` regardless of
+  role, which would have made decision 1 only half true on the browser
+  upload path (the CLI's own `--driver` flag already worked); fixed with
+  one optional form field. Full technical record: `docs/SPEC.md` A39.
 - **2026-08-03 — "Done" means merged to `main` (AGENTS.md, Branches and
   merging).** A session did real, tested work (A33, A34 below) entirely on a
   harness-assigned feature branch and reported it "done" while it sat

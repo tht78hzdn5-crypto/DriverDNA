@@ -1197,6 +1197,71 @@ def rebuild_map(
         )
 
 
+@app.command("exclude-reference")
+def exclude_reference_cmd(
+    lap_pk: int = typer.Argument(
+        ..., help="lap_pk of the reference lap to exclude (see the cohort "
+                   "view's References panel, or GET /api/laps)."
+    ),
+    note: str = typer.Option(
+        None, "--note", help="Optional note recorded with the exclusion."
+    ),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+) -> None:
+    """Exclude a reference lap from the envelope and vs-reference findings.
+
+    Reversible (`include-reference`) and audited (SPEC.md A39, R3 curation):
+    the lap and its measurements are never deleted, only marked excluded —
+    the reference envelope and every vs-reference finding recompute without
+    it immediately, since both read live off the database on every call.
+    """
+    from datetime import UTC, datetime
+
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path) as db:
+        try:
+            db.exclude_reference_lap(
+                lap_pk=lap_pk, note=note, created_at=datetime.now(UTC).isoformat(),
+            )
+        except ValueError as e:
+            typer.echo(f"error: {e}")
+            raise typer.Exit(code=2) from None
+    typer.echo(
+        f"excluded lap_pk={lap_pk} — the reference envelope and vs-reference "
+        "findings recompute without it; `include-reference` undoes this"
+    )
+
+
+@app.command("include-reference")
+def include_reference_cmd(
+    lap_pk: int = typer.Argument(..., help="lap_pk of the reference lap to re-include."),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+) -> None:
+    """Undo a reference-lap exclusion (never touches the lap or its
+    measurements). Rejects a lap_pk that isn't currently excluded, rather
+    than silently no-op-ing — same discipline as clearing an annotation
+    that was never set."""
+    from driverdna.db import Database
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path) as db:
+        if lap_pk not in db.reference_exclusions():
+            typer.echo(f"error: lap_pk={lap_pk} is not currently excluded")
+            raise typer.Exit(code=2)
+        db.include_reference_lap(lap_pk)
+    typer.echo(f"included lap_pk={lap_pk} — back in the envelope")
+
+
 @app.command("store-copy")
 def store_copy(
     source: str = typer.Option(..., "--from", help="Source store (path or URL)."),

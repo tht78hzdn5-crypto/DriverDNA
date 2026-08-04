@@ -14,6 +14,14 @@ export default function CornerDrill({ slug, cornerId }) {
     () => get(`/api/metrics/${cornerId}/${metric}/distribution?cohort=${slug}`).catch((e) => ({ error: String(e.message) })),
     [slug, cornerId, metric],
   );
+  // R2 (SPEC.md A39): the reference phase-time envelope, overlaid on the
+  // self baselines below rather than a separate section -- same table, its
+  // own columns, so a gap is never blended into the self numbers it's
+  // measured against.
+  const refPhases = useFetch(
+    () => get(`/api/cohorts/${slug}/corners/${cornerId}/reference-phases`),
+    [slug, cornerId],
+  );
   if (!payload.data) return <Loading error={payload.error} />;
 
   const p = payload.data;
@@ -36,13 +44,16 @@ export default function CornerDrill({ slug, cornerId }) {
           <table>
             <thead><tr><th>phase</th><th className="right">n</th><th className="right">median</th>
               <th className="right">robust best</th><th className="right">single best*</th>
-              <th className="right">spread</th><th className="right">outliers screened</th></tr></thead>
+              <th className="right">spread</th><th className="right">outliers screened</th>
+              <th className="right">ref n</th><th className="right">ref median</th><th className="right">ref best</th>
+            </tr></thead>
             <tbody>
               {["entry", "mid", "exit"].map((phase) => {
                 const b = baselines[phase];
+                const ref = refPhases.data ? refPhases.data[phase] : null;
                 if (!b) return (
                   <tr key={phase}><td className="dim">{phase}</td>
-                    <td colSpan="6" className="dim">not defined for this corner (stated, not hidden)</td></tr>
+                    <td colSpan="9" className="dim">not defined for this corner (stated, not hidden)</td></tr>
                 );
                 return (
                   <tr key={phase}>
@@ -53,13 +64,20 @@ export default function CornerDrill({ slug, cornerId }) {
                     <td className="right num lap-best">{fmt(b.single_best_s)}</td>
                     <td className="right num">{fmt(b.spread_s)}</td>
                     <td className="right num">{b.n_outliers}</td>
+                    <td className="right num dim">{ref ? ref.n : "—"}</td>
+                    <td className="right num dim">{ref ? fmt(ref.median_s) : "—"}</td>
+                    <td className="right num dim">{ref ? fmt(ref.best_s) : "—"}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="sub">* one execution — context, never the yardstick.</div>
+        <div className="sub">
+          * one execution — context, never the yardstick. ref n/median/best: the
+          reference-lap envelope for this phase — gap context, never blended
+          with your own numbers above.
+        </div>
       </section>
 
       <section className="panel">
