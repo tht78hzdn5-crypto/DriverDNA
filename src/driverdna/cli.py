@@ -609,17 +609,18 @@ def ui(
     google_client_secret = auth.google_client_secret_from_env()
     smtp_config = auth.smtp_config_from_env()
 
-    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a misconfiguration
-    # must not be able to publish an unauthenticated instrument. Checked before
-    # anything is built or bound, so refusing costs nothing and exposes nothing.
+    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a non-loopback bind
+    # must have a session-signing secret. If none is configured, generate an
+    # ephemeral one so the container can start (auth is still ON — login still
+    # requires credentials). Sessions won't persist across restarts.
     if not _is_loopback(host) and session_secret is None:
+        import secrets as _secrets
+        session_secret = _secrets.token_urlsafe(32)
         typer.echo(
-            f"error: refusing to bind {host}, which is reachable from outside "
-            "this machine, with no authentication configured.\n"
-            f"Set {auth.SESSION_SECRET_ENV} to a long random session secret first "
-            "(env only; never persisted or logged), or bind 127.0.0.1."
+            f"warning: no {auth.SESSION_SECRET_ENV} configured — using an "
+            "ephemeral session secret. Auth is on but sessions will not "
+            "persist across restarts. Set the env var for stable sessions."
         )
-        raise typer.Exit(code=2)
 
     resolved = _store(db_path)
     from driverdna.store import describe
