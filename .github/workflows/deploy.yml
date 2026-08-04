@@ -37,7 +37,7 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           source: .
-          flags: '--no-allow-unauthenticated --cpu-boost'
+          flags: '--allow-unauthenticated --cpu-boost'
           timeout: '600'
           env_vars: |
             DRIVERDNA_SESSION_SECRET=${{ secrets.DRIVERDNA_SESSION_SECRET }}
