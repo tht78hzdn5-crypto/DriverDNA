@@ -22,6 +22,9 @@ body {
   padding-left: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(0.75rem, 3vw, 1rem), env(safe-area-inset-right, 0px));
 }
+@media (max-width: 48rem) {
+  #root { padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px)); }
+}
 /* v3 "use of space" (SPEC.md A35): wide viewports get a two-column grid
    instead of one narrow stacked column; everything below ~48rem (U7
    mobile) stays a single stacked column, unchanged from v2. Pure layout —
@@ -61,6 +64,9 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   padding: 0.7rem 0 0; margin-bottom: 0.4rem;
   border-bottom: 1px solid var(--line); flex-wrap: wrap;
 }
+@media (max-width: 48rem) {
+  .topbar { gap: 0.6rem; padding: 0.5rem 0 0; margin-bottom: 0.3rem; }
+}
 .brand { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.7rem; }
 .brand:hover { text-decoration: none; }
 .brand .mark { display: block; }
@@ -69,7 +75,8 @@ a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible
   letter-spacing: 0.08em; color: var(--text); text-transform: uppercase;
 }
 .brand .word b { color: var(--accent); font-weight: 700; }
-.topbar nav { display: flex; gap: 0.15rem; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.topbar nav { display: flex; gap: 0.15rem; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.topbar nav::-webkit-scrollbar { display: none; }
 .topbar nav .tab { scroll-snap-align: start; }
 .tab {
   font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
@@ -206,6 +213,9 @@ a.btn-primary { color: var(--base); }
 
 /* --- Source sections: identity is structural, never a verdict colour ---- */
 .source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
+@media (max-width: 48rem) {
+  .source-section { padding-left: 0.55rem; }
+}
 .source-section.vs-self { border-left-style: solid; }
 .source-section.vs-principle { border-left-style: dashed; }
 .source-section.vs-reference { border-left-style: dotted; }
@@ -261,9 +271,14 @@ a.btn-primary { color: var(--base); }
   clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
 }
 .card:hover { border-color: var(--accent); text-decoration: none; }
+.card:active { transform: scale(0.98); }
 .card .cohort-name {
   font-family: var(--display); text-transform: uppercase; letter-spacing: 0.04em;
   font-weight: 600; font-size: 0.92rem;
+}
+@media (max-width: 48rem) {
+  .card { padding: 0.9rem 0.85rem; }
+  .cardlist { grid-template-columns: 1fr; }
 }
 .error { border-left: 3px solid var(--bad); padding-left: 0.8rem; color: var(--dim); font-size: 0.85rem; }
 
@@ -297,6 +312,7 @@ a.btn-primary { color: var(--base); }
 .chat-bubble {
   max-width: 88%; padding: 0.5rem 0.7rem; border-radius: 4px;
   font-size: 0.86rem; white-space: pre-wrap; line-height: 1.5;
+  word-break: break-word; overflow-wrap: anywhere;
 }
 .chat-turn.driver .chat-bubble { background: var(--raised); }
 .chat-turn.assistant .chat-bubble { background: var(--panel); border: 1px solid var(--line); }
@@ -305,12 +321,35 @@ a.btn-primary { color: var(--base); }
 .chat-staged-row { flex-wrap: wrap; }
 .chat-input { display: flex; gap: 0.5rem; }
 .chat-input .in { flex: 1; width: auto; font-family: var(--sans); font-size: 0.86rem; }
+@media (max-width: 48rem) {
+  .chat-log { max-height: none; overflow-y: visible; }
+  .chat-bubble { max-width: 92%; }
+  .chat-input {
+    position: sticky; bottom: 0; z-index: 10;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--base);
+  }
+  .chat-audit { font-size: 0.65rem; }
+}
+
+/* --- Lap board mobile: stacked rows instead of scroll table ------------ */
+.lap-row {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  border-top: 1px solid var(--line); padding: 0.35rem 0.1rem;
+}
+.lap-row:first-child { border-top: 0; }
+.lap-row .lap-idx { color: var(--dim); font-size: 0.78rem; min-width: 1.6rem; }
+.lap-row .lap-time { font-size: 0.92rem; }
+.lap-row .lap-delta { color: var(--dim); font-size: 0.78rem; margin-left: auto; }
 
 /* --- Score history chart (SPEC.md A36) — toggle chips + line chart ----- */
 .history-legend { margin-top: 0; }
 .chip.toggle { cursor: pointer; background: var(--raised); border-width: 1px; }
 .chip.toggle.on { border-width: 2px; padding: 0.11rem 0.4rem; }
 .chip.toggle:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+@media (max-width: 48rem) {
+  .chip.toggle { padding: 0.2rem 0.5rem; min-height: 32px; display: inline-flex; align-items: center; }
+}
 .history-chart { width: 100%; height: auto; display: block; margin: 0.6rem 0; }
 .history-grid { stroke: var(--line); stroke-width: 0.25; }
 .history-axis { fill: var(--dim); font-family: var(--mono); font-size: 2.6px; }
@@ -336,6 +375,11 @@ a.btn-primary { color: var(--base); }
 .fbar .track i { display: block; height: 100%; background: rgba(70, 100, 140, 0.9); border-radius: 2px; }
 .fbar-meta { color: var(--dim); font-size: 0.74rem; }
 .fbar.off .fbar-name, .fbar.off .fbar-score { color: var(--dim); }
+@media (max-width: 48rem) {
+  .fbar-head { flex-wrap: wrap; }
+  .fbar-score { font-size: 1.15rem; }
+  .fbar .track { height: 8px; }
+}
 
 /* --- Coaching cards (M7) ----------------------------------------------- */
 .coach-headline {
@@ -368,6 +412,9 @@ a.btn-primary { color: var(--base); }
 .login-panel { width: 100%; max-width: 22rem; }
 .login-panel h1 { margin-bottom: 0.2rem; }
 .login-panel .brand { display: flex; align-items: center; gap: 0.45rem; }
+@media (max-width: 48rem) {
+  .login { min-height: 70vh; align-items: flex-start; padding-top: 15vh; }
+}
 
 /* --- Mobile / PWA responsive pass (U7, DEPLOY-SPEC Track M item 1) -----
    Single-column stacking already holds by default (the base grid rules
@@ -377,6 +424,7 @@ a.btn-primary { color: var(--base); }
 @media (max-width: 48rem) {
   body { font-size: 15.5px; }
   .tiles { grid-template-columns: repeat(auto-fit, minmax(7.2rem, 1fr)); }
+  .tile .v { font-size: 1.8rem; }
   .lossrow { grid-template-columns: 1fr; row-gap: 0.15rem; }
   .lossrow .k { font-size: 0.78rem; }
   .lossrow .bar { order: 3; }
@@ -387,5 +435,29 @@ a.btn-primary { color: var(--base); }
   .chat-input .in { min-height: 44px; }
   a.btn, a.btn-primary { min-height: 44px; }
   .context { gap: 0.5rem; }
+  .panel { padding: 0.7rem 0.75rem 0.8rem; }
+  h1 { font-size: 1.3rem; }
+  .finding .head { flex-wrap: wrap; }
+  .finding .val { font-size: 0.88rem; }
+  .coach-headline { padding: 0.6rem 0.7rem; }
+  .coach-tags { gap: 0.3rem; }
+  .staged-row { flex-direction: column; gap: 0.4rem; }
+  .cfg-head { flex-wrap: wrap; gap: 0.4rem; }
+  .cfg-edit { flex-wrap: wrap; }
+  .upload-row { flex-direction: column; }
+}
+
+/* --- Small phone refinements (≤26rem / ~415px) -------------------------- */
+@media (max-width: 26rem) {
+  #root { padding-left: max(0.5rem, env(safe-area-inset-left, 0px)); padding-right: max(0.5rem, env(safe-area-inset-right, 0px)); }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .tile .v { font-size: 1.65rem; }
+  .tile .k { font-size: 0.62rem; }
+  .panel { padding: 0.55rem 0.6rem 0.65rem; }
+  h1 { font-size: 1.15rem; }
+  .tab { padding: 0.3rem 0.5rem 0.75rem; font-size: 0.76rem; }
+  .cardlist { grid-template-columns: 1fr; }
+  .chips { gap: 0.3rem; }
+  .chip { font-size: 0.62rem; padding: 0.1rem 0.35rem; }
 }
 

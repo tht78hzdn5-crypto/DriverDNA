@@ -291,24 +291,18 @@ export default function Cohort({ slug }) {
 
       <section className="panel grid-span">
         <p className="eyebrow">Lap board</p>
-        <div className="scroll-x">
-          <table>
-            <tbody>
-              {c.lap_durations_s.map((duration, i) => {
-                const hasIncident = p.incidents && c.lap_ids &&
-                  p.incidents.events.some((e) => e.lap_id === c.lap_ids[i]);
-                return (
-                  <tr key={i}>
-                    <td className="dim num">{i + 1}</td>
-                    <td className={`num ${c.lap_delta_s[i] === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</td>
-                    <td className="dim num right">{c.lap_delta_s[i] === 0 ? "best" : `+${fmt(c.lap_delta_s[i])}`}</td>
-                    {hasIncident && <td><span className="chip incident">incident</span></td>}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {c.lap_durations_s.map((duration, i) => {
+          const hasIncident = p.incidents && c.lap_ids &&
+            p.incidents.events.some((e) => e.lap_id === c.lap_ids[i]);
+          return (
+            <div key={i} className="lap-row">
+              <span className="lap-idx num">{i + 1}</span>
+              <span className={`lap-time num ${c.lap_delta_s[i] === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</span>
+              {hasIncident && <span className="chip incident">incident</span>}
+              <span className="lap-delta num">{c.lap_delta_s[i] === 0 ? "best" : `+${fmt(c.lap_delta_s[i])}`}</span>
+            </div>
+          );
+        })}
       </section>
     </div>
   );
