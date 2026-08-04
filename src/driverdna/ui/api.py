@@ -302,6 +302,11 @@ def create_app(
     def _client_key(request: Request) -> str:
         return request.client.host if request.client else "unknown"
 
+    def _google_error_redirect(message: str) -> Response:
+        import urllib.parse
+        safe = urllib.parse.quote(message[:200], safe="")
+        return RedirectResponse(f"/?auth_error={safe}", status_code=302)
+
     def _is_https(request: Request) -> bool:
         """Cloud Run terminates TLS and forwards `X-Forwarded-Proto`, and
         uvicorn only trusts that header from `forwarded_allow_ips` (which does
@@ -479,76 +484,91 @@ def create_app(
     def google_callback(code: str, request: Request) -> Response:
         if not google_client_id or not google_client_secret or not session_secret:
             raise HTTPException(400, "Google OAuth not configured")
-            
+
         import urllib.request
         import urllib.parse
-        
-        url_obj = request.url_for("google_callback")
-        if _is_https(request):
-            url_obj = url_obj.replace(scheme="https")
-            
-        data = urllib.parse.urlencode({
-            "client_id": google_client_id,
-            "client_secret": google_client_secret,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": str(url_obj),
-        }).encode("utf-8")
-        
-        req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+
         try:
-            with urllib.request.urlopen(req) as f:
-                token_res = json.loads(f.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            raise HTTPException(400, f"failed to exchange token: {e.read().decode('utf-8')}")
-            
-        id_token = token_res.get("id_token")
-        if not id_token:
-            raise HTTPException(400, "no id_token returned")
-            
-        verify_req = urllib.request.Request(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}")
-        try:
-            with urllib.request.urlopen(verify_req) as f:
-                claims = json.loads(f.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            raise HTTPException(400, f"failed to verify id_token: {e.read().decode('utf-8')}")
-            
-        if claims.get("aud") != google_client_id:
-            raise HTTPException(400, "token audience mismatch")
-            
-        email = claims.get("email")
-        if not email:
-            raise HTTPException(400, "no email in id_token")
-            
-        with open_db(request) as db:
-            row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (email,)).fetchone()
-            if row:
-                user_pk = row["user_pk"]
-            else:
-                from datetime import datetime
-                now = datetime.utcnow().isoformat()
-                with db.conn:
-                    user_pk = db.conn.execute(
-                        "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
-                        "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
-                        (email, "", now, now, now),
-                    ).fetchone()["user_pk"]
-            
-            session_epoch = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()["session_epoch"]
-            
-        ttl = load_config(config_path).auth.session_ttl_hours * 3600
-        
-        response = RedirectResponse("/")
-        response.set_cookie(
-            auth.SESSION_COOKIE,
-            auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
-            max_age=ttl,
-            httponly=True,
-            samesite="lax",
-            secure=_is_https(request),
-            path="/",
-        )
-        return response
+            url_obj = request.url_for("google_callback")
+            if _is_https(request):
+                url_obj = url_obj.replace(scheme="https")
+
+            data = urllib.parse.urlencode({
+                "client_id": google_client_id,
+                "client_secret": google_client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": str(url_obj),
+            }).encode("utf-8")
+
+            req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+            try:
+                with urllib.request.urlopen(req) as f:
+                    token_res = json.loads(f.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8", errors="replace")
+                return _google_error_redirect(f"token exchange failed: {body}")
+
+            id_token = token_res.get("id_token")
+            if not id_token:
+                return _google_error_redirect("no id_token in response")
+
+            verify_req = urllib.request.Request(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}")
+            try:
+                with urllib.request.urlopen(verify_req) as f:
+                    claims = json.loads(f.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8", errors="replace")
+                return _google_error_redirect(f"token verification failed: {body}")
+
+            if claims.get("aud") != google_client_id:
+                return _google_error_redirect("token audience mismatch")
+
+            email = claims.get("email")
+            if not email:
+                return _google_error_redirect("no email in token")
+            email = email.strip().lower()
+
+            with open_db(request) as db:
+                row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (email,)).fetchone()
+                if row:
+                    user_pk = row["user_pk"]
+                else:
+                    from datetime import datetime
+                    now = datetime.utcnow().isoformat()
+                    with db.conn:
+                        user_pk = db.conn.execute(
+                            "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
+                            "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
+                            (email, "", now, now, now),
+                        ).fetchone()["user_pk"]
+
+                session_epoch = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()["session_epoch"]
+
+            ttl = load_config(config_path).auth.session_ttl_hours * 3600
+
+            response = Response(
+                content="<!doctype html><html><head><meta charset='utf-8'>"
+                "<meta http-equiv='refresh' content='0;url=/'>"
+                "</head><body><script>window.location.replace('/');</script>"
+                "</body></html>",
+                media_type="text/html",
+            )
+            response.set_cookie(
+                auth.SESSION_COOKIE,
+                auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
+                max_age=ttl,
+                httponly=True,
+                samesite="lax",
+                secure=_is_https(request),
+                path="/",
+            )
+            return response
+
+        except HTTPException:
+            raise
+        except Exception as exc:
+            return _google_error_redirect(str(exc))
 
     @app.post("/api/auth/logout")
     def logout(response: Response) -> dict[str, Any]:

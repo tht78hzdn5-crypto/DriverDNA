@@ -6,7 +6,15 @@ export default function Login({ onAuthenticated, googleEnabled }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authErr = params.get("auth_error");
+    if (authErr) {
+      window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+      return `Google sign-in failed: ${authErr}`;
+    }
+    return null;
+  });
 
   const isRegister = mode === "register";
 
