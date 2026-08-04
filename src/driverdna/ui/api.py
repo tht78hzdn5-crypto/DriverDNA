@@ -100,6 +100,11 @@ class ApiKeyBody(BaseModel):
     key: str
 
 
+class RegisterBody(BaseModel):
+    email: str
+    password: str
+
+
 class LoginBody(BaseModel):
     email: str
     password: str
@@ -126,6 +131,7 @@ PUBLIC_API_PATHS = frozenset({
     "/api/auth/status",
     "/api/auth/google/login",
     "/api/auth/google/callback",
+    "/api/auth/register",
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
 })
@@ -306,6 +312,53 @@ def create_app(
             return forwarded.split(",")[0].strip() == "https"
         return request.url.scheme == "https"
 
+    @app.post("/api/auth/register")
+    def register(body: RegisterBody, request: Request, response: Response) -> dict[str, Any]:
+        """Create a new account and return a signed session cookie."""
+        if session_secret is None:
+            raise HTTPException(400, detail=f"auth not configured - set {auth.SESSION_SECRET_ENV}")
+
+        key = _client_key(request)
+        locked = throttle.locked_for(key)
+        if locked:
+            raise HTTPException(429, detail=f"too many attempts — try again in {locked}s")
+
+        if not body.email or not body.email.strip():
+            raise HTTPException(400, detail="email is required")
+        if len(body.password) < 8:
+            raise HTTPException(400, detail="password must be at least 8 characters")
+
+        email = body.email.strip().lower()
+        from datetime import datetime
+        session_epoch = datetime.utcnow().isoformat()
+        password_hash = auth.hash_password(body.password)
+
+        with open_db(request) as db:
+            existing = db.conn.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone()
+            if existing:
+                throttle.record_failure(key)
+                raise HTTPException(409, detail="an account with this email already exists")
+
+            with db.conn:
+                user_pk = db.conn.execute(
+                    "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
+                    (email, password_hash, session_epoch,
+                     datetime.utcnow().isoformat(), datetime.utcnow().isoformat()),
+                ).fetchone()["user_pk"]
+
+        ttl = load_config(config_path).auth.session_ttl_hours * 3600
+        response.set_cookie(
+            auth.SESSION_COOKIE,
+            auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
+            max_age=ttl,
+            httponly=True,
+            samesite="lax",
+            secure=_is_https(request),
+            path="/",
+        )
+        return {"authenticated": True, "user_pk": user_pk}
+
     @app.post("/api/auth/login")
     def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
         """Exchange credentials for a signed, expiring session cookie."""
@@ -472,15 +525,14 @@ def create_app(
             if row:
                 user_pk = row["user_pk"]
             else:
-                count = db.conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-                if count == 0:
-                    from datetime import datetime
+                from datetime import datetime
+                now = datetime.utcnow().isoformat()
+                with db.conn:
                     user_pk = db.conn.execute(
-                        "INSERT INTO users (email, password_hash, session_epoch) VALUES (?, ?, ?) RETURNING user_pk",
-                        (email, "", datetime.utcnow().isoformat())
+                        "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
+                        "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
+                        (email, "", now, now, now),
                     ).fetchone()["user_pk"]
-                else:
-                    raise HTTPException(403, "registration is closed")
             
             session_epoch = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()["session_epoch"]
             

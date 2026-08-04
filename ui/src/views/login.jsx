@@ -1,24 +1,14 @@
 import React, { useState } from "react";
 import { send } from "../api.js";
 
-// The sign-in gate (docs/DEPLOY-SPEC.md track H1). Rendered *instead of* the
-// cockpit shell when the server says a session is required and this browser
-// does not have one — so no view ever fetches, fails, and shows ten error
-// panels where a login belongs.
-//
-// Deliberately spare, and deliberately renders no measurement: there is no
-// `.num` element here, because the render-parity crawler's guarantee is that
-// every on-screen number traces to the payload, and a login screen has no
-// payload to trace to.
-//
-// The credentials are posted once and exchanged for an HttpOnly cookie. They
-// are never stored in JS — no localStorage, no sessionStorage, no module
-// state — so nothing on the page can read the session back out afterwards.
 export default function Login({ onAuthenticated, googleEnabled }) {
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  const isRegister = mode === "register";
 
   async function submit(e) {
     e.preventDefault();
@@ -26,7 +16,8 @@ export default function Login({ onAuthenticated, googleEnabled }) {
     setBusy(true);
     setError(null);
     try {
-      await send("POST", "/api/auth/login", { email, password });
+      const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
+      await send("POST", endpoint, { email, password });
       setPassword("");
       onAuthenticated();
     } catch (e2) {
@@ -35,6 +26,11 @@ export default function Login({ onAuthenticated, googleEnabled }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function toggleMode() {
+    setMode(isRegister ? "login" : "register");
+    setError(null);
   }
 
   return (
@@ -49,8 +45,8 @@ export default function Login({ onAuthenticated, googleEnabled }) {
           </svg>
           <span className="word">Driver<b>DNA</b></span>
         </div>
-        <h1>Sign in</h1>
-        <div className="sub">Sign in to your cockpit.</div>
+        <h1>{isRegister ? "Create account" : "Sign in"}</h1>
+        <div className="sub">{isRegister ? "Set up your cockpit." : "Sign in to your cockpit."}</div>
         <form onSubmit={submit}>
           <label className="upload-field">
             <span className="upload-label">Email</span>
@@ -64,21 +60,33 @@ export default function Login({ onAuthenticated, googleEnabled }) {
             <span className="upload-label">Password</span>
             <input
               className="in" style={{ width: "100%" }} type="password"
-              name="password" autoComplete="current-password"
+              name="password" autoComplete={isRegister ? "new-password" : "current-password"}
               value={password} onChange={(e) => setPassword(e.target.value)}
             />
           </label>
+          {isRegister && password.length > 0 && password.length < 8 && (
+            <div className="sub" style={{ marginTop: "0.3rem", color: "var(--warn, #e8a735)" }}>
+              At least 8 characters
+            </div>
+          )}
           <button className="btn-primary" type="submit"
-                  disabled={busy || !email || !password} style={{ marginTop: "0.8rem" }}>
-            {busy ? "Checking…" : "Enter"}
+                  disabled={busy || !email || !password || (isRegister && password.length < 8)}
+                  style={{ marginTop: "0.8rem" }}>
+            {busy ? (isRegister ? "Creating…" : "Checking…") : (isRegister ? "Create account" : "Enter")}
           </button>
         </form>
         {googleEnabled && (
           <a className="btn" href="/api/auth/google/login" style={{ marginTop: "0.6rem", display: "block", textAlign: "center" }}>
-            Sign in with Google
+            {isRegister ? "Sign up with Google" : "Sign in with Google"}
           </a>
         )}
         {error && <div className="error" style={{ marginTop: "0.8rem" }}>{error}</div>}
+        <div style={{ marginTop: "1rem", textAlign: "center" }}>
+          <button type="button" onClick={toggleMode}
+                  style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.85rem", padding: 0 }}>
+            {isRegister ? "Already have an account? Sign in" : "Create an account"}
+          </button>
+        </div>
       </section>
     </div>
   );
