@@ -621,8 +621,15 @@ def ui(
         )
         raise typer.Exit(code=2)
 
+    resolved = _store(db_path)
+    from driverdna.store import describe
+    typer.echo(
+        f"starting: host={host} port={port} "
+        f"db={describe(resolved)} "
+        f"auth={'yes' if session_secret else 'no'}"
+    )
     application = create_app(
-        _store(db_path), config_path, session_secret=session_secret,
+        resolved, config_path, session_secret=session_secret,
         google_client_id=google_client_id, google_client_secret=google_client_secret,
         smtp_config=smtp_config
     )

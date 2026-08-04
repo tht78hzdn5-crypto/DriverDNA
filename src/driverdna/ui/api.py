@@ -171,8 +171,12 @@ def create_app(
     async def _lifespan(app: FastAPI):
         nonlocal _pool
         if _is_pg:
-            _pool = open_postgres_pool(str(db_path))
-            app.state.pool = _pool
+            try:
+                _pool = open_postgres_pool(str(db_path))
+                app.state.pool = _pool
+            except Exception as exc:
+                import sys
+                print(f"WARNING: database pool failed: {exc}", file=sys.stderr)
         yield
         if _pool is not None:
             _pool.close()
@@ -552,6 +556,8 @@ def create_app(
             return None
 
     def open_db(request: Request | None = None, *, check_same_thread: bool = True) -> Database:
+        if _is_pg and _pool is None:
+            raise HTTPException(503, detail="database unavailable — check server logs")
         # A hosted store has no file to stat and creates its schema on
         # connect, so "not there yet" is reported by `missing_reason` only
         # for the SQLite case; an empty hosted store surfaces as the normal
