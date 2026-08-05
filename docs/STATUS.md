@@ -1,5 +1,68 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-05 (migrate off Supabase → SQLite on an Oracle VM,
+owner-directed, SPEC.md A40).** The hosted Supabase project went over its
+egress limit, so the deployment's primary store returns to SQLite on an Oracle
+Always Free VM — the architecture DEPLOY-SPEC decision 1 originally chose.
+This **refines A23, it does not repeal it**: SQLite was kept a first-class,
+fully-tested backend precisely for this fallback, and the Postgres dialect
+layer stays in the tree as the supported second backend and reversible path.
+Backend equivalence (same corpus → byte-identical artifacts on either backend)
+is the tested guarantee that makes the cutover safe.
+
+What landed in this change (code + docs; the cutover itself is owner-executed):
+- **`driverdna backfill-blobs --from <csv-dir>`** — the one code addition. Raw
+  lap blobs were never in Supabase and were ephemeral on Cloud Run, and a
+  plain re-import can't restore them (copied rows already dedup by content
+  hash, so `store_lap` returns "duplicate" and writes no blob). Backfill
+  matches each CSV to a lap by that lap's content fingerprint and writes only
+  the missing `<lap_pk>.npz`, never creating/deleting/renumbering a lap row —
+  so evidence IDs stay valid. New surface: `pipeline.backfill_blobs`,
+  `Database.laps_needing_raw()`, the CLI command. **Number-neutral, no
+  model-version bump** — a test asserts the restored arrays are array-equal to
+  the source store's, and reading them changes no measurement.
+- **Docs / decision discipline:** SPEC.md **A40** (the re-decision, recorded
+  rather than done silently per the standing non-negotiable); DEPLOY-SPEC H2/H3
+  un-staled with an A40 banner (platform corrected; **network shape = public
+  URL via Cloudflare Tunnel + Access**, owner's choice over Tailscale); this
+  snapshot; CLAUDE.md "Current status" bullet.
+- **Deploy artifacts:** `docs/DEPLOY-RUNBOOK.md` (empty tenancy → installed
+  PWA → cutover → decommission); `deploy/driverdna.service` (loopback bind,
+  single uvicorn process by construction, H3 hardening, `0600` EnvironmentFile);
+  `deploy/driverdna-backup.{service,timer}` (`sqlite3 .backup`, daily);
+  `deploy/cloudflared/` (tunnel config + Access notes). `.github/workflows/
+  deploy.yml` (Cloud Run) **removed**; `Dockerfile` de-`pg`'d and marked the
+  optional/local SQLite container, not the deployment of record.
+
+Migration mechanics for the owner (runbook has exact commands): `driverdna
+store-copy --from <supabase> --to driverdna.db` (PK-preserving, per-table
+checksum, refuses a non-empty target) carries the irreplaceable rows
+(`driver_beliefs` history, chat/coach transcripts, `finding_annotations`,
+`config_history`); then `backfill-blobs` for historical raw traces; then the
+systemd + Cloudflare bring-up. Deleting the Supabase project (which ends the
+egress billing) is the final owner-executed step, kept off the automated path
+deliberately.
+
+### Verified counts (2026-08-05, Supabase → SQLite/VM migration prep)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before any change (baseline) | **879 passed, 16 skipped, 0 failed** | `.venv/bin/python -m pytest` |
+| Tests, after | **885 passed, 16 skipped, 0 failed** | `.venv/bin/python -m pytest -rs` |
+| New tests | **+6** (`tests/test_backfill_blobs.py`) | — |
+| Skips | all 16 are Postgres-absent (`DRIVERDNA_TEST_DATABASE_URL` unset); no browser tests present in this run | `pytest -rs` skip lines |
+| Backend under test | SQLite (a venv `git clone` install; no Postgres, no secrets) | — |
+
+Not done, flagged rather than claimed: this is **migration prep verified
+against the local suite and fixtures**, not the live cutover. VM provisioning,
+the `store-copy` off the real Supabase, `backfill-blobs` against the owner's
+real CSVs, and the Cloudflare/OAuth bring-up are the owner's runbook steps and
+have not been run from here (no Oracle tenancy, Supabase URL, or owner CSVs in
+this session). "Done means merged" applies to this code+docs change; the
+deployment itself completes when the owner works the runbook.
+
+---
+
 **Snapshot date: 2026-08-04 (mobile UI improvement pass, owner-directed).**
 Extended U7's mobile CSS beyond its original single-breakpoint pass
 (`ui/src/app.css`, `ui/src/views/cohort.jsx`). Verified in a real browser,

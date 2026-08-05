@@ -1,0 +1,12 @@
+# Runs driverdna-backup.service daily (DEPLOY-SPEC H3).
+# `Persistent=true` catches up a missed run after the VM was off.
+
+[Unit]
+Description=Daily DriverDNA SQLite backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

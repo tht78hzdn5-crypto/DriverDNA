@@ -486,6 +486,23 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   Equivalence is tested, not claimed: the same corpus in either backend
   produces byte-identical artifacts. Four latent bugs were found and fixed on
   the way — see A23 and PROJECT-BRIEF.md's decision log.
+- **Deployment store returns to SQLite on an Oracle VM; Supabase/Cloud Run
+  retired (2026-08-05, SPEC.md A40, owner-directed)** — the hosted Supabase
+  project went over its egress limit. This *refines, not repeals* A23: SQLite
+  was kept first-class precisely for this fallback, and the Postgres backend
+  stays a supported, tested second backend and the reversible path. Migration
+  is `driverdna store-copy` (Postgres → SQLite, checksum-verified, PK-
+  preserving) for the compact rows plus the new `driverdna backfill-blobs
+  --from <csv-dir>` for historical raw traces (a plain re-import is a no-op —
+  copied rows already dedup by content hash — so backfill matches each CSV to
+  a lap by content fingerprint and writes only the missing `<lap_pk>.npz`,
+  never touching a lap row). Blobs were never in Supabase and were ephemeral on
+  Cloud Run; on the VM they land on the durable block volume. Number-neutral,
+  no model-version bump. Network shape: a public URL via Cloudflare Tunnel +
+  Access (owner's choice, DEPLOY-SPEC H2's public-URL option), app auth still
+  on. Code + docs + `docs/DEPLOY-RUNBOOK.md` + systemd unit land now;
+  `.github/workflows/deploy.yml` (Cloud Run) is retired; VM provisioning, the
+  cutover, and deleting the Supabase project are owner-executed runbook steps.
 - **UI v3 "cockpit feel" + U7 mobile + incidents-for-newcomers + Gemini
   provider + BYOK: built (2026-08-02, `docs/UI-V3-PLAN.md`, SPEC.md
   A35/A36/A37/A38)** — owner-directed. Chrome-accent tokens + micro-motion;

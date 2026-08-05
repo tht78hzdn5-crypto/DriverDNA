@@ -1355,6 +1355,54 @@ def migrate_blobs(
         typer.echo("run `VACUUM` on the DB to reclaim the freed space")
 
 
+@app.command("backfill-blobs")
+def backfill_blobs_cmd(
+    csv_dir: Path = typer.Option(
+        ..., "--from",
+        help="Directory of source CSVs to restore raw traces from (searched "
+             "recursively). Each is matched to a lap by content fingerprint.",
+    ),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db.",
+    ),
+    blob_root: Path = typer.Option(
+        None, "--blobs",
+        help="Where raw lap blobs live. Defaults to <db>.blobs/ (or DRIVERDNA_BLOB_ROOT).",
+    ),
+) -> None:
+    """Restore missing raw lap blobs from their source CSVs, in place.
+
+    The recovery path after a store move: `store-copy` carries every compact
+    row but not raw blobs (they are per-machine), and re-importing the same
+    CSVs is a no-op because the copied rows already dedup by content hash. This
+    matches each CSV to a lap by that lap's own fingerprint and writes only the
+    missing `<lap_pk>.npz` — never creating, deleting, or renumbering a lap
+    row, so evidence IDs stay valid. Idempotent and safe to re-run.
+    """
+    from driverdna.db import Database
+    from driverdna.pipeline import backfill_blobs
+
+    db_path = _require_store(db_path)
+    with Database.open(db_path, blob_root=blob_root) as db:
+        result = backfill_blobs(db, csv_dir)
+
+    typer.echo(f"restored {len(result.restored)} raw lap blob(s)")
+    if result.unmatched_laps:
+        typer.echo(
+            f"  {len(result.unmatched_laps)} lap(s) still without a raw trace — "
+            "no matching CSV found"
+        )
+    if result.unmatched_csvs:
+        typer.echo(
+            f"  {len(result.unmatched_csvs)} CSV(s) matched no lap needing a "
+            "trace (already present here, or not from this store)"
+        )
+    if result.unparseable:
+        typer.echo(f"  {len(result.unparseable)} file(s) could not be parsed")
+
+
 @app.command("schema-report")
 def schema_report(
     fixtures_dir: Path = typer.Option(

@@ -1927,3 +1927,78 @@ Accepted at owner plan review; rationale recorded in the review:
   fired" gap R0 named for the original feature, one layer up. R4 (deliberate
   reference-geometry adoption) remains untouched and still awaits its own
   separate owner go, unaffected by any of this.
+
+- **A40** (2026-08-05, owner-directed): **the deployment's primary store
+  returns to SQLite on an Oracle VM; Supabase Postgres + Cloud Run are
+  decommissioned.** Trigger: the hosted Supabase project went over its egress
+  limit. This is the sanctioned **re-decision reversing A23**'s store move —
+  recorded here rather than done silently, because "never silently reverse a
+  decision" is a standing non-negotiable (`AGENTS.md`).
+
+  **This is a return to the originally intended architecture, not a new
+  departure.** `docs/DEPLOY-SPEC.md` decision 1 (2026-07-26) already chose an
+  Oracle Cloud Always Free VM with SQLite; Cloud Run + Supabase was a later
+  divergence that A23's own H1-as-built note flagged as "never recorded in an
+  amendment." The v1 out-of-scope list's "Postgres or any DB migration"
+  exclusion (DEPLOY-SPEC.md) is *satisfied* by this, not broken by it.
+
+  **A23 is refined, not repealed. The Postgres backend stays.** SQLite was kept
+  a first-class, fully-tested backend by A23 precisely so this fallback would
+  cost nothing, and the Postgres dialect layer (`sql.py`), pool, and
+  Supabase-hardening remain in the tree and under test as the supported second
+  backend and the reversible path — `--db postgresql://…` still works. What
+  changes is only *which backend the live deployment runs on*. Everything A23
+  established holds: single-tenant, the deterministic engine as the only source
+  of numbers, and backend equivalence proven by a test (the same corpus yields
+  byte-identical artifacts on either backend — the guarantee that makes this
+  migration safe).
+
+  **Migration mechanics (all pre-existing except one small addition):**
+  - `driverdna store-copy --from <supabase-url> --to <sqlite-path>` carries
+    every compact row with primary keys preserved (evidence IDs *are* those
+    numbers) and a per-table checksum proof; it refuses a non-empty target and
+    exits non-zero on any mismatch ("do NOT cut over"). Copying *into* SQLite
+    needs no sequence resync. This moves the irreplaceable rows — `driver_
+    beliefs` history, chat/coach transcripts, `finding_annotations`,
+    `config_history` — that are not reconstructible from CSV.
+  - **Raw lap blobs are not in store-copy's scope and never were in Supabase.**
+    A23 kept them on local disk beside the importing machine; on Cloud Run's
+    ephemeral filesystem that meant they did not durably exist at all (the
+    cached `track_outline_json`, A-era, is the standing workaround). On the VM
+    they land on the durable block volume, so every *future* imported/synced
+    lap gets a durable trace automatically.
+  - **`driverdna backfill-blobs --from <csv-dir>` is this amendment's one code
+    addition** — the recovery path for *historical* raw traces, since a plain
+    re-import is a no-op (the copied rows already dedup by content hash, so
+    `store_lap` returns "duplicate" and writes no blob). It matches each CSV to
+    a lap by that lap's own content fingerprint and writes only the missing
+    `<lap_pk>.npz`, never creating, deleting, or renumbering a lap row, so
+    evidence IDs stay valid. Idempotent. Restoring blobs re-enables the only
+    capabilities that need them (`rebuild-map` re-measurement, `lap-digest`,
+    raw track-trace); every report, the Driver Model, trends, chat/coach and
+    findings run on the compact rows and were never at risk.
+
+  **Number-neutral. No engine value changes and no model-version bump:**
+  `backfill-blobs` writes bytes that reproduce the exact arrays the source
+  imported (a test asserts array-equality against the source store), and
+  reading them changes no measurement. New surface only: `pipeline.backfill_
+  blobs`, `Database.laps_needing_raw()`, the `backfill-blobs` CLI command, and
+  a TDD test file (`tests/test_backfill_blobs.py`).
+
+  **Network shape: a public URL (owner's choice), per DEPLOY-SPEC H2's
+  public-URL option** — Cloudflare Tunnel + Access (outbound-only, edge
+  identity), chosen over Tailscale. H1's app-level auth stays on; edge identity
+  is the outer wall, not a reason to trust an unauthenticated request. The
+  existing Google-OAuth env (`DRIVERDNA_SESSION_SECRET`, `GOOGLE_CLIENT_ID/
+  SECRET`) and provider/sync secrets move to the VM's `0600` systemd
+  EnvironmentFile; the OAuth redirect URI must be repointed to the new host.
+
+  **What lands now vs. what the owner executes:** the code, the amendment,
+  `docs/DEPLOY-RUNBOOK.md`, the systemd unit + backup timer, the `cloudflared`
+  notes, and the retirement of `.github/workflows/deploy.yml` land in this
+  change. VM provisioning, the `store-copy` cutover, `backfill-blobs`, and
+  deleting the Supabase project (which ends egress billing) are owner-executed
+  runbook steps, kept off the automated path deliberately — a destructive
+  cutover is not something a push to `main` should trigger. `docs/DEPLOY-SPEC.md`
+  H2/H3 are un-staled to describe this real target; `docs/STATUS.md` carries
+  the dated snapshot.

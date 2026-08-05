@@ -557,6 +557,19 @@ the instrument once exposure is flipped on.
 
 ## H2 — network shape
 
+> **2026-08-05 update (SPEC.md A40, owner-directed): H2/H3 are un-staled — the
+> VM *is* the target again.** The hosted Supabase project went over its egress
+> limit, so the deployment returns to this document's decision 1: SQLite on an
+> Oracle Always Free VM. The platform-divergence note in "H1 as built" no
+> longer applies going forward — Cloud Run + Supabase are being decommissioned,
+> and the Oracle/VM text in H2/H3 below describes the deployment being built,
+> not a phantom one. **Network shape chosen: the public-URL option
+> (Cloudflare Tunnel + Access), not Tailscale** — read the two layers below as
+> "Cloudflare is the adopted layer; Tailscale is the private-only
+> alternative." Data migration is `driverdna store-copy` (Postgres → SQLite,
+> checksum-verified) plus `driverdna backfill-blobs` for historical raw traces;
+> the step-by-step is `docs/DEPLOY-RUNBOOK.md`.
+
 Two layers, and the recommendation is to use both:
 
 - **Reachability: Tailscale.** Install on the VM, phone joins the tailnet,

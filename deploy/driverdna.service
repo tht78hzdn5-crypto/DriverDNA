@@ -1,0 +1,55 @@
+# DriverDNA cockpit — systemd service (Oracle VM deployment of record, SPEC.md A40).
+#
+# Binds loopback only; a Cloudflare Tunnel (deploy/cloudflared/) is what
+# publishes it. App-level auth stays ON regardless — the EnvironmentFile below
+# carries DRIVERDNA_SESSION_SECRET, so login is required even though the bind
+# is local. `driverdna ui` runs exactly one uvicorn process (single worker by
+# construction): chat sessions live in an in-process dict and the chat DB
+# handle is long-lived, so do NOT wrap this in a multi-worker launcher.
+#
+# Install: see docs/DEPLOY-RUNBOOK.md. Copy to /etc/systemd/system/,
+# `systemctl daemon-reload`, `systemctl enable --now driverdna`.
+
+[Unit]
+Description=DriverDNA cockpit (FastAPI + SPA, SQLite backend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=driverdna
+Group=driverdna
+
+# Secrets live here (0600, owned by driverdna): DRIVERDNA_SESSION_SECRET,
+# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_API_KEY, GARAGE61_TOKEN.
+# Never in the DB, never in config TOML, never in logs.
+EnvironmentFile=/etc/driverdna/driverdna.env
+
+# StateDirectory creates and owns /var/lib/driverdna (the SQLite file and its
+# <db>.blobs/ sidecar both live here, on the durable block volume).
+StateDirectory=driverdna
+WorkingDirectory=/var/lib/driverdna
+Environment=DRIVERDNA_BLOB_ROOT=/var/lib/driverdna/driverdna.db.blobs
+
+ExecStart=/opt/driverdna/venv/bin/driverdna ui \
+    --host 127.0.0.1 \
+    --port 8710 \
+    --db /var/lib/driverdna/driverdna.db \
+    --config /var/lib/driverdna/driverdna.toml
+
+Restart=always
+RestartSec=3
+
+# Hardening (DEPLOY-SPEC H3): least privilege, read-only system, no home.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/driverdna
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

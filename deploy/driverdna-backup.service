@@ -1,0 +1,23 @@
+# DriverDNA backup — one online SQLite snapshot per run (DEPLOY-SPEC H3).
+#
+# `sqlite3 .backup` takes a consistent copy while the service keeps running
+# (no need to stop driverdna). Snapshots rotate by day-of-week filename, so a
+# fortnight of history costs ~7 files without an external retention tool. The
+# DB is reconstructible from source CSVs by a deterministic engine, but the
+# Driver Model's dated history and chat/coach transcripts are NOT — those are
+# the irreplaceable rows this backup exists for.
+#
+# Pair with driverdna-backup.timer. Adjust BACKUP_DIR to your block volume.
+
+[Unit]
+Description=DriverDNA SQLite backup snapshot
+After=driverdna.service
+
+[Service]
+Type=oneshot
+User=driverdna
+Group=driverdna
+Environment=DB=/var/lib/driverdna/driverdna.db
+Environment=BACKUP_DIR=/var/lib/driverdna/backups
+ReadWritePaths=/var/lib/driverdna
+ExecStart=/bin/sh -c 'mkdir -p "$BACKUP_DIR" && /usr/bin/sqlite3 "$DB" ".backup \"$BACKUP_DIR/driverdna-$(date +%%u).db\""'

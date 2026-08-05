@@ -1,0 +1,14 @@
+# cloudflared ingress — publishes the loopback cockpit over a Cloudflare
+# Tunnel (outbound-only; the VM keeps ZERO inbound ports open). Copy to
+# /etc/cloudflared/config.yml, fill in your tunnel UUID and hostname, then run
+# it as the cloudflared systemd service. See deploy/cloudflared/README.md.
+
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /etc/cloudflared/REPLACE_WITH_TUNNEL_UUID.json
+
+ingress:
+  # Everything for the app hostname goes to the loopback service systemd runs.
+  - hostname: driverdna.example.com
+    service: http://127.0.0.1:8710
+  # Required catch-all: refuse anything else.
+  - service: http_status:404

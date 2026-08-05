@@ -25,9 +25,9 @@ from driverdna.corners.classify import (
 )
 from driverdna.corners.identity import _gps_ok, _meters, build_corner_map
 from driverdna.corners.segmenter import segment_lap
-from driverdna.db import Database, landmark_positions
+from driverdna.db import Database, _content_hash, _lap_blob, landmark_positions
 from driverdna.incidents import scan_incidents
-from driverdna.ingest.parser import TelemetryLap, parse_lap
+from driverdna.ingest.parser import ParseError, TelemetryLap, parse_lap
 from driverdna.metrics.detectors import run_detectors
 from driverdna.metrics.technique import compute_corner_metrics
 
@@ -454,3 +454,57 @@ def rebuild_cohort_map(
         car=car, track=track, existed=True, corners=corner_results,
         admitted=admitted, class_changes=class_changes,
     )
+
+
+@dataclass
+class BackfillResult:
+    """Outcome of `backfill_blobs`, all lap-pk / path lists deterministic."""
+    restored: list[int] = field(default_factory=list)       # blobs written now
+    unmatched_laps: list[int] = field(default_factory=list)  # still no blob, no CSV matched
+    unmatched_csvs: list[str] = field(default_factory=list)  # CSV matched no needy lap
+    unparseable: list[str] = field(default_factory=list)     # CSV that would not parse
+
+
+def backfill_blobs(db: Database, csv_dir: Path | str) -> BackfillResult:
+    """Restore missing raw lap blobs from their source CSVs, in place.
+
+    The recovery path after a store move (`store-copy` carries lap rows but not
+    blobs) or any local blob loss. Each `*.csv` under `csv_dir` is parsed and
+    matched to a lap by that lap's own content fingerprint — the exact key the
+    import dedup uses — so a CSV can only ever restore the lap it actually came
+    from; a mismatched or foreign CSV matches nothing and is reported, never
+    written to an unrelated lap.
+
+    Never creates, deletes, or renumbers a lap row: it only writes
+    `<lap_pk>.npz` for a lap that already exists and lacks its blob, so every
+    evidence ID that cites a `lap_pk` stays valid. Idempotent — a lap that
+    already has a readable trace is not in the worklist, so a re-run restores
+    nothing and reports the now-satisfied CSVs as unmatched.
+    """
+    csv_dir = Path(csv_dir)
+    by_hash: dict[str, int] = {}
+    null_hash: list[int] = []
+    for lap_pk, content_hash in db.laps_needing_raw():
+        if content_hash is None:
+            null_hash.append(lap_pk)
+        else:
+            by_hash[content_hash] = lap_pk
+
+    result = BackfillResult(unmatched_laps=sorted(null_hash))
+    for path in sorted(csv_dir.rglob("*.csv")):
+        try:
+            lap = parse_lap(path)
+        except ParseError:
+            result.unparseable.append(str(path))
+            continue
+        lap_pk = by_hash.pop(_content_hash(lap), None)
+        if lap_pk is None:
+            result.unmatched_csvs.append(str(path))
+            continue
+        db.blobs.put(lap_pk, _lap_blob(lap))
+        result.restored.append(lap_pk)
+
+    result.restored.sort()
+    # Any needy lap whose CSV never turned up remains missing — surface it.
+    result.unmatched_laps = sorted(result.unmatched_laps + list(by_hash.values()))
+    return result

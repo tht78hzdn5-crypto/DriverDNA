@@ -1056,6 +1056,28 @@ class Database:
             if int(pk) not in evicted and not self.has_raw(int(pk))
         )
 
+    def laps_needing_raw(self) -> list[tuple[int, str | None]]:
+        """`(lap_pk, content_hash)` for every lap whose raw trace is absent
+        here and was not deliberately evicted here — i.e. recoverable by
+        re-supplying its source CSV. Ordered by `lap_pk` for determinism.
+
+        This is the backfill worklist after a store move: `store-copy` carries
+        the lap rows (with their `content_hash`) but not the blobs, so on the
+        target every lap is 'absent, never evicted'. A deliberately-evicted lap
+        is excluded — its trace is gone by policy, and re-writing it here would
+        only be undone at the next retention pass (same reasoning as
+        `unavailable_raw_laps`)."""
+        rows = self.conn.execute(
+            "SELECT lap_pk, content_hash FROM laps WHERE owner_user_pk = ? ORDER BY lap_pk",
+            (self.user_pk,),
+        ).fetchall()
+        evicted = self.blobs.evicted_lap_pks()
+        return [
+            (int(r["lap_pk"]), r["content_hash"])
+            for r in rows
+            if int(r["lap_pk"]) not in evicted and not self.has_raw(int(r["lap_pk"]))
+        ]
+
     def enforce_retention(self, keep: int) -> int:
         """Evict raw blobs beyond the newest `keep` laps per cohort.
 
