@@ -43,7 +43,39 @@ def test_health_endpoint_does_not_open_db():
     )
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    assert resp.json() == {"status": "ok", "store": "sqlite", "auth": False}
+
+
+def test_health_reports_postgres_backend_and_never_the_dsn():
+    """SPEC.md A41 / docs/VM-MIGRATION.md §3.7.3: `store` and `auth` are the
+    two non-secret deployment facts that would have made the Cloud Run
+    sign-in bounce a five-second diagnosis instead of four sessions of
+    auth-code changes — confirmable from a browser rather than inferred from
+    behaviour. Enum + bool only; the DSN (which carries the password) must
+    never appear."""
+    client = TestClient(
+        create_app(
+            "postgresql://user:hunter2@nonexistent-host/db",
+            Path("/nonexistent-dir/config.toml"),
+        )
+    )
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok", "store": "postgres", "auth": False}
+    assert "hunter2" not in resp.text
+
+
+def test_health_reports_auth_configured_and_never_the_secret():
+    client = TestClient(
+        create_app(
+            Path("/nonexistent-dir/does-not-exist.db"),
+            Path("/nonexistent-dir/config.toml"),
+            session_secret="a-real-secret",
+        )
+    )
+    resp = client.get("/health")
+    assert resp.json() == {"status": "ok", "store": "sqlite", "auth": True}
+    assert "a-real-secret" not in resp.text
 
 
 def test_unhandled_exception_returns_structured_500_not_a_traceback(env, monkeypatch):

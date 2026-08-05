@@ -1,5 +1,77 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-05 (real root cause of the Cloud Run sign-in bounce,
+plus the auth-layer changes SPEC.md A40's VM target needs — SPEC.md A41).**
+A parallel session (`docs/VM-MIGRATION.md`, branch
+`claude/driverdna-access-link-m6uv7f`, commit `cd9296f` — not merged, not
+duplicated onto this branch, referenced by commit per decision discipline)
+investigated the sign-in bounce four prior sessions had tried to fix by
+editing auth code. None of that could have worked: two repository secrets
+(`DRIVERDNA_SESSION_SECRET`, `DRIVERDNA_DATABASE_URL`) were never set, so the
+Cloud Run deploy ran `--db ""`, which `sqlite3.connect("")` turns into a
+private, connection-scoped temp database deleted the instant each request's
+connection closes — every request got a fresh, empty store. Moot for the
+running service once A40's Cloud Run retirement completes, but recorded
+because the underlying code defects are real regardless of platform, and
+because it explains why the auth logic itself was never at fault.
+
+Fixed, all platform-independent:
+- **`resolve_store("")` now raises** instead of silently opening the
+  evaporating temp store — the reproduction actually hung a real `uvicorn.run`
+  server before the fix landed, confirming the bug's severity directly rather
+  than by inference.
+- **The ephemeral session-secret fallback is retired (owner-confirmed
+  2026-08-05); the interlock now fails closed.** A restart no longer silently
+  rotates the signing key and signs everyone out with nothing in the logs to
+  explain why. A documented re-decision of A31's shipped behavior, per "never
+  silently reverse a decision" — `tests/test_auth_cli.py`'s three
+  ephemeral-secret tests are rewritten to pin refusal, not deleted.
+- **`/health` now reports `store` (sqlite/postgres) and `auth` (bool)**
+  (owner-confirmed public) — enum/bool only, DSN and secrets never appear,
+  the existing no-DB-access guarantee unchanged. The single fact that would
+  have made the original bounce a five-second diagnosis.
+
+New, for the VM+reverse-proxy topology A40 actually deploys — the most severe
+finding: the fail-closed interlock keys off *bind address*, so a proxy in
+front of a **loopback**-bound instance defeats it silently (bind looks safe,
+auth is actually off, the whole internet reaches the cockpit through the
+proxy). `driverdna ui --behind-proxy` (`$DRIVERDNA_BEHIND_PROXY`) applies the
+interlock regardless of bind address, explicitly wires
+`uvicorn.run(proxy_headers=True, forwarded_allow_ips="127.0.0.1")` (turning
+what was an *implicit*, verified-empirically-already-correct uvicorn 0.52.1
+default into an intentional tested contract), switches `_is_https` to trust
+the now-reliable `request.url.scheme` instead of re-reading the header
+itself, and logs a loud once-per-app warning if forwarded headers arrive
+anyway with no secret configured and the flag forgotten.
+`deploy/driverdna.service` now passes `--behind-proxy`.
+
+**One source-analysis finding re-verified and narrowed, not taken on faith:**
+its rate-limiting/`_client_key` claim assumed uvicorn wasn't already trusting
+a loopback-connecting proxy by default. Directly instantiating
+`ProxyHeadersMiddleware` with uvicorn 0.52.1's actual resolved defaults showed
+`scope["client"]` already rewrites correctly for that topology, no code
+change needed — confirmed with a real integration test wrapping the app in
+the exact middleware configuration the CLI now passes to `uvicorn.run`,
+rather than left as an assumption either way. The interlock and `_is_https`
+findings were both independently code-verified and are exactly as described.
+
+Not acted on, left open for the owner (VM-MIGRATION.md §5): the session-per-
+device inconsistency between the password and Google-callback login paths;
+auditing what the live Supabase project actually holds before trusting it as
+authoritative (no access to it from this session).
+
+### Verified counts (2026-08-05, A41 auth-layer changes)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **885 passed, 16 skipped, 0 failed** | `.venv/bin/python -m pytest` |
+| Tests, after | **899 passed, 16 skipped, 0 failed** | `.venv/bin/python -m pytest -rs` |
+| New/rewritten tests | **+14** across `test_dialect.py`, `test_auth_cli.py`, `test_api.py`, `test_auth_api.py` | — |
+| Skips | same 16, all Postgres-absent | `pytest -rs` skip lines |
+| Backend under test | SQLite (venv `git clone` install; no Postgres, no secrets, no live server) | — |
+
+---
+
 **Snapshot date: 2026-08-05 (migrate off Supabase → SQLite on an Oracle VM,
 owner-directed, SPEC.md A40).** The hosted Supabase project went over its
 egress limit, so the deployment's primary store returns to SQLite on an Oracle

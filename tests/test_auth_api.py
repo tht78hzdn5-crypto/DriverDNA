@@ -54,6 +54,15 @@ def unguarded(db_path, tmp_path):
     return TestClient(create_app(db_path, tmp_path / "config.toml"))
 
 
+@pytest.fixture
+def guarded_behind_proxy(db_path, tmp_path):
+    return TestClient(
+        create_app(
+            db_path, tmp_path / "config.toml", session_secret=TOKEN, behind_proxy=True
+        )
+    )
+
+
 def _concrete_api_routes(app):
     """Every `/api/*` route the app declares, with path params filled in.
 
@@ -184,6 +193,124 @@ def test_the_cookie_is_marked_secure_behind_an_https_proxy(guarded):
         headers={"X-Forwarded-Proto": "https"},
     )
     assert "Secure" in forwarded.headers["set-cookie"]
+
+
+def test_behind_proxy_trusts_the_resolved_scheme_not_the_raw_header(guarded_behind_proxy):
+    """docs/VM-MIGRATION.md §3.3: with --behind-proxy, uvicorn's
+    ProxyHeadersMiddleware (wired by the CLI to trust only 127.0.0.1) has
+    already resolved `request.url.scheme` from X-Forwarded-Proto before the
+    app sees the request, so the app trusts that resolved value instead of
+    re-reading the header itself — which has no trust boundary at the app
+    layer and would believe anyone who could reach the port at all."""
+    plain = guarded_behind_proxy.post(
+        "/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN}
+    )
+    assert "Secure" not in plain.headers["set-cookie"]
+
+    https = guarded_behind_proxy.post(
+        "https://testserver/api/auth/login",
+        json={"email": "driver@driverdna.com", "password": TOKEN},
+    )
+    assert "Secure" in https.headers["set-cookie"]
+
+    # The raw header alone, with no real https:// scheme, must NOT be enough
+    # in this mode — that would be exactly the un-trust-boundaried read this
+    # mode exists to stop trusting.
+    spoofed = guarded_behind_proxy.post(
+        "/api/auth/login",
+        json={"email": "driver@driverdna.com", "password": TOKEN},
+        headers={"X-Forwarded-Proto": "https"},
+    )
+    assert "Secure" not in spoofed.headers["set-cookie"]
+
+
+# --- the loud warning (VM-MIGRATION.md §3.1 option (c)) --------------------
+
+
+def test_forwarded_headers_without_proxy_mode_or_auth_warn_loudly(unguarded, caplog):
+    """If a request arrives bearing X-Forwarded-For while no session secret
+    is configured and --behind-proxy was never set, a real reverse proxy in
+    front of this loopback-bound instance would mean every request is
+    authenticated as the owner with no login at all — the exact "entire
+    internet reaches the cockpit" failure mode. A hard refusal at request
+    time would be a confusing failure mode (per the design doc's own
+    reasoning), so this warns loudly instead."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        unguarded.get("/health", headers={"X-Forwarded-For": "203.0.113.7"})
+    assert any("X-Forwarded" in r.message for r in caplog.records)
+
+
+def test_the_warning_fires_at_most_once_per_app(unguarded, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        unguarded.get("/health", headers={"X-Forwarded-For": "203.0.113.7"})
+        unguarded.get("/health", headers={"X-Forwarded-For": "203.0.113.7"})
+    warnings = [r for r in caplog.records if "X-Forwarded" in r.message]
+    assert len(warnings) == 1
+
+
+def test_no_warning_without_forwarded_headers(unguarded, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        unguarded.get("/health")
+    assert not any("X-Forwarded" in r.message for r in caplog.records)
+
+
+def test_no_warning_when_behind_proxy_is_correctly_configured(guarded_behind_proxy, caplog):
+    """--behind-proxy plus a configured secret is exactly the safe
+    configuration this warning exists to nudge people toward — it must stay
+    silent once they've done that."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        guarded_behind_proxy.get("/health", headers={"X-Forwarded-For": "203.0.113.7"})
+    assert not any("X-Forwarded" in r.message for r in caplog.records)
+
+
+def test_client_key_resolves_the_real_client_through_the_configured_proxy_wrapping(
+    db_path, tmp_path
+):
+    """Locks in the exact end-to-end behaviour --behind-proxy depends on:
+    wrapping the app in uvicorn's own ProxyHeadersMiddleware with
+    trusted_hosts=127.0.0.1 (precisely what the CLI passes to uvicorn.run
+    under --behind-proxy) rewrites scope["client"] from X-Forwarded-For for
+    a peer connecting from 127.0.0.1 — so the login throttle keys on the
+    real client, not the proxy's own loopback address. A lockout triggered
+    by one attacker's forwarded IP must not also lock out a different real
+    client arriving through the very same proxy."""
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    inner = create_app(
+        db_path, tmp_path / "config.toml", session_secret=TOKEN, behind_proxy=True
+    )
+    wrapped = ProxyHeadersMiddleware(inner, trusted_hosts="127.0.0.1")
+    client = TestClient(wrapped, client=("127.0.0.1", 40404))
+
+    for _ in range(5):
+        r = client.post(
+            "/api/auth/login",
+            json={"email": "driver@driverdna.com", "password": "wrong"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+        assert r.status_code == 401
+
+    locked = client.post(
+        "/api/auth/login",
+        json={"email": "driver@driverdna.com", "password": "wrong"},
+        headers={"X-Forwarded-For": "203.0.113.7"},
+    )
+    assert locked.status_code == 429
+
+    other = client.post(
+        "/api/auth/login",
+        json={"email": "driver@driverdna.com", "password": TOKEN},
+        headers={"X-Forwarded-For": "198.51.100.9"},
+    )
+    assert other.status_code == 200
 
 
 def test_a_wrong_passphrase_is_refused_and_never_echoed(guarded):

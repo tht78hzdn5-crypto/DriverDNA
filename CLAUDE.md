@@ -503,6 +503,30 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   on. Code + docs + `docs/DEPLOY-RUNBOOK.md` + systemd unit land now;
   `.github/workflows/deploy.yml` (Cloud Run) is retired; VM provisioning, the
   cutover, and deleting the Supabase project are owner-executed runbook steps.
+- **Real root cause of the Cloud Run sign-in bounce + the auth-layer changes
+  A40's VM target needs (2026-08-05, SPEC.md A41)** — a parallel session
+  (`docs/VM-MIGRATION.md`, branch `claude/driverdna-access-link-m6uv7f`,
+  commit `cd9296f`, referenced not duplicated) found the sign-in bounce four
+  prior sessions tried to fix by editing auth code was actually two unset
+  deploy secrets: `--db ""` silently opened SQLite's evaporating private temp
+  database. Fixed regardless of platform: `resolve_store("")` now raises
+  instead of silently opening it; the ephemeral session-secret fallback is
+  retired (owner-confirmed) and the interlock fails closed instead — a
+  restart no longer silently signs everyone out; `/health` now reports
+  `store`/`auth` (enum/bool, never secrets). New for the VM+reverse-proxy
+  topology: `driverdna ui --behind-proxy` closes the most severe finding — a
+  proxy in front of a *loopback*-bound instance defeated the interlock
+  silently (bind looked safe, auth was actually off). It applies the
+  fail-closed interlock regardless of bind address, explicitly wires
+  `uvicorn`'s proxy-header trust to `127.0.0.1` only (verified: uvicorn
+  0.52.1 already defaulted to exactly this — now an intentional, tested
+  contract instead of an implicit library default), and switches `_is_https`
+  to the now-reliable `request.url.scheme`. `deploy/driverdna.service` now
+  passes it. One source-analysis finding (rate-limiting/`_client_key`) was
+  re-verified empirically and found already-correct given uvicorn's real
+  defaults — narrowed with a real `ProxyHeadersMiddleware` integration test
+  rather than taken on faith either way. Suite 885 → 899 passed, 16 skipped
+  (same Postgres-absent set), 0 failed.
 - **UI v3 "cockpit feel" + U7 mobile + incidents-for-newcomers + Gemini
   provider + BYOK: built (2026-08-02, `docs/UI-V3-PLAN.md`, SPEC.md
   A35/A36/A37/A38)** — owner-directed. Chrome-accent tokens + micro-motion;

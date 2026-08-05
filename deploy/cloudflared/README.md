@@ -15,6 +15,16 @@ Access requires a domain on your Cloudflare account (~$10/yr) — the single
 component of this plan that is not literally free. If you don't want a public
 URL, use Tailscale instead (DEPLOY-SPEC H2's private option) and skip this.
 
+**`deploy/driverdna.service` runs `driverdna ui` with `--behind-proxy`**
+(SPEC.md A41), which trusts `X-Forwarded-For`/`X-Forwarded-Proto` only from
+`127.0.0.1` — exactly the address `cloudflared` connects from when it proxies
+to `service: http://127.0.0.1:8710` above. `cloudflared` sets these headers
+itself on the tunnel hop (it is not a chained proxy you configure by hand like
+nginx/Caddy, where forgetting to overwrite rather than append a
+client-supplied value is the usual mistake), so no extra config is needed here
+— but it is what makes login throttling and the session cookie's `Secure` flag
+key off the real visitor instead of the tunnel's own loopback connection.
+
 ## Setup outline (exact commands in docs/DEPLOY-RUNBOOK.md)
 
 1. `cloudflared tunnel login`, then `cloudflared tunnel create driverdna` —

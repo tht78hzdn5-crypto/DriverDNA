@@ -109,8 +109,14 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
    sudo systemctl daemon-reload
    sudo systemctl enable --now driverdna driverdna-backup.timer
    sudo systemctl status driverdna --no-pager
+   sudo journalctl -u driverdna -n 20 --no-pager
    ```
-   The service binds `127.0.0.1:8710` only; the tunnel publishes it.
+   The service binds `127.0.0.1:8710` only; the tunnel publishes it. **Confirm
+   the startup log line reads `auth=yes behind_proxy=yes`** — the unit already
+   passes `--behind-proxy` (SPEC.md A41): without it, the auth interlock still
+   protects you (a missing secret refuses to start either way), but per-client
+   login throttling and rate limiting silently collapse to one shared bucket
+   keyed on the tunnel's own loopback address instead of the real caller.
 3. Cloudflare Tunnel + Access — follow `deploy/cloudflared/README.md`. In
    short: `cloudflared tunnel login && create`, copy
    `deploy/cloudflared/config.example.yml` → `/etc/cloudflared/config.yml`
@@ -142,6 +148,14 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
   home, a cohort, and one chat turn; confirm a request from an
   un-allowlisted identity is blocked at Access, and that `/api/*` returns 401
   without a session.
+- **Configuration is visible, not inferred:** `curl https://<vm-domain>/health`
+  reports `{"status":"ok","store":"sqlite","auth":true}`. If `auth` ever reads
+  `false` here after this setup, the session secret didn't load — stop and
+  fix it before relying on the deployment; don't infer correctness from the
+  site merely rendering (docs/VM-MIGRATION.md §1, on exactly this mistake).
+- **A restart doesn't sign you out:** `sudo systemctl restart driverdna`, then
+  reload the site without clearing cookies — you should still be signed in.
+  (This is what the retired ephemeral-secret fallback used to break.)
 
 ---
 

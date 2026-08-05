@@ -45,6 +45,15 @@ def resolve_store(db_path: Path | str | None) -> str:
     "quietly pointed at the wrong history" is the worst failure available.
     """
     if db_path is not None:
+        if not str(db_path).strip():
+            raise ValueError(
+                "--db was given an empty value — refusing rather than opening "
+                "SQLite's private, connection-scoped temporary database "
+                "(deleted the instant the connection closes, silently "
+                "discarding every write while reporting success). This "
+                "usually means a shell interpolated an unset environment "
+                "variable into a quoted argument, e.g. --db \"$DRIVERDNA_DATABASE_URL\"."
+            )
         return str(db_path)
     url = os.environ.get(DATABASE_URL_ENV)
     if url:

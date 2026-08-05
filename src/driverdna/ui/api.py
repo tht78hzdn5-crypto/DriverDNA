@@ -153,6 +153,7 @@ def create_app(
     google_client_id: str | None = None,
     google_client_secret: str | None = None,
     smtp_config: dict[str, str] | None = None,
+    behind_proxy: bool = False,
 ) -> FastAPI:
     """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
     (Claude or Gemini per `config.coach.provider`, env-only API key,
@@ -168,6 +169,17 @@ def create_app(
     additive rather than a rewrite. The CLI supplies it from
     `DRIVERDNA_SESSION_SECRET` and refuses to bind a non-loopback address
     without it.
+
+    `behind_proxy` (SPEC.md A41, docs/VM-MIGRATION.md §3.1/§3.3) says a
+    reverse proxy on the same host sits in front of this process — the CLI
+    sets it from `--behind-proxy`/`$DRIVERDNA_BEHIND_PROXY` and, when true,
+    also wires uvicorn's `ProxyHeadersMiddleware` to trust `X-Forwarded-*`
+    only from `127.0.0.1`. That trust boundary is what this flag lets the
+    app rely on: `_is_https` trusts the already-resolved
+    `request.url.scheme` instead of re-reading the header itself (which has
+    no trust boundary at the app layer). It does not change `_client_key` —
+    that already reads the ASGI-level `scope["client"]`, which the
+    middleware itself rewrites, with no app-layer code involved.
     """
     _pool = None
     _is_pg = is_postgres_url(db_path)
@@ -198,7 +210,8 @@ def create_app(
         lockout_seconds=_startup.auth.login_lockout_seconds,
     )
     chat_limiter = auth.RateLimiter(limit=_startup.api.chat_requests_per_minute)
-    
+    _warned_unproxied_forward = False
+
     smtp_host = smtp_config.get("host") if smtp_config else None
     smtp_port = smtp_config.get("port") if smtp_config else None
     smtp_user = smtp_config.get("user") if smtp_config else None
@@ -231,6 +244,34 @@ def create_app(
         It raises before the endpoint's own parameters are solved, so an
         unauthenticated request never reaches body validation or the database.
         """
+        nonlocal _warned_unproxied_forward
+        if (
+            session_secret is None
+            and not behind_proxy
+            and not _warned_unproxied_forward
+            and (
+                request.headers.get("x-forwarded-for")
+                or request.headers.get("x-forwarded-proto")
+            )
+        ):
+            # docs/VM-MIGRATION.md §3.1 option (c), downgraded to a warning
+            # per its own reasoning: a hard refusal here would be a
+            # confusing failure mode. But this exact combination — no
+            # secret, no --behind-proxy, yet forwarded headers arriving
+            # anyway — is precisely how a loopback-bound instance ends up
+            # reachable by the whole internet with no login at all: the
+            # interlock keys off bind address, which a reverse proxy in
+            # front of a loopback bind defeats silently. Once per app
+            # instance, so a legitimate proxy setup doesn't spam the log.
+            _warned_unproxied_forward = True
+            logger.warning(
+                "request arrived with X-Forwarded-* headers, but no %s is "
+                "configured and --behind-proxy was not set. If a reverse "
+                "proxy really is in front of this process, EVERY request is "
+                "currently authenticated as the owner with no login. Set "
+                "%s and pass --behind-proxy, or remove the proxy.",
+                auth.SESSION_SECRET_ENV, auth.SESSION_SECRET_ENV,
+            )
         if request.url.path in PUBLIC_API_PATHS or authenticated(request):
             _rate_limit(request)
             return
@@ -271,10 +312,19 @@ def create_app(
         return JSONResponse(status_code=500, content={"detail": "internal server error"})
 
     @app.get("/health")
-    def health() -> dict[str, str]:
-        # No DB access: this is Cloud Run's liveness probe, and it must
-        # answer even while the store is unreachable or still migrating.
-        return {"status": "ok"}
+    def health() -> dict[str, Any]:
+        # No DB access: this is the liveness probe, and it must answer even
+        # while the store is unreachable or still migrating. `store` and
+        # `auth` are the two non-secret deployment facts (SPEC.md A41,
+        # docs/VM-MIGRATION.md §3.7.3) that turn a misconfiguration into a
+        # visible fact instead of an inferred one — never the DSN, never any
+        # secret value, both already known at app-build time so this adds no
+        # new DB access.
+        return {
+            "status": "ok",
+            "store": "postgres" if _is_pg else "sqlite",
+            "auth": session_secret is not None,
+        }
 
     @app.get("/openapi.json", include_in_schema=False)
     def openapi_schema() -> dict[str, Any]:
@@ -308,10 +358,23 @@ def create_app(
         return RedirectResponse(f"/?auth_error={safe}", status_code=302)
 
     def _is_https(request: Request) -> bool:
-        """Cloud Run terminates TLS and forwards `X-Forwarded-Proto`, and
-        uvicorn only trusts that header from `forwarded_allow_ips` (which does
-        not include a Cloud Run front end). Read it directly rather than
-        shipping an unmarked session cookie over a real HTTPS deployment."""
+        """Two deployment shapes, two trust sources — never both at once.
+
+        `behind_proxy=True`: uvicorn's own `ProxyHeadersMiddleware` (wired by
+        the CLI to trust `X-Forwarded-*` only from `127.0.0.1`, the proxy's
+        own address) has already resolved `request.url.scheme` before the
+        app ever sees the request. Trust that — re-reading the header here
+        too would have no trust boundary at the app layer and would believe
+        anyone who could reach the port at all.
+
+        `behind_proxy=False` (e.g. Cloud Run): its front end forwards
+        `X-Forwarded-Proto` from an address outside uvicorn's
+        `forwarded_allow_ips`, so the middleware never rewrites the scheme.
+        Read the header directly, as before — the only way to avoid shipping
+        an unmarked session cookie over a real HTTPS deployment there.
+        """
+        if behind_proxy:
+            return request.url.scheme == "https"
         forwarded = request.headers.get("x-forwarded-proto", "")
         if forwarded:
             return forwarded.split(",")[0].strip() == "https"

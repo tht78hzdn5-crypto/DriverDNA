@@ -31,10 +31,15 @@ def version() -> None:
 
 def _store(db_path: str | None) -> str:
     """Resolve `--db` against the environment. See store.resolve_store for
-    why there is deliberately no bare DATABASE_URL fallback."""
+    why there is deliberately no bare DATABASE_URL fallback (and no silent
+    fallback for an empty explicit --db, either)."""
     from driverdna.store import resolve_store
 
-    return resolve_store(db_path)
+    try:
+        return resolve_store(db_path)
+    except ValueError as e:
+        typer.echo(f"error: {e}")
+        raise typer.Exit(code=2) from None
 
 
 def _require_store(db_path: str | None) -> str:
@@ -588,6 +593,17 @@ def ui(
         help="Bind address. Use 0.0.0.0 for hosted/container deployments — "
              "which requires DRIVERDNA_SESSION_SECRET (or DRIVERDNA_ACCESS_TOKEN) to be set.",
     ),
+    behind_proxy: bool = typer.Option(
+        False, "--behind-proxy",
+        help="A reverse proxy (Cloudflare Tunnel, nginx, Caddy) sits in "
+             "front of this process on the same host — e.g. the Oracle VM "
+             "target (SPEC.md A41). Applies the auth interlock regardless "
+             "of bind address (a loopback bind behind an unnoticed proxy is "
+             "otherwise reachable by anyone, unauthenticated), and wires "
+             "uvicorn to trust X-Forwarded-* only from 127.0.0.1 — the "
+             "proxy's own address, never a wildcard. Defaults to "
+             "$DRIVERDNA_BEHIND_PROXY (1/true/yes).",
+    ),
 ) -> None:
     """Serve the cockpit (API + built SPA)."""
     try:
@@ -608,31 +624,51 @@ def ui(
     google_client_id = auth.google_client_id_from_env()
     google_client_secret = auth.google_client_secret_from_env()
     smtp_config = auth.smtp_config_from_env()
+    # Read at call time (not baked into the Option default above) so the env
+    # var is honored even when it's set after this module was imported —
+    # matching how every other secret here is read lazily from the process
+    # environment rather than captured once at import time.
+    behind_proxy = behind_proxy or (
+        os.environ.get("DRIVERDNA_BEHIND_PROXY", "").strip().lower() in ("1", "true", "yes")
+    )
 
-    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1): a non-loopback bind
-    # must have a session-signing secret. If none is configured, generate an
-    # ephemeral one so the container can start (auth is still ON — login still
-    # requires credentials). Sessions won't persist across restarts.
-    if not _is_loopback(host) and session_secret is None:
-        import secrets as _secrets
-        session_secret = _secrets.token_urlsafe(32)
+    # The fail-closed interlock (docs/DEPLOY-SPEC.md H1; SPEC.md A41): a
+    # non-loopback bind, OR a loopback bind with a reverse proxy declared in
+    # front of it, must have a session-signing secret, full stop. The
+    # loopback+behind_proxy case matters because the interlock otherwise
+    # keys off bind address alone — a reverse proxy in front of a
+    # loopback-bound instance defeats that silently, since the bind looks
+    # safe while every request through the proxy is actually reachable from
+    # wherever the proxy is (docs/VM-MIGRATION.md §3.1). This also used to
+    # fall back to an ephemeral, process-local secret so a container would
+    # still start — retired 2026-08-05 (owner-confirmed) because on a
+    # restart-prone host that meant every reboot/redeploy silently rotated
+    # the key and signed everyone out with nothing in the logs to explain
+    # why (docs/VM-MIGRATION.md §1.3/§3.7). Refusing loudly here is strictly
+    # better than starting into a state that will fail confusingly later.
+    if (behind_proxy or not _is_loopback(host)) and session_secret is None:
+        reason = "--behind-proxy is set" if behind_proxy and _is_loopback(host) \
+            else f"binding a non-loopback address ({host})"
         typer.echo(
-            f"warning: no {auth.SESSION_SECRET_ENV} configured — using an "
-            "ephemeral session secret. Auth is on but sessions will not "
-            "persist across restarts. Set the env var for stable sessions."
+            f"error: {auth.SESSION_SECRET_ENV} (or DRIVERDNA_ACCESS_TOKEN) "
+            f"must be set — refusing to start unauthenticated ({reason}). "
+            "Set the env var, or drop --behind-proxy / bind loopback with "
+            "nothing in front of it for local-only use."
         )
+        raise typer.Exit(code=2)
 
     resolved = _store(db_path)
     from driverdna.store import describe
     typer.echo(
         f"starting: host={host} port={port} "
         f"db={describe(resolved)} "
-        f"auth={'yes' if session_secret else 'no'}"
+        f"auth={'yes' if session_secret else 'no'} "
+        f"behind_proxy={'yes' if behind_proxy else 'no'}"
     )
     application = create_app(
         resolved, config_path, session_secret=session_secret,
         google_client_id=google_client_id, google_client_secret=google_client_secret,
-        smtp_config=smtp_config
+        smtp_config=smtp_config, behind_proxy=behind_proxy,
     )
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():
@@ -640,7 +676,21 @@ def ui(
     else:
         typer.echo("note: no built SPA found (ui/static missing) — serving API only")
     typer.echo(f"DriverDNA cockpit: http://{host}:{port}")
-    uvicorn.run(application, host=host, port=port, log_level="warning")
+    # proxy_headers/forwarded_allow_ips made explicit rather than relying on
+    # uvicorn's own defaults (which happen to already resolve to
+    # True/"127.0.0.1") — a security-relevant trust boundary should be an
+    # intentional, tested contract in this codebase, not an inherited
+    # library default that could change under a version bump.
+    if behind_proxy:
+        uvicorn.run(
+            application, host=host, port=port, log_level="warning",
+            proxy_headers=True, forwarded_allow_ips="127.0.0.1",
+        )
+    else:
+        uvicorn.run(
+            application, host=host, port=port, log_level="warning",
+            proxy_headers=False,
+        )
 
 
 def _demo_fixtures_dir() -> Path | None:

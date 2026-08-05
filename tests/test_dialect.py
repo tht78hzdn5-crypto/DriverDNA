@@ -149,6 +149,42 @@ def test_project_env_var_is_used(monkeypatch):
     assert resolve_store("explicit.db") == "explicit.db"  # --db still wins
 
 
+def test_empty_db_path_refuses_rather_than_opening_a_temp_store(monkeypatch):
+    """`--db ""` (e.g. a shell interpolating an unset env var into a quoted
+    argument, `--db "$DRIVERDNA_DATABASE_URL"`) must not reach
+    `sqlite3.connect("")` — SQLite's private, connection-scoped temporary
+    database, deleted the moment the connection closes. That silently
+    discards every write while reporting success, which is exactly what
+    broke the Cloud Run deployment's persistence (docs/VM-MIGRATION.md §1.2).
+
+    Raising here — rather than falling through to $DRIVERDNA_DATABASE_URL —
+    matches this function's own no-silent-fallback rule: an empty explicit
+    --db is a caller bug, not "no --db given"."""
+    monkeypatch.setenv("DRIVERDNA_DATABASE_URL", "postgresql://a@localhost/db")
+    with pytest.raises(ValueError, match="empty"):
+        resolve_store("")
+
+
+def test_whitespace_only_db_path_refuses_too(monkeypatch):
+    monkeypatch.setenv("DRIVERDNA_DATABASE_URL", "postgresql://a@localhost/db")
+    with pytest.raises(ValueError, match="empty"):
+        resolve_store("   ")
+
+
+def test_ui_command_refuses_an_empty_db_path(tmp_path, monkeypatch):
+    """End-to-end: the CLI turns the library's ValueError into a clean exit
+    2 with a message, not a bare traceback, from the one choke point
+    (`cli._store`) every command already funnels `--db` through."""
+    from typer.testing import CliRunner
+
+    from driverdna.cli import app
+
+    monkeypatch.delenv("DRIVERDNA_DATABASE_URL", raising=False)
+    result = CliRunner().invoke(app, ["ui", "--db", ""])
+    assert result.exit_code == 2
+    assert "empty" in result.output
+
+
 # --- against a real Postgres ----------------------------------------------
 
 

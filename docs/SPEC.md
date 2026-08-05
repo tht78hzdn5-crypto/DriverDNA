@@ -2002,3 +2002,126 @@ Accepted at owner plan review; rationale recorded in the review:
   cutover is not something a push to `main` should trigger. `docs/DEPLOY-SPEC.md`
   H2/H3 are un-staled to describe this real target; `docs/STATUS.md` carries
   the dated snapshot.
+
+- **A41** (2026-08-05): **the Cloud Run sign-in bounce's real root cause, and
+  the auth-layer changes A40's VM target needs.** A parallel session
+  (`docs/VM-MIGRATION.md`, branch `claude/driverdna-access-link-m6uv7f`,
+  commit `cd9296f`) investigated the sign-in bounce four prior sessions had
+  tried to fix by changing auth code, and found the auth logic was never the
+  problem. Referenced here per CLAUDE.md decision discipline rather than
+  duplicated; that document is the full record, this entry is what was acted
+  on from it and how, on this branch (`claude/database-egress-limit-csvslz`).
+
+  **Root cause (not fixed here — moot once A40's Cloud Run retirement lands,
+  recorded for the historical record and because it explains why four
+  sessions of auth-code changes could not have worked):** two repository
+  secrets (`DRIVERDNA_SESSION_SECRET`, `DRIVERDNA_DATABASE_URL`) were never
+  set, so the deploy shipped `--db ""`. `sqlite3.connect("")` opens SQLite's
+  private, connection-scoped temp database — deleted the instant the
+  connection closes — so every request got a fresh, empty store: sign-in
+  wrote the user to one temp DB, the very next request opened a different one
+  and found nobody, and the SPA bounced back to login. A second, independent
+  fault (the ephemeral per-process session secret, see below) would have kept
+  breaking sign-in even after the first was fixed.
+
+  **Fixed, applies regardless of backend or platform:**
+  1. `resolve_store("")` now raises rather than silently returning `""` —
+     an empty explicit `--db` is a caller bug (most often a shell
+     interpolating an unset env var into a quoted argument), not "no --db
+     given," and must not fall through to `$DRIVERDNA_DATABASE_URL` either
+     (`store.py`; `cli._store` converts the raise to a clean `typer.Exit(2)`,
+     the one choke point all 22 CLI call sites already share).
+  2. **The ephemeral session-secret fallback is retired; the interlock now
+     fails closed (owner-confirmed 2026-08-05).** A non-loopback bind (or,
+     new in this amendment, a loopback bind with `--behind-proxy` declared)
+     with no `DRIVERDNA_SESSION_SECRET`/`DRIVERDNA_ACCESS_TOKEN` configured
+     now refuses to start with a named error, rather than generating a
+     process-local secret that silently rotates — and signs everyone out
+     with nothing in the logs to explain why — on every restart. This is a
+     **re-decision** of behaviour A31 shipped (CLAUDE.md's "never silently
+     reverse a decision" rule): `tests/test_auth_cli.py`'s three
+     ephemeral-secret tests are rewritten to pin refusal instead, per that
+     file's own updated header.
+  3. **`/health` now reports `store` (`sqlite`/`postgres`) and `auth`
+     (bool)** — owner-confirmed 2026-08-05 to be public. Enum and boolean
+     only, never the DSN or any secret; `_is_pg` and `session_secret` are
+     both already known at `create_app`-build time, so this adds no DB
+     access (the existing "does not open a DB" guarantee is a named test,
+     kept green). This is the fact that would have made the Cloud Run bounce
+     a five-second diagnosis instead of four sessions of auth-code changes.
+
+  **New, for the VM+reverse-proxy topology A40 actually deploys (the most
+  severe finding, and the reason this landed alongside A40 rather than
+  after):** the fail-closed interlock keys off *bind address*, so a reverse
+  proxy in front of a **loopback**-bound instance defeats it silently — the
+  bind looks safe, `authenticated()` returns `True` unconditionally with no
+  secret configured, and the whole internet reaches the cockpit through the
+  proxy with no login at all. `driverdna ui --behind-proxy`
+  (`$DRIVERDNA_BEHIND_PROXY`) closes this:
+  - Applies the fail-closed secret requirement regardless of bind address.
+  - Explicitly wires `uvicorn.run(..., proxy_headers=True,
+    forwarded_allow_ips="127.0.0.1")` — the proxy's own address, never a
+    wildcard — turning what was an *implicit* uvicorn default (verified
+    directly: uvicorn 0.52.1 already defaults to exactly this) into an
+    intentional, tested contract, and explicitly passing
+    `proxy_headers=False` otherwise rather than depending on a library
+    default for a security-relevant trust boundary.
+  - `_is_https` (`ui/api.py`) trusts the now-reliably-resolved
+    `request.url.scheme` under `--behind-proxy`, instead of re-reading
+    `X-Forwarded-Proto` itself — a read with no trust boundary at the app
+    layer. Off (the Cloud-Run-shaped default), behaviour is byte-for-byte
+    unchanged: the existing manual header read, needed because Cloud Run's
+    front end is never `127.0.0.1`.
+  - `_client_key` needed **zero code changes** — it already reads the
+    ASGI-level `scope["client"]`, which `ProxyHeadersMiddleware` rewrites
+    beneath it. Locked in by an integration test wrapping the real
+    middleware exactly as the CLI configures it and proving a login lockout
+    from one forwarded client does not lock out a different one arriving
+    through the same proxy peer — not merely asserted, since the source
+    analysis's static read of this exact function reached the wrong
+    conclusion once uvicorn's actual runtime defaults were checked (below).
+  - A loud, once-per-app warning (not a request-time refusal — a refusal
+    here would be a confusing failure mode) fires when a request carries
+    `X-Forwarded-*` while no secret is configured and `--behind-proxy` was
+    never set: the forgotten-flag case this whole amendment exists to catch.
+  - `deploy/driverdna.service` (this branch) now passes `--behind-proxy`;
+    without it the unit would still refuse to start unauthenticated (item 2
+    above still holds), but login throttling and rate limiting would
+    silently collapse to one shared bucket keyed on the tunnel's loopback
+    connection instead of the real caller.
+
+  **One finding in the source analysis re-verified and narrowed, not taken on
+  faith:** its §3.2 read `_client_key`/rate-limiting as broken behind any
+  reverse proxy. Empirically checking uvicorn 0.52.1's actual defaults
+  (`Config.proxy_headers=True`, `forwarded_allow_ips` resolving to
+  `'127.0.0.1'`, confirmed by driving `ProxyHeadersMiddleware` directly)
+  showed `scope["client"]` already rewrites correctly today for a
+  loopback-connecting proxy, with no code change — the static analysis
+  couldn't see the installed library's runtime defaults, only the source.
+  The interlock finding (§3.1) and the `_is_https` finding (§3.3) were both
+  independently code-verified and are exactly as described. This is itself
+  an instance of the source document's own stated lesson — assert the thing
+  you believe, don't infer it — applied one level up, to that document's own
+  claim.
+
+  **Deliberately not acted on, left for the owner (VM-MIGRATION.md §5, still
+  open):** the mechanism choice in §3.1 was already made (option (a),
+  explicit flag, as built); §3.8's session-per-device semantics (a second
+  sign-in currently ends the first session on the password path but not on
+  Google's callback-for-an-existing-user path — a real inconsistency, not
+  addressed here, no default is obviously correct); §4.1's instruction to
+  audit what Supabase actually holds before trusting it as the authoritative
+  copy — an operational check against the live project, not something
+  decidable from a session with no access to it.
+
+  **Verification.** New/rewritten tests: `tests/test_dialect.py` (3, the
+  empty-`--db` refusal, library- and CLI-level), `tests/test_auth_cli.py`
+  (rewrites 2 ephemeral-secret tests to pin refusal, adds 4 for
+  `--behind-proxy`), `tests/test_api.py` (2, `/health`'s new fields, proving
+  the DSN/secret never appear), `tests/test_auth_api.py` (6: scheme trust
+  under `--behind-proxy`, the once-only warning under four conditions, and
+  the real-middleware `_client_key` integration test). Suite 885 → 899
+  passed, 16 skipped (same Postgres-absent set), 0 failed; every
+  ephemeral-secret/health-shape change is a deliberate rewrite of what the
+  test pins, not a weakening — each rewritten assertion is narrower or
+  stricter than what it replaced, never removed outright.

@@ -1,4 +1,4 @@
-# DriverDNA cockpit — systemd service (Oracle VM deployment of record, SPEC.md A40).
+# DriverDNA cockpit — systemd service (Oracle VM deployment of record, SPEC.md A40/A41).
 #
 # Binds loopback only; a Cloudflare Tunnel (deploy/cloudflared/) is what
 # publishes it. App-level auth stays ON regardless — the EnvironmentFile below
@@ -6,6 +6,13 @@
 # is local. `driverdna ui` runs exactly one uvicorn process (single worker by
 # construction): chat sessions live in an in-process dict and the chat DB
 # handle is long-lived, so do NOT wrap this in a multi-worker launcher.
+#
+# --behind-proxy is REQUIRED here, not optional (SPEC.md A41,
+# docs/VM-MIGRATION.md §3.1/§3.2): a reverse proxy in front of a loopback
+# bind is exactly the topology where the auth interlock, per-client login
+# throttling, and the session cookie's Secure flag all silently break
+# without it — the proxy's own loopback connection is trusted for
+# X-Forwarded-* only when this flag says to expect it.
 #
 # Install: see docs/DEPLOY-RUNBOOK.md. Copy to /etc/systemd/system/,
 # `systemctl daemon-reload`, `systemctl enable --now driverdna`.
@@ -35,7 +42,8 @@ ExecStart=/opt/driverdna/venv/bin/driverdna ui \
     --host 127.0.0.1 \
     --port 8710 \
     --db /var/lib/driverdna/driverdna.db \
-    --config /var/lib/driverdna/driverdna.toml
+    --config /var/lib/driverdna/driverdna.toml \
+    --behind-proxy
 
 Restart=always
 RestartSec=3
