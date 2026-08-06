@@ -2154,3 +2154,18 @@ Accepted at owner plan review; rationale recorded in the review:
   `test_same_lap_twice_per_unit_normalized_not_flat_mean` in
   `tests/test_coaching_engine.py` tests the new function directly with
   controlled metric values. Suite 899 → 900 passed, 16 skipped, 0 failed.
+
+- **A43** (2026-08-06): **`census` surfaced in the driver payload and Driver
+  home UI.** A33's `driverdna census` artifact answered "do I need more lap
+  data?" at the CLI only; A43 adds a `census` key to `build_driver_payload`
+  (`PAYLOAD_VERSION` 5 → 6) and renders a "Corpus readiness" panel on the
+  Driver home tab showing the confidence ceiling, self-lap count, and the
+  next-steps table ranked by confidence gain. No new measurement, no new
+  configuration — census reads the exact thresholds and suppression strings the
+  engine already emits. The `_include_census=False` sentinel in
+  `build_driver_payload` breaks the recursion that would otherwise arise because
+  `census._suppression_section` calls `build_driver_payload` to quote rollup
+  gate reasons verbatim (the anti-drift guarantee A33 established). Three new
+  tests in `test_census.py`: census key present in driver payload, census key
+  None when no laps, next_steps shape. Suite 900 → 903 passed, 16 skipped, 0
+  failed.

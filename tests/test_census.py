@@ -226,6 +226,42 @@ def test_a_saturated_term_is_not_offered_as_a_next_step():
         assert not any("session" in s.action for s in census.next_steps)
 
 
+# --- payload integration (SPEC.md A43) --------------------------------------
+
+
+def test_census_in_driver_payload():
+    """Census section present in /api/driver payload (SPEC.md A43)."""
+    with _one_cohort_db() as db:
+        payload = build_driver_payload(db, CONFIG)
+    census = payload["census"]
+    assert census is not None
+    assert census["n_self_laps"] == 8
+    assert census["n_reference_laps"] == 0
+    assert len(census["cohorts"]) == 1
+    assert isinstance(census["confidence_ceiling_pct"], float)
+    assert 0.0 <= census["confidence_ceiling_pct"] <= 100.0
+    assert isinstance(census["next_steps"], list)
+    assert isinstance(census["suppressed_gate_reasons"], list)
+    assert isinstance(census["sections"], list)
+
+
+def test_census_payload_none_when_no_laps():
+    """Census key is None when no laps have been imported (no-DB cold start)."""
+    with Database.open(":memory:") as db:
+        payload = build_driver_payload(db, CONFIG)
+    assert payload["census"] is None
+
+
+def test_census_payload_next_steps_have_correct_shape():
+    """Each next_step in the payload has action, delta_points, detail keys."""
+    with _one_cohort_db() as db:
+        census_data = build_driver_payload(db, CONFIG)["census"]
+    for step in census_data["next_steps"]:
+        assert "action" in step
+        assert "delta_points" in step  # may be None
+        assert "detail" in step
+
+
 # --- CLI --------------------------------------------------------------------
 
 

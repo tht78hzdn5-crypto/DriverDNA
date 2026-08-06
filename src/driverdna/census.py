@@ -103,6 +103,7 @@ class Census:
     sections: tuple[CensusSection, ...]
     next_steps: tuple[NextStep, ...]
     suppressed_gate_reasons: tuple[str, ...]
+    confidence_ceiling_pct: float = 0.0
 
 
 def _drivers_with_self_laps(db: Database) -> list[str]:
@@ -250,7 +251,7 @@ def _suppression_section(
                 reasons[finding["gate_reason"]] += 1
 
     rollup_reasons: Counter[str] = Counter()
-    for rollup in build_driver_payload(db, config)["cross_track_rollups"]:
+    for rollup in build_driver_payload(db, config, _include_census=False)["cross_track_rollups"]:
         if not rollup["shown"] and rollup["gate_reason"]:
             rollup_reasons[rollup["gate_reason"]] += 1
 
@@ -416,6 +417,7 @@ def build_census(
         sections=sections,
         next_steps=_next_steps(terms, n_reference, trend_section.gates[0]),
         suppressed_gate_reasons=suppressed,
+        confidence_ceiling_pct=round(confidence_from_terms(terms) * 100, 1),
     )
 
 
@@ -469,6 +471,45 @@ def render_census(census: Census) -> list[str]:
         lines.append(f"| {step.action} | {gain} | {step.detail} |")
     lines.append("")
     return lines
+
+
+def census_to_dict(census: Census) -> dict:
+    """Serialize a Census to a JSON-safe dict for the driver payload (SPEC.md A43)."""
+    return {
+        "driver": census.driver,
+        "n_self_laps": census.n_self_laps,
+        "n_reference_laps": census.n_reference_laps,
+        "cohorts": [[car, track] for car, track in census.cohorts],
+        "confidence_ceiling_pct": census.confidence_ceiling_pct,
+        "next_steps": [
+            {
+                "action": s.action,
+                "delta_points": s.delta_points,
+                "detail": s.detail,
+            }
+            for s in census.next_steps
+        ],
+        "suppressed_gate_reasons": list(census.suppressed_gate_reasons),
+        "sections": [
+            {
+                "title": sec.title,
+                "note": sec.note,
+                "gates": [
+                    {
+                        "label": g.label,
+                        "have": g.have,
+                        "need": g.need,
+                        "met": g.met,
+                        "unblocks": g.unblocks,
+                        "remedy": g.remedy,
+                    }
+                    for g in sec.gates
+                ],
+                "lines": list(sec.lines),
+            }
+            for sec in census.sections
+        ],
+    }
 
 
 def build_census_report(db: Database, config: DriverDNAConfig) -> str:

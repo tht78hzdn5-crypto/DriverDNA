@@ -30,7 +30,7 @@ from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
 from driverdna.model.taxonomy import TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 5  # +references
+PAYLOAD_VERSION = 6  # +census
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -280,9 +280,15 @@ def build_cohort_payload(
     }
 
 
-def build_driver_payload(db: Database, config: DriverDNAConfig) -> dict[str, Any]:
+def build_driver_payload(
+    db: Database, config: DriverDNAConfig, *, _include_census: bool = True
+) -> dict[str, Any]:
     """Cross-cohort rollup. Cross-track aggregation only within car + class,
-    and only with enough tracks (gated, stated)."""
+    and only with enough tracks (gated, stated).
+
+    _include_census: internal sentinel used by census._suppression_section to
+    break the recursion (census calls build_driver_payload for rollup reasons,
+    which must not trigger another census build). Never set by callers."""
     cohorts = list_cohorts(db)
     rollup_payloads = [
         build_cohort_payload(db, **c, config=config, _for_driver_rollup=True)
@@ -321,11 +327,20 @@ def build_driver_payload(db: Database, config: DriverDNAConfig) -> dict[str, Any
     driver_name = cohorts[0]["driver"] if cohorts else None
     driver_model = driver_model_section(db, driver=driver_name, config=config) if driver_name else None
 
+    census_data = None
+    if _include_census and driver_name:
+        from driverdna.census import build_census, census_to_dict
+        try:
+            census_data = census_to_dict(build_census(db, config, driver=driver_name))
+        except ValueError:
+            pass  # no self laps
+
     return {
         "payload_version": PAYLOAD_VERSION,
         "cohorts": [p["cohort"] for p in rollup_payloads],
         "cross_track_rollups": rollups,
         "driver_model": driver_model,
+        "census": census_data,
         "note": "cross-car claims are computed but never reported in v1",
     }
 

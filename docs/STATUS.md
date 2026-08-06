@@ -1,5 +1,27 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-06 (A43 census surfaced in driver payload + Driver home UI).**
+
+### Verified counts (2026-08-06, A43 census in driver payload)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **900 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **903 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests | **+3** `test_census_in_driver_payload`, `test_census_payload_none_when_no_laps`, `test_census_payload_next_steps_have_correct_shape` in `test_census.py` | — |
+| Skips | same 16, all Postgres-absent | `pytest -rs` skip lines |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+
+**SPEC.md A43 — `census` in driver payload + Driver home panel:**
+`build_driver_payload` now includes a `census` key (`PAYLOAD_VERSION` 5 → 6). The Driver
+home tab gains a "Corpus readiness" panel showing the confidence ceiling percentage, self-lap
+count, and the next-steps table ranked by confidence gain. A `_include_census=False` sentinel
+on `build_driver_payload` breaks the recursion that would otherwise arise because
+`census._suppression_section` calls back into `build_driver_payload` to quote rollup gate
+reasons verbatim. No new measurement, no new configuration.
+
+---
+
 **Snapshot date: 2026-08-06 (A42 `same_lap_twice` per-unit CV normalization in
 coaching engine — `coach-onto-v2`).**
 

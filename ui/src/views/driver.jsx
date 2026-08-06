@@ -85,6 +85,40 @@ function SyncPanel({ onSynced }) {
   );
 }
 
+function CensusPanel({ census }) {
+  if (!census) return null;
+  const { n_self_laps, n_reference_laps, confidence_ceiling_pct, next_steps, cohorts } = census;
+  return (
+    <section className="panel">
+      <p className="eyebrow">Corpus readiness</p>
+      <div className="sub" style={{ marginTop: 0, marginBottom: "0.6rem" }}>
+        <span className="num">{n_self_laps}</span> self lap{n_self_laps === 1 ? "" : "s"} across{" "}
+        <span>{cohorts.length}</span> cohort{cohorts.length === 1 ? "" : "s"}
+        {n_reference_laps > 0 && <> · <span className="num">{n_reference_laps}</span> reference</>}
+      </div>
+      <div className="sub" style={{ marginBottom: "0.8rem" }}>
+        Current confidence ceiling: <span className="num">{confidence_ceiling_pct.toFixed(1)}%</span>
+      </div>
+      {next_steps.length > 0 && (
+        <>
+          <p className="eyebrow" style={{ marginBottom: "0.3rem" }}>What to add next</p>
+          {next_steps.map((step, i) => (
+            <div key={i} className="finding" style={{ marginBottom: "0.3rem" }}>
+              <div className="head">
+                <span className="desc">{step.action}</span>
+                <span className="val num">
+                  {step.delta_points != null ? `+${step.delta_points.toFixed(2)} pts` : "—"}
+                </span>
+              </div>
+              <div className="reason">{step.detail}</div>
+            </div>
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function DriverHome() {
   const [reload, setReload] = useState(0);
   const driver = useFetch(() => get("/api/driver"), [reload]);
@@ -146,6 +180,8 @@ export default function DriverHome() {
           </div>
         ))}
       </section>
+
+      <CensusPanel census={driver.data.census} />
 
       <SyncPanel onSynced={() => setReload((n) => n + 1)} />
     </div>
