@@ -88,15 +88,20 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
 
 ## Part D — Bring up the service
 
-1. Secrets file, `0600`, owned by the service user:
+1. Generate a stable session secret (do this once and keep it — rotating it
+   signs everyone out):
+   ```bash
+   openssl rand -hex 32
+   ```
+   Secrets file, `0600`, owned by the service user:
    ```bash
    sudo install -d -m 0700 -o driverdna -g driverdna /etc/driverdna
    sudo -u driverdna tee /etc/driverdna/driverdna.env >/dev/null <<'EOF'
-   DRIVERDNA_SESSION_SECRET=...      # keep STABLE — rotating it logs you out
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GEMINI_API_KEY=...
-   GARAGE61_TOKEN=...
+   DRIVERDNA_SESSION_SECRET=...      # required — keep STABLE, rotating logs you out
+   GEMINI_API_KEY=...                # required for AI coaching/chat
+   GARAGE61_TOKEN=...                # required for driverdna sync
+   GOOGLE_CLIENT_ID=...              # optional — enables Google OAuth login
+   GOOGLE_CLIENT_SECRET=...          # optional — required only if GOOGLE_CLIENT_ID is set
    EOF
    sudo chmod 0600 /etc/driverdna/driverdna.env
    ```
@@ -125,7 +130,17 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
    whose policy allowlists your single owner email.
 4. **Update the Google OAuth redirect URI** in the Google Cloud console to the
    new Cloudflare hostname (e.g. `https://driverdna.example.com/api/auth/google/callback`).
-   Miss this and sign-in breaks — the most common cutover mistake.
+   Miss this and sign-in breaks — the most common cutover mistake. Skip if you
+   are not using Google OAuth.
+5. **Create your account.** On a fresh deployment (or after a store-copy from
+   Supabase), there is no usable login yet — the DB seed row at
+   `owner@example.com` is a migration scaffold with no real password. Visit
+   the app URL through the Cloudflare Access gate; the SPA shows a sign-in
+   screen. Click **Register**, enter your email and a password (≥ 8
+   characters), and submit. On success you're signed in and your account
+   (`user_pk=2`) is the one all future Driver Model history accrues to. If you
+   set up Google OAuth and prefer that path, click the Google button instead —
+   it creates the account automatically on first sign-in.
 
 ---
 
