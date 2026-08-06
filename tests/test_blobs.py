@@ -135,13 +135,31 @@ def test_memory_database_gets_a_memory_store(monkeypatch):
     assert isinstance(open_blob_store(":memory:"), MemoryBlobStore)
 
 
-def test_remote_url_keys_off_database_name(tmp_path, monkeypatch):
-    """A hosted store has no local file to sit beside, so blobs key off its
-    name under ~/.driverdna/blobs/."""
+def test_remote_url_root_lives_under_home_driverdna(tmp_path, monkeypatch):
+    """A hosted store has no local file to sit beside, so blobs live under
+    ~/.driverdna/blobs/ keyed by a stable hash of the DSN (not the DB name,
+    which would collide between two projects on the same host)."""
     monkeypatch.delenv("DRIVERDNA_BLOB_ROOT", raising=False)
     root = default_blob_root("postgresql://user:pw@host:5432/driverdna")
-    assert Path(root).name == "driverdna"
     assert ".driverdna" in str(root)
+    assert "blobs" in str(root)
+
+
+def test_remote_url_distinct_dsns_produce_distinct_roots(monkeypatch):
+    """Two DSNs whose last path segment is identical but whose host differs
+    must never map to the same blob root — they share lap_pk sequence starts
+    and would otherwise overwrite each other's blobs (SPEC.md A24 bug)."""
+    monkeypatch.delenv("DRIVERDNA_BLOB_ROOT", raising=False)
+    r1 = default_blob_root("postgresql://user:pw@host1:5432/postgres")
+    r2 = default_blob_root("postgresql://user:pw@host2:5432/postgres")
+    assert r1 != r2
+
+
+def test_remote_url_same_dsn_is_stable(monkeypatch):
+    """Same DSN always maps to the same blob root (deterministic)."""
+    monkeypatch.delenv("DRIVERDNA_BLOB_ROOT", raising=False)
+    dsn = "postgresql://user:pw@host:5432/mydb"
+    assert default_blob_root(dsn) == default_blob_root(dsn)
 
 
 def test_env_var_overrides(tmp_path, monkeypatch):

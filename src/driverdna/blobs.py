@@ -190,9 +190,13 @@ def default_blob_root(db_path: Path | str) -> Path | str:
     if text == MEMORY:
         return MEMORY
     if "://" in text:
-        # A remote store has no local file to sit beside; key off its name.
-        name = text.rstrip("/").rsplit("/", 1)[-1].split("?", 1)[0] or "default"
-        return Path.home() / ".driverdna" / "blobs" / name
+        # A remote store has no local file to sit beside. Key off a hash of
+        # the full DSN (minus query-string, which may carry transient tokens)
+        # so two projects whose path ends in the same segment (e.g. "/postgres"
+        # on every Supabase project) never share a root.
+        import hashlib
+        key = hashlib.sha256(text.split("?", 1)[0].encode()).hexdigest()[:16]
+        return Path.home() / ".driverdna" / "blobs" / key
     return Path(f"{text}.blobs")
 
 

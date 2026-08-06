@@ -1,5 +1,26 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-06 (A45 blob-root collision fix + Google OAuth session invalidation fix).**
+
+### Verified counts (2026-08-06, A45 two standing bug fixes)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **903 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **905 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests | **+2** `test_remote_url_distinct_dsns_produce_distinct_roots` + `test_remote_url_same_dsn_is_stable` (replacing narrower test) in `test_blobs.py`; `test_google_callback_invalidates_prior_session_for_existing_user` in `test_auth_api.py` | — |
+| Skips | same 16, all Postgres-absent | `pytest -rs` skip lines |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+
+**SPEC.md A45 — Blob-root collision + Google OAuth session-per-device fixes:**
+`default_blob_root` now keys Postgres DSN blob dirs on `SHA-256(DSN)[:16]`
+instead of the last URL path segment, so two projects whose path ends in
+`/postgres` no longer share a blob root. `google_callback` now bumps
+`session_epoch` for existing users, matching the password login path and
+ending the prior session on a second device sign-in.
+
+---
+
 **Snapshot date: 2026-08-06 (A44 390×844 mobile viewport render-parity + trust-gate-5 tests).**
 
 ### Verified counts (2026-08-06, A44 mobile viewport browser tests)

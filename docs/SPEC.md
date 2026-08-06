@@ -2188,3 +2188,34 @@ Accepted at owner plan review; rationale recorded in the review:
   engine change, no PAYLOAD_VERSION bump. Suite 903 → 903 passed (browser tests
   are non-blocking CI; skip count unchanged in the non-browser suite), 16
   skipped, 0 failed.
+
+- **A45** (2026-08-06): **Two standing bug fixes — blob-root collision and
+  Google OAuth session-per-device inconsistency (SPEC.md A24 / VM-MIGRATION.md
+  §5).**
+
+  *Blob-root collision (A24):* `default_blob_root` keyed a Postgres DSN's blob
+  directory off the last URL path segment (e.g. `"postgres"` for every Supabase
+  project), so two separate Supabase projects shared `~/.driverdna/blobs/postgres/`
+  and would overwrite each other's lap blobs. Fixed: the root is now keyed on the
+  first 16 hex characters of `SHA-256(DSN without query string)`, making it
+  unique per full DSN while still stable on repeated calls. `DRIVERDNA_BLOB_ROOT`
+  still overrides unconditionally. Existing remote-store users whose blobs landed
+  under the old name-based directory must rename the directory or set the env var
+  to point at it; `driverdna store-copy` is the migration path. The fix was
+  lower urgency once Supabase was retired but the bug survives in the Postgres
+  backend. `test_blobs.py`: replaced `test_remote_url_keys_off_database_name`
+  with three tests (`test_remote_url_root_lives_under_home_driverdna`,
+  `test_remote_url_distinct_dsns_produce_distinct_roots`,
+  `test_remote_url_same_dsn_is_stable`) that pin the new guarantees.
+
+  *Google OAuth session-per-device (A41 / VM-MIGRATION.md §5):* A second
+  Google sign-in for an existing user did not bump `session_epoch`, so the
+  prior session remained valid — inconsistent with the password login path,
+  which always bumps the epoch on sign-in. Fixed in `google_callback`: generate
+  a fresh `session_epoch = datetime.utcnow().isoformat()` before the DB
+  transaction, then `UPDATE users SET session_epoch=? WHERE user_pk=?` for
+  existing users (new-user INSERT already set a fresh epoch from the same value).
+  `test_auth_api.py` gains `test_google_callback_invalidates_prior_session_for_
+  existing_user`: password-logs in, captures the old cookie, triggers the
+  mocked OAuth callback for the same email, and asserts the old cookie now
+  returns 401. Suite 903 → 905 passed, 16 skipped, 0 failed.

@@ -351,6 +351,53 @@ def test_status_never_reveals_the_passphrase(guarded):
     assert TOKEN not in guarded.get("/api/auth/status").text
 
 
+def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tmp_path):
+    """A second Google sign-in for an existing user must end the prior session
+    (SPEC.md A41: session-per-device inconsistency). The OAuth path must bump
+    session_epoch just like the password login path does."""
+    import json as _json
+    from unittest.mock import MagicMock, patch
+
+    client = TestClient(
+        create_app(
+            db_path, tmp_path / "config.toml",
+            session_secret=TOKEN,
+            google_client_id="test-client-id",
+            google_client_secret="test-client-secret",
+        ),
+        follow_redirects=False,
+    )
+
+    # First login via password → captures old session cookie.
+    r = client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
+    assert r.status_code == 200
+    old_cookie = r.cookies[auth.SESSION_COOKIE]
+
+    # Verify old cookie is valid.
+    assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 200
+
+    # Mock Google's token + tokeninfo endpoints so the callback never hits the wire.
+    def _mock_urlopen(req):
+        m = MagicMock()
+        url = req.full_url
+        if "tokeninfo" in url:
+            m.read.return_value = _json.dumps(
+                {"aud": "test-client-id", "email": "driver@driverdna.com"}
+            ).encode()
+        else:
+            m.read.return_value = _json.dumps({"id_token": "fake-id-token"}).encode()
+        m.__enter__ = lambda s: m
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    with patch("urllib.request.urlopen", _mock_urlopen):
+        r2 = client.get("/api/auth/google/callback?code=abc")
+    assert r2.status_code == 200  # HTML meta-refresh page, not a redirect
+
+    # Old cookie must now be rejected — epoch was bumped by the OAuth sign-in.
+    assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 401
+
+
 def test_google_enabled_reflects_configuration_not_the_secret(db_path, tmp_path):
     client = TestClient(
         create_app(

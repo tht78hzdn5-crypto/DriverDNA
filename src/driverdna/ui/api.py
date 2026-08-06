@@ -592,21 +592,26 @@ def create_app(
                 return _google_error_redirect("no email in token")
             email = email.strip().lower()
 
+            from datetime import datetime
+            session_epoch = datetime.utcnow().isoformat()
+
             with open_db(request) as db:
                 row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (email,)).fetchone()
                 if row:
                     user_pk = row["user_pk"]
+                    with db.conn:
+                        db.conn.execute(
+                            "UPDATE users SET session_epoch=? WHERE user_pk=?",
+                            (session_epoch, user_pk),
+                        )
                 else:
-                    from datetime import datetime
-                    now = datetime.utcnow().isoformat()
+                    now = session_epoch
                     with db.conn:
                         user_pk = db.conn.execute(
                             "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
                             "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
                             (email, "", now, now, now),
                         ).fetchone()["user_pk"]
-
-                session_epoch = db.conn.execute("SELECT session_epoch FROM users WHERE user_pk=?", (user_pk,)).fetchone()["session_epoch"]
 
             ttl = load_config(config_path).auth.session_ttl_hours * 3600
 
