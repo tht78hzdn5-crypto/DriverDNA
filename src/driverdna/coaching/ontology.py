@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import FUNDAMENTALS, TECHNIQUES, SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v1"
+ONTOLOGY_VERSION = "coach-onto-v2"
 
 
 @dataclass(frozen=True)

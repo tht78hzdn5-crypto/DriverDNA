@@ -10,6 +10,7 @@ import pytest
 
 from driverdna.coaching.engine import (
     CoachingCandidate,
+    _normalized_pooled_cv,
     eligible_principles,
     select_coaching,
 )
@@ -207,6 +208,51 @@ def test_cv_gate_absent_when_metrics_barely_vary(db):
     candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=CONFIG)
     assert not any(c.principle_id == "cp.repeatability.same_lap_twice" for c in candidates)
     assert not any(c.principle_id == "cp.entry_commitment.trust_the_proxy" for c in candidates)
+
+
+def test_same_lap_twice_per_unit_normalized_not_flat_mean():
+    """same_lap_twice must use per-unit normalized pooling, not a flat mean of raw CVs.
+
+    Five '% lap' metrics perfectly consistent (raw CV = 0) + one 'count' metric at
+    typical scale (raw CV ≈ 0.99). A flat mean gives ≈ 0.99/6 ≈ 0.165 (barely above
+    the 0.15 eligibility floor and in the moderate band). Per-unit normalization gives
+    (0.0 + 1.0) / 2 = 0.5 — a 3× difference, and a different gap band. This is the
+    exact coaching-layer analogue of the dm-v2 fix (SPEC.md A42).
+    """
+    reference = DriverDNAConfig().model.consistency_unit_reference_cv
+
+    pct_val = 10.0
+    # [0.148, 3.852]*4 → mean=2.0, std≈1.98, raw CV≈0.99 ≈ reference["count"]
+    count_vals = [0.148, 3.852] * 4
+
+    metric_table = {
+        "C01": {
+            "brake_point_dist_pct": [pct_val] * 8,        # "% lap", CV = 0
+            "turn_in_dist_pct": [pct_val] * 8,             # "% lap", CV = 0
+            "apex_dist_pct": [pct_val] * 8,                # "% lap", CV = 0
+            "throttle_pickup_dist_pct": [pct_val] * 8,     # "% lap", CV = 0
+            "full_throttle_dist_pct": [pct_val] * 8,       # "% lap", CV = 0
+            "steering_corrections": count_vals,             # "count", CV ≈ 0.99
+        }
+    }
+    metric_names = (
+        "brake_point_dist_pct", "turn_in_dist_pct", "apex_dist_pct",
+        "throttle_pickup_dist_pct", "full_throttle_dist_pct", "steering_corrections",
+    )
+
+    result = _normalized_pooled_cv(metric_table, "C01", metric_names, reference)
+    assert result is not None
+
+    # Per-unit: "% lap" unit mean = 0/0.007 = 0.0; "count" unit mean ≈ 1.0
+    # Across-unit mean = (0.0 + 1.0) / 2 = 0.5
+    assert 0.4 < result < 0.6, f"expected per-unit normalized ≈ 0.5, got {result}"
+
+    # A flat mean of raw CVs would be (5×0.0 + 0.99) / 6 ≈ 0.165 — significantly lower
+    flat = (5 * 0.0 + 0.99) / 6
+    assert abs(result - flat) > 0.2, (
+        f"per-unit result {result:.3f} is too close to flat mean {flat:.3f}; "
+        "normalization is not being applied"
+    )
 
 
 # --- select_coaching: headline / secondary / silent -------------------------

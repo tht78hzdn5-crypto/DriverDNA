@@ -7,6 +7,15 @@ module; two runs on the same evidence + `ONTOLOGY_VERSION` always produce
 the identical eligible/ranked/banded set (docs/COACHING.md's M7
 done-criteria).
 
+coach-onto-v2 (SPEC.md A42): `same_lap_twice`'s MetricCVGate now uses
+per-unit normalized pooling — each metric's raw CV divided by its unit's
+typical scale (config.model.consistency_unit_reference_cv), then mean within
+each unit, then mean across units — instead of a flat mean of raw CVs. This
+is the coaching-layer analogue of dm-v2's fix for the identical issue in
+SPEC.md A21: five '% lap' metrics with tiny natural CVs would dilute one
+'count' metric's genuine high-CV signal in a flat mean, making a
+demonstrably inconsistent corner appear negligible.
+
 Resolved ambiguity, flagged (2026-07-20): docs/COACHING.md's "Gap bands —
 mechanics" says both "moderate -> quiet... never the headline" AND "if
 nothing clears moderate -> insufficient data for the headline slot too,"
@@ -43,6 +52,7 @@ from driverdna.coaching.ontology import (
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.metrics.technique import METRIC_DEFS
 from driverdna.model.taxonomy import TECHNIQUES, SignalStatus
 from driverdna.pipeline import phase_windows_from_stored
 
@@ -86,6 +96,36 @@ def _cv(values: list[float]) -> float | None:
     if mean == 0:
         return None
     return float(np.std(arr, ddof=1) / abs(mean))
+
+
+def _normalized_pooled_cv(
+    metric_table: dict,
+    corner_id: str,
+    metric_names: tuple[str, ...],
+    unit_reference: dict[str, float],
+) -> float | None:
+    """Per-unit normalized CV pooling for same_lap_twice (SPEC.md A42).
+
+    Coaching-layer analogue of dm-v2's _consistency_component: each metric's
+    raw CV is divided by its unit's typical scale before pooling, then pooled
+    two levels — mean within each unit, then mean across units — so no unit
+    dominates purely by having many contributing metrics (e.g. five '% lap'
+    metrics each with tiny natural CV would swamp one 'count' metric with large
+    natural CV under a flat mean, making a genuinely inconsistent count look
+    consistent). Returns None when no metric has a computable CV."""
+    by_unit: dict[str, list[float]] = {}
+    for name in metric_names:
+        values = metric_table.get(corner_id, {}).get(name, [])
+        raw_cv = _cv(values)
+        if raw_cv is None:
+            continue
+        unit = METRIC_DEFS[name][0]
+        normalized = raw_cv / unit_reference.get(unit, 1.0)
+        by_unit.setdefault(unit, []).append(normalized)
+    if not by_unit:
+        return None
+    unit_means = [float(np.mean(vals)) for vals in by_unit.values()]
+    return float(np.mean(unit_means))
 
 
 def _seconds_band(seconds: float, cfg) -> str:
@@ -178,6 +218,7 @@ def eligible_principles(
                     detector_table=detector_table, metric_table=metric_table,
                     findings_by_corner_phase=findings_by_corner_phase,
                     loss=loss, cfg=cfg, min_trigger_rate=config.detectors.min_trigger_rate,
+                    unit_reference=config.model.consistency_unit_reference_cv,
                 )
                 if candidate is not None:
                     candidates.append(candidate)
@@ -197,6 +238,7 @@ def eligible_principles(
 def _corner_candidate(
     db, principle, corner_id, *, driver, car, track,
     detector_table, metric_table, findings_by_corner_phase, loss, cfg, min_trigger_rate,
+    unit_reference: dict[str, float],
 ) -> CoachingCandidate | None:
     gate = principle.gate
     if isinstance(gate, DetectorGate):
@@ -216,16 +258,24 @@ def _corner_candidate(
         evidence_ids = finding.evidence_ids
     elif isinstance(gate, MetricCVGate):
         metric_names = _ALL_MEASURED_METRICS if gate.metric == "*" else (gate.metric,)
-        cvs, n = [], 0
-        for name in metric_names:
-            values = metric_table.get(corner_id, {}).get(name, [])
-            cv = _cv(values)
-            if cv is not None:
-                cvs.append(cv)
-                n += len(values)
-        if not cvs:
+        if gate.metric == "*":
+            # per-unit normalized pooling (A42) — same two-level logic as dm-v2's
+            # _consistency_component: prevents any unit dominating by metric count
+            cv = _normalized_pooled_cv(metric_table, corner_id, metric_names, unit_reference)
+        else:
+            raw_cvs = [
+                _cv(metric_table.get(corner_id, {}).get(name, []))
+                for name in metric_names
+            ]
+            valid = [c for c in raw_cvs if c is not None]
+            cv = float(np.mean(valid)) if valid else None
+        if cv is None:
             return None
-        cv = float(np.mean(cvs))
+        n = sum(
+            len(metric_table.get(corner_id, {}).get(name, []))
+            for name in metric_names
+            if _cv(metric_table.get(corner_id, {}).get(name, [])) is not None
+        )
         floor = getattr(cfg, gate.floor_key)
         if cv < floor:
             return None

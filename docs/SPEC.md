@@ -2125,3 +2125,32 @@ Accepted at owner plan review; rationale recorded in the review:
   ephemeral-secret/health-shape change is a deliberate rewrite of what the
   test pins, not a weakening — each rewritten assertion is narrower or
   stricter than what it replaced, never removed outright.
+
+- **A42** (2026-08-06): **`same_lap_twice` per-unit CV normalization
+  (coach-onto-v2).** The `cp.repeatability.same_lap_twice` coaching
+  principle's MetricCVGate pooled every measured metric's raw CV with a flat
+  mean. This is the coaching-layer analogue of the identical bug dm-v1 had
+  (A21): five '% lap' metrics with a natural CV of ~0.007 each would dominate
+  a flat mean alongside one 'count' metric with a natural CV of ~0.99, even
+  when the driver is genuinely and measurably inconsistent on that count
+  metric. The concrete effect: with five perfectly-consistent '% lap' metrics
+  and one 'count' metric at typical scale, the flat mean gives ≈ 0.99/6 ≈
+  0.165 (barely above the 0.15 eligibility floor, moderate band) while the
+  per-unit normalized result gives (0.0 + 1.0) / 2 = 0.5 — a 3× difference
+  and a different gap band. The flagged note in M7's milestone description
+  ("same underlying issue as M6's cross-cohort consistency caveat, one level
+  down") is the same structural diagnosis as A21, now resolved by the same
+  pattern: divide each metric's raw CV by its own unit's typical scale
+  (`config.model.consistency_unit_reference_cv`, the same reference dict dm-v2
+  already uses) then pool two levels — mean within each unit, mean across
+  units — so no unit dominates by metric count. `trust_the_proxy`'s single-
+  metric gate (`brake_point_dist_pct`, one unit) is unchanged. `ONTOLOGY_
+  VERSION` bumped `coach-onto-v1` → `coach-onto-v2`. No model-level Driver
+  Model version bump — `same_lap_twice` is a coaching gate, not a Driver
+  Model scoring component. `consistency_cv_floor` and the `cv_band_*`
+  thresholds now operate in normalized-CV space (multiples of typical scale
+  for that unit); their default values are unchanged and remain reasonable in
+  that space (0.15 = 15% above typical variability). **Verification:**
+  `test_same_lap_twice_per_unit_normalized_not_flat_mean` in
+  `tests/test_coaching_engine.py` tests the new function directly with
+  controlled metric values. Suite 899 → 900 passed, 16 skipped, 0 failed.

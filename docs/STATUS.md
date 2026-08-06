@@ -1,5 +1,10 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-06 (A42 `same_lap_twice` per-unit CV normalization in
+coaching engine — `coach-onto-v2`).**
+
+---
+
 **Snapshot date: 2026-08-05 (real root cause of the Cloud Run sign-in bounce,
 plus the auth-layer changes SPEC.md A40's VM target needs — SPEC.md A41).**
 A parallel session (`docs/VM-MIGRATION.md`, branch
@@ -59,6 +64,32 @@ Not acted on, left open for the owner (VM-MIGRATION.md §5): the session-per-
 device inconsistency between the password and Google-callback login paths;
 auditing what the live Supabase project actually holds before trusting it as
 authoritative (no access to it from this session).
+
+### Verified counts (2026-08-06, A42 coaching CV-pooling fix)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **899 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **900 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests | **+1** `test_same_lap_twice_per_unit_normalized_not_flat_mean` in `test_coaching_engine.py` | — |
+| Skips | same 16, all Postgres-absent | `pytest -rs` skip lines |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+
+**SPEC.md A42 — `same_lap_twice` per-unit CV normalization in coaching engine
+(`coach-onto-v2`):**
+The coaching engine's `same_lap_twice` principle (`cp.repeatability.same_lap_twice`)
+pooled all measured metrics' CVs with a flat mean — the same structural bug A21 fixed
+in M6's consistency scoring. Five "% lap" metrics with naturally tiny CVs (~0.007) would
+dilute one "count" metric's genuinely high CV (~0.99) in a flat mean, making a
+demonstrably inconsistent corner appear negligible to the gate. Fixed by porting A21's
+per-unit normalized two-level pooling to the coaching layer: each metric's raw CV is
+divided by its unit's typical scale (`config.model.consistency_unit_reference_cv`),
+then pooled as mean-within-unit then mean-across-units. The `trust_the_proxy` principle's
+single-metric gate is unchanged. `ONTOLOGY_VERSION` bumped `coach-onto-v1 → coach-onto-v2`.
+New test pins that the per-unit result diverges materially from the flat mean on a
+5-"% lap" + 1-"count" mix — the exact scenario that breaks the flat mean.
+
+---
 
 ### Verified counts (2026-08-05, A41 auth-layer changes)
 

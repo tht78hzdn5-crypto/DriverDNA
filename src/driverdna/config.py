@@ -569,37 +569,39 @@ class CoachingConfig(_Section):
     )
     cv_band_moderate: float = Field(
         default=0.15,
-        description="same_lap_twice's own coefficient-of-variation floor for "
-        "moderate tone (no phase exists for consistency to band on instead).",
+        description="same_lap_twice's normalized-CV floor for moderate tone "
+        "(coach-onto-v2). The CV for each metric is first divided by its "
+        "unit's typical scale (config.model.consistency_unit_reference_cv) "
+        "before pooling, so 0.15 means '15% above typical variability for "
+        "that unit' — not a raw CV threshold.",
     )
     cv_band_notable: float = Field(
         default=0.30,
-        description="same_lap_twice's coefficient-of-variation floor for "
-        "notable tone.",
+        description="same_lap_twice's normalized-CV floor for notable tone "
+        "(coach-onto-v2); see cv_band_moderate.",
     )
     cv_band_major: float = Field(
         default=0.50,
-        description="same_lap_twice's coefficient-of-variation floor for "
-        "major tone.",
+        description="same_lap_twice's normalized-CV floor for major tone "
+        "(coach-onto-v2); see cv_band_moderate.",
     )
     commitment_cv_floor: float = Field(
         default=0.15,
-        description="trust_the_proxy's trigger: brake_point_dist_pct's "
+        description="trust_the_proxy's trigger: brake_point_dist_pct's raw "
         "coefficient of variation for this corner must reach this floor "
-        "before the entry-commitment proxy principle is eligible.",
+        "before the entry-commitment proxy principle is eligible. Single "
+        "metric — no unit normalization needed.",
     )
     consistency_cv_floor: float = Field(
         default=0.15,
-        description="same_lap_twice's trigger: a corner's own measured "
-        "metrics' pooled coefficient of variation must reach this floor "
-        "before the principle is eligible. Known v1 limitation, flagged not "
-        "silently accepted: the pool mixes metrics of very different "
-        "natural scale/type (continuous percentages, rates, small integer "
-        "counts) with no per-metric normalization beyond CV itself — a "
-        "low-mean count metric (e.g. throttle_modulation_count, often 0) "
-        "can produce an outsized CV that dominates the unweighted average, "
-        "same underlying issue as ModelConfig's cross-cohort pooling "
-        "caveat, one level down (per-corner instead of per-driver).",
+        description="same_lap_twice's trigger (coach-onto-v2): a corner's "
+        "per-unit normalized pooled CV must reach this floor before the "
+        "principle is eligible. Each metric's raw CV is first divided by its "
+        "unit's typical scale (config.model.consistency_unit_reference_cv), "
+        "then pooled two levels — mean within each unit, then mean across "
+        "units — so no unit dominates purely by metric count. 0.15 = '15% "
+        "above typical variability for any unit' (analogous to dm-v2's fix "
+        "for the identical cross-metric-type bias in SPEC.md A21).",
     )
     thin_evidence_floor_n: int = Field(
         default=8,
