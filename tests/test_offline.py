@@ -141,3 +141,54 @@ def test_app_loads_and_operates_with_non_localhost_network_blocked(server):
         browser.close()
 
     assert blocked == [], f"non-localhost requests were attempted: {blocked}"
+
+
+def test_mobile_viewport_non_localhost_blocked(server):
+    """DEPLOY-SPEC Track M done-criterion 2: trust gate 5 at 390×844 viewport.
+
+    Same non-same-origin block invariant as the desktop test, verified at
+    iPhone-SE width so mobile layout changes can't accidentally re-introduce
+    an external request.
+    """
+    base = server
+    slug = "gr86-spa-francorchamps"
+    finding_id = httpx.get(
+        f"{base}/api/cohorts/{slug}/payload", timeout=10
+    ).json()["findings"][0]["finding_id"]
+
+    routes = [
+        "/#/",
+        "/#/garage",
+        f"/#/cohort/{slug}",
+        f"/#/corner/{slug}/C01",
+        f"/#/finding/{slug}/{quote(finding_id, safe='')}",
+        f"/#/laps/{slug}",
+        "/#/config",
+        "/#/chat",
+        "/#/model",
+        "/#/upload",
+    ]
+
+    blocked: list[str] = []
+
+    def guard(route):
+        host = urlparse(route.request.url).hostname
+        if host not in ("127.0.0.1", "localhost"):
+            blocked.append(route.request.url)
+            route.abort()
+        else:
+            route.continue_()
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        page.route("**/*", guard)
+
+        for route in routes:
+            page.goto(f"{base}{route}", wait_until="networkidle")
+            assert page.locator("body").inner_text().strip() != ""
+            assert "Loading" not in page.title()
+
+        browser.close()
+
+    assert blocked == [], f"non-localhost requests at 390×844: {blocked}"

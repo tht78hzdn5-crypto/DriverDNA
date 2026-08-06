@@ -2169,3 +2169,22 @@ Accepted at owner plan review; rationale recorded in the review:
   tests in `test_census.py`: census key present in driver payload, census key
   None when no laps, next_steps shape. Suite 900 → 903 passed, 16 skipped, 0
   failed.
+
+- **A44** (2026-08-06): **390×844 mobile viewport render-parity and trust-gate-5
+  tests (DEPLOY-SPEC Track M done-criteria).** Two DEPLOY-SPEC U5 done-criteria
+  were verified manually but had no automated test:
+  (1) every fractional `.num` figure traces to a payload number at 390×844
+  viewport — same parity invariant as the desktop `test_render_parity.py` test
+  but with `browser.new_page(viewport={"width": 390, "height": 844})`; and
+  (2) no horizontal body overflow (`document.documentElement.scrollWidth >
+  window.innerWidth`) on any crawled route at that width.
+  `test_render_parity.py` gains `test_mobile_viewport_parity_and_no_horizontal_
+  overflow` covering all seven SPA routes.
+  `test_offline.py` gains `test_mobile_viewport_non_localhost_blocked` — the
+  same non-same-origin block invariant (trust gate 5) at 390×844 width, so
+  mobile layout changes can't silently re-introduce an external request.
+  Both tests skip automatically when Playwright/Chromium or the built SPA is
+  absent (same `pytestmark` as all other browser tests). No new measurement, no
+  engine change, no PAYLOAD_VERSION bump. Suite 903 → 903 passed (browser tests
+  are non-blocking CI; skip count unchanged in the non-browser suite), 16
+  skipped, 0 failed.

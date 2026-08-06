@@ -1,5 +1,27 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-06 (A44 390×844 mobile viewport render-parity + trust-gate-5 tests).**
+
+### Verified counts (2026-08-06, A44 mobile viewport browser tests)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **903 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after (non-browser suite) | **903 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests (browser-gated) | **+2** `test_mobile_viewport_parity_and_no_horizontal_overflow` in `test_render_parity.py`; `test_mobile_viewport_non_localhost_blocked` in `test_offline.py` | — |
+| Skips | same 16, all Postgres-absent (browser tests skip without Playwright/Chromium) | `pytest -rs` skip lines |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+
+**SPEC.md A44 — 390×844 mobile viewport render-parity and trust-gate-5 tests (DEPLOY-SPEC Track M done-criteria):**
+Two DEPLOY-SPEC U5 done-criteria (no horizontal overflow at mobile viewport; same parity invariant
+as desktop; trust gate 5 at mobile width) were verified manually but had no automated test.
+`test_render_parity.py` gains `test_mobile_viewport_parity_and_no_horizontal_overflow` — parity
+and overflow checks at 390×844. `test_offline.py` gains `test_mobile_viewport_non_localhost_blocked`
+— same non-same-origin block gate at 390×844. Both auto-skip without Playwright/Chromium/built SPA.
+No engine change, no payload version bump.
+
+---
+
 **Snapshot date: 2026-08-06 (A43 census surfaced in driver payload + Driver home UI).**
 
 ### Verified counts (2026-08-06, A43 census in driver payload)

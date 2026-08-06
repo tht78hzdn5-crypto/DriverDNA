@@ -192,3 +192,68 @@ def test_crawler_would_catch_an_invented_number(server):
     invented = 3.1415
     tol = 0.5 * 10 ** (-4) + 1e-9
     assert not any(abs(invented - p_val) <= tol for p_val in pool)
+
+
+def test_mobile_viewport_parity_and_no_horizontal_overflow(server):
+    """U5 done-criterion 1 (DEPLOY-SPEC Track M): 390×844 viewport pass.
+
+    Two guarantees at iPhone-SE width:
+    1. No horizontal body overflow on any route — the responsive layout must
+       not push content past the viewport edge at mobile width.
+    2. Same number-parity invariant as the desktop test — every fractional
+       figure in a .num element must trace to a number the API served.
+    """
+    base = server
+    slug = "gr86-spa-francorchamps"
+    pool = _number_pool(base, slug)
+    payload = httpx.get(f"{base}/api/cohorts/{slug}/payload", timeout=10).json()
+    finding_id = payload["findings"][0]["finding_id"]
+
+    routes = [
+        "/#/",
+        f"/#/cohort/{slug}",
+        f"/#/corner/{slug}/C01",
+        f"/#/finding/{slug}/{quote(finding_id, safe='')}",
+        f"/#/laps/{slug}",
+        "/#/config",
+        "/#/model",
+    ]
+
+    overflow_routes: list[str] = []
+    parity_violations: list[str] = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        for route in routes:
+            page.goto("about:blank")
+            page.goto(f"{base}{route}", wait_until="networkidle")
+            page.wait_for_selector(".num", timeout=8000)
+            page.wait_for_timeout(300)
+
+            # Guarantee 1: no horizontal body scroll
+            overflows = page.evaluate(
+                "() => document.documentElement.scrollWidth > window.innerWidth"
+            )
+            if overflows:
+                overflow_routes.append(route)
+
+            # Guarantee 2: every .num fractional figure traces to the payload
+            texts = page.eval_on_selector_all(
+                ".num", "els => els.map(e => e.textContent)"
+            )
+            for text in texts:
+                for value, decimals in _tokens(text or ""):
+                    tol = 0.5 * 10 ** (-decimals) + 1e-9
+                    if not any(abs(value - p_val) <= tol for p_val in pool):
+                        parity_violations.append(f"{route}: '{text.strip()}' → {value}")
+        browser.close()
+
+    assert not overflow_routes, (
+        "horizontal body overflow at 390×844 viewport:\n"
+        + "\n".join(overflow_routes)
+    )
+    assert not parity_violations, (
+        "on-screen figures with no matching payload number at 390×844:\n"
+        + "\n".join(sorted(set(parity_violations)))
+    )
