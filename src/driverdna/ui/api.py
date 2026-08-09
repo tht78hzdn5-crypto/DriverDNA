@@ -158,6 +158,7 @@ def create_app(
     google_client_secret: str | None = None,
     smtp_config: dict[str, str] | None = None,
     garage61_client_id: str | None = None,
+    garage61_client_secret: str | None = None,
     behind_proxy: bool = False,
 ) -> FastAPI:
     """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
@@ -729,14 +730,17 @@ def create_app(
             if _is_https(request):
                 url_obj = url_obj.replace(scheme="https")
 
-            # Token exchange — public client, PKCE, no client_secret
-            data = urllib.parse.urlencode({
+            # Token exchange — PKCE + client_secret when available
+            token_params = {
                 "client_id": garage61_client_id,
                 "code": code,
                 "grant_type": "authorization_code",
                 "redirect_uri": str(url_obj),
                 "code_verifier": code_verifier,
-            }).encode("utf-8")
+            }
+            if garage61_client_secret:
+                token_params["client_secret"] = garage61_client_secret
+            data = urllib.parse.urlencode(token_params).encode("utf-8")
 
             req = urllib.request.Request(
                 "https://garage61.net/api/oauth/token",

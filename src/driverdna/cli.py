@@ -624,6 +624,7 @@ def ui(
     google_client_id = auth.google_client_id_from_env()
     google_client_secret = auth.google_client_secret_from_env()
     garage61_client_id = auth.garage61_client_id_from_env()
+    garage61_client_secret = auth.garage61_client_secret_from_env()
     smtp_config = auth.smtp_config_from_env()
     # Read at call time (not baked into the Option default above) so the env
     # var is honored even when it's set after this module was imported —
@@ -670,6 +671,7 @@ def ui(
         resolved, config_path, session_secret=session_secret,
         google_client_id=google_client_id, google_client_secret=google_client_secret,
         smtp_config=smtp_config, garage61_client_id=garage61_client_id,
+        garage61_client_secret=garage61_client_secret,
         behind_proxy=behind_proxy,
     )
     static_dir = Path(__file__).parent / "ui" / "static"
@@ -786,6 +788,7 @@ def demo(
         google_client_secret=auth.google_client_secret_from_env(),
         smtp_config=auth.smtp_config_from_env(),
         garage61_client_id=auth.garage61_client_id_from_env(),
+        garage61_client_secret=auth.garage61_client_secret_from_env(),
     )
     static_dir = Path(__file__).parent / "ui" / "static"
     if static_dir.exists():

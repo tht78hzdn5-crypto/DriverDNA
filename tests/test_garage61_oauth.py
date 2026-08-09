@@ -24,6 +24,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SECRET = "a-long-random-secret-key-for-g61-tests"
 PASSWORD = "correct horse battery staple G61"
 G61_CLIENT_ID = "test-garage61-client-id"
+G61_CLIENT_SECRET = "test-garage61-client-secret"
 
 
 @pytest.fixture(scope="module")
@@ -49,6 +50,7 @@ def client(db_path, tmp_path):
             db_path, tmp_path / "config.toml",
             session_secret=SECRET,
             garage61_client_id=G61_CLIENT_ID,
+            garage61_client_secret=G61_CLIENT_SECRET,
         ),
         follow_redirects=False,
     )
@@ -62,6 +64,7 @@ def authed_client(db_path, tmp_path):
             db_path, tmp_path / "config.toml",
             session_secret=SECRET,
             garage61_client_id=G61_CLIENT_ID,
+            garage61_client_secret=G61_CLIENT_SECRET,
         ),
         follow_redirects=False,
     )
@@ -333,6 +336,49 @@ def test_access_token_is_never_exposed(client, db_path):
         ).fetchone()
     assert row is not None
     assert "super-secret-g61-token" not in row["access_ciphertext"]
+
+
+def test_client_secret_is_sent_in_token_exchange(client):
+    cookies, state = _get_pkce_cookie_and_state(client)
+    captured_data = {}
+
+    def _capturing_urlopen(req):
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if "oauth/token" in url:
+            captured_data["body"] = req.data.decode("utf-8") if req.data else ""
+        m = MagicMock()
+        if "oauth/token" in url:
+            m.read.return_value = json.dumps(
+                {"access_token": "tok", "scope": "driving_data"}
+            ).encode()
+        elif "/me" in url:
+            m.read.return_value = json.dumps({"id": "cap1"}).encode()
+        m.__enter__ = lambda s: m
+        m.__exit__ = MagicMock(return_value=False)
+        return m
+
+    with patch("urllib.request.urlopen", _capturing_urlopen):
+        client.get(
+            f"/api/auth/garage61/callback?code=test-auth-code&state={state}",
+            cookies=cookies,
+        )
+    assert f"client_secret={G61_CLIENT_SECRET}" in captured_data["body"]
+
+
+def test_client_secret_never_in_any_response(client, db_path):
+    cookies, state = _get_pkce_cookie_and_state(client)
+    with patch("urllib.request.urlopen", _mock_urlopen_factory(user_id="sectest2")):
+        r = client.get(
+            f"/api/auth/garage61/callback?code=test-auth-code&state={state}",
+            cookies=cookies,
+        )
+    assert G61_CLIENT_SECRET not in r.text
+
+    login_r = client.get("/api/auth/garage61/login")
+    assert G61_CLIENT_SECRET not in login_r.headers.get("location", "")
+
+    status_r = client.get("/api/auth/status")
+    assert G61_CLIENT_SECRET not in status_r.text
 
 
 # --- unauthenticated access to protected endpoints -----------------------

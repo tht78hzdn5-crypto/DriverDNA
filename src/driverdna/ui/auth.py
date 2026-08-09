@@ -22,6 +22,7 @@ _ACCESS_TOKEN_ENV = "DRIVERDNA_ACCESS_TOKEN"
 GOOGLE_CLIENT_ID_ENV = "GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET_ENV = "GOOGLE_CLIENT_SECRET"
 GARAGE61_CLIENT_ID_ENV = "GARAGE61_CLIENT_ID"
+GARAGE61_CLIENT_SECRET_ENV = "GARAGE61_CLIENT_SECRET"
 SMTP_HOST_ENV = "SMTP_HOST"
 SMTP_PORT_ENV = "SMTP_PORT"
 SMTP_USER_ENV = "SMTP_USER"
@@ -48,6 +49,9 @@ def google_client_secret_from_env() -> str | None:
 
 def garage61_client_id_from_env() -> str | None:
     return os.environ.get(GARAGE61_CLIENT_ID_ENV, "").strip() or None
+
+def garage61_client_secret_from_env() -> str | None:
+    return os.environ.get(GARAGE61_CLIENT_SECRET_ENV, "").strip() or None
 
 def smtp_config_from_env() -> dict[str, str] | None:
     host = os.environ.get(SMTP_HOST_ENV, "").strip()
