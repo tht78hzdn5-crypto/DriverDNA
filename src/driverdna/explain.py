@@ -42,6 +42,14 @@ METHODOLOGY: dict[str, str] = {
         "Driver Model scores; the gap it reports is context, not a promise "
         "of recoverable time."
     ),
+    "finding.grouping": (
+        "Findings are grouped by the racing fundamental they belong to — "
+        "braking, rotation, corner exit — rather than by how the engine "
+        "measured them. The source tag on each finding still says which of "
+        "the three methods produced it, and the three are never blended "
+        "into a combined figure: grouping changes the order they're read "
+        "in, never the arithmetic behind any one of them."
+    ),
     # --- phase-time baselines --------------------------------------------
     "baseline.robust": (
         "The robust baseline (\"median-of-top-3\") averages your three "

@@ -454,6 +454,36 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   *before* this fix keeps its stranger-built map (the refusal guards new
   imports, not existing rows); `rebuild-map` is the recovery path. Suite
   744 → 761.
+- **Feedback reads by racing fundamental (2026-08-09, SPEC.md A46)** —
+  owner-directed readability pass on "the feedback section and language".
+  The real cause was structural, not just wordiness: the cohort page ran two
+  feedback layers in two voices — M7's coaching already spoke racing, while
+  the findings section below restated the same triggers in engine voice,
+  grouped by `vs-self`/`vs-principle`/`vs-reference` (how the engine *knows*,
+  not how you drive), with detector slugs (`coast-window`,
+  `one-steering-input`) read as English and `"Gap is context, not recoverable
+  time."` stamped on every reference row — 30 times on the owner's real
+  GT4/Spa cohort. Now: `taxonomy.phase_fundamental()` (measured claimant
+  wins, so proxy `commitment` never adopts a measured finding — the
+  precondition is test-pinned), `DETECTOR_LABELS`, and `Finding.fundamental`
+  let cohort page, corner drill, Markdown and HTML all group by braking /
+  rotation / corner exit from **one** engine authority. Each row keeps its
+  source tag, so SPEC decision 3 holds and nothing is blended; UI-SPEC
+  decisions 6 and 7 are amended explicitly, not silently. Supporting data (N,
+  spread, gap band, the whole suppressed pile with every gate reason
+  verbatim) moved behind the existing disclosure arrow. Deliberately **no**
+  per-fundamental seconds total: `cumulative_loss` is per phase and `entry`
+  maps to two fundamentals, so the renderer summing it would be the UI
+  computing a measurement. One correctness fix rode along: `vs-principle`
+  descriptions printed the *first triggering lap's* rationale as if it
+  characterised the corner — now in `details["rationale"]`, labelled as one
+  lap. `PAYLOAD_VERSION` 6→7 (additive strings only; `coach-v3`/`chat-v3`
+  untouched). **Number-neutral, proven against a clean-`main` regeneration:**
+  the only value that moved is `payload_version`. ⚠️ Flagged: three committed
+  artifacts (`docs/coaching-report.md`, `driver.*`,
+  `gr86-spa-francorchamps.*`) were **already stale on `main`** from A42's
+  `coach-onto-v2` and A43's census — regenerated here, so most of their diff
+  is that catching up, not A46. Suite 908 → 924.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

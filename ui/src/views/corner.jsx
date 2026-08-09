@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
-import { Methodology } from "./shared.jsx";
+import { FundamentalSections, Methodology, fundamentalLabels } from "./shared.jsx";
 
 // Corner drill (UI-SPEC view 3): phase baselines with their labels intact
 // (robust primary, single-best labeled), metric summaries, and a live
@@ -103,20 +103,15 @@ export default function CornerDrill({ slug, cornerId }) {
         )}
       </section>
 
+      {/* A46: the same fundamental grouping the cohort page uses, so one
+          corner's braking and rotation findings read apart rather than as
+          one undifferentiated list. */}
       <section className="panel">
         <p className="eyebrow">Findings at this corner</p>
-        {findings.map((f) => (
-          <div key={f.finding_id} className={`finding ${f.shown && !f.annotation ? "" : "suppressed"}`}>
-            <div className="head">
-              <span className="desc">
-                <span className="src-tag">{f.source}</span>
-                <a href={`#/finding/${slug}/${encodeURIComponent(f.finding_id)}`}>{f.description}</a>
-              </span>
-              <span className="val num">{f.seconds === null ? "" : `${fmt(f.seconds)} s`}</span>
-            </div>
-            {!f.shown && <div className="reason">{f.gate_reason}</div>}
-          </div>
-        ))}
+        <FundamentalSections
+          findings={findings} slug={slug}
+          labels={fundamentalLabels(p.driver_model)}
+        />
       </section>
     </div>
   );

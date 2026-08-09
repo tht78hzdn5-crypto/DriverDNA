@@ -26,6 +26,16 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from driverdna.model.taxonomy import FUNDAMENTALS
+
+#: Foundations first, higher-order skills after — the Driver Model pyramid's
+#: own fixed order (ui/src/views/model.jsx's ORDER). Fixed, so the reading
+#: order never implies a ranking that moved with the data.
+FUNDAMENTAL_ORDER = (
+    "braking", "rotation", "corner_exit",
+    "commitment", "consistency", "vehicle_management", "vision",
+)
+
 # Mirrors ui/tokens.json exactly — kept in sync by test_report.py.
 _TOKENS = {
     "base": "#101318", "panel": "#171B22", "raised": "#1F242D", "line": "#2A303A",
@@ -132,19 +142,40 @@ def _line_chart(title: str, values: list[float], unit: str = "s") -> str:
     )
 
 
+def _by_fundamental(
+    findings: list[dict[str, Any]]
+) -> list[tuple[str, list[dict[str, Any]]]]:
+    """Findings grouped by racing fundamental, in the pyramid's fixed order
+    (A46) — the same order model.jsx renders, so the two surfaces agree.
+
+    Grouping is presentation only: each finding keeps its own source tag and
+    its own arithmetic (SPEC decision 3), and no group carries a combined
+    figure. A finding with no fundamental — impossible today, but a taxonomy
+    gap tomorrow — lands in a stated "Other" group rather than vanishing.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for f in findings:
+        groups.setdefault(f.get("fundamental") or "_other", []).append(f)
+    ordered = [fid for fid in FUNDAMENTAL_ORDER if fid in groups]
+    ordered += sorted(k for k in groups if k not in FUNDAMENTAL_ORDER)
+    return [
+        (FUNDAMENTALS[fid].label if fid in FUNDAMENTALS else "Other", groups[fid])
+        for fid in ordered
+    ]
+
+
 def _findings_rows_md(findings: list[dict[str, Any]]) -> list[str]:
     lines = [
-        "| source | finding | s | n | spread | status | evidence |",
-        "|---|---|---|---|---|---|---|",
+        "| source | finding | s | n | spread | evidence |",
+        "|---|---|---|---|---|---|",
     ]
     for f in findings:
-        status = "shown" if f["shown"] else f"suppressed — {f['gate_reason']}"
         seconds = "—" if f["seconds"] is None else f"{f['seconds']:.3f}"
         spread = "—" if f["spread"] is None else f"{f['spread']:.3f}"
         evidence = f"{len(f['evidence_ids'])} refs"
         lines.append(
             f"| {f['source']} | {f['description']} | {seconds} | {f['n']} "
-            f"| {spread} | {status} | {evidence} |"
+            f"| {spread} | {evidence} |"
         )
     return lines
 
@@ -155,8 +186,9 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
         f"# DriverDNA report — {c['driver']} / {c['car']} @ {c['track']}",
         "",
         f"Laps: {c['n_laps']} · sessions: {c['n_sessions']} · payload v"
-        f"{payload['payload_version']}. Sources are never blended; findings "
-        "carry N, spread, source tag, and evidence IDs.",
+        f"{payload['payload_version']}. Grouped by racing fundamental; "
+        "sources are never blended, and every finding keeps its own source "
+        "tag, N, spread, and evidence IDs.",
         "",
         "## Findings",
         "",
@@ -165,7 +197,8 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
     annotated = [f for f in payload["findings"] if f["shown"] and f.get("annotation")]
     suppressed = [f for f in payload["findings"] if not f["shown"]]
     if shown:
-        lines += _findings_rows_md(shown)
+        for label, group in _by_fundamental(shown):
+            lines += [f"### {label}", ""] + _findings_rows_md(group) + [""]
     else:
         lines.append(
             "No findings pass the confidence gates yet — insufficient data "
@@ -225,31 +258,46 @@ def render_cohort_html(payload: dict[str, Any]) -> str:
         f"<h1>DriverDNA — {html.escape(c['driver'])} / "
         f"{html.escape(c['car'])} @ {html.escape(c['track'])}</h1>",
         f"<p>Laps: {c['n_laps']} · sessions: {c['n_sessions']} · payload "
-        f"v{payload['payload_version']}. Sources are never blended.</p>",
+        f"v{payload['payload_version']}. Grouped by racing fundamental; "
+        "sources are never blended.</p>",
         "<h2>Findings</h2>",
     ]
     if shown:
-        parts.append("<table><tr><th>source</th><th>finding</th><th>s</th>"
-                     "<th>n</th><th>spread</th><th>evidence</th></tr>")
-        for f in shown:
-            seconds = "—" if f["seconds"] is None else f"{f['seconds']:.3f}"
-            spread = "—" if f["spread"] is None else f"{f['spread']:.3f}"
-            parts.append(
-                f"<tr><td><span class='tag'>{f['source']}</span></td>"
-                f"<td>{html.escape(f['description'])}</td><td>{seconds}</td>"
-                f"<td>{f['n']}</td><td>{spread}</td>"
-                f"<td>{len(f['evidence_ids'])} refs</td></tr>"
-            )
-        parts.append("</table>")
+        for label, group in _by_fundamental(shown):
+            parts.append(f"<h3>{html.escape(label)}</h3>")
+            parts.append("<table><tr><th>source</th><th>finding</th><th>s</th>"
+                         "<th>n</th><th>spread</th><th>evidence</th></tr>")
+            for f in group:
+                seconds = "—" if f["seconds"] is None else f"{f['seconds']:.3f}"
+                spread = "—" if f["spread"] is None else f"{f['spread']:.3f}"
+                parts.append(
+                    f"<tr><td><span class='tag'>{f['source']}</span></td>"
+                    f"<td>{html.escape(f['description'])}</td><td>{seconds}</td>"
+                    f"<td>{f['n']}</td><td>{spread}</td>"
+                    f"<td>{len(f['evidence_ids'])} refs</td></tr>"
+                )
+            parts.append("</table>")
     else:
         parts.append(
             "<p class='caveat'>No findings pass the confidence gates yet — "
             "insufficient data is the honest state. Import more laps.</p>"
         )
-    parts.append(
-        f"<p class='suppressed'>Suppressed findings: {len(suppressed)} "
-        "(reasons stated in the JSON report).</p>"
-    )
+    # Suppressed findings keep their exact stated reasons, one click away
+    # rather than absent (A46) — <details> is inert markup, so the report
+    # stays a single self-contained file with no script.
+    if suppressed:
+        parts.append(
+            f"<details><summary>{len(suppressed)} findings not shown yet — "
+            "evidence gates</summary><table><tr><th>source</th>"
+            "<th>finding</th><th>reason</th></tr>"
+        )
+        for f in suppressed:
+            parts.append(
+                f"<tr class='suppressed'><td><span class='tag'>{f['source']}"
+                f"</span></td><td>{html.escape(f['description'])}</td>"
+                f"<td>{html.escape(f['gate_reason'] or '')}</td></tr>"
+            )
+        parts.append("</table></details>")
 
     if loss["by_phase"]:
         parts.append(_bar_chart(

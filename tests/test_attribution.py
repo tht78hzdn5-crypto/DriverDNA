@@ -1,5 +1,7 @@
 """M3 tests: canonical windows, phase times, baselines, ranker, isolation."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -13,11 +15,14 @@ from driverdna.attribution.engine import (
 )
 from driverdna.attribution.ranker import (
     cumulative_loss,
+    vs_principle_findings,
     vs_reference_findings,
     vs_self_findings,
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.metrics.detectors import DETECTOR_LABELS
+from driverdna.model.taxonomy import FUNDAMENTALS, detector_fundamentals
 from driverdna.pipeline import phase_windows_from_stored
 from synth import run_synthetic_lap, track_lap, warp_time
 
@@ -265,3 +270,106 @@ def test_reference_import_perturbs_gap_sections_only(db):
     c01 = [g for g in gaps if g.corner_id == "C01"]
     assert c01 and all("gap" in g.description.lower() for g in c01)
     assert any(g.details["gap_median_s"] > 0 for g in c01)
+
+
+# --- Fundamental grouping + driver-facing descriptions (A46) ---------------
+# Findings are filed under the racing fundamental they belong to, so the UI
+# and the static reports can group by how a driver drives rather than by how
+# the engine happened to learn the thing. The mapping is the engine's
+# (taxonomy.py), never a lookup table in the renderer.
+
+
+def _all_findings(db):
+    windows = _windows(db)
+    return (
+        vs_self_findings(db, **COHORT, windows_by_corner=windows, config=CONFIG)
+        + vs_principle_findings(db, **COHORT, config=CONFIG)
+        + vs_reference_findings(db, **COHORT, windows_by_corner=windows, config=CONFIG)
+    )
+
+
+def test_every_finding_carries_a_real_fundamental(db):
+    _build_cohort(db)
+    findings = _all_findings(db)
+    assert findings, "sanity: the cohort must produce findings"
+    for f in findings:
+        assert f.fundamental in FUNDAMENTALS, f"{f.finding_id} -> {f.fundamental!r}"
+
+
+def test_vs_self_and_vs_principle_land_in_the_expected_fundamentals(db):
+    _build_cohort(db)
+    windows = _windows(db)
+    # The synthetic track's corners don't all define an entry window, so
+    # assert over the phases this cohort actually produces rather than
+    # pinning a phase set the fixture doesn't owe us.
+    expected = {"entry": "braking", "mid": "rotation", "exit": "corner_exit"}
+    by_phase = {
+        f.phase: f.fundamental
+        for f in vs_self_findings(db, **COHORT, windows_by_corner=windows, config=CONFIG)
+    }
+    assert by_phase, "sanity: the cohort must produce phase findings"
+    assert set(by_phase) <= set(expected)
+    for phase, fundamental in by_phase.items():
+        assert fundamental == expected[phase]
+
+    for f in vs_principle_findings(db, **COHORT, config=CONFIG):
+        assert f.fundamental == detector_fundamentals(f.kind)[0], f.finding_id
+
+
+def test_no_detector_slug_leaks_into_a_driver_facing_description(db):
+    _build_cohort(db)
+    for f in _all_findings(db):
+        for slug in DETECTOR_LABELS:
+            assert slug not in f.description, (
+                f"{f.finding_id}: description still reads the internal slug "
+                f"{slug!r} — {f.description!r}"
+            )
+
+
+def test_vs_principle_description_is_a_summary_and_keeps_its_rationale(tmp_path):
+    # Real fixture laps, not the synthetic track: no detector triggers on the
+    # synthetic cohort, so only the real GR86/Spa corpus can prove that a
+    # triggering finding keeps its rationale after the description dropped it.
+    from typer.testing import CliRunner
+
+    from driverdna.cli import app
+
+    db_path = tmp_path / "r.db"
+    result = CliRunner().invoke(
+        app, ["import", str(Path(__file__).parent / "fixtures"), "--db", str(db_path)]
+    )
+    assert result.exit_code == 0, result.output
+
+    with Database.open(str(db_path)) as real:
+        cohorts = real.conn.execute(
+            "SELECT DISTINCT driver, car, track FROM laps WHERE role='self'"
+        ).fetchall()
+        triggered = [
+            f
+            for c in cohorts
+            for f in vs_principle_findings(
+                real, driver=c["driver"], car=c["car"], track=c["track"], config=CONFIG
+            )
+            if f.details["triggered"] > 0
+        ]
+
+    assert triggered, "sanity: some detector must trigger on the real fixtures"
+    for f in triggered:
+        # One line, no embedded per-lap sentence: the rationale quotes ONE
+        # lap's value and must not be presented as the corner's figure.
+        assert "." not in f.description, f.description
+        assert DETECTOR_LABELS[f.kind] in f.description
+        # Still carried, just moved behind the evidence surface.
+        assert f.details["rationale"]
+
+
+def test_vs_reference_description_drops_the_per_row_boilerplate(db):
+    _build_cohort(db)
+    windows = _windows(db)
+    ref = warp_time(track_lap(src="ref.csv"), C01_WARP_WINDOW, -0.2)
+    run_synthetic_lap(db, ref, driver="faster-driver", role="reference")
+    gaps = vs_reference_findings(db, **COHORT, windows_by_corner=windows, config=CONFIG)
+    assert gaps
+    for g in gaps:
+        assert "gap to reference" in g.description  # fixed vocabulary, kept
+        assert "not recoverable time" not in g.description  # said once, not per row

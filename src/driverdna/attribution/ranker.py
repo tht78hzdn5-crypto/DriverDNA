@@ -34,6 +34,14 @@ from driverdna.attribution.engine import (
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.metrics.detectors import DETECTOR_LABELS
+from driverdna.model.taxonomy import detector_fundamentals, phase_fundamental
+
+#: Driver-facing name for each corner phase (A46). "mid" alone reads as an
+#: engine field name; the window it measures is the middle of the corner.
+PHASE_LABELS: dict[str, str] = {
+    "entry": "entry", "mid": "mid-corner", "exit": "exit",
+}
 
 
 @dataclass(frozen=True)
@@ -52,6 +60,10 @@ class Finding:
     evidence_ids: tuple[str, ...]
     shown: bool  # False = suppressed by a confidence gate
     gate_reason: str | None  # stated whenever suppressed
+    # The racing fundamental this finding belongs to (A46) — taxonomy.py's
+    # mapping, resolved here so every renderer groups by the same authority
+    # instead of each keeping its own detector/phase lookup table.
+    fundamental: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
 
 
@@ -153,10 +165,11 @@ def vs_self_findings(
                     car=car, track=track, corner_id=corner_id, phase=phase,
                     kind="opportunity",
                     description=(
-                        f"{corner_id} {phase}: slower laps lose "
-                        f"{opportunity:.3f} s here vs faster laps"
+                        f"{corner_id} {PHASE_LABELS[phase]}: {opportunity:.3f} s "
+                        "between your fastest and slowest laps"
                         if opportunity is not None
-                        else f"{corner_id} {phase}: insufficient laps to compare"
+                        else f"{corner_id} {PHASE_LABELS[phase]}: "
+                             "insufficient laps to compare"
                     ),
                     seconds=opportunity,
                     n=n_samples,
@@ -164,6 +177,7 @@ def vs_self_findings(
                     evidence_ids=_evidence(history),
                     shown=shown,
                     gate_reason=reason,
+                    fundamental=phase_fundamental(phase),
                     details={
                         "opportunity_s": opportunity,
                         "repeatability": repeatability,
@@ -248,14 +262,26 @@ def vs_principle_findings(
                     source="vs-principle",
                     car=car, track=track, corner_id=corner_id, phase=None,
                     kind=detector,
-                    description=f"{corner_id}: {detector} on {triggered}/{total} laps. {rationale}",
+                    # Summary only (A46). `rationale` quotes ONE lap's value
+                    # (rows[0]); stating it here read as though it described
+                    # the corner. It moves to details, where the evidence
+                    # surface can label it as the single observation it is.
+                    description=(
+                        f"{corner_id}: {DETECTOR_LABELS[detector]} on "
+                        f"{triggered} of {total} laps"
+                    ),
                     seconds=None,  # detectors flag form; they are never priced
                     n=total,
                     spread=None,
                     evidence_ids=tuple(f"obs:{r['obs_pk']}" for r in rows),
                     shown=shown,
                     gate_reason=reason,
-                    details={"trigger_rate": rate, "triggered": triggered},
+                    fundamental=(detector_fundamentals(detector) or (None,))[0],
+                    details={
+                        "trigger_rate": rate,
+                        "triggered": triggered,
+                        "rationale": rationale,
+                    },
                 )
             )
     return findings
@@ -294,10 +320,13 @@ def vs_reference_findings(
                     source="vs-reference",
                     car=car, track=track, corner_id=corner_id, phase=phase,
                     kind="gap",
+                    # "Gap is context, not recoverable time" is said once by
+                    # the section header and the methodology disclosure, not
+                    # re-stamped on every row (A46) — on a real cohort that
+                    # sentence repeated 30 times.
                     description=(
-                        f"{corner_id} {phase}: gap to reference {gap_median:+.3f} s "
-                        f"(typical vs typical; best vs best {gap_best:+.3f} s). "
-                        "Gap is context, not recoverable time."
+                        f"{corner_id} {PHASE_LABELS[phase]}: gap to reference "
+                        f"{gap_median:+.3f} s typical, {gap_best:+.3f} s best"
                     ),
                     seconds=gap_median,
                     n=n_samples,
@@ -305,6 +334,7 @@ def vs_reference_findings(
                     evidence_ids=_evidence(history) + _evidence(ref),
                     shown=shown,
                     gate_reason=reason,
+                    fundamental=phase_fundamental(phase),
                     details={
                         "gap_median_s": gap_median,
                         "gap_best_s": gap_best,

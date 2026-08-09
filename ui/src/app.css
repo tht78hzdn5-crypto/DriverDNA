@@ -211,14 +211,23 @@ a.btn-primary { color: var(--base); }
 }
 .empty p { margin: 0 0 0.7rem; color: var(--dim); font-size: 0.88rem; }
 
-/* --- Source sections: identity is structural, never a verdict colour ---- */
-.source-section { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 0.9rem; }
+/* --- Fundamental groups (A46): feedback organised the way a driver drives.
+   Source identity moved onto each row's own tag (structural, never colour —
+   the rule is unchanged, only where it is carried). ---------------------- */
+.fgroup { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 1.1rem; }
+.fgroup:first-of-type { margin-top: 0.2rem; }
 @media (max-width: 48rem) {
-  .source-section { padding-left: 0.55rem; }
+  .fgroup { padding-left: 0.55rem; }
 }
-.source-section.vs-self { border-left-style: solid; }
-.source-section.vs-principle { border-left-style: dashed; }
-.source-section.vs-reference { border-left-style: dotted; }
+.fgroup-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.6rem; margin-bottom: 0.3rem;
+}
+.fgroup-name {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; font-size: 0.92rem;
+}
+.fgroup-count { color: var(--dim); font-size: 0.8rem; }
 .src-tag {
   font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--dim); border: 1px solid var(--line); border-radius: 2px;

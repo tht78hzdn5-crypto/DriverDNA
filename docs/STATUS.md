@@ -1,5 +1,44 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-09 (A46 — feedback reads by racing fundamental).**
+
+### Verified counts (2026-08-09, A46)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **908 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **924 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests | **+16** — 5 `test_taxonomy.py` (`phase_fundamental` total/unambiguous/measured-over-proxy), 2 `test_metrics.py` (`DETECTOR_LABELS` covers exactly the real detectors, and reads as language not slugs), 5 `test_attribution.py` (every finding carries a real fundamental; phase/detector land where expected; no slug leaks into a description; vs-principle keeps its rationale behind the summary; vs-reference drops the per-row boilerplate), 4 `test_report.py` (Markdown/HTML group by fundamental, source tag survives, boilerplate said once) | — |
+| Skips | same 16, all Postgres-absent — no browser skips: Chromium present, all six browser-gated files ran | `pytest -rs` skip lines |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+| Browser verification | Real Chromium against the fixture DB: fundamental headers render on `#/cohort` and `#/corner`, suppressed/evidence disclosures open, `#/model` shows payload labels, 0 px horizontal overflow at 390×844 | `playwright` drive script + `test_render_parity.py` |
+| Number neutrality | Only `payload_version` 6→7 moved, across `gr86-spa-francorchamps.json` + `driver.json`, versus clean-`main` regeneration | numeric-multiset diff |
+
+**SPEC.md A46 — feedback grouped by racing fundamental.** Owner-directed
+readability pass. Findings now group by braking / rotation / corner exit
+rather than by `vs-self` / `vs-principle` / `vs-reference`; each row keeps
+its own source tag, so nothing is blended (UI-SPEC decisions 6 and 7 amended
+explicitly, not silently). Detector slugs (`coast-window`,
+`one-steering-input`, …) stop appearing as driver-facing English via a new
+`DETECTOR_LABELS` map; `taxonomy.phase_fundamental()` files phase-shaped
+findings under the measured fundamental; supporting data (N, spread, gap
+band, gate reasons, the whole suppressed pile) moves behind the existing
+disclosure arrow. One real correctness fix rode along: `vs-principle`
+descriptions were printing the *first triggering lap's* rationale as though
+it characterised the corner — it now sits in `details["rationale"]`, labelled
+as one lap.
+
+⚠️ **Pre-existing artifact staleness fixed in passing, not caused here:**
+`docs/coaching-report.md`, `driver.*` and `gr86-spa-francorchamps.*` were
+stale on `main` (A42's `coach-onto-v2` CV renormalization and A43's census
+section changed their numbers without regeneration). Confirmed by
+regenerating on a clean checkout and diffing: clean-`main` output differs
+from the committed files identically, and matches this branch
+number-for-number. Most of the diff in those three files is A42/A43 catching
+up.
+
+---
+
 **Snapshot date: 2026-08-08 (Antigravity deployment handoff — OCI VM live, two blockers open).**
 
 - **Oracle Cloud VM deployed:** DriverDNA running on Ampere A1 ARM64 (`147.5.99.21`). Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).

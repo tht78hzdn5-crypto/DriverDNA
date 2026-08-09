@@ -15,6 +15,7 @@ from driverdna.report.builder import (
     render_driver_html,
     render_driver_markdown,
 )
+from driverdna.model.taxonomy import FUNDAMENTALS
 from driverdna.report.payload import (
     build_cohort_payload,
     build_driver_payload,
@@ -174,3 +175,61 @@ def test_report_cli_cohort_filter(tmp_path):
          "--cohort", "Nope:Nowhere"],
     )
     assert result.exit_code == 2
+
+
+# --- Fundamental grouping in the static report (A46) -----------------------
+
+
+def _fixture_payload(tmp_path):
+    """A payload over the real fixture laps — the synthetic cohort triggers
+    no detectors, so only this one exercises vs-principle rendering."""
+    db_path = tmp_path / "r.db"
+    result = CliRunner().invoke(
+        app, ["import", str(Path(__file__).parent / "fixtures"), "--db", str(db_path)]
+    )
+    assert result.exit_code == 0, result.output
+    with Database.open(str(db_path)) as db:
+        # The deepest cohort: a single-lap one clears no gate, so it would
+        # prove nothing about how shown findings render.
+        row = db.conn.execute(
+            """SELECT driver, car, track, COUNT(*) n FROM laps WHERE role='self'
+               GROUP BY driver, car, track ORDER BY n DESC, car, track LIMIT 1"""
+        ).fetchone()
+        return build_cohort_payload(
+            db, driver=row["driver"], car=row["car"], track=row["track"], config=CONFIG
+        )
+
+
+def test_markdown_groups_findings_by_fundamental(tmp_path):
+    payload = _fixture_payload(tmp_path)
+    md = render_cohort_markdown(payload)
+    shown = [f for f in payload["findings"] if f["shown"] and not f.get("annotation")]
+    assert shown, "sanity: the fixtures must produce shown findings"
+    for fundamental in {f["fundamental"] for f in shown}:
+        label = FUNDAMENTALS[fundamental].label
+        assert f"### {label}" in md, f"no section for {label}"
+
+
+def test_markdown_keeps_the_source_tag_on_every_finding(tmp_path):
+    # Grouping changed; SPEC decision 3 did not — a finding without its
+    # source tag would be the blended reporting the spec forbids.
+    payload = _fixture_payload(tmp_path)
+    md = render_cohort_markdown(payload)
+    for source in {f["source"] for f in payload["findings"] if f["shown"]}:
+        assert source in md
+
+
+def test_reference_boilerplate_is_not_repeated_per_row(tmp_path):
+    payload = _fixture_payload(tmp_path)
+    md = render_cohort_markdown(payload)
+    html = render_cohort_html(payload)
+    assert md.count("not recoverable time") <= 1
+    assert html.count("not recoverable time") <= 1
+
+
+def test_html_groups_findings_by_fundamental(tmp_path):
+    payload = _fixture_payload(tmp_path)
+    html = render_cohort_html(payload)
+    shown = [f for f in payload["findings"] if f["shown"]]
+    for fundamental in {f["fundamental"] for f in shown}:
+        assert FUNDAMENTALS[fundamental].label in html
