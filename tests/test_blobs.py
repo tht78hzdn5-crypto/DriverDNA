@@ -215,6 +215,7 @@ def _v5_database_with_inline_blobs(db_path: Path) -> list[int]:
     raw.execute("DROP TABLE IF EXISTS users")
     raw.execute("DROP TABLE IF EXISTS user_api_keys")
     raw.execute("DROP TABLE IF EXISTS reference_exclusions")
+    raw.execute("DROP TABLE IF EXISTS garage61_tokens")
     try:
         raw.execute("ALTER TABLE laps DROP COLUMN owner_user_pk")
     except sqlite3.OperationalError:
