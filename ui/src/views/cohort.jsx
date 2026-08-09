@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";

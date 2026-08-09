@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 
@@ -320,12 +320,12 @@ export function IncidentCard({ event, slug }) {
   );
 }
 
-export function LossBars({ entries, unit = "s" }) {
+export function LossBars({ entries }) {
   const values = entries.map(([, v]) => Math.abs(v));
   const peak = Math.max(...values, 1e-9);
   return (
     <div>
-      {entries.map(([key, value], i) => (
+      {entries.map(([key, value]) => (
         <div key={key} className={`lossrow ${Math.abs(value) === Math.max(...values) ? "max" : ""}`}>
           <span className="k">{key}</span>
           <span className="bar"><i style={{ width: `${(Math.abs(value) / peak) * 100}%` }} /></span>

@@ -1,4 +1,3 @@
-import React from "react";
 import { get } from "../api.js";
 import { Loading, useFetch } from "../app.jsx";
 

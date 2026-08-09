@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { get, send } from "../api.js";
 import { Loading, useFetch } from "../app.jsx";
 

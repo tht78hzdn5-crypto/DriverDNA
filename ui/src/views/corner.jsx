@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
@@ -27,7 +27,6 @@ export default function CornerDrill({ slug, cornerId }) {
   const p = payload.data;
   const corner = p.corner_map.find((c) => c.corner_id === cornerId);
   const baselines = p.phase_baselines[cornerId] || {};
-  const metrics = p.metrics[cornerId] || {};
   const findings = p.findings.filter((f) => f.corner_id === cornerId);
 
   return (

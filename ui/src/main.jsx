@@ -1,4 +1,3 @@
-import React from "react";
 import { createRoot } from "react-dom/client";
 import tokens from "../tokens.json";
 import App from "./app.jsx";
