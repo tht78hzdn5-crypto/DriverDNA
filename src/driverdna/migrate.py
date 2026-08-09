@@ -38,6 +38,7 @@ TABLES: tuple[str, ...] = (
     "chat_transcripts",
     "driver_beliefs",
     "garage61_sync_state",
+    "garage61_tokens",
 )
 
 #: Tables whose primary key is an auto-assigned surrogate. After copying with
@@ -54,6 +55,7 @@ IDENTITY_COLUMNS: dict[str, str] = {
     "chat_transcripts": "turn_pk",
     "driver_beliefs": "belief_pk",
     "incidents": "incident_pk",
+    "garage61_tokens": "token_pk",
 }
 
 #: A stable read order per table, so two stores serialize identically.
@@ -63,6 +65,7 @@ _ORDER: dict[str, str] = {
     "metric_values": "obs_pk, name",
     "detector_results": "obs_pk, detector",
     "garage61_sync_state": "driver, car, track",
+    "garage61_tokens": "token_pk",
 }
 
 

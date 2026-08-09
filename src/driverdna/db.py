@@ -489,6 +489,25 @@ MIGRATIONS: tuple[str, ...] = (
         UNIQUE (owner_user_pk, lap_pk)
     );
     """,
+    # 016 - Garage61 OAuth tokens, encrypted at rest. Same keystore.py
+    # pattern as BYOK (014) — the access token (and optional refresh token)
+    # are AES-GCM encrypted with a key derived from DRIVERDNA_SESSION_SECRET.
+    # One row per user; a fresh OAuth flow overwrites via UPSERT. The
+    # garage61_user_id is the driver's Garage61 account id (from /me),
+    # stored in plaintext for display/debugging — it is not a secret.
+    """
+    CREATE TABLE garage61_tokens (
+        token_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL UNIQUE,
+        garage61_user_id TEXT,
+        access_ciphertext TEXT NOT NULL,
+        access_nonce TEXT NOT NULL,
+        refresh_ciphertext TEXT,
+        refresh_nonce TEXT,
+        scopes TEXT,
+        created_at TEXT NOT NULL
+    );
+    """,
 )
 
 
