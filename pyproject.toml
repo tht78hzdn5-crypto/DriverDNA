@@ -83,6 +83,15 @@ extend-immutable-calls = [
 ]
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12, matching the interpreter the `mypy` CI job actually runs (not 3.11,
+# the project's floor — pinning below the running interpreter broke the
+# gate for real: pip resolves numpy>=2.5 on 3.12, whose shipped stub uses
+# PEP 695 `type` syntax that only parses under a 3.12+ target, and mypy
+# treats an unparseable stub as fatal, not a normal error to report. Costs
+# nothing: the codebase has no version-gated syntax between 3.11/3.12 (no
+# match statements, `from __future__ import annotations` throughout), and
+# runtime 3.11 compatibility is still verified for real by pytest's own
+# 3.11/3.12 matrix — mypy's target version was never that check.
+python_version = "3.12"
 ignore_missing_imports = true
 files = ["src/driverdna"]
