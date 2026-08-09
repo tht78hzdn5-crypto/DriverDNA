@@ -37,6 +37,15 @@ from the committed files identically, and matches this branch
 number-for-number. Most of the diff in those three files is A42/A43 catching
 up.
 
+**Bug log adopted (owner instruction, same session).** `docs/BUG-LOG.md` is
+now the defect register — 20 entries seeded from the repo's own history, 3
+open. Filing is binding (AGENTS.md, Decision discipline), and a paired
+standing rule went into the shared non-negotiables block: **never assume a
+failure is synthetic.** The open entries are the two 2026-08-08 VM blockers
+(now BUG-018 / BUG-019, unchanged in substance) and BUG-020 — nothing
+mechanically checks that committed artifacts match regenerated output, the
+gap that let A42/A43 leave three of them stale.
+
 ---
 
 **Snapshot date: 2026-08-08 (Antigravity deployment handoff — OCI VM live, two blockers open).**

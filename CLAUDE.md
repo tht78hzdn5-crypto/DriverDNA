@@ -454,6 +454,19 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   *before* this fix keeps its stranger-built map (the refusal guards new
   imports, not existing rows); `rebuild-map` is the recovery path. Suite
   744 → 761.
+- **Bug log adopted (2026-08-09, owner instruction)** — `docs/BUG-LOG.md` is
+  the defect register: one entry per real bug, open or fixed, recording what
+  broke, root cause, blast radius, and **how it was caught or how it was
+  missed**. Seeded from the repo's own history (20 entries; 3 open —
+  the two 2026-08-08 VM blockers, plus BUG-020: nothing mechanically checks
+  that committed artifacts match regenerated output, which is why A42/A43
+  left three of them stale for days). Deliberately exempt from AGENTS.md's
+  "no other status docs" rule — it is a register, not a snapshot, and it
+  cross-references SPEC amendments rather than restating them. Filing is now
+  binding (AGENTS.md, Decision discipline). Paired standing rule, added to
+  the shared non-negotiables block so every agent gets it: **never assume a
+  failure is synthetic** — a failing test, error, or wrong number is real
+  until proven otherwise, and unexplained red is an open bug, not noise.
 - **Feedback reads by racing fundamental (2026-08-09, SPEC.md A46)** —
   owner-directed readability pass on "the feedback section and language".
   The real cause was structural, not just wordiness: the cohort page ran two

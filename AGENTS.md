@@ -49,6 +49,7 @@ convenience.
   5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
   6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
   7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
+  8. **Never assume a failure is synthetic.** A failing test, error, or wrong number is real until proven otherwise: investigate and state the evidence before concluding it was the test/fixture/environment. Unexplained red is an open bug, never background noise.
 <!-- /shared:non-negotiables -->
 
 ## Decision discipline (standing rule)
@@ -57,6 +58,7 @@ Record decisions (e.g., scoring forks, M7 adoption, threshold defaults) and reas
 - Log resolutions in `docs/SPEC.md` (amendment log) and/or `docs/PROJECT-BRIEF.md` (Decision log), dated.
 - If touching the **nine philosophy points** or **out-of-scope list**, name the refined item and why (A14 is the model).
 - `docs/STATUS.md` is the single dated snapshot for verified counts. Do not create other status/handoff docs.
+- **Every real bug gets an entry in `docs/BUG-LOG.md`** — open or fixed, at the time you find it, including ones you fixed in the same session and ones you are leaving open. It is a defect register, not a status doc (that exemption is deliberate); it records what broke, why, blast radius, and **how it was caught or missed**, and cross-references the SPEC amendment rather than restating it. A bug is not fixed until a test pins it, or the entry says why none can.
 
 ## Build order (strict)
 

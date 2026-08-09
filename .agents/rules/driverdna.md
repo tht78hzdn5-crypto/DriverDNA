@@ -65,4 +65,5 @@ never only here.
   5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
   6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
   7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
+  8. **Never assume a failure is synthetic.** A failing test, error, or wrong number is real until proven otherwise: investigate and state the evidence before concluding it was the test/fixture/environment. Unexplained red is an open bug, never background noise.
 <!-- /shared:non-negotiables -->
