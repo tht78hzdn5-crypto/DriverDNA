@@ -1,5 +1,16 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-08 (Antigravity deployment handoff — OCI VM live, two blockers open).**
+
+- **Oracle Cloud VM deployed:** DriverDNA running on Ampere A1 ARM64 (`147.5.99.21`). Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
+- **Cloudflare Tunnel + Access:** `cloudflared` routes `driver-dna.com` → port 8710; Cloudflare Access gate uses Google SSO. Internal app-level Google OAuth wired via `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `/etc/driverdna/env`.
+- **SSH keypair rotated:** Private key was exposed in chat; `vm_key` replaced, `authorized_keys` locked to the new key.
+- **Blocker 1 — service unreachable (Cloudflare 1033):** Service was restarted after `pip install .[dev]` ran against the live venv. Still returning 1033. Needs `journalctl -u driverdna -n 100 --no-pager` to diagnose.
+- **Blocker 2 — ARM64 test failures:** `pytest` on the VM produced multiple `F` markers at ~15%, ~31%, ~38% of the suite. Tracebacks not captured. On x86 the suite is 924 passed / 0 failed. Needs `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt` on the VM to get the actual errors.
+- **Next step agreed:** Garage61 OAuth ("Login with Garage61 and sync your laps"), callback URI `https://driver-dna.com/api/auth/garage61/callback`. Needs a design decision before building — no SPEC.md amendment exists yet.
+
+---
+
 **Snapshot date: 2026-08-06 (A45 blob-root collision fix + Google OAuth session invalidation fix).**
 
 ### Verified counts (2026-08-06, A45 two standing bug fixes)
