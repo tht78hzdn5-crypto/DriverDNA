@@ -55,4 +55,7 @@ driverdna = ["ui/static/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --strict-markers"
+markers = [
+    "browser: needs a real Chromium via Playwright and the built SPA",
+]

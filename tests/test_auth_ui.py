@@ -18,6 +18,8 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
+from browser import chromium_executable
+
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright  # noqa: E402
 
@@ -31,18 +33,15 @@ TOKEN = "a-long-random-passphrase-for-one-driver"
 # this seeded identity owns what `driverdna import` puts in a fresh database.
 EMAIL = "owner@example.com"
 
+CHROME = chromium_executable()
 
-def _find_chrome() -> Path | None:
-    hits = sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))
-    return hits[-1] if hits else None
-
-
-CHROME = _find_chrome()
-
-pytestmark = pytest.mark.skipif(
-    CHROME is None or not (STATIC / "index.html").exists(),
-    reason="Chromium binary or built SPA not present",
-)
+pytestmark = [
+    pytest.mark.browser,
+    pytest.mark.skipif(
+        CHROME is None or not (STATIC / "index.html").exists(),
+        reason="Chromium binary or built SPA not present",
+    ),
+]
 
 
 def _free_port() -> int:

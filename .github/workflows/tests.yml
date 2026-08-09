@@ -17,6 +17,7 @@ permissions:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -58,9 +59,12 @@ jobs:
       - name: Test
         env:
           DRIVERDNA_TEST_DATABASE_URL: postgresql://driverdna:driverdna@localhost:5432/driverdna_test
-        # Chromium is not installed in this job, so browser tests skip here.
-        # They run in the separate `browser-tests` job (non-blocking) which
-        # installs Chromium and builds the SPA.
+        # Chromium is not installed in this job, so browser tests are
+        # explicitly deselected by marker (`-m "not browser"`) rather than
+        # left to skip on their own missing-Chromium guard — the two used to
+        # be equivalent, but relying on the guard is what let this job report
+        # green while every browser test silently skipped. They run for real
+        # in the separate `browser-tests` job, which now blocks merges.
         #
         # No extra -q: pyproject's addopts already sets it, and -qq suppresses
         # the "N passed, M skipped" summary line — which is the one line you
@@ -71,7 +75,7 @@ jobs:
         # status and a failing suite would report green.
         run: |
           set -o pipefail
-          python -m pytest -rs | tee pytest-output.txt
+          python -m pytest -rs -m "not browser" | tee pytest-output.txt
 
       # A green run is not proof the Postgres backend was exercised: if the
       # service container never came up, every dual-backend test would skip and
@@ -104,24 +108,29 @@ jobs:
             exit 0
           fi
           test_changes=$(echo "$changed_files" | grep -c '^tests/' || true)
-          src_changes=$(echo "$changed_files" | grep -c '^driverdna/' || true)
+          src_changes=$(echo "$changed_files" | grep -c '^src/driverdna/' || true)
 
           if [ "$test_changes" -gt 0 ] && [ "$src_changes" -eq 0 ]; then
-            echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
+            echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under src/driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
           fi
 
   # Browser trust gates — the Chromium-gated tests that the main pytest job
-  # deliberately skips. Runs in parallel, non-blocking: a failure here is
-  # visible (red check) but does not block merges, matching the spec's
-  # "separate non-blocking job" direction (SPEC.md A16). The main suite
-  # remains the merge gate; this is the honest signal that was missing.
+  # deliberately deselects. A required, blocking check (2026 CI hardening):
+  # this job used to be `continue-on-error: true`, which is exactly what let
+  # every browser test silently skip here for an unknown stretch of history
+  # (Playwright's own installer moved to a `chrome-linux64/` layout; the
+  # tests' Chromium-discovery glob still looked for the old `chrome-linux/`,
+  # so every run hit the "not present" skip guard and reported green anyway
+  # because the job's failure didn't count). tests/browser.py now asks
+  # Playwright for its own browser path instead of guessing the layout, and
+  # this job blocks for real.
   #
   # Single Python version (3.12) — browser tests exercise UI rendering and
   # FastAPI routing, not Python-version compatibility. No Postgres — every
   # browser test uses SQLite fixture DBs.
   browser-tests:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -162,16 +171,16 @@ jobs:
       - name: Browser tests
         env:
           PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        # Selected by marker (`-m browser`), not a hand-maintained file list —
+        # a new browser test module is picked up automatically instead of
+        # silently running nowhere (tests/test_reference_curation_ui.py did,
+        # until this change: Chromium-gated so it skipped in the main job,
+        # and absent from this job's old file list). If the marker itself
+        # ever typos, pytest exits 5 (no tests collected) and this step fails
+        # under `set -o pipefail` — no silent empty run either.
         run: |
           set -o pipefail
-          python -m pytest -rs \
-            tests/test_render_parity.py \
-            tests/test_offline.py \
-            tests/test_upload_ui.py \
-            tests/test_auth_ui.py \
-            tests/test_cockpit_ui.py \
-            tests/test_score_history_ui.py \
-            | tee browser-test-output.txt
+          python -m pytest -rs -m browser | tee browser-test-output.txt
 
       - name: Confirm browser tests actually ran
         run: |

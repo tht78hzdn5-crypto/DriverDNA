@@ -30,6 +30,7 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
+from browser import chromium_executable
 from driverdna.coach.grounding import number_pool
 
 pytest.importorskip("playwright.sync_api")
@@ -39,19 +40,15 @@ STATIC = Path(__file__).parents[1] / "src" / "driverdna" / "ui" / "static"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
-def _find_chrome() -> Path | None:
-    # The environment preinstalls Chromium under a versioned dir; glob rather
-    # than pin a build so an env update doesn't silently skip the gate.
-    hits = sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))
-    return hits[-1] if hits else None
+CHROME = chromium_executable()
 
-
-CHROME = _find_chrome()
-
-pytestmark = pytest.mark.skipif(
-    CHROME is None or not (STATIC / "index.html").exists(),
-    reason="Chromium binary or built SPA not present",
-)
+pytestmark = [
+    pytest.mark.browser,
+    pytest.mark.skipif(
+        CHROME is None or not (STATIC / "index.html").exists(),
+        reason="Chromium binary or built SPA not present",
+    ),
+]
 
 # A time m:ss.mmm, a percent, or a signed/plain decimal. Bare integers omitted.
 _TIME = re.compile(r"[-+]?(\d+):(\d{2})\.(\d+)")
