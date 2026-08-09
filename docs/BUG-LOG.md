@@ -108,6 +108,34 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
+### BUG-021 — The methodology-id guard did not see hook-referenced ids
+- **Status**: fixed 2026-08-09 · **Severity**: silent-wrong
+- **Symptom**: `test_every_jsx_methodology_id_reference_exists` matched only
+  `<Methodology id="...">`. Ids reached through `useMethodologyText("...")`
+  were invisible to it — the four in `SourceLegend`, plus every
+  `incident.*` id — so a typo in one would render as **nothing** in the
+  browser with the whole suite still green. That is precisely the failure the
+  test's own docstring says it exists to prevent.
+- **Root cause**: the guard was written when `<Methodology>` was the only way
+  to name an id. `useMethodologyText` was extracted later as a public hook
+  (for `IncidentCard`'s inline empathy line) and the guard was never widened
+  to follow it. A46 then added four more references through the hook.
+- **Blast radius**: no live typo — all eleven hook-referenced ids resolve. The
+  exposure was the missing guard, not a wrong string on screen.
+- **How it was caught**: reading the test to confirm a claim before writing it
+  into `CLAUDE.md`. Nothing failed; the gap was only visible in the regex.
+- **Fix**: the pattern matches both forms, and an assertion pins that the hook
+  form is still reachable so the guard cannot silently narrow again.
+  Template-literal ids (`incident.${cls}`) *cannot* be checked statically, so
+  two new tests cover them dynamically instead: every classification
+  `classify.py` can emit has an `incident.<cls>` explanation, and empathy text
+  exists for exactly the mechanisms the engine names a cause for — the
+  deliberate absence on `unclassified`/`external` is now pinned as a decision
+  rather than looking like an oversight.
+- **Lesson**: a guard is only as wide as the syntax it happened to be written
+  against. When you add a second way to do the thing a test protects, widen
+  the test in the same commit.
+
 ### BUG-017 — A detector's per-lap rationale was printed as the corner's figure
 - **Status**: fixed 2026-08-09 · **Severity**: silent-wrong · **SPEC**: A46
 - **Root cause**: `vs_principle_findings` built its description as

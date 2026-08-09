@@ -672,6 +672,104 @@ Update this section as milestones complete.
 - Node is a build-time dependency only; the built SPA ships in the package
   static dir; API tests never require node. Localhost only; fully offline.
 
+## Editing the coaching and feedback layer
+
+The owner expects to keep iterating on how coaching and feedback *appear*
+(2026-08-09). This section is the map and the tripwires, so a presentation
+change stays a presentation change. `docs/UI-SPEC.md` (decisions 2, 6, 7,
+"Copy density") and `docs/SPEC.md` (decisions 3, 8; A46) remain binding; this
+is the practical layer under them.
+
+### Where the words live — edit the engine, never the SPA
+
+Every driver-facing string has exactly one home, and none of them is a JSX
+file. This is not style: `model.jsx` used to keep its own fundamental-label
+map, which is a drift waiting to happen, and A46 deleted it.
+
+| To change… | Edit | Notes |
+|---|---|---|
+| the racing voice — "shrink the coast", the *why*, the drill | `coaching/ontology.py` | versioned (`ONTOLOGY_VERSION`); a principle is data, not code |
+| a finding's measurement sentence | `attribution/ranker.py` (+ `PHASE_LABELS`) | changes committed artifacts — see below |
+| a detector's driver-facing name | `metrics/detectors.py` `DETECTOR_LABELS` | **never rename the slug** |
+| "how is this measured" disclosure text | `explain.py` `METHODOLOGY` | id must exist before a view names it |
+| a fundamental's display name | `model/taxonomy.py` `Fundamental.label` | travels via `belief.label` |
+| a gate's stated reason | `attribution/ranker.py` `_gate` | exempt from copy trimming |
+
+**Slugs are identity, labels are language.** `coast-window`,
+`one-steering-input`, `cp.*` ids and `finding_id`s are load-bearing — evidence
+IDs, config keys, ontology gates, annotations, stored rows and the grounding
+validator all key off them. Improve wording by adding or editing a *label*.
+Renaming a slug silently orphans stored annotations.
+
+### The traps, in the order you'll hit them
+
+1. **Do not put an aggregate on a group header.** A per-fundamental seconds
+   total is the single most tempting addition here and it is forbidden:
+   `cumulative_loss` is per *phase*, and `entry` maps to two fundamentals
+   (`braking` measured, `commitment` proxy), so summing it in the renderer
+   both double-counts and violates "the UI never computes a measurement".
+   Counts of rendered items are fine (the `shownCount` precedent). If a
+   per-fundamental total is genuinely wanted, the **engine** must compute it,
+   with its own decision about the double-count.
+2. **Grouping is presentation; the source tag is not.** SPEC decision 3
+   requires every finding to carry its source tag, and the three sources are
+   never combined into one figure. Regroup freely; never drop the `.src-tag`
+   chip, and never colour it semantically (colour-grammar rule 2).
+3. **Render-parity scans inside closed disclosures.** The crawler reads
+   `textContent` of every `.num` element, and `textContent` includes collapsed
+   `<details>`. So a number that isn't in the payload must not sit in a `.num`
+   element *anywhere*, open or not. This is why the vs-principle rationale —
+   which quotes one lap's figure — renders as prose.
+4. **Suppression may be collapsed, never dropped.** Every suppressed finding
+   stays listed with its `gate_reason` **verbatim**; UI-SPEC's copy-density
+   rule explicitly exempts measurement copy and gate reasons ("accuracy over
+   brevity there"). Trim chrome around them, never them.
+5. **A confidence value never launders an unmeasured inference.** A
+   `no_signal` principle gets a self-check and no score, magnitude, band or
+   confidence at any level — the grounding validator rejects it mechanically,
+   so a well-meant "confidence" chip on a self-check is a test failure, not a
+   design choice.
+6. **Don't let the two layers re-diverge.** A46 exists because coaching (the
+   racing voice) and findings (the measurement) were restating each other in
+   two registers. Before adding a sentence, check whether
+   `coaching/ontology.py` already says it.
+7. **Rules of hooks apply.** `useMethodologyText` is a hook; calling it in a
+   `.map()` is a violation even when the list is a module constant. See
+   `SourceLegend`'s four fixed calls.
+8. **Name an `explain.py` id before a view references it.** Both
+   `<Methodology id="…">` and `useMethodologyText("…")` are cross-checked by
+   `test_explain.py` (the hook form only since BUG-021 — see below).
+   Template-literal ids can't be checked statically and are covered
+   dynamically instead.
+
+### If you change a `Finding.description` or any engine string
+
+It flows into committed artifacts, so the change is never local:
+
+1. Regenerate all of them — `driverdna metrics|attribution|coaching|incidents|
+   model|census` (+ `corners`, which reads the fixtures directly) and
+   `driverdna report --out-dir .`. Delete any `mustang-laguna-seca.*` the
+   report command writes; only the GR86 and driver artifacts are committed.
+2. **Prove number-neutrality against clean `main`, not against the committed
+   files.** Committed artifacts have been stale before (BUG-020): regenerate
+   on a clean checkout too, and diff the *numeric multisets* of both JSON
+   payloads. A pure presentation change moves nothing except a deliberate
+   `PAYLOAD_VERSION` bump. Diffing against the committed file alone will
+   mislead you into thinking you broke something you didn't.
+3. Additive payload fields bump `PAYLOAD_VERSION`. `coach-v3`/`chat-v3`
+   version *prompts* — leave them unless prompt text actually changes.
+   Strings never enter the grounding `number_pool`; numbers do.
+
+### Verifying a change here
+
+Tests alone are not sufficient and the repo's rules say so. The full recipe:
+`python3 -m pytest` (report what skipped and why — Postgres skips are
+expected, browser skips are a gap); rebuild the SPA (`cd ui && npm run build`)
+so the in-package bundle ships it; then **actually load the page** — group
+headers render, disclosures open, `#/model` reads payload labels, and 0 px
+horizontal overflow at 390×844. `test_render_parity.py`, `test_offline.py` and
+the four other browser-gated files must pass with Chromium present.
+
 ## Commands and testing rules
 
 See `AGENTS.md` — imported at the top of this file.

@@ -37,6 +37,22 @@ from the committed files identically, and matches this branch
 number-for-number. Most of the diff in those three files is A42/A43 catching
 up.
 
+**Coaching/feedback edit guide + BUG-021.** `CLAUDE.md` gained "Editing the
+coaching and feedback layer" — where each driver-facing string lives (none in
+the SPA), the eight tripwires, the regenerate-and-prove-number-neutrality
+recipe, and the verification checklist — because the owner expects to keep
+iterating on this surface. One non-negotiable mirrored into both rule files:
+driver-facing words live in the engine; slugs are stable identities and are
+never renamed for readability.
+
+Writing that guide surfaced **BUG-021** (fixed): `test_explain.py`'s
+methodology-id guard matched only `<Methodology id="...">`, not
+`useMethodologyText("...")`, so eleven hook-referenced ids — including the
+four A46 added — could be typo'd and render as nothing with the suite green.
+Guard widened, plus two new tests covering the template-literal `incident.*`
+ids that cannot be checked statically. Found by verifying a claim before
+writing it down, not by a failure. Suite 942 → 944.
+
 **Bug log adopted (owner instruction, same session).** `docs/BUG-LOG.md` is
 now the defect register — 20 entries seeded from the repo's own history, 3
 open. Filing is binding (AGENTS.md, Decision discipline), and a paired
