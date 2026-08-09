@@ -55,6 +55,10 @@ class Technique:
 @dataclass(frozen=True)
 class Fundamental:
     id: str
+    #: Driver-facing name (A46). Required, not defaulted from the id: a new
+    #: fundamental must state how it is spelled on screen rather than
+    #: silently rendering as a snake_case identifier.
+    label: str
     description: str
     techniques: tuple[str, ...]
     phases: tuple[str, ...] = ()  # for the M6b opportunity component
@@ -208,7 +212,7 @@ TECHNIQUES: dict[str, Technique] = {
 
 FUNDAMENTALS: dict[str, Fundamental] = {
     "braking": Fundamental(
-        id="braking",
+        id="braking", label="Braking",
         description="Brake point, application, release, and trail braking.",
         techniques=(
             "brake_point_selection", "brake_application", "brake_release",
@@ -217,41 +221,70 @@ FUNDAMENTALS: dict[str, Fundamental] = {
         phases=("entry",),
     ),
     "rotation": Fundamental(
-        id="rotation",
+        id="rotation", label="Rotation",
         description="Turn-in, steering smoothness, and mid-corner speed.",
         techniques=("turn_in", "steering_smoothness", "rotation_efficiency", "coasting"),
         phases=("mid",),
     ),
     "corner_exit": Fundamental(
-        id="corner_exit",
+        id="corner_exit", label="Corner exit",
         description="Throttle pickup, modulation, and exit acceleration.",
         techniques=("throttle_pickup", "throttle_modulation", "exit_acceleration"),
         phases=("exit",),
     ),
     "vehicle_management": Fundamental(
-        id="vehicle_management",
+        id="vehicle_management", label="Vehicle mgmt",
         description="ABS usage (real signal); tire utilization, weight "
         "transfer, and slip management have no telemetry channel.",
         techniques=("abs_usage", "tire_utilization", "weight_transfer", "slip_management"),
     ),
     "consistency": Fundamental(
-        id="consistency",
+        id="consistency", label="Consistency",
         description="How repeatable the driver's technique is, lap to lap, "
         "pooled across every measured technique.",
         techniques=("repeatability",),
     ),
     "commitment": Fundamental(
-        id="commitment",
+        id="commitment", label="Commitment",
         description="Entry commitment - proxy only, via brake-point timing.",
         techniques=("entry_commitment",),
         phases=("entry",),
     ),
     "vision": Fundamental(
-        id="vision",
+        id="vision", label="Vision",
         description="Eye-line / vision - no telemetry channel, ever.",
         techniques=("eye_line",),
     ),
 }
+
+
+def phase_fundamental(phase: str) -> str:
+    """The fundamental a corner PHASE's findings belong to (A46).
+
+    The inverse of `Fundamental.phases`, which vs-self and vs-reference
+    findings need to be filed under a racing fundamental rather than under
+    the source that happened to measure them.
+
+    `entry` is claimed by two fundamentals — `braking` (measured) and
+    `commitment` (proxy) — so the rule is explicit: **the MEASURED one
+    wins.** A proxy fundamental is a step removed from what it estimates
+    (taxonomy docstring), so filing a directly-measured finding under it
+    would overstate what the proxy knows. `test_taxonomy.py` pins the
+    precondition this rests on — exactly one measured fundamental claims
+    each phase — so a future taxonomy edit can't quietly make this
+    ambiguous.
+
+    Raises KeyError on a phase no fundamental claims, rather than returning
+    None: a phase the engine measures but can't file is a taxonomy gap to
+    fix, never a finding to drop on the floor.
+    """
+    claimants = sorted(
+        fid for fid, f in FUNDAMENTALS.items()
+        if phase in f.phases and f.signal_status is SignalStatus.MEASURED
+    )
+    if not claimants:
+        raise KeyError(f"no measured fundamental claims phase {phase!r}")
+    return claimants[0]
 
 
 def metric_fundamentals(metric_name: str) -> tuple[str, ...]:

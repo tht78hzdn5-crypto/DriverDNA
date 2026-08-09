@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { send } from "../api.js";
 
-export default function Login({ onAuthenticated, googleEnabled }) {
+export default function Login({ onAuthenticated, googleEnabled, garage61Enabled }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,6 +86,11 @@ export default function Login({ onAuthenticated, googleEnabled }) {
         {googleEnabled && (
           <a className="btn" href="/api/auth/google/login" style={{ marginTop: "0.6rem", display: "block", textAlign: "center" }}>
             {isRegister ? "Sign up with Google" : "Sign in with Google"}
+          </a>
+        )}
+        {garage61Enabled && (
+          <a className="btn" href="/api/auth/garage61/login" style={{ marginTop: "0.6rem", display: "block", textAlign: "center" }}>
+            Sign in with Garage61
           </a>
         )}
         {error && <div className="error" style={{ marginTop: "0.8rem" }}>{error}</div>}

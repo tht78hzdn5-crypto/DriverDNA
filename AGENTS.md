@@ -40,6 +40,7 @@ convenience.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
+- Driver-facing words live in the engine (`coaching/ontology.py`, `explain.py`, `DETECTOR_LABELS`, `Fundamental.label`), never hardcoded in the SPA. Internal slugs (`coast-window`, `cp.*`, finding IDs) are stable identities that evidence IDs and annotations key off — never rename one to improve wording; add or edit its label. Editing how coaching/feedback appear: see CLAUDE.md's "Editing the coaching and feedback layer".
 
 - Verification discipline:
   1. A skipped test is not a pass. Check/report why tests skipped (missing Postgres/Chromium/SPA are gaps, not green results).
@@ -49,6 +50,7 @@ convenience.
   5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
   6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
   7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
+  8. **Never assume a failure is synthetic.** A failing test, error, or wrong number is real until proven otherwise: investigate and state the evidence before concluding it was the test/fixture/environment. Unexplained red is an open bug, never background noise.
 <!-- /shared:non-negotiables -->
 
 ## Decision discipline (standing rule)
@@ -57,6 +59,7 @@ Record decisions (e.g., scoring forks, M7 adoption, threshold defaults) and reas
 - Log resolutions in `docs/SPEC.md` (amendment log) and/or `docs/PROJECT-BRIEF.md` (Decision log), dated.
 - If touching the **nine philosophy points** or **out-of-scope list**, name the refined item and why (A14 is the model).
 - `docs/STATUS.md` is the single dated snapshot for verified counts. Do not create other status/handoff docs.
+- **Every real bug gets an entry in `docs/BUG-LOG.md`** — open or fixed, at the time you find it, including ones you fixed in the same session and ones you are leaving open. It is a defect register, not a status doc (that exemption is deliberate); it records what broke, why, blast radius, and **how it was caught or missed**, and cross-references the SPEC amendment rather than restating it. A bug is not fixed until a test pins it, or the entry says why none can.
 
 ## Build order (strict)
 
@@ -100,7 +103,7 @@ One agent works at a time. The rules below ensure cheap handoffs.
 ### Branches and merging
 
 - **`main` is protected; every agent goes through a PR** (owner instruction,
-  2026-08-09, SPEC.md A46) — supersedes the 2026-07-21 direct-push rule.
+  2026-08-09, SPEC.md A47) — supersedes the 2026-07-21 direct-push rule.
   Required checks: `pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
   `secrets` (not `mypy`, advisory only). Owner is on the bypass list for
   direct hotfix pushes; agents are not.
@@ -135,7 +138,7 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 CI (`tests.yml`) runs five jobs on pushes/PRs, all merge gates except `mypy`:
 
 1. **`pytest`** (Python 3.11 + 3.12): the suite minus `-m browser`, with a Postgres service container. Fails if Postgres tests skip due to missing infra.
-2. **`lint`**: `ruff check .` (Python) + `npm run lint` in `ui/` (SPA) — correctness rules only, no formatter (SPEC.md A46).
+2. **`lint`**: `ruff check .` (Python) + `npm run lint` in `ui/` (SPA) — correctness rules only, no formatter (SPEC.md A47).
 3. **`secrets`**: gitleaks, pinned binary + checksum, full git history.
 4. **`browser-tests`** (Python 3.12): installs Chromium, builds the SPA, runs every `pytest.mark.browser` test. Fails if the skip guard still triggers despite installing Chromium.
 5. **`mypy`** (advisory, not required): ratchet against `ci/mypy-baseline.txt` — fails for real on a new finding, but can't block a merge.

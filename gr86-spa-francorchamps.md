@@ -1,81 +1,86 @@
-# DriverDNA report — owner / GR86 @ Spa-Francorchamps
+# DriverDNA report â€” owner / GR86 @ Spa-Francorchamps
 
-Laps: 11 · sessions: 6 · payload v4. Sources are never blended; findings carry N, spread, source tag, and evidence IDs.
+Laps: 11 Â· sessions: 3 Â· payload v7. Grouped by racing fundamental; sources are never blended, and every finding keeps its own source tag, N, spread, and evidence IDs.
 
 ## Findings
 
-| source | finding | s | n | spread | status | evidence |
-|---|---|---|---|---|---|---|
-| vs-self | C01 mid: slower laps lose 0.821 s here vs faster laps | 0.821 | 11 | 0.416 | shown | 11 refs |
-| vs-self | C06 entry: slower laps lose 0.064 s here vs faster laps | 0.064 | 11 | 0.034 | shown | 11 refs |
-| vs-self | C06 exit: slower laps lose 0.091 s here vs faster laps | 0.091 | 11 | 0.073 | shown | 11 refs |
-| vs-self | C08 entry: slower laps lose 0.061 s here vs faster laps | 0.061 | 10 | 0.063 | shown | 10 refs |
-| vs-self | C08 mid: slower laps lose 0.071 s here vs faster laps | 0.071 | 10 | 0.060 | shown | 10 refs |
-| vs-self | C15 entry: slower laps lose 0.079 s here vs faster laps | 0.079 | 11 | 0.137 | shown | 11 refs |
-| vs-self | C15 exit: slower laps lose 0.142 s here vs faster laps | 0.142 | 11 | 0.301 | shown | 11 refs |
-| vs-principle | C01: coast-window on 6/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 3.63 s with neither pedal is time the corner gives nobody. | — | 10 | — | shown | 6 refs |
-| vs-principle | C01: one-steering-input on 5/10 laps. One committed steering input entry to apex; 3 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 10 | — | shown | 5 refs |
-| vs-principle | C01: throttle-brake-overlap on 6/11 laps. Throttle and brake should not work against each other; 2.40 s of overlap in this corner wastes both. | — | 11 | — | shown | 6 refs |
-| vs-principle | C02: one-steering-input on 9/10 laps. One committed steering input entry to apex; 14 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 10 | — | shown | 9 refs |
-| vs-principle | C03: coast-window on 7/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 1.67 s with neither pedal is time the corner gives nobody. | — | 10 | — | shown | 7 refs |
-| vs-principle | C03: one-steering-input on 5/10 laps. One committed steering input entry to apex; 3 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 10 | — | shown | 5 refs |
-| vs-principle | C03: throttle-monotonic on 5/10 laps. Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take. | — | 10 | — | shown | 5 refs |
-| vs-principle | C05: coast-window on 10/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 4.03 s with neither pedal is time the corner gives nobody. | — | 11 | — | shown | 10 refs |
-| vs-principle | C06: one-steering-input on 8/11 laps. One committed steering input entry to apex; 6 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 11 | — | shown | 8 refs |
-| vs-principle | C08: coast-window on 9/10 laps. Between brake release and throttle pickup the car should be working, not coasting; 6.68 s with neither pedal is time the corner gives nobody. | — | 10 | — | shown | 9 refs |
-| vs-principle | C08: one-steering-input on 7/10 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 10 | — | shown | 7 refs |
-| vs-principle | C15: coast-window on 11/11 laps. Between brake release and throttle pickup the car should be working, not coasting; 3.83 s with neither pedal is time the corner gives nobody. | — | 11 | — | shown | 11 refs |
-| vs-principle | C15: one-steering-input on 6/11 laps. One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled. | — | 11 | — | shown | 6 refs |
-| vs-principle | C15: throttle-brake-overlap on 7/11 laps. Throttle and brake should not work against each other; 0.83 s of overlap in this corner wastes both. | — | 11 | — | shown | 7 refs |
+### Braking
 
-Suppressed findings: 96 (each with its stated reason — see the JSON report for the full list).
+| source | finding | s | n | spread | evidence |
+|---|---|---|---|---|---|
+| vs-self | C05 entry: 0.105 s between your fastest and slowest laps | 0.105 | 11 | 0.072 | 11 refs |
+| vs-self | C14 entry: 0.204 s between your fastest and slowest laps | 0.204 | 11 | 0.138 | 11 refs |
+
+### Rotation
+
+| source | finding | s | n | spread | evidence |
+|---|---|---|---|---|---|
+| vs-self | C01 mid-corner: 0.234 s between your fastest and slowest laps | 0.234 | 11 | 0.205 | 11 refs |
+| vs-self | C05 mid-corner: 0.182 s between your fastest and slowest laps | 0.182 | 11 | 0.101 | 11 refs |
+| vs-principle | C01: extra steering corrections on 6 of 11 laps | â€” | 11 | â€” | 6 refs |
+| vs-principle | C02: extra steering corrections on 9 of 10 laps | â€” | 10 | â€” | 9 refs |
+| vs-principle | C05: coasting mid-corner on 11 of 11 laps | â€” | 11 | â€” | 11 refs |
+| vs-principle | C14: coasting mid-corner on 11 of 11 laps | â€” | 11 | â€” | 11 refs |
+| vs-principle | C14: extra steering corrections on 6 of 11 laps | â€” | 11 | â€” | 6 refs |
+
+### Corner exit
+
+| source | finding | s | n | spread | evidence |
+|---|---|---|---|---|---|
+| vs-self | C03 exit: 0.115 s between your fastest and slowest laps | 0.115 | 11 | 0.248 | 11 refs |
+| vs-self | C05 exit: 0.053 s between your fastest and slowest laps | 0.053 | 11 | 0.049 | 11 refs |
+| vs-self | C08 exit: 0.205 s between your fastest and slowest laps | 0.205 | 10 | 0.162 | 10 refs |
+| vs-self | C10 exit: 0.145 s between your fastest and slowest laps | 0.145 | 11 | 0.168 | 11 refs |
+| vs-principle | C01: lifting after throttle pickup on 7 of 11 laps | â€” | 11 | â€” | 7 refs |
+| vs-principle | C10: lifting after throttle pickup on 6 of 11 laps | â€” | 11 | â€” | 6 refs |
+
+
+Suppressed findings: 91 (each with its stated reason â€” see the JSON report for the full list).
 
 ## Cumulative typical loss (s/lap vs robust baseline)
 
 | by phase | s |
 |---|---|
-| entry | 0.439 |
-| exit | 0.796 |
-| mid | 1.143 |
+| entry | 0.613 |
+| exit | 1.057 |
+| mid | 1.688 |
 
 | by class | s |
 |---|---|
-| fast | 0.092 |
-| medium | 0.955 |
-| slow | 1.332 |
+| fast | 0.195 |
+| medium | 1.668 |
+| slow | 1.495 |
 
 ## Corner map
 
 | corner | class | apex (% lap) |
 |---|---|---|
-| C01 | slow | 6.0 |
-| C02 | fast | 19.3 |
-| C03 | medium | 35.1 |
-| C04 | medium | 38.2 |
-| C05 | slow | 44.2 |
-| C06 | medium | 46.6 |
-| C07 | medium | 54.1 |
-| C08 | medium | 64.2 |
-| C09 | medium | 71.1 |
-| C10 | medium | 73.8 |
-| C11 | fast | 75.2 |
-| C12 | fast | 79.0 |
-| C13 | fast | 84.0 |
-| C14 | medium | 87.9 |
-| C15 | slow | 96.6 |
-| C16 | fast | 89.5 |
-| C17 | medium | 56.2 |
-| C18 | medium | 72.6 |
+| C01 | slow | 5.6 |
+| C02 | fast | 19.2 |
+| C03 | medium | 34.7 |
+| C04 | medium | 37.8 |
+| C05 | slow | 43.9 |
+| C06 | medium | 46.8 |
+| C07 | medium | 55.4 |
+| C08 | medium | 56.8 |
+| C09 | medium | 66.8 |
+| C10 | medium | 70.1 |
+| C11 | medium | 72.7 |
+| C12 | fast | 84.0 |
+| C13 | fast | 89.6 |
+| C14 | slow | 97.3 |
+| C15 | medium | 75.8 |
+| C16 | fast | 87.8 |
 
 ## Data quality
 
-Flag counts: {'clipped_pedal': 11} · laps with flags: 11/11
+Flag counts: {'clipped_pedal': 11} Â· laps with flags: 11/11
 
 ## Not measured (never inferred)
 
-- tire slip/utilization — no slip channel in the source; never inferred
-- vision/eye-line — not measurable from telemetry; never inferred
-- fuel load, weather, lap validity, stint index — absent from the source contract; controls degrade with stated caveats instead
+- tire slip/utilization â€” no slip channel in the source; never inferred
+- vision/eye-line â€” not measurable from telemetry; never inferred
+- fuel load, weather, lap validity, stint index â€” absent from the source contract; controls degrade with stated caveats instead
 
 ## Caveats
 

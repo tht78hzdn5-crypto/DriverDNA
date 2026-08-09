@@ -2220,7 +2220,79 @@ Accepted at owner plan review; rationale recorded in the review:
   mocked OAuth callback for the same email, and asserts the old cookie now
   returns 401. Suite 903 → 905 passed, 16 skipped, 0 failed.
 
-- **A46** (2026-08-09): **CI quality gates: lint, secret scanning, mypy
+- **A46** (2026-08-09): **Feedback reads by racing fundamental, not by
+  measurement source** (owner-directed: "cleaner, easier to read, less
+  superfluous text, more racing fundamental focused than data focused —
+  understanding that the data feeds the coaching").
+
+  *The structural cause, not just wordiness.* The cohort page carried two
+  feedback layers saying the same thing in two voices: M7's coaching layer
+  already spoke racing ("Let the fronts finish their work before you ask them
+  to steer"), while the findings section directly below restated the same
+  triggers in engine voice, grouped by `vs-self`/`vs-principle`/
+  `vs-reference` — how the engine *knows* a thing, not how a driver drives.
+  Nothing on screen carried a fundamental, though `model/taxonomy.py` has held
+  that mapping since M6 and the Driver Model tab is built on it.
+
+  *Engine changes.* `taxonomy.phase_fundamental()` inverts `Fundamental.phases`
+  (entry→braking, mid→rotation, exit→corner_exit) with an explicit rule — the
+  MEASURED claimant wins, so `commitment` (proxy, also `phases=("entry",)`)
+  never adopts a directly-measured finding; `test_taxonomy.py` pins the
+  precondition that exactly one measured fundamental claims each phase, so a
+  later taxonomy edit cannot make this ambiguous silently. `Fundamental` gains
+  a required `label`. `metrics/detectors.py` gains `DETECTOR_LABELS`, the
+  driver-facing phrase per detector (slugs remain the stable IDs everywhere
+  else), cross-checked against the real dispatcher. `Finding` gains
+  `fundamental`, resolved from `detector_fundamentals` / `phase_fundamental`
+  so every renderer groups by one authority instead of its own lookup table.
+
+  *A correctness fix, not only a rewording.* `vs_principle_findings` built its
+  description as `f"{corner}: {detector} on {t}/{n} laps. {rationale}"` where
+  `rationale = rows[0]["rationale"]` — the **first triggering lap's** value.
+  "3.63 s with neither pedal" was therefore one lap's figure printed as though
+  it characterised the corner. The description is now a summary
+  (`C01: coasting mid-corner on 6 of 11 laps`) and the rationale moves to
+  `details["rationale"]`, rendered behind the evidence disclosure labelled as
+  the single observation it is. The driving principle that sentence was
+  carrying already lives in `coaching/ontology.py`, its proper home.
+  `vs-reference` drops the per-row "Gap is context, not recoverable time."
+  (30 repetitions on the owner's real GT4/Spa cohort) — the phrase is stated
+  once by the section legend and `explain.py`'s `source.vs-reference`; the
+  fixed vocabulary "gap to reference" is unchanged (decision 8).
+
+  *Rendering.* `FundamentalSections` replaces `SourceSections` on the cohort
+  page and the corner drill, in the Driver Model pyramid's fixed order; the
+  coaching expression for a fundamental and the findings that triggered it now
+  sit in one group instead of restating each other. N, spread, reference
+  depth, gap band and the detector rationale move behind the existing
+  `.disclosure` arrow; the suppressed pile collapses to one disclosure per
+  group carrying every gate reason verbatim. `belief.label` travels through
+  the payload, retiring the hardcoded label map in `model.jsx`.
+  `PAYLOAD_VERSION` 6→7 (additive: `finding.fundamental`, `belief.label`);
+  `coach-v3`/`chat-v3` untouched — those version prompts, and no prompt text
+  changed. Every addition is a string, so the numeric-grounding pool is
+  unaffected.
+
+  *Number-neutral, proven.* Regenerating every artifact against clean `main`
+  and against this branch and diffing the numeric multisets: the only value
+  that moved in `gr86-spa-francorchamps.json` and `driver.json` is
+  `payload_version` 6→7. `docs/attribution-report.md`, `metrics-report.md`,
+  `corners-report.md`, `incidents-report.md`, `driver-model-report.md` and
+  `census-report.md` regenerate byte-identical.
+
+  *Pre-existing staleness found and fixed in passing, flagged so it is not
+  read as this change's doing:* `docs/coaching-report.md`, `driver.*` and
+  `gr86-spa-francorchamps.*` were stale on `main` — A42 (`coach-onto-v2`,
+  per-unit CV normalization) and A43 (census in the driver payload) changed
+  their numbers without regenerating them. Verified by regenerating on a clean
+  checkout: clean-`main` output differs from the committed files in exactly
+  the same way, and matches this branch's output number-for-number. They are
+  regenerated here; most of the diff in those three files is A42/A43 catching
+  up, not A46.
+
+  Suite 908 → 924 passed, 16 skipped (Postgres only), 0 failed.
+
+- **A47** (2026-08-09): **CI quality gates: lint, secret scanning, mypy
   ratchet, and branch protection (owner-directed) — plus two live CI bugs
   found and fixed while scoping the work.** `main` had no merge gate at all
   (unprotected, and `tests.yml` triggers on `push`, so CI could only report

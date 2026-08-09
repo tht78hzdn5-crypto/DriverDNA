@@ -70,7 +70,7 @@ extend-exclude = ["src/driverdna/ui/static", "tests/fixtures"]
 # Correctness only (pyflakes + bugbear): no formatter, no line-length rule.
 # A repo three agents push directly to, with a committed-build-output and
 # inspect.getsource-asserting test suite, is a bad target for a reflow tool —
-# see docs/SPEC.md A46.
+# see docs/SPEC.md A47.
 select = ["F", "E4", "E7", "E9", "B"]
 
 [tool.ruff.lint.flake8-bugbear]

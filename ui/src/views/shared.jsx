@@ -44,72 +44,179 @@ export function Methodology({ id, label = "How is this measured?" }) {
   );
 }
 
-// Findings grouped exactly as the payload states them: shown (priorities),
-// annotated (driver's call, measurement visible), suppressed (reason shown).
+// The pyramid's fixed order — foundations first, higher-order skills after
+// (shared with model.jsx so the two tabs read the same way). Layout only:
+// fixed regardless of score, so the order never implies a ranking. The
+// *labels* are not here — they come from the payload (`belief.label`), the
+// engine owning its own words.
+export const FUNDAMENTAL_ORDER = [
+  "braking", "rotation", "corner_exit",
+  "commitment", "consistency", "vehicle_management", "vision",
+];
+
+// id -> driver-facing name, straight from the payload's driver_model section.
+export function fundamentalLabels(driverModel) {
+  const out = {};
+  for (const [id, b] of Object.entries(driverModel?.beliefs || {})) {
+    if (b.label) out[id] = b.label;
+  }
+  return out;
+}
+
+function orderedGroups(itemsById) {
+  const known = FUNDAMENTAL_ORDER.filter((id) => itemsById[id]);
+  const rest = Object.keys(itemsById).filter((id) => !FUNDAMENTAL_ORDER.includes(id));
+  return [...known, ...rest.sort()];
+}
+
+// One finding. The claim and its value stay in the clear; N, spread, the
+// reference depth and the detector's per-lap rationale move behind the
+// disclosure arrow — reachable in one click, never deleted (A46). Nothing
+// here is inside a `.num` element unless it is a real payload number: the
+// rationale quotes ONE lap's figure, so it renders as prose.
 export function FindingRow({ finding, slug }) {
   const cls = finding.shown && !finding.annotation ? "" : "suppressed";
+  const detail = `#/finding/${slug}/${encodeURIComponent(finding.finding_id)}`;
   return (
     <div className={`finding ${cls}`}>
       <div className="head">
         <span className="desc">
-          <a href={`#/finding/${slug}/${encodeURIComponent(finding.finding_id)}`}>
-            {finding.description}
-          </a>
+          <span className="src-tag">{finding.source}</span>
+          <a href={detail}>{finding.description}</a>
         </span>
         <span className="val num">
           {finding.seconds === null ? "" : `${fmt(finding.seconds)} s`}
         </span>
       </div>
-      <div className="meta num">
-        n={finding.n}
-        {finding.spread !== null && <> · spread {fmt(finding.spread)}</>}
-        {finding.source === "vs-reference" && finding.details?.reference_n != null && (
-          <> · ref n={finding.details.reference_n}</>
-        )}
-        {finding.annotation && (
-          <> · {finding.annotation.status} by you — measurement kept</>
-        )}
-      </div>
       {!finding.shown && <div className="reason">{finding.gate_reason}</div>}
+      {finding.annotation && (
+        <div className="meta">{finding.annotation.status} by you — measurement kept</div>
+      )}
+      {/* A suppressed row already sits inside its group's disclosure and
+          carries its gate reason inline; a second nested arrow under each
+          one is the noise this change exists to remove. Its numbers stay
+          reachable through the description's link to the evidence view. */}
+      {finding.shown && (
+      <details className="disclosure">
+        <summary><span className="chev" aria-hidden="true">▸</span> Evidence</summary>
+        <div className="disclosure-body">
+          <div className="meta num">
+            n={finding.n}
+            {finding.spread !== null && <> · spread {fmt(finding.spread)}</>}
+            {finding.source === "vs-reference" && finding.details?.reference_n != null && (
+              <> · ref n={finding.details.reference_n}</>
+            )}
+          </div>
+          {finding.details?.rationale && (
+            <p style={{ margin: "0.4rem 0 0" }}>
+              {finding.details.rationale}{" "}
+              <span className="dim">(one lap — see the full evidence for the rest)</span>
+            </p>
+          )}
+          <div style={{ marginTop: "0.4rem" }}>
+            <a href={detail}>Full evidence →</a>
+          </div>
+        </div>
+      </details>
+      )}
     </div>
   );
 }
 
-export function SourceSections({ findings, slug }) {
-  const sources = ["vs-self", "vs-principle", "vs-reference"];
-  const labels = {
-    "vs-self": "vs-self — your faster laps vs your slower laps",
-    "vs-principle": "vs-principle — canonical technique checks",
-    "vs-reference": "vs-reference — gap to reference (context, not recoverable time)",
-  };
-  return sources.map((source) => {
-    const group = findings.filter((f) => f.source === source);
-    if (!group.length) return null;
+// Findings grouped by racing fundamental (A46) rather than by source.
+// Grouping is presentation: each row still carries its own source tag and
+// its own arithmetic, and no group shows a combined figure — summing the
+// per-phase losses into a per-fundamental total would be the UI computing a
+// measurement, which the binding render rule forbids.
+export function FundamentalSections({ findings, slug, labels, coaching, headlinePrincipleId }) {
+  const byId = {};
+  for (const f of findings) {
+    const id = f.fundamental || "_other";
+    (byId[id] = byId[id] || []).push(f);
+  }
+  const coachById = {};
+  for (const c of coaching || []) {
+    const id = c.fundamental || "_other";
+    (coachById[id] = coachById[id] || []).push(c);
+  }
+  const ids = orderedGroups({ ...byId, ...coachById });
+
+  return ids.map((id) => {
+    const group = byId[id] || [];
     const shown = group.filter((f) => f.shown && !f.annotation);
     const annotated = group.filter((f) => f.shown && f.annotation);
     const suppressed = group.filter((f) => !f.shown);
     return (
-      <div key={source} className={`source-section ${source}`}>
-        <p className="eyebrow"><span className="src-tag">{source}</span>{labels[source]}</p>
-        <Methodology id={`source.${source}`} label="How does this source work?" />
+      <div key={id} className="fgroup">
+        <div className="fgroup-head">
+          <span className="fgroup-name">{labels[id] || id.replace(/_/g, " ")}</span>
+          <span className="fgroup-count num">{shown.length}</span>
+        </div>
+
+        {coachById[id] && (
+          <CoachingSecondary
+            items={coachById[id]} slug={slug}
+            headlinePrincipleId={headlinePrincipleId}
+          />
+        )}
+
         {shown.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
-        {!shown.length && (
+        {annotated.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
+
+        {!shown.length && !annotated.length && (
           <div className="dim" style={{ fontSize: "0.8rem", padding: "0.2rem 0 0.4rem" }}>
-            Nothing clears the gates yet — {suppressed.length} suppressed below, each with its reason.
+            Nothing clears the gates here yet.
           </div>
         )}
-        {annotated.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
-        {suppressed.slice(0, 6).map((f) => (
-          <FindingRow key={f.finding_id} finding={f} slug={slug} />
-        ))}
-        {suppressed.length > 6 && (
-          <div className="dim" style={{ fontSize: "0.74rem", padding: "0.35rem 0 0" }}>
-            + {suppressed.length - 6} more suppressed (same gates) — full list in the JSON report.
-          </div>
+
+        {suppressed.length > 0 && (
+          <details className="disclosure">
+            <summary>
+              <span className="chev" aria-hidden="true">▸</span>{" "}
+              {suppressed.length} not shown yet — evidence gates
+            </summary>
+            <div className="disclosure-body">
+              {suppressed.map((f) => (
+                <FindingRow key={f.finding_id} finding={f} slug={slug} />
+              ))}
+            </div>
+          </details>
         )}
       </div>
     );
   });
+}
+
+// How the grouping and the three source tags work — said once for the whole
+// section, in ONE disclosure rather than four stacked ones. The texts are
+// still the engine's (explain.py); only the wrapper is shared, so four rows
+// of chrome don't replace the per-section repetition this change removed.
+export function SourceLegend() {
+  // Four fixed hook calls, not a loop — the rules of hooks apply even when
+  // the list is a module constant.
+  const grouping = useMethodologyText("finding.grouping");
+  const vsSelf = useMethodologyText("source.vs-self");
+  const vsPrinciple = useMethodologyText("source.vs-principle");
+  const vsReference = useMethodologyText("source.vs-reference");
+  const rows = [
+    ["grouping", grouping], ["vs-self", vsSelf],
+    ["vs-principle", vsPrinciple], ["vs-reference", vsReference],
+  ].filter(([, text]) => text);
+  if (!rows.length) return null;
+  return (
+    <details className="disclosure">
+      <summary>
+        <span className="chev" aria-hidden="true">▸</span> How this is grouped, and what the tags mean
+      </summary>
+      <div className="disclosure-body">
+        {rows.map(([label, text]) => (
+          <p key={label} style={{ margin: "0 0 0.5rem" }}>
+            <span className="src-tag">{label}</span>{text}
+          </p>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 // Coaching (M7): the grounded plain-language layer over the raw findings.
@@ -123,21 +230,32 @@ function magnitudeText(kind, value) {
   return null;
 }
 
+// The corner is the actionable part and stays in the clear; the band,
+// magnitude and sample size are the supporting data and move behind the
+// arrow (A46) — the same treatment findings get, so one page has one rule.
 function CoachingTags({ item, slug }) {
   const mag = magnitudeText(item.magnitude_kind, item.magnitude);
   return (
-    <div className="coach-tags">
-      <span className="chip">{item.fundamental.replace(/_/g, " ")}</span>
-      {item.corner_id && (
-        <span className="chip">
-          <a href={`#/corner/${slug}/${item.corner_id}`}>{item.corner_id}</a>
-        </span>
-      )}
-      {item.gap_band && <span className="chip">{item.gap_band}</span>}
-      {mag && <span className="chip num">{mag}</span>}
-      <span className="chip num dim">n={item.n}</span>
-      {item.thin_evidence && <span className="chip dim">thin evidence</span>}
-    </div>
+    <>
+      <div className="coach-tags">
+        {item.corner_id && (
+          <span className="chip">
+            <a href={`#/corner/${slug}/${item.corner_id}`}>{item.corner_id}</a>
+          </span>
+        )}
+        {item.thin_evidence && <span className="chip dim">thin evidence</span>}
+      </div>
+      <details className="disclosure">
+        <summary><span className="chev" aria-hidden="true">▸</span> Why this, and how sure</summary>
+        <div className="disclosure-body">
+          <div className="meta num">
+            {item.gap_band && <>{item.gap_band}</>}
+            {mag && <> · {mag}</>}
+            {" "}· n={item.n} · {item.signal_status}
+          </div>
+        </div>
+      </details>
+    </>
   );
 }
 
@@ -204,8 +322,9 @@ export function CoachingSecondary({ items, slug, limit = 4, headlinePrincipleId 
             {g.length === 1 ? (
               <CoachingTags item={head} slug={slug} />
             ) : (
+              // The fundamental is the group heading now, so naming it on
+              // every chip row would repeat it once per principle.
               <div className="coach-tags">
-                <span className="chip">{head.fundamental.replace(/_/g, " ")}</span>
                 <span className="chip num dim">at {g.length} corners:</span>
                 {g.map((c) => (
                   <span key={c.corner_id} className="chip num">
@@ -228,14 +347,14 @@ export function CoachingSecondary({ items, slug, limit = 4, headlinePrincipleId 
   );
 }
 
-export function CoachingSelfChecks({ items }) {
+export function CoachingSelfChecks({ items, labels = {} }) {
   if (!items.length) return null;
   return items.map((c) => (
     <div key={c.coaching_principle_id} className="coach-item">
       <div className="coach-say">{c.self_check.instruction}</div>
       <div className="coach-why">{c.driving_principle}</div>
       <div className="coach-tags">
-        <span className="chip">{c.fundamental.replace(/_/g, " ")}</span>
+        <span className="chip">{labels[c.fundamental] || c.fundamental.replace(/_/g, " ")}</span>
         <span className="src-tag">{c.self_check.label}</span>
       </div>
     </div>

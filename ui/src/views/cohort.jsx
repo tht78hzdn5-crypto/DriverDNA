@@ -3,8 +3,9 @@ import { get, send } from "../api.js";
 import { fmt, lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";
 import {
-  CoachingHeadline, CoachingSecondary, CoachingSelfChecks, IncidentCard,
-  IncidentMechanismCounts, LossBars, Methodology, SourceSections,
+  CoachingHeadline, CoachingSelfChecks, FundamentalSections, IncidentCard,
+  IncidentMechanismCounts, LossBars, Methodology, SourceLegend,
+  fundamentalLabels,
 } from "./shared.jsx";
 
 // Cohort view (UI-SPEC view 2). The signature element: the track outline
@@ -223,6 +224,7 @@ export default function Cohort({ slug }) {
   const perCornerLoss = p.cumulative_loss.per_corner_total || {};
   const shownCount = p.findings.filter((f) => f.shown && !f.annotation).length;
   const suppressedCount = p.findings.filter((f) => !f.shown).length;
+  const labels = fundamentalLabels(p.driver_model);
 
   return (
     <div className="grid grid-wide">
@@ -269,21 +271,11 @@ export default function Cohort({ slug }) {
       )}
 
       <section className="panel">
-        <p className="eyebrow">Coaching — what to work on next</p>
+        <p className="eyebrow">Work on this next</p>
         <CoachingHeadline
           headline={p.coaching.headline} headline_reason={p.coaching.headline_reason}
           silent_count={p.coaching.silent_count} slug={slug}
         />
-        {(p.coaching.secondary.length > 0 || p.coaching.self_checks.length > 0) && (
-          <>
-            <div style={{ height: "0.3rem" }} />
-            <CoachingSecondary
-              items={p.coaching.secondary} slug={slug}
-              headlinePrincipleId={p.coaching.headline?.coaching_principle_id}
-            />
-            <CoachingSelfChecks items={p.coaching.self_checks} />
-          </>
-        )}
       </section>
 
       <section className="panel grid-span">
@@ -300,10 +292,25 @@ export default function Cohort({ slug }) {
         )}
       </section>
 
+      {/* A46: one feedback section, organised by racing fundamental. The
+          coaching expression and the findings that triggered it sit
+          together instead of restating each other in two voices. */}
       <section className="panel grid-span">
-        <p className="eyebrow">Findings — three sources, never blended</p>
-        <SourceSections findings={p.findings} slug={slug} />
+        <p className="eyebrow">By fundamental</p>
+        <SourceLegend />
+        <FundamentalSections
+          findings={p.findings} slug={slug} labels={labels}
+          coaching={p.coaching.secondary}
+          headlinePrincipleId={p.coaching.headline?.coaching_principle_id}
+        />
       </section>
+
+      {p.coaching.self_checks.length > 0 && (
+        <section className="panel grid-span">
+          <p className="eyebrow">No signal — run these yourself</p>
+          <CoachingSelfChecks items={p.coaching.self_checks} labels={labels} />
+        </section>
+      )}
 
       <div className="grid-span">
         <ReferenceLaps refs={p.references} onChanged={() => setReload((n) => n + 1)} />

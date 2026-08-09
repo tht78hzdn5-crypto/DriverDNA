@@ -91,7 +91,7 @@ export default function App() {
 
   if (session === null) return <Loading />;
   if (session.required && !session.authenticated) {
-    return <Login onAuthenticated={checkSession} googleEnabled={session.google_enabled} />;
+    return <Login onAuthenticated={checkSession} googleEnabled={session.google_enabled} garage61Enabled={session.garage61_enabled} />;
   }
 
   return (

@@ -8,7 +8,7 @@ import pytest
 from driverdna.config import DriverDNAConfig
 from driverdna.corners.segmenter import segment_lap
 from driverdna.ingest.parser import parse_lap
-from driverdna.metrics.detectors import run_detectors
+from driverdna.metrics.detectors import DETECTOR_LABELS, run_detectors
 from driverdna.metrics.technique import (
     METRIC_DEFS,
     compute_corner_metrics,
@@ -161,6 +161,35 @@ def test_summarize():
     assert abs(s.spread - 1.0) < 1e-12
     assert summarize([5.0]).spread == 0.0
     assert summarize([]) is None
+
+
+# --- driver-facing detector labels (A46) -----------------------------------
+# The slug is the stable ID; DETECTOR_LABELS is the phrase a driver reads.
+# Cross-checked against the real dispatcher, the same discipline
+# test_taxonomy.py uses — so adding a detector without a label, or leaving a
+# label behind after a rename, fails here rather than surfacing as a blank.
+
+
+def _real_detector_names() -> set[str]:
+    # one_corner_lap() supplies inputs for all five detectors (see
+    # test_one_corner_detector_states), so none short-circuits to None.
+    lap = one_corner_lap()
+    span = corner_of(lap)
+    metrics = compute_corner_metrics(lap, span, CONFIG)
+    return {r.detector for r in run_detectors(lap, span, metrics, CONFIG)}
+
+
+def test_detector_labels_cover_exactly_the_real_detectors():
+    assert set(DETECTOR_LABELS) == _real_detector_names()
+
+
+def test_detector_labels_are_plain_language_not_slugs():
+    # Hyphens are fine inside real English ("turn-in"); what must never
+    # happen is the label simply echoing the identifier back at the driver.
+    for slug, label in DETECTOR_LABELS.items():
+        assert label != slug, f"{slug}: label is just the slug"
+        assert " " in label, f"{slug}: label is not a phrase ({label!r})"
+        assert label.strip() == label and label, slug
 
 
 @pytest.mark.parametrize(

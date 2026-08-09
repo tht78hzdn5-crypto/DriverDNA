@@ -2,7 +2,7 @@ import { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
-import { Methodology } from "./shared.jsx";
+import { FUNDAMENTAL_ORDER, Methodology, fundamentalLabels } from "./shared.jsx";
 
 // Driver Model (M6) — the constitution's centre of gravity, made visible.
 // Render-only: every number here is straight from the payload's driver_model
@@ -17,15 +17,11 @@ import { Methodology } from "./shared.jsx";
 // Foundations (the physical arc of a corner) at the base; higher-order,
 // harder-to-measure skills toward the peak. Fixed order — stable regardless
 // of score, so the shape never implies a leaderboard.
-const ORDER = [
-  "braking", "rotation", "corner_exit",
-  "commitment", "consistency", "vehicle_management", "vision",
-];
-const LABEL = {
-  braking: "Braking", rotation: "Rotation", corner_exit: "Corner exit",
-  commitment: "Commitment", consistency: "Consistency",
-  vehicle_management: "Vehicle mgmt", vision: "Vision",
-};
+// Order is layout (shared with the findings grouping so both tabs read the
+// same way); the names themselves come from the payload — `belief.label`,
+// the engine owning its own words (A46) — so this view and the cohort page
+// can't drift onto two spellings of "Corner exit".
+const ORDER = FUNDAMENTAL_ORDER;
 const TREND = {
   improving: { mark: "▲", strong: true },
   declining: { mark: "▼", strong: true },
@@ -66,7 +62,7 @@ function Pyramid({ beliefs }) {
         return (
           <g key={id}>
             <polygon className={cls} points={pts} style={{ fill: fillFor(b) }} />
-            <text className="t-name" x="50" y={cy - 0.6}>{LABEL[id]}</text>
+            <text className="t-name" x="50" y={cy - 0.6}>{b.label || id}</text>
             <text className="t-score num" x="50" y={cy + 3.4}>
               {b.score == null ? "—" : fmt(b.score, 0)}
             </text>
@@ -83,7 +79,7 @@ function Meter({ id, b }) {
   return (
     <div className={`fbar ${noSignal ? "off" : ""}`}>
       <div className="fbar-head">
-        <span className="fbar-name">{LABEL[id] || id}</span>
+        <span className="fbar-name">{b.label || id}</span>
         <span className="src-tag">{b.signal_status.replace("_", " ")}</span>
         <span className="num fbar-score">{b.score == null ? "—" : fmt(b.score, 0)}</span>
       </div>
@@ -141,7 +137,7 @@ function _runs(points) {
   return out;
 }
 
-function ScoreHistoryChart({ history }) {
+function ScoreHistoryChart({ history, names = {} }) {
   const seriesKeys = Object.keys(history.series);
   const [selected, setSelected] = useState(() => new Set(seriesKeys));
 
@@ -187,7 +183,7 @@ function ScoreHistoryChart({ history }) {
             onClick={() => toggle(id)}
             aria-pressed={selected.has(id)}
           >
-            {LABEL[id] || id}
+            {names[id] || id}
           </button>
         ))}
       </div>
@@ -215,7 +211,7 @@ function ScoreHistoryChart({ history }) {
               ))}
               {points.filter((p) => p.score !== null).map((p) => (
                 <circle key={p.x} cx={px(p.x)} cy={py(p.score)} r="0.9" style={{ fill: style.stroke }}>
-                  <title>{`${LABEL[id] || id}: ${fmt(p.score, 1)} · n=${p.n} · ${labels[p.x]}`}</title>
+                  <title>{`${names[id] || id}: ${fmt(p.score, 1)} · n=${p.n} · ${labels[p.x]}`}</title>
                 </circle>
               ))}
             </g>
@@ -229,7 +225,7 @@ function ScoreHistoryChart({ history }) {
             <tr>
               <th>bucket</th>
               {seriesKeys.filter((id) => selected.has(id)).map((id) => (
-                <th key={id} className="right">{LABEL[id] || id}</th>
+                <th key={id} className="right">{names[id] || id}</th>
               ))}
             </tr>
           </thead>
@@ -277,13 +273,22 @@ export default function DriverModel() {
     <div className="grid">
       <section className="panel">
         <h1>Driver Model</h1>
-        <div className="sub">{model.note}.</div>
         <div className="chips">
-          <span className="chip">{model.scoring_model_version}</span>
-          <span className="chip">{model.taxonomy_version}</span>
           <span className="chip num">{measured.length} measured</span>
           <span className="chip num">{noSignal.length} no signal</span>
         </div>
+        {/* A46: the caveat and the version stamps are still stated, one
+            click away rather than above every read of the page. */}
+        <details className="disclosure">
+          <summary><span className="chev" aria-hidden="true">▸</span> What this is, and isn't</summary>
+          <div className="disclosure-body">
+            <p style={{ margin: "0 0 0.4rem" }}>{model.note}.</p>
+            <div className="chips">
+              <span className="chip">{model.scoring_model_version}</span>
+              <span className="chip">{model.taxonomy_version}</span>
+            </div>
+          </div>
+        </details>
       </section>
 
       <section className="panel pyramid-panel">
@@ -306,7 +311,7 @@ export default function DriverModel() {
         </section>
       )}
 
-      {history.data && <ScoreHistoryChart history={history.data} />}
+      {history.data && <ScoreHistoryChart history={history.data} names={fundamentalLabels(model)} />}
     </div>
   );
 }

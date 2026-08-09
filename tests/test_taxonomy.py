@@ -2,9 +2,12 @@
 orphans, nothing invented. Cross-checked against the actual engine, not a
 copy of it."""
 
+import pytest
+
 from driverdna.config import DriverDNAConfig
 from driverdna.metrics.detectors import run_detectors
 from driverdna.metrics.technique import METRIC_DEFS
+from driverdna.attribution.engine import PHASES
 from driverdna.model.taxonomy import (
     FUNDAMENTALS,
     TECHNIQUES,
@@ -14,6 +17,7 @@ from driverdna.model.taxonomy import (
     fundamental_metrics,
     fundamental_techniques,
     metric_fundamentals,
+    phase_fundamental,
 )
 
 
@@ -132,3 +136,47 @@ def test_fundamental_techniques_helper_returns_technique_objects():
     assert {t.id for t in techs} == {
         "throttle_pickup", "throttle_modulation", "exit_acceleration",
     }
+
+
+# --- phase -> fundamental (A46) --------------------------------------------
+# vs-self and vs-reference findings are phase-shaped, so grouping them by
+# racing fundamental needs this direction of the mapping. It must stay
+# unambiguous: `entry` is claimed by both braking (measured) and commitment
+# (proxy), and the rule that resolves it — the MEASURED one — is only safe
+# while exactly one measured fundamental claims each phase.
+
+
+def test_every_attribution_phase_has_exactly_one_measured_fundamental():
+    for phase in PHASES:
+        claimants = [
+            fid for fid, f in FUNDAMENTALS.items()
+            if phase in f.phases and f.signal_status is SignalStatus.MEASURED
+        ]
+        assert len(claimants) == 1, (
+            f"phase {phase!r} is claimed by {claimants} measured fundamentals; "
+            "phase_fundamental() can only stay deterministic at exactly one"
+        )
+
+
+def test_phase_fundamental_is_total_over_the_real_phases():
+    for phase in PHASES:
+        assert phase_fundamental(phase) in FUNDAMENTALS, phase
+
+
+def test_phase_fundamental_lookup():
+    assert phase_fundamental("entry") == "braking"
+    assert phase_fundamental("mid") == "rotation"
+    assert phase_fundamental("exit") == "corner_exit"
+
+
+def test_phase_fundamental_prefers_measured_over_proxy():
+    # `commitment` also declares phases=("entry",) but is PROXY — a proxy
+    # fundamental must never be the home a measured finding is filed under.
+    assert "entry" in FUNDAMENTALS["commitment"].phases
+    assert FUNDAMENTALS["commitment"].signal_status is SignalStatus.PROXY
+    assert phase_fundamental("entry") != "commitment"
+
+
+def test_phase_fundamental_rejects_an_unknown_phase():
+    with pytest.raises(KeyError):
+        phase_fundamental("straight")

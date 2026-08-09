@@ -1,4 +1,4 @@
-# Secret-scanning config (SPEC.md A46). Extends gitleaks' built-in default
+# Secret-scanning config (SPEC.md A47). Extends gitleaks' built-in default
 # ruleset rather than redefining it, so a gitleaks upgrade picks up new
 # detection rules automatically.
 #

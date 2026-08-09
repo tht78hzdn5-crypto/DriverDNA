@@ -25,10 +25,10 @@ from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.metrics.technique import METRIC_DEFS, summarize
 from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
-from driverdna.model.taxonomy import TAXONOMY_VERSION
+from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 6  # +census
+PAYLOAD_VERSION = 7  # +finding.fundamental, +belief.label (A46)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -77,6 +77,11 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
         ),
         "beliefs": {
             fid: {
+                # The engine owns the driver-facing name (A46), the same
+                # reasoning as explain.py owning methodology text: the SPA
+                # and the static reports must not each keep their own
+                # spelling of "Corner exit" and drift apart.
+                "label": FUNDAMENTALS[fid].label,
                 "signal_status": b.signal_status.value,
                 "score": b.score,
                 "confidence": b.confidence,

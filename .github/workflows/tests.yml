@@ -3,7 +3,7 @@ name: Tests
 # The merge gate. More than one agent works on this repository (see AGENTS.md),
 # and every invariant this project has — determinism, the source contract,
 # reference-lap isolation, the grounding validator — is enforced by pytest;
-# `ruff check` (correctness rules only, no formatter — SPEC.md A46) catches
+# `ruff check` (correctness rules only, no formatter — SPEC.md A47) catches
 # what pytest structurally can't. So the suite has to run on every push, not
 # just when someone remembers.
 
@@ -117,7 +117,7 @@ jobs:
 
   # Correctness-only lint: ruff (pyflakes + bugbear) for the engine, eslint
   # (pyflakes-equivalent rules only — no style/formatting) for the SPA. No
-  # formatter, no line-length rule — SPEC.md A46 records why: a repo three
+  # formatter, no line-length rule — SPEC.md A47 records why: a repo three
   # agents push directly to, with committed Vite build output and a test
   # suite that asserts on Python source text
   # (tests/test_ordering_determinism.py's inspect.getsource checks), is a
@@ -188,7 +188,7 @@ jobs:
       - name: gitleaks detect
         run: gitleaks detect --no-banner --redact --exit-code 1
 
-  # mypy, advisory (SPEC.md A46) — NOT continue-on-error, deliberately.
+  # mypy, advisory (SPEC.md A47) — NOT continue-on-error, deliberately.
   # continue-on-error is exactly what let the browser-tests job sit red and
   # unread for an unknown stretch of history (see that job's comment
   # below); the same mistake here would be pointless self-sabotage right

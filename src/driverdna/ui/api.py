@@ -14,8 +14,10 @@ validated-display client exists would invite unvalidated rendering).
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import secrets
 import tempfile
 import time
 import uuid
@@ -131,6 +133,8 @@ PUBLIC_API_PATHS = frozenset({
     "/api/auth/status",
     "/api/auth/google/login",
     "/api/auth/google/callback",
+    "/api/auth/garage61/login",
+    "/api/auth/garage61/callback",
     "/api/auth/register",
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
@@ -153,6 +157,7 @@ def create_app(
     google_client_id: str | None = None,
     google_client_secret: str | None = None,
     smtp_config: dict[str, str] | None = None,
+    garage61_client_id: str | None = None,
     behind_proxy: bool = False,
 ) -> FastAPI:
     """`chat_provider_factory` defaults to `chat.session.make_chat_provider`
@@ -638,6 +643,219 @@ def create_app(
         except Exception as exc:
             return _google_error_redirect(str(exc))
 
+    # --- Garage61 OAuth (PKCE, public client — no client_secret) -----------
+
+    def _garage61_error_redirect(message: str) -> Response:
+        import urllib.parse
+        safe = urllib.parse.quote(message[:200], safe="")
+        return RedirectResponse(f"/?auth_error={safe}", status_code=302)
+
+    @app.get("/api/auth/garage61/login")
+    def garage61_login(request: Request) -> Response:
+        if not garage61_client_id:
+            raise HTTPException(400, "Garage61 OAuth not configured")
+        if not session_secret:
+            raise HTTPException(400, "session secret required for Garage61 OAuth")
+
+        import hashlib
+        import urllib.parse
+
+        code_verifier = secrets.token_urlsafe(64)
+        code_challenge = (
+            base64.urlsafe_b64encode(
+                hashlib.sha256(code_verifier.encode("ascii")).digest()
+            )
+            .decode("ascii")
+            .rstrip("=")
+        )
+
+        url_obj = request.url_for("garage61_callback")
+        if _is_https(request):
+            url_obj = url_obj.replace(scheme="https")
+
+        state = secrets.token_urlsafe(32)
+        # Store verifier+state in a short-lived signed cookie so the
+        # callback can retrieve them without server-side session state.
+        import json as _json
+        pkce_payload = _json.dumps({"v": code_verifier, "s": state})
+        from driverdna.coach.keystore import encrypt_api_key
+        ct, nonce = encrypt_api_key(pkce_payload, session_secret=session_secret)
+        pkce_cookie = f"{ct}.{nonce}"
+
+        url = "https://garage61.net/app/account/oauth?" + urllib.parse.urlencode({
+            "client_id": garage61_client_id,
+            "redirect_uri": str(url_obj),
+            "response_type": "code",
+            "scope": "openid profile driving_data",
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+            "state": state,
+        })
+        response = RedirectResponse(url)
+        response.set_cookie(
+            "_g61_pkce", pkce_cookie,
+            max_age=600, httponly=True, samesite="lax",
+            secure=_is_https(request), path="/api/auth/garage61/callback",
+        )
+        return response
+
+    @app.get("/api/auth/garage61/callback")
+    def garage61_callback(code: str, state: str, request: Request) -> Response:
+        if not garage61_client_id or not session_secret:
+            raise HTTPException(400, "Garage61 OAuth not configured")
+
+        import urllib.request
+        import urllib.parse
+
+        # Recover PKCE verifier from the cookie
+        pkce_cookie = request.cookies.get("_g61_pkce")
+        if not pkce_cookie:
+            return _garage61_error_redirect("missing PKCE cookie — try again")
+        try:
+            ct, nonce = pkce_cookie.rsplit(".", 1)
+            from driverdna.coach.keystore import decrypt_api_key
+            import json as _json
+            pkce_data = _json.loads(decrypt_api_key(ct, nonce, session_secret=session_secret))
+            code_verifier = pkce_data["v"]
+            expected_state = pkce_data["s"]
+        except Exception:
+            return _garage61_error_redirect("invalid PKCE cookie — try again")
+
+        if not secrets.compare_digest(state, expected_state):
+            return _garage61_error_redirect("state mismatch — possible CSRF")
+
+        try:
+            url_obj = request.url_for("garage61_callback")
+            if _is_https(request):
+                url_obj = url_obj.replace(scheme="https")
+
+            # Token exchange — public client, PKCE, no client_secret
+            data = urllib.parse.urlencode({
+                "client_id": garage61_client_id,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": str(url_obj),
+                "code_verifier": code_verifier,
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                "https://garage61.net/api/oauth/token",
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            try:
+                with urllib.request.urlopen(req) as f:
+                    token_res = json.loads(f.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                body = e.read().decode("utf-8", errors="replace")
+                return _garage61_error_redirect(f"token exchange failed: {body}")
+
+            access_token = token_res.get("access_token")
+            if not access_token:
+                return _garage61_error_redirect("no access_token in response")
+            refresh_token = token_res.get("refresh_token")
+            scopes = token_res.get("scope", "")
+
+            # Fetch Garage61 user info for display/identity
+            g61_user_id = None
+            try:
+                me_req = urllib.request.Request(
+                    "https://garage61.net/api/v1/me",
+                    headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+                )
+                with urllib.request.urlopen(me_req) as f:
+                    me_data = json.loads(f.read().decode("utf-8"))
+                g61_user_id = str(me_data.get("id", ""))
+            except Exception:
+                pass  # non-fatal — we have the token regardless
+
+            # Encrypt and store the tokens
+            from driverdna.coach.keystore import encrypt_api_key
+            access_ct, access_nonce = encrypt_api_key(access_token, session_secret=session_secret)
+            refresh_ct, refresh_nonce = (None, None)
+            if refresh_token:
+                refresh_ct, refresh_nonce = encrypt_api_key(refresh_token, session_secret=session_secret)
+
+            user_pk = getattr(request.state, "user_pk", None)
+            now = datetime.now(UTC).isoformat()
+
+            # If the user is already authenticated, store against their user_pk.
+            # If not (first visit via Garage61), create/find a user by the G61 id.
+            if user_pk is None and session_secret is not None:
+                # Not logged in — auto-create or find user by garage61 id
+                if not g61_user_id:
+                    return _garage61_error_redirect("could not identify Garage61 account")
+                with open_db(request) as db:
+                    row = db.conn.execute(
+                        "SELECT owner_user_pk FROM garage61_tokens WHERE garage61_user_id=?",
+                        (g61_user_id,),
+                    ).fetchone()
+                    if row:
+                        user_pk = row["owner_user_pk"]
+                    else:
+                        session_epoch = now
+                        with db.conn:
+                            user_pk = db.conn.execute(
+                                "INSERT INTO users (email, password_hash, session_epoch, created_at, updated_at) "
+                                "VALUES (?, ?, ?, ?, ?) RETURNING user_pk",
+                                (f"garage61:{g61_user_id}", "", now, now, now),
+                            ).fetchone()["user_pk"]
+
+            if user_pk is None:
+                return _garage61_error_redirect("not authenticated — sign in first")
+
+            with open_db(request) as db:
+                with db.conn:
+                    db.conn.execute(
+                        "INSERT INTO garage61_tokens "
+                        "(owner_user_pk, garage61_user_id, access_ciphertext, access_nonce, "
+                        " refresh_ciphertext, refresh_nonce, scopes, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+                        "ON CONFLICT (owner_user_pk) DO UPDATE SET "
+                        "garage61_user_id=excluded.garage61_user_id, "
+                        "access_ciphertext=excluded.access_ciphertext, "
+                        "access_nonce=excluded.access_nonce, "
+                        "refresh_ciphertext=excluded.refresh_ciphertext, "
+                        "refresh_nonce=excluded.refresh_nonce, "
+                        "scopes=excluded.scopes, "
+                        "created_at=excluded.created_at",
+                        (user_pk, g61_user_id, access_ct, access_nonce,
+                         refresh_ct, refresh_nonce, scopes, now),
+                    )
+
+            # Issue a session cookie if the caller doesn't already have one
+            ttl = load_config(config_path).auth.session_ttl_hours * 3600
+            session_epoch = now
+
+            with open_db(request) as db:
+                with db.conn:
+                    db.conn.execute(
+                        "UPDATE users SET session_epoch=? WHERE user_pk=?",
+                        (session_epoch, user_pk),
+                    )
+
+            response = Response(
+                content="<!doctype html><html><head><meta charset='utf-8'>"
+                "<meta http-equiv='refresh' content='0;url=/'>"
+                "</head><body><script>window.location.replace('/');</script>"
+                "</body></html>",
+                media_type="text/html",
+            )
+            response.set_cookie(
+                auth.SESSION_COOKIE,
+                auth.issue_session(user_pk, session_epoch, session_secret, ttl_seconds=ttl),
+                max_age=ttl,
+                httponly=True, samesite="lax",
+                secure=_is_https(request), path="/",
+            )
+            response.delete_cookie("_g61_pkce", path="/api/auth/garage61/callback")
+            return response
+
+        except HTTPException:
+            raise
+        except Exception as exc:
+            return _garage61_error_redirect(str(exc))
+
     @app.post("/api/auth/logout")
     def logout(response: Response) -> dict[str, Any]:
         response.delete_cookie(auth.SESSION_COOKIE, path="/")
@@ -653,6 +871,7 @@ def create_app(
             "required": session_secret is not None,
             "authenticated": authenticated(request),
             "google_enabled": google_client_id is not None,
+            "garage61_enabled": garage61_client_id is not None,
         }
 
     def make_chat_provider(*, api_key: str | None = None) -> ChatProvider:
@@ -1330,19 +1549,68 @@ def create_app(
             ],
         }
 
+    def _resolve_garage61_token(request: Request) -> str | None:
+        """Try the stored OAuth token for this user, then fall back to env."""
+        if session_secret is not None:
+            user_pk = getattr(request.state, "user_pk", None)
+            if user_pk is not None:
+                try:
+                    with open_db(request) as db:
+                        row = db.conn.execute(
+                            "SELECT access_ciphertext, access_nonce FROM garage61_tokens "
+                            "WHERE owner_user_pk=?", (user_pk,),
+                        ).fetchone()
+                    if row:
+                        from driverdna.coach.keystore import decrypt_api_key
+                        return decrypt_api_key(
+                            row["access_ciphertext"], row["access_nonce"],
+                            session_secret=session_secret,
+                        )
+                except Exception:
+                    logger.warning("failed to decrypt stored Garage61 token, falling back to env")
+        return None
+
+    @app.get("/api/garage61/status")
+    def garage61_token_status(request: Request) -> dict[str, Any]:
+        """Whether the current user has a stored Garage61 OAuth token."""
+        if session_secret is None:
+            import os
+            return {"connected": bool(os.environ.get("GARAGE61_TOKEN", "").strip())}
+        user_pk = getattr(request.state, "user_pk", None)
+        if user_pk is None:
+            return {"connected": False}
+        with open_db(request) as db:
+            row = db.conn.execute(
+                "SELECT garage61_user_id, created_at FROM garage61_tokens WHERE owner_user_pk=?",
+                (user_pk,),
+            ).fetchone()
+        if row:
+            return {"connected": True, "garage61_user_id": row["garage61_user_id"], "since": row["created_at"]}
+        import os
+        return {"connected": bool(os.environ.get("GARAGE61_TOKEN", "").strip())}
+
+    @app.delete("/api/garage61/disconnect")
+    def garage61_disconnect(request: Request) -> dict[str, Any]:
+        """Remove the stored Garage61 OAuth token for the current user."""
+        user_pk = getattr(request.state, "user_pk", None)
+        if user_pk is None:
+            raise HTTPException(401, detail="not authenticated")
+        with open_db(request) as db:
+            with db.conn:
+                db.conn.execute("DELETE FROM garage61_tokens WHERE owner_user_pk=?", (user_pk,))
+        return {"disconnected": True}
+
     @app.post("/api/sync")
     def sync(request: Request, body: SyncBody | None = None) -> list[dict[str, Any]]:
-        """Wraps `sync_driver` (UI-SPEC U6 condition 1). `Garage61Client()` is
-        constructed here, straight from the environment (`GARAGE61_TOKEN`) —
-        this endpoint never reads a token out of the request body. Mirrors
-        `driverdna sync`'s own order: the client is constructed, and its
-        missing-token RuntimeError can surface, before the DB is ever opened —
-        an unset token writes nothing."""
+        """Wraps `sync_driver` (UI-SPEC U6 condition 1). Tries the stored
+        Garage61 OAuth token first, then falls back to `GARAGE61_TOKEN` env
+        var. This endpoint never reads a token out of the request body."""
         from driverdna.garage61.client import Garage61Client
         from driverdna.garage61.sync import sync_driver
 
+        stored_token = _resolve_garage61_token(request)
         try:
-            client = Garage61Client()
+            client = Garage61Client(token=stored_token) if stored_token else Garage61Client()
         except RuntimeError as e:
             raise HTTPException(400, detail=str(e)) from None
 

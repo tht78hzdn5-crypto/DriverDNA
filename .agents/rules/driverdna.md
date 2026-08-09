@@ -56,6 +56,7 @@ never only here.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
+- Driver-facing words live in the engine (`coaching/ontology.py`, `explain.py`, `DETECTOR_LABELS`, `Fundamental.label`), never hardcoded in the SPA. Internal slugs (`coast-window`, `cp.*`, finding IDs) are stable identities that evidence IDs and annotations key off — never rename one to improve wording; add or edit its label. Editing how coaching/feedback appear: see CLAUDE.md's "Editing the coaching and feedback layer".
 
 - Verification discipline:
   1. A skipped test is not a pass. Check/report why tests skipped (missing Postgres/Chromium/SPA are gaps, not green results).
@@ -65,4 +66,5 @@ never only here.
   5. Import shared constants in tests (e.g. route paths, config keys) instead of hand-copying them to prevent drift.
   6. "Tests pass" claims require a receipt: state the command, backend/environment used, and what skipped and why.
   7. Check other branches/migrations in flight to avoid duplicate/conflicting database schema changes.
+  8. **Never assume a failure is synthetic.** A failing test, error, or wrong number is real until proven otherwise: investigate and state the evidence before concluding it was the test/fixture/environment. Unexplained red is an open bug, never background noise.
 <!-- /shared:non-negotiables -->

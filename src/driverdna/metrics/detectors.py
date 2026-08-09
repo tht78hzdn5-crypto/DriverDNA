@@ -19,6 +19,20 @@ from driverdna.ingest.parser import TelemetryLap
 
 SOURCE_TAG = "vs-principle"
 
+#: Driver-facing phrase for each detector (A46). The slug stays the stable
+#: identifier — evidence IDs, config keys, the ontology's gates and every
+#: stored row keep using it — but a slug is an internal name, and it was
+#: being read as English in findings the driver actually sees. One home for
+#: the human wording, cross-checked in test_metrics.py against the real
+#: dispatcher so a new detector can't ship without a label.
+DETECTOR_LABELS: dict[str, str] = {
+    "brake-release-taper": "brake released before turn-in",
+    "throttle-brake-overlap": "throttle and brake overlapping",
+    "one-steering-input": "extra steering corrections",
+    "throttle-monotonic": "lifting after throttle pickup",
+    "coast-window": "coasting mid-corner",
+}
+
 
 @dataclass(frozen=True)
 class DetectorResult:

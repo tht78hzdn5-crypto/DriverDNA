@@ -1,37 +1,242 @@
 {
+ "census": {
+  "cohorts": [
+   [
+    "GR86",
+    "Spa-Francorchamps"
+   ],
+   [
+    "Mustang",
+    "Laguna Seca"
+   ]
+  ],
+  "confidence_ceiling_pct": 60.2,
+  "driver": "owner",
+  "n_reference_laps": 0,
+  "n_self_laps": 12,
+  "next_steps": [
+   {
+    "action": "3 more sessions",
+    "delta_points": 12.5,
+    "detail": "sessions 3/6; +4.17 points each, on every measured fundamental."
+   },
+   {
+    "action": "1 more track",
+    "delta_points": 8.33,
+    "detail": "tracks 2/3; +8.33 points each, on every measured fundamental."
+   },
+   {
+    "action": "more laps in an existing cohort",
+    "delta_points": null,
+    "detail": "evidence 12/50 on the weakest scoring fundamental. The gain is real but not projectable: how much a lap raises evidence_count depends on which corners and metrics it actually produces."
+   },
+   {
+    "action": "import a reference lap",
+    "delta_points": null,
+    "detail": "buys capability rather than confidence: it is the only way to fire the vs-reference path, which has never run on real data."
+   },
+   {
+    "action": "date the laps already imported",
+    "delta_points": null,
+    "detail": "dated 0/8; unblocks trend without driving anything new."
+   }
+  ],
+  "sections": [
+   {
+    "gates": [
+     {
+      "have": 12,
+      "label": "evidence laps",
+      "met": false,
+      "need": 50,
+      "remedy": "import more laps in any cohort (`driverdna sync`, `driverdna import`, or #/upload).",
+      "unblocks": "the volume quarter of every belief's confidence"
+     },
+     {
+      "have": 3,
+      "label": "sessions",
+      "met": false,
+      "need": 6,
+      "remedy": "drive on more separate occasions \u2014 one session is one sitting, not one lap.",
+      "unblocks": "the session-breadth quarter of confidence"
+     },
+     {
+      "have": 2,
+      "label": "tracks",
+      "met": false,
+      "need": 3,
+      "remedy": "import laps from another track (a track variant counts as its own cohort).",
+      "unblocks": "the track-breadth quarter of confidence"
+     },
+     {
+      "have": 2,
+      "label": "cars",
+      "met": true,
+      "need": 2,
+      "remedy": "import laps in another car.",
+      "unblocks": "the car-breadth quarter of confidence"
+     }
+    ],
+    "lines": [],
+    "note": "Confidence is the mean of these four ratios, each capped at 1.0 (model `dm-v2`). A term at its floor is saturated \u2014 more of it buys exactly nothing. Current ceiling for a measured fundamental: **60.2%** (a proxy fundamental is additionally capped at 50%).",
+    "title": "Driver Model confidence"
+   },
+   {
+    "gates": [],
+    "lines": [
+     "- `braking` \u2014 scoring on 12 lap(s), confidence 60%.",
+     "- `commitment` \u2014 scoring on 12 lap(s), confidence 50%.",
+     "- `consistency` \u2014 scoring on 12 lap(s), confidence 60%.",
+     "- `corner_exit` \u2014 scoring on 12 lap(s), confidence 60%.",
+     "- `rotation` \u2014 scoring on 12 lap(s), confidence 60%.",
+     "- `vehicle_management` \u2014 scoring on 12 lap(s), confidence 50%.",
+     "- `vision` \u2014 no signal; never scores at any volume of laps."
+    ],
+    "note": "A fundamental needs at least `model.min_evidence_for_score` = 5 contributing laps before it emits a number at all. Evidence counts differ per fundamental because a lap only teaches the fundamentals whose metrics and detectors it actually produced.",
+    "title": "Per-fundamental evidence"
+   },
+   {
+    "gates": [
+     {
+      "have": 0,
+      "label": "dated laps",
+      "met": false,
+      "need": 8,
+      "remedy": "`driverdna sync` sets lap_date from the API automatically; for manual CSVs use `driverdna import --date YYYY-MM-DD`.",
+      "unblocks": "`trend` on every fundamental (4 dated laps in each of the earlier and recent halves)"
+     }
+    ],
+    "lines": [],
+    "note": "Trend compares a fundamental's score between an earlier and a recent bucket of dated laps. An undated lap can still score \u2014 it just cannot be placed in time, so it never contributes a direction.",
+    "title": "Trend availability"
+   },
+   {
+    "gates": [
+     {
+      "have": 0,
+      "label": "reference laps",
+      "met": false,
+      "need": 1,
+      "remedy": "`driverdna import <lap.csv> --role reference --car \"GR86\" --track \"Spa-Francorchamps\"`",
+      "unblocks": "the vs-reference gap findings, the reference envelope, and the 'ref n=K' UI \u2014 none of which have ever run on real data"
+     }
+    ],
+    "lines": [],
+    "note": "Reference laps are structurally isolated: they never enter self history, trends, or consistency statistics. `sync` cannot fetch them (other drivers' telemetry returns 403), so the manual import path is the only way in.",
+    "title": "Reference laps"
+   },
+   {
+    "gates": [],
+    "lines": [
+     "- findings shown: **15** of 177 computed.",
+     "- suppressed because (count of findings per reason):",
+     "    - `insufficient data: 1 phase samples < 10` \u2014 75",
+     "    - `insufficient data: 9 phase samples < 10` \u2014 14",
+     "    - `insufficient data: 4 phase samples < 10` \u2014 11",
+     "    - `insufficient data: 5 phase samples < 10` \u2014 9",
+     "    - `insufficient data: 7 phase samples < 10` \u2014 9",
+     "    - `no effect: faster and slower laps do not differ here` \u2014 9",
+     "    - `below pattern floor: triggers on 0/11 laps` \u2014 7",
+     "    - `insufficient data: 8 phase samples < 10` \u2014 5",
+     "    - `below pattern floor: triggers on 5/11 laps` \u2014 4",
+     "    - `insufficient data: 2 phase samples < 10` \u2014 4",
+     "    - `below pattern floor: triggers on 0/10 laps` \u2014 3",
+     "    - `below pattern floor: triggers on 4/11 laps` \u2014 3",
+     "    - `below pattern floor: triggers on 1/11 laps` \u2014 2",
+     "    - `below pattern floor: triggers on 3/11 laps` \u2014 2",
+     "    - `insufficient data: 3 phase samples < 10` \u2014 2",
+     "    - `insufficient data: 6 phase samples < 10` \u2014 2",
+     "    - `below pattern floor: triggers on 2/11 laps` \u2014 1",
+     "- cross-track rollups suppressed because:",
+     "    - `insufficient data: 1 track(s) < 2` \u2014 5"
+    ],
+    "note": "These are the engine's own words, read back off the payload \u2014 census does not re-derive them. `gates.min_phase_samples` = 10, `gates.min_sessions` = 2, `gates.min_tracks_for_rollup` = 2. **Not every suppression is a volume problem**: a sample-count or track-count reason clears with more laps, but 'no effect' means the fast and slow laps genuinely do not differ there, and 'below pattern floor' means the behaviour is an event rather than a habit \u2014 more laps will not turn either into a finding.",
+    "title": "What the gates are hiding right now"
+   }
+  ],
+  "suppressed_gate_reasons": [
+   "below pattern floor: triggers on 0/10 laps",
+   "below pattern floor: triggers on 0/11 laps",
+   "below pattern floor: triggers on 1/11 laps",
+   "below pattern floor: triggers on 2/11 laps",
+   "below pattern floor: triggers on 3/11 laps",
+   "below pattern floor: triggers on 4/11 laps",
+   "below pattern floor: triggers on 5/11 laps",
+   "insufficient data: 1 phase samples < 10",
+   "insufficient data: 1 track(s) < 2",
+   "insufficient data: 2 phase samples < 10",
+   "insufficient data: 3 phase samples < 10",
+   "insufficient data: 4 phase samples < 10",
+   "insufficient data: 5 phase samples < 10",
+   "insufficient data: 6 phase samples < 10",
+   "insufficient data: 7 phase samples < 10",
+   "insufficient data: 8 phase samples < 10",
+   "insufficient data: 9 phase samples < 10",
+   "no effect: faster and slower laps do not differ here"
+  ]
+ },
  "cohorts": [
   {
    "car": "GR86",
    "driver": "owner",
    "lap_delta_s": [
-    15.3667,
-    1.2333,
-    4.6,
-    2.7167,
-    10.1333,
-    10.9167,
-    5.7167,
-    3.7,
-    21.15,
-    2.0167,
+    0.0,
+    1.3667,
+    3.4,
+    3.6167,
+    6.8667,
+    4.9,
+    3.0833,
+    4.95,
+    15.45,
+    9.4333,
+    4.2333
+   ],
+   "lap_durations_s": [
+    171.25,
+    172.6167,
+    174.65,
+    174.8667,
+    178.1167,
+    176.15,
+    174.3333,
+    176.2,
+    186.7,
+    180.6833,
+    175.4833
+   ],
+   "lap_ids": [
+    "HKWPXX",
+    "W5JRZB",
+    "K56YRV",
+    "VHC6M4",
+    "WC6PRT",
+    "WN30FK",
+    "5HAH7B",
+    "ZE3WQQ",
+    "B3M5ZW",
+    "59384F",
+    "5ZBWTZ"
+   ],
+   "n_laps": 11,
+   "n_sessions": 3,
+   "track": "Spa-Francorchamps"
+  },
+  {
+   "car": "Mustang",
+   "driver": "owner",
+   "lap_delta_s": [
     0.0
    ],
    "lap_durations_s": [
-    186.5167,
-    172.3833,
-    175.75,
-    173.8667,
-    181.2833,
-    182.0667,
-    176.8667,
-    174.85,
-    192.3,
-    173.1667,
-    171.15
+    97.2667
    ],
-   "n_laps": 11,
-   "n_sessions": 6,
-   "track": "Spa-Francorchamps"
+   "lap_ids": [
+    "RH11X7"
+   ],
+   "n_laps": 1,
+   "n_sessions": 0,
+   "track": "Laguna Seca"
   }
  ],
  "cross_track_rollups": [
@@ -39,7 +244,7 @@
    "car": "GR86",
    "class": "fast",
    "gate_reason": "insufficient data: 1 track(s) < 2",
-   "loss_s": 0.0919,
+   "loss_s": 0.1949,
    "n_tracks": 1,
    "shown": false
   },
@@ -47,7 +252,7 @@
    "car": "GR86",
    "class": "medium",
    "gate_reason": "insufficient data: 1 track(s) < 2",
-   "loss_s": 0.955,
+   "loss_s": 1.6682,
    "n_tracks": 1,
    "shown": false
   },
@@ -55,7 +260,23 @@
    "car": "GR86",
    "class": "slow",
    "gate_reason": "insufficient data: 1 track(s) < 2",
-   "loss_s": 1.332,
+   "loss_s": 1.4946,
+   "n_tracks": 1,
+   "shown": false
+  },
+  {
+   "car": "Mustang",
+   "class": "medium",
+   "gate_reason": "insufficient data: 1 track(s) < 2",
+   "loss_s": 0.0,
+   "n_tracks": 1,
+   "shown": false
+  },
+  {
+   "car": "Mustang",
+   "class": "slow",
+   "gate_reason": "insufficient data: 1 track(s) < 2",
+   "loss_s": 0.0,
    "n_tracks": 1,
    "shown": false
   }
@@ -63,49 +284,55 @@
  "driver_model": {
   "beliefs": {
    "braking": {
-    "confidence": 0.5133,
-    "evidence_count": 11,
+    "confidence": 0.6017,
+    "evidence_count": 12,
     "insufficient_reason": null,
-    "score": 81.22,
+    "label": "Braking",
+    "score": 80.52,
     "signal_status": "measured",
     "trend": "unavailable"
    },
    "commitment": {
     "confidence": 0.5,
-    "evidence_count": 11,
+    "evidence_count": 12,
     "insufficient_reason": null,
-    "score": 63.23,
+    "label": "Commitment",
+    "score": 56.1,
     "signal_status": "proxy",
     "trend": "unavailable"
    },
    "consistency": {
-    "confidence": 0.5133,
-    "evidence_count": 11,
+    "confidence": 0.6017,
+    "evidence_count": 12,
     "insufficient_reason": null,
-    "score": 34.71,
+    "label": "Consistency",
+    "score": 34.31,
     "signal_status": "measured",
     "trend": "unavailable"
    },
    "corner_exit": {
-    "confidence": 0.5133,
-    "evidence_count": 11,
+    "confidence": 0.6017,
+    "evidence_count": 12,
     "insufficient_reason": null,
-    "score": 66.65,
+    "label": "Corner exit",
+    "score": 65.19,
     "signal_status": "measured",
     "trend": "unavailable"
    },
    "rotation": {
-    "confidence": 0.5133,
-    "evidence_count": 11,
+    "confidence": 0.6017,
+    "evidence_count": 12,
     "insufficient_reason": null,
-    "score": 56.8,
+    "label": "Rotation",
+    "score": 60.17,
     "signal_status": "measured",
     "trend": "unavailable"
    },
    "vehicle_management": {
     "confidence": 0.5,
-    "evidence_count": 11,
+    "evidence_count": 12,
     "insufficient_reason": null,
+    "label": "Vehicle mgmt",
     "score": 0.0,
     "signal_status": "proxy",
     "trend": "unavailable"
@@ -114,6 +341,7 @@
     "confidence": 0.0,
     "evidence_count": 0,
     "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
+    "label": "Vision",
     "score": null,
     "signal_status": "no_signal",
     "trend": "unavailable"
@@ -125,5 +353,5 @@
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 4
+ "payload_version": 7
 }

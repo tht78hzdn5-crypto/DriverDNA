@@ -259,7 +259,7 @@ Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
 - **2026-08-09 — CI quality gates adopted; "no linter, no formatter, no
-  type checker" re-decided (SPEC.md A46).** `main` had no merge gate
+  type checker" re-decided (SPEC.md A47).** `main` had no merge gate
   (unprotected; `tests.yml` triggers on `push`, so CI only ever reported
   after the fact) and zero lint/type tooling — a stated position, now
   re-decided per AGENTS.md's Decision discipline rather than silently

@@ -111,7 +111,7 @@ ends green.
    is already red, fix that before starting. Do not later report green without
    having known where you started. `tests/test_render_parity.py` and
    `tests/test_offline.py` skip without Chromium/a built SPA locally, but CI's
-   `browser-tests` job runs them for real since 2026-08-09 (SPEC.md A46) — this
+   `browser-tests` job runs them for real since 2026-08-09 (SPEC.md A47) — this
    note is historical, from before that job was fixed/made blocking.
 
 ---
@@ -336,7 +336,7 @@ declared done.
 
 - All five trust gates green (at the time this track was built, browser gates
   ran locally only; CI's `browser-tests` job now runs them for real, SPEC.md
-  A46, 2026-08-09).
+  A47, 2026-08-09).
 - `_TOKENS` byte-match test green.
 - Render-parity crawler passes **twice**: desktop, and a second pass at 390×844
   asserting no horizontal body overflow on any route.
@@ -515,7 +515,7 @@ Per track, in order:
 2. `cd ui && npm run build` — reships the SPA into `src/driverdna/ui/static/`.
    Commit the built assets, as previous milestones did.
 3. **Browser trust gates**, locally or via CI's `browser-tests` job (real since
-   2026-08-09, SPEC.md A46 — this step predates that fix, when green CI was
+   2026-08-09, SPEC.md A47 — this step predates that fix, when green CI was
    *not* proof these held):
    `python3 -m pytest tests/test_render_parity.py tests/test_offline.py
    tests/test_cockpit_ui.py tests/test_auth_ui.py`
