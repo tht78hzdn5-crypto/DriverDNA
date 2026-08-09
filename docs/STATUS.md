@@ -1,5 +1,18 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-08 (Deployment Handoff).** 
+- **Oracle Cloud VM Setup:** Deployed DriverDNA to an Oracle Cloud Ampere A1 (ARM64) instance (`147.5.99.21`). Configured a dedicated `driverdna` service user, initialized the virtual environment, and built the systemd services (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
+- **Cloudflare Access Integration:** Set up a Cloudflare Tunnel (`cloudflared`) routing `driver-dna.com` to local port `8710`. Secured the domain behind Cloudflare Access using Google SSO.
+- **Internal Authentication:** Wired up the `driverdna` application's internal Google OAuth integration by injecting `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` into `/etc/driverdna/env` so users can authenticate internally via Google after passing the Cloudflare gate.
+- **Security Cleanup:** Successfully rotated the VM's SSH keypair after the private key was exposed in chat. Replaced `vm_key` and strictly locked `authorized_keys` to the new key.
+- **Current Errors / Blockers:**
+  - **ARM64 Determinism Failures:** The `pytest` test suite was run on the VM to verify determinism on the Ampere A1 processor, but it is currently throwing multiple failures (`F`) during execution (e.g. at 15%, 31%, 38%). This blocks the sign-off for the deployment. The final test report traceback needs to be reviewed to see if it's float precision tolerances or something else.
+  - **Service Stability (`Error 1033`):** The `driverdna` systemd service is currently unreachable via the Cloudflare Tunnel, returning a 1033 error. This occurred after `pip install '.[dev]'` modified dependencies on disk while the service was running. The service was restarted, but it remains unreachable. The logs (`journalctl -u driverdna`) need to be inspected to resolve the crash.
+- **Next Steps (Tomorrow):**
+  - Diagnose and resolve the `pytest` determinism failures on ARM64.
+  - Inspect `journalctl -u driverdna` to restore the application service and clear the 1033 Cloudflare error.
+  - Build the "Login with Garage61 and sync your laps" feature and wire up the callback URI: `https://driver-dna.com/api/auth/garage61/callback`.
+
 **Snapshot date: 2026-07-29.** Lap-analysis protocol built and its first
 calibration batch sealed (`docs/LAP-ANALYSIS-PROTOCOL.md`). Two new commands:
 `driverdna lap-digest` cuts a lap into readable per-corner slices and measures
