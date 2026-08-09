@@ -188,6 +188,57 @@ jobs:
       - name: gitleaks detect
         run: gitleaks detect --no-banner --redact --exit-code 1
 
+  # mypy, advisory (SPEC.md A46) — NOT continue-on-error, deliberately.
+  # continue-on-error is exactly what let the browser-tests job sit red and
+  # unread for an unknown stretch of history (see that job's comment
+  # below); the same mistake here would be pointless self-sabotage right
+  # after fixing it there. Advisory instead comes from Phase 6/branch
+  # protection simply never adding "mypy" to the required-checks list —
+  # the job is still allowed to fail for real, visibly, it just can't block
+  # a merge.
+  #
+  # 59 pre-existing findings (spot-checked, not real bugs: dynamic
+  # attributes on a class built via object.__new__ bypassing __init__,
+  # Optional-narrowing on loosely-typed dicts, an exception-named loop
+  # variable mypy's scope check flags on principle) are pinned in
+  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 59
+  # findings is a different, larger task than adding a gate. The gate
+  # itself is a ratchet: it never demands the baseline improve, but it
+  # fails the moment a push adds a new finding on top of it, so a real type
+  # error can't slip in silently just because the count was never zero.
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: mypy (ratchet against ci/mypy-baseline.txt)
+        run: |
+          python -m mypy src/driverdna | tee mypy-output.txt
+          mypy_exit=${PIPESTATUS[0]}
+          if [ "$mypy_exit" -gt 1 ]; then
+            echo "::error::mypy exited $mypy_exit (a fatal/config error, not a normal type-error report) — see the log above."
+            exit 1
+          fi
+          count=$(grep -oE '^Found [0-9]+ error' mypy-output.txt | grep -oE '[0-9]+' || echo 0)
+          baseline=$(cat ci/mypy-baseline.txt)
+          echo "mypy findings: $count (baseline: $baseline)"
+          if [ "$count" -gt "$baseline" ]; then
+            echo "::error::mypy findings ($count) exceed ci/mypy-baseline.txt's pinned count ($baseline) — a new type error was introduced. Fix it, or if it's a false positive, update the baseline with a one-line explanation in the commit message."
+            exit 1
+          elif [ "$count" -lt "$baseline" ]; then
+            echo "::notice::mypy findings ($count) are below the baseline ($baseline). Update ci/mypy-baseline.txt to lock the improvement in, or the ratchet won't catch a regression back up to the old count."
+          fi
+
   # Browser trust gates — the Chromium-gated tests that the main pytest job
   # deliberately deselects. A required, blocking check (2026 CI hardening):
   # this job used to be `continue-on-error: true`, which is exactly what let
