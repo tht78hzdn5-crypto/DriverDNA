@@ -5,8 +5,6 @@ The server launch (uvicorn.run) blocks and isn't unit-testable, same as the
 command is wired up.
 """
 
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from driverdna.cli import _demo_fixtures_dir, _seed_demo_db, app

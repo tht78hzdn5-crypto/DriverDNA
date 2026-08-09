@@ -2291,3 +2291,133 @@ Accepted at owner plan review; rationale recorded in the review:
   up, not A46.
 
   Suite 908 → 924 passed, 16 skipped (Postgres only), 0 failed.
+
+- **A47** (2026-08-09): **CI quality gates: lint, secret scanning, mypy
+  ratchet, and branch protection (owner-directed) — plus two live CI bugs
+  found and fixed while scoping the work.** `main` had no merge gate at all
+  (unprotected, and `tests.yml` triggers on `push`, so CI could only report
+  after the fact) and no linter/formatter/type checker, a position stated
+  four times in the repo (`tests.yml`'s own header comment,
+  `docs/PROJECT-BRIEF.md`, `docs/STATUS.md`, and this file's own prior text)
+  as a deliberate design choice. Re-decided per AGENTS.md's Decision
+  discipline, not silently reversed.
+
+  *Two real CI defects found before any new tooling landed:*
+  (1) **All 19–22 Playwright-driven tests had been silently skipping in
+  every CI run for an unknown stretch of history.** Playwright's installer
+  moved Chrome for Testing to a `chrome-linux64/` layout; the seven
+  browser-test modules' hand-copied `_find_chrome()` still globbed the old
+  `chrome-linux/` path. The `browser-tests` job's own guard step caught this
+  correctly (`grep` the skip reason, `exit 1`) — but the job was
+  `continue-on-error: true`, so the run still reported green regardless.
+  `tests/test_reference_curation_ui.py` ran in *no* environment at all:
+  Chromium-gated so it skipped in the main `pytest` job, and absent from the
+  browser job's hand-maintained six-file list. Fixed: `tests/browser.py`'s
+  `chromium_executable()` asks Playwright for its own browser path instead
+  of guessing the on-disk layout (verified this actually matters — this
+  session's sandbox had a real, reproducible version mismatch between a
+  freshly `pip install`ed Playwright and its pre-baked browser revision);
+  `pytest.mark.browser` (registered, `--strict-markers`) replaces the
+  hardcoded file list, so a new browser test module is picked up
+  automatically; `continue-on-error: true` is removed — the job blocks for
+  real now. Verified in a live GitHub Actions run, not just locally (the
+  bug was invisible locally the whole time it was broken in CI): the
+  `browser-tests` job went from `19 skipped in 1.69s` to
+  `22 passed, 902 deselected ... in 119.16s`.
+  (2) **The TDD guardrail (A-series predecessor, 2026-07-27) had never once
+  correctly suppressed.** It compared changed files against `^driverdna/`,
+  which stopped existing when the package moved to src-layout
+  (`src/driverdna/`) in `f286908` — so `src_changes` was always `0`, and the
+  "agent may be cheating" warning fired on every normal push touching
+  `tests/`, including ordinary Red→Green→Refactor commits. Fixed to
+  `^src/driverdna/`; verified live that it now stays quiet on a commit
+  touching both `tests/` and `src/driverdna/`, and still (correctly) warns
+  on a tests-only commit.
+
+  *What was adopted:*
+  - **`ruff check`** (pyflakes + bugbear only, `[tool.ruff]` in
+    `pyproject.toml`) as a required `lint` job. No formatter, no
+    line-length rule — see "What was explicitly not adopted" below. 47
+    pre-existing findings cleared before the gate landed, most notably 13
+    `zip()`-without-`strict=` sites reviewed individually rather than
+    blanket-flagged: 3 deliberately-ragged pairwise-adjacent patterns
+    (`zip(xs, xs[1:])`) got `strict=False`; the other 10 (all same-length
+    by construction — `corner_map.match_lap`'s one-id-per-span contract,
+    `outlier_mask`'s one-bool-per-input contract, digest-row-vs-header
+    parity) got `strict=True`, so a future length mismatch raises instead
+    of silently truncating. None of the 10 `strict=True` conversions broke
+    the suite, so none were latent bugs — but the check is now live for
+    the next one.
+  - **ESLint** (`ui/eslint.config.js`, flat config) for the 17-file SPA,
+    which had zero JS tooling. Pyflakes-equivalent rules plus only the two
+    long-established React hook rules (`rules-of-hooks`,
+    `exhaustive-deps`) — `eslint-plugin-react-hooks` 7's full "recommended"
+    set pulls in ~14 additional React-Compiler-readiness rules
+    (`set-state-in-effect`, `purity`, `immutability`, ...) that are
+    opinionated architectural guidance, not the "this is a bug" class this
+    gate is scoped to. 24 problems baseline against the full set, 22
+    against the narrowed one; cleared to 0 errors (13 dead `import React`
+    statements — React 18's automatic JSX runtime makes them unused, and
+    none referenced `React.` namespaced — plus two genuinely dead
+    variables). 5 warnings (stale-dependency risk in two effects, two
+    fast-refresh notes) left as non-blocking, matching upstream default
+    severity: fixing the `exhaustive-deps` warnings would mean guessing
+    whether the narrowed dependency lists are deliberate (avoiding a
+    re-fetch loop) without a way to verify the runtime intent.
+  - **gitleaks 8.30.1**, pinned binary + SHA256 checksum (independently
+    downloaded and hashed in this session, not copied from a summary,
+    verified to match the published `gitleaks_8.30.1_checksums.txt`
+    exactly) — downloaded directly rather than via `gitleaks-action`,
+    matching this repo's existing convention of pinning
+    `run-gemini-cli` by exact version in `gemini-assistant.yml`, so
+    there's no additional third-party Action supply chain to trust.
+    `.gitleaks.toml` extends the built-in ruleset and allowlists
+    `tests/fixtures/` and `src/driverdna/ui/static/` — not because either
+    tripped a false positive (a full-history scan with the default
+    ruleset found none: 116 commits, ~45.6 MB) but because both could
+    plausibly trip an entropy rule as they grow, and neither is source
+    this scan covers. Mechanises the AGENTS.md non-negotiable that
+    `GARAGE61_TOKEN`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`/
+    `DRIVERDNA_DATABASE_URL` are env-only and never persisted — previously
+    enforced by review alone.
+  - **mypy**, advisory, scoped to `src/driverdna` (93.6% already
+    return-annotated). 59 findings, spot-checked across every distinct
+    error class and none were real bugs (dynamic `_pool`/`_pool_raw`
+    attributes on a `Database` instance built via `object.__new__`
+    bypassing `__init__`; an exception-named `for e in ids:` loop variable
+    mypy's scope check flags on principle, unrelated to the actual
+    `except ... as e:` earlier in the same function; Optional-narrowing
+    and `**kwargs`-unpacking noise on loosely-typed dicts). Pinned to
+    `ci/mypy-baseline.txt` as a **ratchet**, not `continue-on-error: true`
+    — that flag is exactly what hid defect (1) above, so repeating it here
+    immediately after fixing it there would be self-defeating. The job can
+    fail for real and stay visibly red; it simply isn't in the
+    required-checks list, so it can't block a merge. Fails only when the
+    count exceeds the pinned baseline, never demands the existing 59 be
+    fixed.
+  - **Branch protection on `main`** (owner-executed via GitHub's UI — no
+    tool in this session can write repo rulesets): require the PR + status
+    checks (`pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
+    `secrets` — not `mypy`), owner on the bypass list for direct hotfix
+    pushes. Lands last, after every other check is proven green in a real
+    run.
+
+  *What was explicitly not adopted:* `ruff format` / black. Would touch
+  ~6,100 lines across 106 of 138 files — and only ~2% of that diff is
+  actual line length, the rest is trailing-comma-expansion churn — against
+  a repository three different agent tools push directly to.
+  `tests/test_ordering_determinism.py::test_no_unaliased_derived_tables`
+  asserts on literal SQL source text via `inspect.getsource` with a
+  40-character alias-lookahead window; a reflow tool restructuring a query
+  string would produce a false failure there. Prettier for the SPA was
+  similarly skipped for the same reason (no formatter, matching the
+  Python-side decision) — ESLint's scope is deliberately correctness-only
+  on both sides of the stack.
+
+  Landed as five separate commits (repair existing CI → ruff → eslint →
+  gitleaks → mypy), each with the full suite green and, for the two CI
+  fixes, verified in a real GitHub Actions run before the next commit —
+  the plan for this work exists specifically because a prior local-only
+  pass proved nothing about CI once already. Suite 905 → 909 passed (the
+  gitleaks pin-format test), 16 skipped, 0 failed throughout; no engine
+  number moved.

@@ -1,4 +1,3 @@
-import React from "react";
 import { get } from "../api.js";
 import { lapTime } from "../format.js";
 import { ContextStrip, Loading, useFetch } from "../app.jsx";

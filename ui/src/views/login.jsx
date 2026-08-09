@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { send } from "../api.js";
 
 export default function Login({ onAuthenticated, googleEnabled, garage61Enabled }) {

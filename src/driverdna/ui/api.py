@@ -31,8 +31,6 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Respon
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
-
 from driverdna.attribution.engine import PHASES, reference_envelope
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
@@ -50,6 +48,8 @@ from driverdna.report.payload import (
     list_cohorts,
     to_normalized_json,
 )
+
+logger = logging.getLogger(__name__)
 
 TRACE_POINTS = 800  # transport downsampling only — layout math, not measurement
 
@@ -770,7 +770,7 @@ def create_app(
                 pass  # non-fatal — we have the token regardless
 
             # Encrypt and store the tokens
-            from driverdna.coach.keystore import encrypt_api_key, fingerprint
+            from driverdna.coach.keystore import encrypt_api_key
             access_ct, access_nonce = encrypt_api_key(access_token, session_secret=session_secret)
             refresh_ct, refresh_nonce = (None, None)
             if refresh_token:

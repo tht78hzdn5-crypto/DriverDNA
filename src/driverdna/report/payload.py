@@ -13,8 +13,6 @@ import json
 from dataclasses import asdict
 from typing import Any
 
-import numpy as np
-
 from driverdna.attribution.engine import PHASES, baseline, reference_envelope
 from driverdna.attribution.ranker import (
     cumulative_loss,

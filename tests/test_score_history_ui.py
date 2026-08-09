@@ -22,6 +22,8 @@ from pathlib import Path
 import httpx
 import pytest
 
+from browser import chromium_executable
+
 pytest.importorskip("playwright.sync_api")
 from playwright.sync_api import sync_playwright  # noqa: E402
 
@@ -35,18 +37,15 @@ import sys  # noqa: E402
 sys.path.insert(0, str(TESTS_DIR))
 from synth import one_corner_lap, ramp, run_synthetic_lap  # noqa: E402
 
+CHROME = chromium_executable()
 
-def _find_chrome() -> Path | None:
-    hits = sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux/chrome"))
-    return hits[-1] if hits else None
-
-
-CHROME = _find_chrome()
-
-pytestmark = pytest.mark.skipif(
-    CHROME is None or not (STATIC / "index.html").exists(),
-    reason="Chromium binary or built SPA not present",
-)
+pytestmark = [
+    pytest.mark.browser,
+    pytest.mark.skipif(
+        CHROME is None or not (STATIC / "index.html").exists(),
+        reason="Chromium binary or built SPA not present",
+    ),
+]
 
 # 25 dated laps -- matches the default gate (history_buckets=6 x
 # trend_min_laps_per_bucket=4 = 24) and mirrors the owner's real synced

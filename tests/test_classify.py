@@ -78,7 +78,7 @@ def test_fixture_class_counts_pinned(filename):
     ids = corner_map.match_lap(lap, spans, CONFIG.identity)
 
     speeds: dict[str, list[float]] = {}
-    for span, cid in zip(spans, ids):
+    for span, cid in zip(spans, ids, strict=True):
         speeds.setdefault(cid, []).append(span.min_speed(lap) * MS_TO_KMH)
     counts = Counter(
         classify_speed(float(np.median(v)), CLS).value for v in speeds.values()

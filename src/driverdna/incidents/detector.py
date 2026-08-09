@@ -59,7 +59,7 @@ def _runs(mask: np.ndarray, min_len: int) -> list[tuple[int, int]]:
         starts.insert(0, 0)
     if mask[-1]:
         ends.append(len(mask))
-    return [(s, e) for s, e in zip(starts, ends) if e - s >= min_len]
+    return [(s, e) for s, e in zip(starts, ends, strict=True) if e - s >= min_len]
 
 
 def _near_stop_runs(lap: TelemetryLap, cfg: IncidentConfig) -> list[tuple[int, int]]:

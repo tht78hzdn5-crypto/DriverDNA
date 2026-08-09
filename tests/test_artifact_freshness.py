@@ -131,7 +131,7 @@ def _assert_fresh(committed: Path, fresh: Path, name: str) -> None:
     old = committed.read_text().splitlines()
     new = fresh.read_text().splitlines()
     detail = "lengths differ only"
-    for i, (a, b) in enumerate(zip(old, new), start=1):
+    for i, (a, b) in enumerate(zip(old, new, strict=False), start=1):
         if a != b:
             detail = f"first difference at line {i}:\n  committed: {a[:200]}\n  fresh:     {b[:200]}"
             break

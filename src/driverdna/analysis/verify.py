@@ -128,7 +128,7 @@ def _load_digest(digest_dir: Path) -> dict[tuple[str, str], dict[int, dict[str, 
                 rows: dict[int, dict[str, str]] = {}
                 for line in lines[1:]:
                     cells = line.split(",")
-                    rows[int(cells[0])] = dict(zip(header[1:], cells[1:]))
+                    rows[int(cells[0])] = dict(zip(header[1:], cells[1:], strict=True))
                 table[(lap["dir"], Path(rel).stem)] = rows
     return table
 

@@ -36,7 +36,7 @@ from driverdna.pipeline import (
     import_parsed_lap,
     rebuild_cohort_map,
 )
-from synth import CORNER_WINDOWS, TRACK_LAT, TRACK_LON, track_lap
+from synth import CORNER_WINDOWS, TRACK_LON, track_lap
 from synth import run_synthetic_lap as _run
 
 CONFIG = DriverDNAConfig()

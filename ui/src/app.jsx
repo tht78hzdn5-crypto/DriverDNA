@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import DriverHome from "./views/driver.jsx";
 import Garage from "./views/garage.jsx";
 import Cohort from "./views/cohort.jsx";

@@ -19,7 +19,6 @@ from driverdna.attribution.engine import PhaseWindows, derive_windows
 from driverdna.attribution.engine import phase_times as compute_phase_times
 from driverdna.config import DriverDNAConfig
 from driverdna.corners.classify import (
-    MS_TO_KMH,
     CornerClass,
     classify_with_hysteresis,
 )
@@ -136,7 +135,7 @@ def import_parsed_lap(
         # Freeze canonical phase windows alongside the map (F1): every later
         # lap is measured over these identical spans, never its own landmarks.
         for span, corner_id in zip(
-            spans, corner_map.match_lap(lap, spans, config.identity)
+            spans, corner_map.match_lap(lap, spans, config.identity), strict=True
         ):
             if corner_id is None:
                 continue
@@ -152,7 +151,7 @@ def import_parsed_lap(
 
     stored_windows = db.load_corner_windows(map_pk)
     assigned = corner_map.match_lap(lap, spans, config.identity)
-    for span, corner_id in zip(spans, assigned):
+    for span, corner_id in zip(spans, assigned, strict=True):
         metrics = compute_corner_metrics(lap, span, config)
         results = run_detectors(lap, span, metrics, config)
         obs_pk = db.store_observation(

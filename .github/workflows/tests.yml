@@ -2,9 +2,10 @@ name: Tests
 
 # The merge gate. More than one agent works on this repository (see AGENTS.md),
 # and every invariant this project has — determinism, the source contract,
-# reference-lap isolation, the grounding validator — is enforced by pytest and
-# nothing else: there is no linter, formatter or type checker. So the suite has
-# to run on every push, not just when someone remembers.
+# reference-lap isolation, the grounding validator — is enforced by pytest;
+# `ruff check` (correctness rules only, no formatter — SPEC.md A47) catches
+# what pytest structurally can't. So the suite has to run on every push, not
+# just when someone remembers.
 
 on:
   push:
@@ -17,6 +18,7 @@ permissions:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -58,9 +60,12 @@ jobs:
       - name: Test
         env:
           DRIVERDNA_TEST_DATABASE_URL: postgresql://driverdna:driverdna@localhost:5432/driverdna_test
-        # Chromium is not installed in this job, so browser tests skip here.
-        # They run in the separate `browser-tests` job (non-blocking) which
-        # installs Chromium and builds the SPA.
+        # Chromium is not installed in this job, so browser tests are
+        # explicitly deselected by marker (`-m "not browser"`) rather than
+        # left to skip on their own missing-Chromium guard — the two used to
+        # be equivalent, but relying on the guard is what let this job report
+        # green while every browser test silently skipped. They run for real
+        # in the separate `browser-tests` job, which now blocks merges.
         #
         # No extra -q: pyproject's addopts already sets it, and -qq suppresses
         # the "N passed, M skipped" summary line — which is the one line you
@@ -71,7 +76,7 @@ jobs:
         # status and a failing suite would report green.
         run: |
           set -o pipefail
-          python -m pytest -rs | tee pytest-output.txt
+          python -m pytest -rs -m "not browser" | tee pytest-output.txt
 
       # A green run is not proof the Postgres backend was exercised: if the
       # service container never came up, every dual-backend test would skip and
@@ -90,8 +95,8 @@ jobs:
 
       # Beck-style "AI cheating" detector (TDD guardrail, 2026-07-27).
       # If a push modifies files under tests/ but touches nothing under
-      # driverdna/ (the source package), that is suspicious: it may mean an
-      # agent modified tests to fit broken code instead of fixing the code.
+      # src/driverdna/ (the source package), that is suspicious: it may mean
+      # an agent modified tests to fit broken code instead of fixing the code.
       # This is a WARNING, not a failure — legitimate test-only commits
       # (refactoring helpers, adding coverage) are allowed but flagged.
       - name: Warn if tests changed without source changes
@@ -104,24 +109,153 @@ jobs:
             exit 0
           fi
           test_changes=$(echo "$changed_files" | grep -c '^tests/' || true)
-          src_changes=$(echo "$changed_files" | grep -c '^driverdna/' || true)
+          src_changes=$(echo "$changed_files" | grep -c '^src/driverdna/' || true)
 
           if [ "$test_changes" -gt 0 ] && [ "$src_changes" -eq 0 ]; then
-            echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
+            echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under src/driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
+          fi
+
+  # Correctness-only lint: ruff (pyflakes + bugbear) for the engine, eslint
+  # (pyflakes-equivalent rules only — no style/formatting) for the SPA. No
+  # formatter, no line-length rule — SPEC.md A47 records why: a repo three
+  # agents push directly to, with committed Vite build output and a test
+  # suite that asserts on Python source text
+  # (tests/test_ordering_determinism.py's inspect.getsource checks), is a
+  # bad target for a reflow tool. Config lives in pyproject.toml's
+  # [tool.ruff] and ui/eslint.config.js so both behave identically here and
+  # on a contributor's machine.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install Python package
+        run: python -m pip install -e ".[dev]"
+
+      - name: ruff check
+        run: python -m ruff check --output-format=github .
+
+      - name: Install SPA dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: eslint
+        working-directory: ui
+        run: npm run lint
+
+  # Mechanises the AGENTS.md non-negotiable that secrets (GARAGE61_TOKEN,
+  # ANTHROPIC_API_KEY, GEMINI_API_KEY, DRIVERDNA_DATABASE_URL) are env-only
+  # and never persisted — previously trusted to review alone. The pinned
+  # binary is downloaded directly (not gitleaks-action), matching how this
+  # repo already pins google-github-actions/run-gemini-cli in
+  # gemini-assistant.yml: no third-party Action's own supply chain to trust,
+  # and the version/checksum pin is enforced by
+  # test_agent_contract.py::test_gitleaks_version_is_pinned_and_checksummed,
+  # the same convention as that action's own pin test.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history — a leak in an old commit still counts
+
+      - name: Install gitleaks (pinned + checksummed)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        run: |
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+
+      - name: gitleaks detect
+        run: gitleaks detect --no-banner --redact --exit-code 1
+
+  # mypy, advisory (SPEC.md A47) — NOT continue-on-error, deliberately.
+  # continue-on-error is exactly what let the browser-tests job sit red and
+  # unread for an unknown stretch of history (see that job's comment
+  # below); the same mistake here would be pointless self-sabotage right
+  # after fixing it there. Advisory instead comes from Phase 6/branch
+  # protection simply never adding "mypy" to the required-checks list —
+  # the job is still allowed to fail for real, visibly, it just can't block
+  # a merge.
+  #
+  # 59 pre-existing findings (spot-checked, not real bugs: dynamic
+  # attributes on a class built via object.__new__ bypassing __init__,
+  # Optional-narrowing on loosely-typed dicts, an exception-named loop
+  # variable mypy's scope check flags on principle) are pinned in
+  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 59
+  # findings is a different, larger task than adding a gate. The gate
+  # itself is a ratchet: it never demands the baseline improve, but it
+  # fails the moment a push adds a new finding on top of it, so a real type
+  # error can't slip in silently just because the count was never zero.
+  mypy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: mypy (ratchet against ci/mypy-baseline.txt)
+        run: |
+          python -m mypy src/driverdna | tee mypy-output.txt
+          mypy_exit=${PIPESTATUS[0]}
+          if [ "$mypy_exit" -gt 1 ]; then
+            echo "::error::mypy exited $mypy_exit (a fatal/config error, not a normal type-error report) — see the log above."
+            exit 1
+          fi
+          count=$(grep -oE '^Found [0-9]+ error' mypy-output.txt | grep -oE '[0-9]+' || echo 0)
+          baseline=$(cat ci/mypy-baseline.txt)
+          echo "mypy findings: $count (baseline: $baseline)"
+          if [ "$count" -gt "$baseline" ]; then
+            echo "::error::mypy findings ($count) exceed ci/mypy-baseline.txt's pinned count ($baseline) — a new type error was introduced. Fix it, or if it's a false positive, update the baseline with a one-line explanation in the commit message."
+            exit 1
+          elif [ "$count" -lt "$baseline" ]; then
+            echo "::notice::mypy findings ($count) are below the baseline ($baseline). Update ci/mypy-baseline.txt to lock the improvement in, or the ratchet won't catch a regression back up to the old count."
           fi
 
   # Browser trust gates — the Chromium-gated tests that the main pytest job
-  # deliberately skips. Runs in parallel, non-blocking: a failure here is
-  # visible (red check) but does not block merges, matching the spec's
-  # "separate non-blocking job" direction (SPEC.md A16). The main suite
-  # remains the merge gate; this is the honest signal that was missing.
+  # deliberately deselects. A required, blocking check (2026 CI hardening):
+  # this job used to be `continue-on-error: true`, which is exactly what let
+  # every browser test silently skip here for an unknown stretch of history
+  # (Playwright's own installer moved to a `chrome-linux64/` layout; the
+  # tests' Chromium-discovery glob still looked for the old `chrome-linux/`,
+  # so every run hit the "not present" skip guard and reported green anyway
+  # because the job's failure didn't count). tests/browser.py now asks
+  # Playwright for its own browser path instead of guessing the layout, and
+  # this job blocks for real.
   #
   # Single Python version (3.12) — browser tests exercise UI rendering and
   # FastAPI routing, not Python-version compatibility. No Postgres — every
   # browser test uses SQLite fixture DBs.
   browser-tests:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -162,16 +296,16 @@ jobs:
       - name: Browser tests
         env:
           PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+        # Selected by marker (`-m browser`), not a hand-maintained file list —
+        # a new browser test module is picked up automatically instead of
+        # silently running nowhere (tests/test_reference_curation_ui.py did,
+        # until this change: Chromium-gated so it skipped in the main job,
+        # and absent from this job's old file list). If the marker itself
+        # ever typos, pytest exits 5 (no tests collected) and this step fails
+        # under `set -o pipefail` — no silent empty run either.
         run: |
           set -o pipefail
-          python -m pytest -rs \
-            tests/test_render_parity.py \
-            tests/test_offline.py \
-            tests/test_upload_ui.py \
-            tests/test_auth_ui.py \
-            tests/test_cockpit_ui.py \
-            tests/test_score_history_ui.py \
-            | tee browser-test-output.txt
+          python -m pytest -rs -m browser | tee browser-test-output.txt
 
       - name: Confirm browser tests actually ran
         run: |

@@ -1,5 +1,64 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-09 (CI quality gates: lint, secrets, mypy ratchet,
+branch protection — SPEC.md A47).**
+
+- **The "no linter, no formatter, no type checker" position is retired**,
+  re-decided per AGENTS.md's Decision discipline rather than silently
+  reversed. `main` had no merge gate at all (unprotected, and `tests.yml`
+  triggers on `push`, so CI only ever reported after the fact). Full
+  record: `docs/SPEC.md` A47, `docs/PROJECT-BRIEF.md`'s decision log.
+- **Two real, previously-invisible CI defects found and fixed first,
+  before any new tooling landed** — more consequential than the gates
+  themselves: (1) all 19–22 Playwright browser tests had been silently
+  skipping in every CI run (Playwright's installer moved to a
+  `chrome-linux64/` layout; the tests' Chromium-discovery glob still
+  expected the old path; the job's own guard caught this and failed, but
+  `continue-on-error: true` swallowed it) — fixed and **verified in a real
+  GitHub Actions run**, not just locally, since the bug was invisible
+  locally the entire time it was broken in CI:
+  `19 skipped in 1.69s` → `22 passed, 902 deselected ... in 119.16s`.
+  (2) the TDD guardrail (2026-07-27) had compared against a `driverdna/`
+  path that stopped existing at the src-layout migration, so it had never
+  once correctly suppressed since it was written — fixed to
+  `src/driverdna/`, verified live that it now stays quiet on a mixed
+  tests+source commit and still warns on a tests-only one.
+- **Adopted:** `ruff check` (pyflakes + bugbear, no formatter — required,
+  `lint` job) with 47 pre-existing findings cleared, including 13 `zip()`
+  calls reviewed individually for `strict=True` vs `strict=False` rather
+  than blanket-flagged; ESLint on the 17-file SPA (same correctness-only
+  scope, zero JS tooling existed before this), 22 problems cleared to 0
+  errors; gitleaks 8.30.1 pinned by exact binary + independently-verified
+  SHA256 checksum (not `gitleaks-action`), `.gitleaks.toml` allowlisting
+  `tests/fixtures/` and `src/driverdna/ui/static/`; mypy as an advisory
+  **ratchet** against `ci/mypy-baseline.txt` (59 findings, spot-checked
+  and none were real bugs) — deliberately *not*
+  `continue-on-error: true`, since that flag is exactly what hid defect
+  (1) above.
+- **Branch protection on `main` is the one owner-executed step** — no tool
+  in this session can write repo rulesets. Required checks:
+  `pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`, `secrets` —
+  deliberately not `mypy`. Owner stays on the bypass list for direct
+  hotfix pushes.
+
+### Verified counts (2026-08-09, A47 CI quality gates)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **908 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| Tests, after | **909 passed, 16 skipped, 0 failed** | `python3 -m pytest` |
+| New tests | **+1** `test_gitleaks_version_is_pinned_and_checksummed` in `test_agent_contract.py` | — |
+| ruff | **clean** | `python3 -m ruff check .` |
+| eslint | **clean** (5 non-blocking warnings) | `npm run lint` (in `ui/`) |
+| mypy | **59 findings**, at the pinned `ci/mypy-baseline.txt` ceiling, advisory only | `python3 -m mypy src/driverdna` |
+| Backend under test | SQLite locally (no Postgres, no secrets, no live server); Postgres service container in CI | — |
+
+Every CI-repair claim above was checked against a real GitHub Actions run on
+this branch, not just local output — this whole effort exists because a
+local pass had previously proven nothing about what CI actually does.
+
+---
+
 **Snapshot date: 2026-08-09 (A46 — feedback reads by racing fundamental).**
 
 ### Verified counts (2026-08-09, A46)

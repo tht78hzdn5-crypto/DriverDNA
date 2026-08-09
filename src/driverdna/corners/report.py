@@ -74,7 +74,7 @@ def build_corners_report(fixtures_dir: Path, config: DriverDNAConfig) -> str:
         for lap, spans in laps_with_spans:
             ids = corner_map.match_lap(lap, spans, config.identity)
             assignments.append((lap, spans, ids))
-            for span, cid in zip(spans, ids):
+            for span, cid in zip(spans, ids, strict=True):
                 if cid is None:
                     unmatched += 1
                     continue
@@ -109,7 +109,7 @@ def build_corners_report(fixtures_dir: Path, config: DriverDNAConfig) -> str:
                 "| corner | " + " | ".join(label for _, label in _LANDMARK_COLUMNS) + " |",
                 "|" + "---|" * (len(_LANDMARK_COLUMNS) + 1),
             ]
-            for span, cid in zip(spans, ids):
+            for span, cid in zip(spans, ids, strict=True):
                 cells = [
                     _pos(lap, getattr(span.landmarks, attr))
                     for attr, _ in _LANDMARK_COLUMNS

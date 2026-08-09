@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { get, uploadLaps } from "../api.js";
 
 // Upload (UI-SPEC view 7: "Laps — Import/session listing"). A thin form over

@@ -156,6 +156,30 @@ def test_gemini_assistant_action_is_pinned_to_a_version_that_exists():
     )
 
 
+def test_gitleaks_version_is_pinned_and_checksummed():
+    """The secrets job downloads a raw gitleaks release binary rather than
+    using gitleaks-action, so nothing here trusts a third-party Action's own
+    supply chain (same reasoning as pinning run-gemini-cli by exact version
+    above) — but that only holds if the version and checksum are pinned, not
+    left to float. Deliberately does not fetch the real checksum over the
+    network to verify it (the suite has to stay runnable offline); this is a
+    format guard, not a live one."""
+    workflow = (ROOT / ".github" / "workflows" / "tests.yml").read_text(
+        encoding="utf-8"
+    )
+    version_match = re.search(r'GITLEAKS_VERSION:\s*"(\d+\.\d+\.\d+)"', workflow)
+    assert version_match, "gitleaks version must be pinned to an exact release"
+    sha_match = re.search(r'GITLEAKS_SHA256:\s*"([0-9a-f]{64})"', workflow)
+    assert sha_match, (
+        "gitleaks download must be checksummed with a 64-hex-char SHA256, "
+        "verified against the download in the same step (sha256sum -c)"
+    )
+    assert "sha256sum -c" in workflow, (
+        "the pinned checksum must actually be verified against the download, "
+        "not just declared"
+    )
+
+
 def test_claude_md_imports_agents_md_without_restating_it():
     """One copy of the rules, no drift. CLAUDE.md pulls AGENTS.md in via the
     @path import rather than repeating it."""

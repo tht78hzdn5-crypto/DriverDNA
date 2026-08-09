@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from driverdna.model.taxonomy import FUNDAMENTALS, TECHNIQUES, SignalStatus
+from driverdna.model.taxonomy import SignalStatus
 
 ONTOLOGY_VERSION = "coach-onto-v2"
 

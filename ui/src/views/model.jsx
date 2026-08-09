@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";

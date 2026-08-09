@@ -109,9 +109,10 @@ ends green.
    `CLAUDE.md` "Current status".
 3. `python3 -m pytest` — **establish a baseline and read the output.** If `main`
    is already red, fix that before starting. Do not later report green without
-   having known where you started. Known: `tests/test_render_parity.py` and
-   `tests/test_offline.py` skip without Chromium/a built SPA; they are the
-   owner's to run locally and CI does not cover them.
+   having known where you started. `tests/test_render_parity.py` and
+   `tests/test_offline.py` skip without Chromium/a built SPA locally, but CI's
+   `browser-tests` job runs them for real since 2026-08-09 (SPEC.md A47) — this
+   note is historical, from before that job was fixed/made blocking.
 
 ---
 
@@ -333,8 +334,9 @@ declared done.
 
 ### Track A done-criteria
 
-- All five trust gates green (browser gates run locally; CI does not install
-  Chromium).
+- All five trust gates green (at the time this track was built, browser gates
+  ran locally only; CI's `browser-tests` job now runs them for real, SPEC.md
+  A47, 2026-08-09).
 - `_TOKENS` byte-match test green.
 - Render-parity crawler passes **twice**: desktop, and a second pass at 390×844
   asserting no horizontal body overflow on any route.
@@ -512,8 +514,9 @@ Per track, in order:
    configured (`DRIVERDNA_TEST_DATABASE_URL`).
 2. `cd ui && npm run build` — reships the SPA into `src/driverdna/ui/static/`.
    Commit the built assets, as previous milestones did.
-3. **Browser trust gates, locally** (CI does not install Chromium, so green CI is
-   *not* proof these hold — say so rather than implying coverage):
+3. **Browser trust gates**, locally or via CI's `browser-tests` job (real since
+   2026-08-09, SPEC.md A47 — this step predates that fix, when green CI was
+   *not* proof these held):
    `python3 -m pytest tests/test_render_parity.py tests/test_offline.py
    tests/test_cockpit_ui.py tests/test_auth_ui.py`
 4. Determinism, unchanged and mechanical: import the fixtures twice into separate

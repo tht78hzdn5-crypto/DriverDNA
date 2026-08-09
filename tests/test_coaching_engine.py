@@ -16,6 +16,7 @@ from driverdna.coaching.engine import (
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
+from driverdna.ingest.parser import TelemetryLap
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.pipeline import phase_windows_from_stored
 from synth import make_lap, one_corner_lap, ramp, track_lap, warp_time

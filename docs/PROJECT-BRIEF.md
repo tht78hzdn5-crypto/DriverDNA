@@ -258,6 +258,40 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-08-09 — CI quality gates adopted; "no linter, no formatter, no
+  type checker" re-decided (SPEC.md A47).** `main` had no merge gate
+  (unprotected; `tests.yml` triggers on `push`, so CI only ever reported
+  after the fact) and zero lint/type tooling — a stated position, now
+  re-decided per AGENTS.md's Decision discipline rather than silently
+  reversed. Adopted: `ruff check` (pyflakes + bugbear only, no formatter —
+  a reflow tool would break `test_ordering_determinism.py`'s
+  `inspect.getsource` assertions and touch ~6,100 lines across 106 of 138
+  files in a repo three agent tools push directly to), ESLint on the SPA
+  with the same correctness-only scope, gitleaks 8.30.1 pinned by exact
+  binary + independently-verified checksum (not `gitleaks-action`, mirroring
+  how `run-gemini-cli` is already pinned), and mypy as an advisory
+  **ratchet** against a pinned baseline (not `continue-on-error` — see
+  below for why). Branch protection on `main` itself is owner-executed
+  (GitHub UI; no session tool can write repo rulesets).
+
+  Found and fixed two real CI defects while scoping the work, both more
+  consequential than the new tooling: **all 19–22 Playwright browser tests
+  had been silently skipping in every CI run** — Playwright's installer
+  moved to a `chrome-linux64/` layout, the tests' Chromium-discovery glob
+  still expected the old `chrome-linux/`, and the job's own guard step
+  correctly caught this and failed — but the job was
+  `continue-on-error: true`, so the run reported green regardless. Fixed by
+  asking Playwright for its own browser path instead of guessing it, and by
+  removing `continue-on-error`; verified live in GitHub Actions, not just
+  locally, since the bug was invisible locally the whole time it was broken
+  in CI (`19 skipped in 1.69s` → `22 passed ... in 119.16s`). Separately,
+  **the TDD guardrail had never once correctly suppressed since it was
+  written** (2026-07-27): it compared against `^driverdna/`, a path that
+  stopped existing when the package moved to `src/driverdna/` — so it
+  warned on every normal push touching `tests/`. This is the direct reason
+  mypy is a ratchet, not `continue-on-error`, here: that flag is exactly
+  what hid the browser-test bug, and repeating it immediately after fixing
+  it would undercut the whole point of this work.
 - **2026-08-03 — Reference laps R2/R3: six forks, all asked via
   `AskUserQuestion`, none picked silently (SPEC.md A39).** Before writing any
   code: (1) no `--ref-label` column — the existing `driver` column, already
