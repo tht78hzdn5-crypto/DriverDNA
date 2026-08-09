@@ -73,6 +73,7 @@ actually stands, and `docs/DEPLOY-SPEC.md` holds the open P/M/H tracks.
 
 - Install: `python3 -m pip install -e ".[dev]"`
 - Test: `python3 -m pytest`
+- Lint: `python3 -m ruff check .` (Python); `npm run lint` in `ui/` (SPA)
 - CLI: `driverdna --help`
 - Commands given to the owner (Windows shell) must be PowerShell-ready: full paths, no bash-only syntax (`&&`, `$(...)`, POSIX env vars). Use `;` to chain, `$env:NAME` for env vars.
 
@@ -98,11 +99,15 @@ One agent works at a time. The rules below ensure cheap handoffs.
 
 ### Branches and merging
 
-- **Claude Code commits directly to `main`** (owner instruction, 2026-07-21).
+- **`main` is protected; every agent goes through a PR** (owner instruction,
+  2026-08-09, SPEC.md A46) — supersedes the 2026-07-21 direct-push rule.
+  Required checks: `pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
+  `secrets` (not `mypy`, advisory only). Owner is on the bypass list for
+  direct hotfix pushes; agents are not.
   **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
-  session by merging to `main`, or saying plainly why not.
-- **Other agents work on prefixed branch** (`gemini/<topic>` or `antigravity/<topic>`) and merge only after CI is green.
-- CI gates *merges*, so a direct push to `main` can break it. If `main` is red, fix it before starting new work.
+  session by landing its PR, or saying plainly why not.
+- Branch naming: `gemini/<topic>`, `antigravity/<topic>`, `claude/<topic>`.
+- CI gates *merges* — a red required check blocks. If `main` is red, fix it before starting new work.
 
 ### Commit attribution
 
@@ -127,10 +132,13 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 
 ### What CI does and does not cover
 
-CI (`tests.yml`) runs two jobs on pushes/PRs:
+CI (`tests.yml`) runs five jobs on pushes/PRs, all merge gates except `mypy`:
 
-1. **`pytest`** (Python 3.11 + 3.12, merge gate): the full suite with a Postgres service container. Fails if Postgres tests skip due to missing infra. Browser tests skip here (no Chromium).
-2. **`browser-tests`** (Python 3.12, non-blocking): installs Chromium via Playwright, builds the SPA, and runs the six Chromium-gated test files (`test_render_parity.py`, `test_offline.py`, `test_upload_ui.py`, `test_auth_ui.py`, `test_cockpit_ui.py`, `test_score_history_ui.py`). Fails if the skip guard still triggers despite installing Chromium. Non-blocking (`continue-on-error: true`): a red browser-tests check is visible but does not prevent merges.
+1. **`pytest`** (Python 3.11 + 3.12): the suite minus `-m browser`, with a Postgres service container. Fails if Postgres tests skip due to missing infra.
+2. **`lint`**: `ruff check .` (Python) + `npm run lint` in `ui/` (SPA) — correctness rules only, no formatter (SPEC.md A46).
+3. **`secrets`**: gitleaks, pinned binary + checksum, full git history.
+4. **`browser-tests`** (Python 3.12): installs Chromium, builds the SPA, runs every `pytest.mark.browser` test. Fails if the skip guard still triggers despite installing Chromium.
+5. **`mypy`** (advisory, not required): ratchet against `ci/mypy-baseline.txt` — fails for real on a new finding, but can't block a merge.
 
 ### Working with the durable docs
 

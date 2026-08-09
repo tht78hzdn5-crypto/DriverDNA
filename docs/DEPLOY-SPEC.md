@@ -563,7 +563,10 @@ the instrument once exposure is flipped on.
 > Oracle Always Free VM. The platform-divergence note in "H1 as built" no
 > longer applies going forward — Cloud Run + Supabase are being decommissioned,
 > and the Oracle/VM text in H2/H3 below describes the deployment being built,
-> not a phantom one. **Network shape chosen: the public-URL option
+> not a phantom one. **`.github/workflows/deploy.yml` itself was deleted**
+> (`91f9a7f`) — every reference below to it deploying on push describes
+> retired history, not the current repository. **Network shape chosen: the
+> public-URL option
 > (Cloudflare Tunnel + Access), not Tailscale** — read the two layers below as
 > "Cloudflare is the adopted layer; Tailscale is the private-only
 > alternative." Data migration is `driverdna store-copy` (Postgres → SQLite,
