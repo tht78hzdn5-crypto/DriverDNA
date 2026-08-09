@@ -1,0 +1,19 @@
+# Secret-scanning config (SPEC.md A46). Extends gitleaks' built-in default
+# ruleset rather than redefining it, so a gitleaks upgrade picks up new
+# detection rules automatically.
+#
+# Paths allowlisted, not because a leak was found there (a full-history scan
+# with the default ruleset found none — 116 commits, ~45.6 MB, verified
+# before this config was written), but because both hold content that could
+# plausibly trip an entropy-based rule as they grow: real 60 Hz telemetry
+# CSVs (tests/fixtures/) and hashed/minified Vite build output
+# (src/driverdna/ui/static/), neither of which is source this scan is
+# meant to cover.
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''tests/fixtures/.*''',
+  '''src/driverdna/ui/static/.*''',
+]
