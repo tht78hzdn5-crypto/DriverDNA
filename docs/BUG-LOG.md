@@ -37,27 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-020 — No mechanical check that committed artifacts match regenerated output
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-08-09 (A46)
-- **Symptom**: `docs/coaching-report.md`, `driver.*` and
-  `gr86-spa-francorchamps.*` sat stale in the repo for ~3 days across two
-  merges. They are committed as regression anchors and were being read as
-  current.
-- **Root cause**: A42 (`coach-onto-v2` CV renormalization) and A43 (census in
-  the driver payload) both changed the numbers those artifacts contain, and
-  neither regenerated them. Nothing fails when they drift.
-- **Blast radius**: anyone reading a committed report — human or agent — got
-  pre-A42 consistency numbers. The A46 session initially misread the staleness
-  as its *own* regression and had to regenerate on a clean checkout to prove
-  otherwise.
-- **How it was caught**: by hand, during A46's number-neutrality check. Nothing
-  automated.
-- **Proposed fix**: a test that regenerates each committed artifact from
-  `tests/fixtures/` into a temp dir and byte-compares. Cheap — the generators
-  are already deterministic and already run in CI. Not built in A46: out of
-  that change's scope, and it will fail red the moment any real number moves,
-  so it wants its own commit.
-
 ### BUG-018 — Service unreachable on the Oracle VM (Cloudflare 1033)
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
 - **Symptom**: `driver-dna.com` returns Cloudflare error 1033. Persisted after
@@ -107,6 +86,45 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-020 — Committed artifacts could drift from what the code regenerates
+- **Status**: fixed 2026-08-09 · **Severity**: silent-wrong · **SPEC**: A46 (found), fix in `tests/test_artifact_freshness.py`
+- **Symptom**: `docs/coaching-report.md`, `driver.*` and
+  `gr86-spa-francorchamps.*` sat stale for days across two merges. They are
+  committed as regression anchors and read as current, by humans and agents.
+- **Root cause**: A42 (`coach-onto-v2` CV renormalization) and A43 (census in
+  the driver payload) each changed numbers those files contain without
+  regenerating them. Nothing failed when they drifted.
+- **Blast radius**: anyone reading a committed report got pre-A42 consistency
+  numbers. The A46 session initially misread the staleness as its own
+  regression and had to regenerate on a clean checkout to prove otherwise —
+  the cost of the missing guard was paid in doubt, not just wrong data.
+- **How it was caught**: by hand, during A46's number-neutrality check.
+- **Fix**: `tests/test_artifact_freshness.py` regenerates all fourteen
+  committed artifacts from `tests/fixtures/` into a temp dir and
+  byte-compares. One shared fixture import, ~8 s, no secrets or browser.
+  A failure names the first differing line and quotes the exact regeneration
+  command. Three things make it more than a green tick:
+  - `test_the_guard_covers_every_committed_docs_report` fails if a new
+    `docs/*-report.md` is committed without being added to the table — the
+    same drift, one level up.
+  - `test_the_guard_would_catch_a_stale_artifact` mutates one digit of a real
+    artifact and asserts rejection (the
+    `test_crawler_would_catch_an_invented_number` precedent).
+  - Proven end-to-end before commit by changing a real engine string
+    (`PHASE_LABELS["exit"]`) and confirming it named exactly the three
+    affected artifacts, then reverting.
+- **Verified, not assumed, before adopting a strict byte-compare**: all
+  fourteen regenerate byte-identical under both CI matrix versions (3.11 and
+  3.12) and across two numpy majors. If it ever fails for a platform reason
+  — a numpy release moving a last decimal, or BUG-019's ARM64 divergence —
+  that is a finding, not noise. Investigate; never loosen it to go green.
+- **Found while building the guard**: `driverdna corners` prints the
+  fixtures directory it was handed into its own report header, so
+  `docs/corners-report.md` is **cwd-dependent** — only the documented
+  invocation from the repo root reproduces the committed bytes. The test now
+  pins that invocation. Not otherwise fixed: relativising the header would
+  itself change a committed artifact, which belongs in its own change.
 
 ### BUG-021 — The methodology-id guard did not see hook-referenced ids
 - **Status**: fixed 2026-08-09 · **Severity**: silent-wrong

@@ -37,6 +37,24 @@ from the committed files identically, and matches this branch
 number-for-number. Most of the diff in those three files is A42/A43 catching
 up.
 
+**BUG-020 fixed — artifact freshness is now enforced.**
+`tests/test_artifact_freshness.py` regenerates all fourteen committed
+artifacts from `tests/fixtures/` into a temp dir and byte-compares (~8 s, one
+shared import, no secrets or browser). A failure names the first differing
+line and quotes the regeneration command. It also fails if a new
+`docs/*-report.md` is committed without being added to its table, and a
+guard-the-guard test mutates one digit of a real artifact to prove rejection.
+Proven end-to-end before commit by changing a real engine string and
+confirming it named exactly the three affected artifacts.
+
+Strict byte-compare was **verified safe before adoption**, not assumed: all
+fourteen regenerate byte-identical under both CI matrix versions (3.11 and
+3.12) and across two numpy majors. Found while building it: `driverdna
+corners` prints its `--fixtures-dir` into its own header, so
+`docs/corners-report.md` only reproduces from the repo root with the default
+flag — the test pins that invocation and the wart is recorded rather than
+silently worked around. Suite 944 → 960.
+
 **Coaching/feedback edit guide + BUG-021.** `CLAUDE.md` gained "Editing the
 coaching and feedback layer" — where each driver-facing string lives (none in
 the SPA), the eight tripwires, the regenerate-and-prove-number-neutrality

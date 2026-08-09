@@ -744,21 +744,31 @@ Renaming a slug silently orphans stored annotations.
 
 ### If you change a `Finding.description` or any engine string
 
-It flows into committed artifacts, so the change is never local:
+It flows into committed artifacts, so the change is never local — and since
+2026-08-09 this is **enforced**, not remembered:
+`tests/test_artifact_freshness.py` regenerates all fourteen and byte-compares,
+so forgetting step 1 turns the suite red with the exact command to fix it.
 
 1. Regenerate all of them — `driverdna metrics|attribution|coaching|incidents|
-   model|census` (+ `corners`, which reads the fixtures directly) and
-   `driverdna report --out-dir .`. Delete any `mustang-laguna-seca.*` the
-   report command writes; only the GR86 and driver artifacts are committed.
+   model|census` (+ `corners` and `schema-report`, which read the fixtures
+   directly) and `driverdna report --out-dir .`. Delete any
+   `mustang-laguna-seca.*` the report command writes; only the GR86 and driver
+   artifacts are committed. Run `corners` **from the repo root with its
+   default `--fixtures-dir`** — it prints that path into its own header, so
+   passing an absolute one produces a different file.
 2. **Prove number-neutrality against clean `main`, not against the committed
-   files.** Committed artifacts have been stale before (BUG-020): regenerate
-   on a clean checkout too, and diff the *numeric multisets* of both JSON
-   payloads. A pure presentation change moves nothing except a deliberate
-   `PAYLOAD_VERSION` bump. Diffing against the committed file alone will
-   mislead you into thinking you broke something you didn't.
+   files.** The freshness test tells you *that* an artifact moved; it cannot
+   tell you whether it should have. Committed artifacts were stale for days
+   before that test existed (BUG-020), so for a presentation change,
+   regenerate on a clean checkout too and diff the *numeric multisets* of both
+   JSON payloads. A pure presentation change moves nothing except a deliberate
+   `PAYLOAD_VERSION` bump.
 3. Additive payload fields bump `PAYLOAD_VERSION`. `coach-v3`/`chat-v3`
    version *prompts* — leave them unless prompt text actually changes.
    Strings never enter the grounding `number_pool`; numbers do.
+4. If the freshness test goes red for a reason you did not intend, that is a
+   real regression — find it before regenerating. Never regenerate to make it
+   green without knowing which number moved and why.
 
 ### Verifying a change here
 
