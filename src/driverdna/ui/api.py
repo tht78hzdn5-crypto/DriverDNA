@@ -29,8 +29,6 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Respon
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
-
 from driverdna.attribution.engine import PHASES, reference_envelope
 from driverdna.chat.session import ChatProvider, ChatSession
 from driverdna.chat.tools import execute_tool
@@ -48,6 +46,8 @@ from driverdna.report.payload import (
     list_cohorts,
     to_normalized_json,
 )
+
+logger = logging.getLogger(__name__)
 
 TRACE_POINTS = 800  # transport downsampling only — layout math, not measurement
 

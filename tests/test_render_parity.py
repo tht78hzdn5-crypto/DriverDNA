@@ -120,7 +120,10 @@ def server(tmp_path_factory):
 def _number_pool(base: str, slug: str) -> set[float]:
     """Every number the API serves for the crawled views."""
     pool: set[float] = set()
-    get = lambda path: httpx.get(f"{base}{path}", timeout=10).json()
+
+    def get(path: str):
+        return httpx.get(f"{base}{path}", timeout=10).json()
+
     number_pool(get("/api/driver"), pool)
     number_pool(get("/api/config"), pool)
     number_pool(get("/api/explain"), pool)

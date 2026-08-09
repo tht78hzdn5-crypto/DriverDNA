@@ -120,7 +120,7 @@ def score_history(db: Database, *, driver: str, config: DriverDNAConfig) -> dict
         if fundamental.signal_status is SignalStatus.NO_SIGNAL:
             continue  # never scored anywhere in the payload; no chart line either
         points = []
-        for i, (pks, cache) in enumerate(zip(bucket_pk_sets, caches)):
+        for i, (pks, cache) in enumerate(zip(bucket_pk_sets, caches, strict=True)):
             score = _bucket_score(db, driver, fundamental_id, cohorts, config, pks, cache=cache)
             points.append({
                 "x": i,

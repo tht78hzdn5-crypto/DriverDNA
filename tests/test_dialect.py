@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import PG_URL, requires_postgres
+from conftest import requires_postgres
 from driverdna.db import MIGRATIONS, Database
 from driverdna.sql import to_pg, to_pg_ddl
 from driverdna.store import redact_dsn, resolve_store

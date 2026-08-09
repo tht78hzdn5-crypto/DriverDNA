@@ -42,7 +42,7 @@ ai-gemini = ["google-genai>=1.0"]
 dev = ["pytest>=8", "fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.27",
        "playwright>=1.40", "python-multipart>=0.0.9",
        "psycopg[binary]>=3.1", "psycopg-pool>=3.2", "cryptography>=42",
-       "anthropic>=0.40", "google-genai>=1.0"]
+       "anthropic>=0.40", "google-genai>=1.0", "ruff>=0.15", "mypy>=1.11"]
 
 [project.scripts]
 driverdna = "driverdna.cli:app"
@@ -59,3 +59,30 @@ addopts = "-q --strict-markers"
 markers = [
     "browser: needs a real Chromium via Playwright and the built SPA",
 ]
+
+[tool.ruff]
+target-version = "py311"
+# Committed Vite build output (hashed bundles) and real telemetry fixtures —
+# neither is source this project's style rules apply to.
+extend-exclude = ["src/driverdna/ui/static", "tests/fixtures"]
+
+[tool.ruff.lint]
+# Correctness only (pyflakes + bugbear): no formatter, no line-length rule.
+# A repo three agents push directly to, with a committed-build-output and
+# inspect.getsource-asserting test suite, is a bad target for a reflow tool —
+# see docs/SPEC.md A46.
+select = ["F", "E4", "E7", "E9", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI/typer resolve these at call time via Depends()/File()/Form()/
+# Option() themselves; they are not the "mutable default argument" bug B008
+# exists to catch.
+extend-immutable-calls = [
+    "fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query",
+    "typer.Option", "typer.Argument",
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+files = ["src/driverdna"]

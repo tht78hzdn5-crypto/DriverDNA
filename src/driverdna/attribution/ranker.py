@@ -122,7 +122,7 @@ def vs_self_findings(
                 [h["time_s"] for h in history], config.attribution.outlier_mad_k
             )
             n_outliers = sum(1 for m in mask if not m)
-            clean_history = [h for h, m in zip(history, mask) if m]
+            clean_history = [h for h, m in zip(history, mask, strict=True) if m]
             fast = [h["time_s"] for h in clean_history if h["lap_pk"] in fast_laps]
             slow = [h["time_s"] for h in clean_history if h["lap_pk"] in slow_laps]
             opportunity = (

@@ -2,7 +2,6 @@
 """Tests for multi-user auth."""
 
 import pytest
-import hmac
 
 from driverdna.ui import auth
 

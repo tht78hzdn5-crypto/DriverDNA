@@ -7,8 +7,6 @@ is checked against actual corner_observations/metric_values/detector_results
 rows, not a hand-built stand-in for them.
 """
 
-from pathlib import Path
-
 import pytest
 
 from driverdna.config import DriverDNAConfig

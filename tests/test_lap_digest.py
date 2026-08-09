@@ -107,7 +107,7 @@ def test_every_digest_cell_equals_the_stored_sample_at_that_row(cohort, tmp_path
         assert header[0] == "row"
         for row in rows:
             src_index = int(row[0])
-            for channel, cell in zip(header[1:], row[1:]):
+            for channel, cell in zip(header[1:], row[1:], strict=True):
                 assert cell == format_cell(arrays[channel][src_index]), (
                     f"{csv_path.name} row {src_index} channel {channel}: "
                     f"digest says {cell!r}, stored sample is "
@@ -149,7 +149,7 @@ def test_rows_are_strictly_increasing_and_stride_spaced(cohort, tmp_path):
         _, rows = _read_csv(csv_path)
         indices = [int(r[0]) for r in rows]
         assert indices == sorted(set(indices)), f"{csv_path} rows not ordered/unique"
-        steps = {b - a for a, b in zip(indices, indices[1:])}
+        steps = {b - a for a, b in zip(indices, indices[1:], strict=False)}
         assert steps <= {6}, f"{csv_path} has non-stride steps {steps}"
 
 

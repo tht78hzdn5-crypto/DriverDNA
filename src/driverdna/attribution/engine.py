@@ -190,7 +190,7 @@ def outlier_mask(times: list[float], k: float) -> list[bool]:
 def screen_outliers(times: list[float], k: float) -> tuple[list[float], int]:
     """Median ± k·MAD fence. Returns (kept, n_screened)."""
     mask = outlier_mask(times, k)
-    kept = [t for t, m in zip(times, mask) if m]
+    kept = [t for t, m in zip(times, mask, strict=True) if m]
     return kept, len(times) - len(kept)
 
 

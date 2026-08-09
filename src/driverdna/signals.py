@@ -35,7 +35,7 @@ def close_gaps(mask: np.ndarray, max_gap: int) -> np.ndarray:
     """Fill False gaps of at most max_gap samples between True runs."""
     out = mask.astype(bool).copy()
     spans = runs_of(out)
-    for (_, prev_end), (next_start, _) in zip(spans, spans[1:]):
+    for (_, prev_end), (next_start, _) in zip(spans, spans[1:], strict=False):
         if next_start - prev_end <= max_gap:
             out[prev_end:next_start] = True
     return out

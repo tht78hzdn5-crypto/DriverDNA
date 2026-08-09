@@ -1,6 +1,5 @@
 import pytest
 from pathlib import Path
-from driverdna.db import Database
 from driverdna.ui.api import create_app
 from fastapi.testclient import TestClient
 
@@ -9,7 +8,7 @@ def db_path(tmp_path: Path) -> Path:
     from driverdna.db import Database
     
     path = tmp_path / "test.db"
-    with Database.open(path) as db:
+    with Database.open(path):
         pass
     
     return path

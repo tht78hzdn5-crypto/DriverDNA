@@ -2,9 +2,10 @@ name: Tests
 
 # The merge gate. More than one agent works on this repository (see AGENTS.md),
 # and every invariant this project has — determinism, the source contract,
-# reference-lap isolation, the grounding validator — is enforced by pytest and
-# nothing else: there is no linter, formatter or type checker. So the suite has
-# to run on every push, not just when someone remembers.
+# reference-lap isolation, the grounding validator — is enforced by pytest;
+# `ruff check` (correctness rules only, no formatter — SPEC.md A46) catches
+# what pytest structurally can't. So the suite has to run on every push, not
+# just when someone remembers.
 
 on:
   push:
@@ -94,8 +95,8 @@ jobs:
 
       # Beck-style "AI cheating" detector (TDD guardrail, 2026-07-27).
       # If a push modifies files under tests/ but touches nothing under
-      # driverdna/ (the source package), that is suspicious: it may mean an
-      # agent modified tests to fit broken code instead of fixing the code.
+      # src/driverdna/ (the source package), that is suspicious: it may mean
+      # an agent modified tests to fit broken code instead of fixing the code.
       # This is a WARNING, not a failure — legitimate test-only commits
       # (refactoring helpers, adding coverage) are allowed but flagged.
       - name: Warn if tests changed without source changes
@@ -113,6 +114,31 @@ jobs:
           if [ "$test_changes" -gt 0 ] && [ "$src_changes" -eq 0 ]; then
             echo "::warning::TDD guardrail: this push modifies $test_changes test file(s) but zero source files under src/driverdna/. If an agent changed tests to fit broken code instead of fixing the code, that violates the Red→Green→Refactor contract (AGENTS.md)."
           fi
+
+  # Correctness-only lint (pyflakes + bugbear via ruff). No formatter, no
+  # line-length rule — SPEC.md A46 records why: a repo three agents push
+  # directly to, with committed Vite build output and a test suite that
+  # asserts on Python source text (tests/test_ordering_determinism.py's
+  # inspect.getsource checks), is a bad target for a reflow tool. Config
+  # lives in pyproject.toml's [tool.ruff] so `ruff check .` behaves
+  # identically here and on a contributor's machine.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: ruff check
+        run: python -m ruff check --output-format=github .
 
   # Browser trust gates — the Chromium-gated tests that the main pytest job
   # deliberately deselects. A required, blocking check (2026 CI hardening):

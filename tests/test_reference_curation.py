@@ -213,7 +213,7 @@ def test_vs_reference_envelope_recomputes_without_an_excluded_lap(db):
     enforced once, in db.phase_history's query surface, which
     vs_reference_findings already reads through."""
     _build_self_cohort(db)
-    fast_ref = _reference(db, driver="fast-driver", warp_s=-0.3, src="fast.csv")
+    _reference(db, driver="fast-driver", warp_s=-0.3, src="fast.csv")
     slow_ref = _reference(db, driver="slow-driver", warp_s=0.3, src="slow.csv")
     windows = _windows(db)
 

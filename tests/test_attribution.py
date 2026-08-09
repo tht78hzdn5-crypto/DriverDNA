@@ -102,7 +102,7 @@ def test_later_braking_shows_less_time_in_fixed_entry_window(db):
     both laps would report 'their own braking phase' instead of the same
     stretch of road.
     """
-    from synth import make_lap, one_corner_lap, ramp
+    from synth import one_corner_lap, ramp
 
     base_lap = one_corner_lap()
     base_lap.source_path = base_lap.source_path.with_name("base.csv")

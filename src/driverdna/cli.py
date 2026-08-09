@@ -1112,7 +1112,7 @@ def lap_digest(
             )
         except NoFrozenMap as exc:
             typer.secho(f"cannot build a digest: {exc}", fg="red", err=True)
-            raise typer.Exit(2)
+            raise typer.Exit(2) from exc
 
     for label in report.cohorts:
         typer.echo(f"  {label}")
@@ -1147,7 +1147,7 @@ def verify_observations_cmd(
         report = verify_observations(obs, digest_dir)
     except ObservationError as exc:
         typer.secho(str(exc), fg="red", err=True)
-        raise typer.Exit(2)
+        raise typer.Exit(2) from exc
 
     if out is not None:
         out.parent.mkdir(parents=True, exist_ok=True)

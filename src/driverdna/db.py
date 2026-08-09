@@ -29,9 +29,12 @@ import sqlite3
 from collections.abc import Iterable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from psycopg_pool import ConnectionPool
 
 from driverdna.blobs import BlobStore, MemoryBlobStore, open_blob_store
 from driverdna.config import IdentityConfig
@@ -697,7 +700,7 @@ def _namespace_postgres(conn) -> None:
     conn.execute(f'SET search_path TO "{PG_SCHEMA}"')
 
 
-def open_postgres_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> "ConnectionPool":
+def open_postgres_pool(dsn: str, *, min_size: int = 2, max_size: int = 10) -> ConnectionPool:
     """A per-process pool: each request checks out its own connection
     (`Database.from_pool`) instead of every request paying a fresh
     TCP+TLS+migration round trip, or — the hazard a single shared connection
@@ -824,7 +827,7 @@ class Database:
             raise RuntimeError(f"could not connect to {redact_dsn(dsn)}: {exc}") from None
 
     @classmethod
-    def from_pool(cls, pool: "ConnectionPool", blobs: BlobStore, user_pk: int = 1) -> "Database":
+    def from_pool(cls, pool: ConnectionPool, blobs: BlobStore, user_pk: int = 1) -> "Database":
         """Check out a connection from a pool built by `open_postgres_pool`.
 
         Each caller gets its own physical connection, never a shared one:
@@ -1713,7 +1716,7 @@ class Database:
         (owner_user_pk, provider) constraint migration 014 declares."""
         with self.conn:
             self.conn.execute(
-                f"""INSERT INTO user_api_keys
+                """INSERT INTO user_api_keys
                     (owner_user_pk, provider, ciphertext, nonce, fingerprint, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT (owner_user_pk, provider) DO UPDATE SET
@@ -1932,7 +1935,7 @@ class Database:
         version's row alone (still queryable) and creates a new one.
         """
         with self.conn:
-            cur = self.conn.execute(
+            self.conn.execute(
                 """INSERT INTO driver_beliefs
                    (driver, owner_user_pk, fundamental, signal_status, score, confidence,
                     evidence_count, trend, insufficient_reason,
