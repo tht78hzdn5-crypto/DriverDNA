@@ -41,14 +41,41 @@ export async function send(method, path, body) {
   return response.json();
 }
 
-// Upload (UI-SPEC decision 3, view 7): a multipart wrapper over
-// `import_lap_file`, same audited path `driverdna import` uses per file —
-// no Content-Type set here so the browser attaches its own multipart
-// boundary, which fetch(JSON.stringify(...)) above would break.
-export async function uploadLaps(formData) {
+// Shared SSE frame reader — same logic as streamChat, extracted so upload
+// and sync can reuse it without duplicating the buffer/parse loop.
+async function readSSE(response, label, onEvent) {
+  if (!response.ok) throw await fail(response, label);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop();
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data: "));
+      if (line) onEvent(JSON.parse(line.slice("data: ".length)));
+    }
+  }
+}
+
+// Upload (UI-SPEC decision 3, view 7): streams SSE progress events as each
+// file is imported, then a terminal "complete" event with the full result.
+export async function streamUpload(formData, onEvent) {
   const response = await fetch("/api/laps/upload", { method: "POST", body: formData });
-  if (!response.ok) throw await fail(response, "upload");
-  return response.json();
+  await readSSE(response, "upload", onEvent);
+}
+
+// Sync: streams SSE progress as cohorts are discovered and laps imported.
+export async function streamSync(payload, onEvent) {
+  const response = await fetch("/api/sync", {
+    method: "POST",
+    headers: payload ? { "Content-Type": "application/json" } : undefined,
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+  await readSSE(response, "sync", onEvent);
 }
 
 // Chat (UI-SPEC decision 4): no native EventSource here (it's GET-only, and
@@ -61,19 +88,5 @@ export async function streamChat(sessionId, text, onEvent) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-  if (!response.ok) throw await fail(response, "chat message");
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const frames = buffer.split("\n\n");
-    buffer = frames.pop(); // last (possibly incomplete) frame stays buffered
-    for (const frame of frames) {
-      const line = frame.split("\n").find((l) => l.startsWith("data: "));
-      if (line) onEvent(JSON.parse(line.slice("data: ".length)));
-    }
-  }
+  await readSSE(response, "chat message", onEvent);
 }

@@ -35,6 +35,27 @@ CAR = {"id": 8, "name": "GR86"}
 TRACK = {"id": 69, "name": "Spa-Francorchamps", "variant": ""}
 
 
+def _parse_sse(response):
+    """Parse an SSE response into a list of event dicts."""
+    events = []
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+    return events
+
+
+def _sse_complete(response):
+    """Parse SSE and return the terminal 'complete' event."""
+    events = _parse_sse(response)
+    complete = [e for e in events if e["type"] == "complete"]
+    assert len(complete) == 1, f"expected 1 complete event, got {len(complete)}"
+    return complete[0]
+
+
 def _resp(status: int, obj) -> tuple[int, bytes]:
     return status, json.dumps(obj).encode("utf-8")
 
@@ -148,7 +169,8 @@ def test_sync_car_track_body_scopes_discovery(tmp_path, monkeypatch):
     r = TestClient(app).post("/api/sync", json={"car": "Nope"})
 
     assert r.status_code == 200
-    assert r.json() == []
+    complete = _sse_complete(r)
+    assert complete["results"] == []
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 0
 
@@ -169,7 +191,8 @@ def test_sync_effects_identical_to_cli_sync(tmp_path, monkeypatch):
     app = create_app(api_db, tmp_path / "api-cfg.toml")
     r = TestClient(app).post("/api/sync")
     assert r.status_code == 200
-    assert r.json() == [{
+    complete = _sse_complete(r)
+    assert complete["results"] == [{
         "car": "GR86", "track": "Spa-Francorchamps",
         "laps_seen": 1, "laps_new": 1, "laps_skipped": [],
         "results": [{"lap_pk": 1, "status": "imported", "admitted": [], "class_changes": []}],
@@ -208,17 +231,36 @@ def test_sync_never_refetches_a_lap_already_synced(tmp_path, monkeypatch):
     app = create_app(db_path, tmp_path / "cfg.toml")
     client = TestClient(app)
 
-    first = client.post("/api/sync").json()
-    assert first[0]["laps_new"] == 1
-    second = client.post("/api/sync").json()
+    first = _sse_complete(client.post("/api/sync"))
+    assert first["results"][0]["laps_new"] == 1
+    second = _sse_complete(client.post("/api/sync"))
 
-    assert second[0] == {
+    assert second["results"][0] == {
         "car": "GR86", "track": "Spa-Francorchamps",
         "laps_seen": 1, "laps_new": 0, "laps_skipped": [], "results": [],
     }
     assert transport.csv_calls == ["L1"]  # never re-fetched
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
+
+
+def test_sync_emits_progress_events(tmp_path, monkeypatch):
+    """Sync streams per-cohort progress before the terminal complete event."""
+    _mock_garage61_client(
+        monkeypatch,
+        FakeTransport(laps=[_lap_item("L1")], csv_bytes=ONE_LAP.read_bytes()),
+    )
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    r = TestClient(app).post("/api/sync")
+    events = _parse_sse(r)
+    types = [e["type"] for e in events]
+    assert "discovering" in types
+    assert "cohort_start" in types
+    assert "cohort_done" in types
+    assert types[-1] == "complete"
 
 
 # --- POST /api/cohorts/{slug}/rebuild-map --------------------------------

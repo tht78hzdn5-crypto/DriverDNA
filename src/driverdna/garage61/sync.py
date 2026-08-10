@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Callable
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -105,6 +105,7 @@ def sync_driver(
     unclean: bool = True,
     after: str | None = None,
     max_age_days: int | None = None,
+    on_progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[CohortSync]:
     """Discover cohorts (or restrict to a given car/track), pull every new
     self-lap through the import pipeline, and record sync state per cohort.
@@ -118,14 +119,23 @@ def sync_driver(
     means an already-synced lap never costs a CSV fetch); silently missing a
     lap is not.
     """
+    def _progress(event: dict[str, Any]) -> None:
+        if on_progress is not None:
+            on_progress(event)
+
     cohorts = discover_cohorts(client)
     if car:
         cohorts = [c for c in cohorts if c["car"] == car]
     if track:
         cohorts = [c for c in cohorts if c["track"] == track]
+    _progress({"type": "discovering", "cohorts": len(cohorts)})
 
     summaries: list[CohortSync] = []
-    for c in cohorts:
+    for ci, c in enumerate(cohorts):
+        _progress({
+            "type": "cohort_start", "car": c["car"], "track": c["track"],
+            "index": ci, "total": len(cohorts),
+        })
         summary = CohortSync(car=c["car"], track=c["track"])
         listing = client.list_own_laps(
             track_id=c["track_id"], car_id=c["car_id"],
@@ -191,6 +201,10 @@ def sync_driver(
             )
             if result.was_new:
                 summary.laps_new += 1
+                _progress({
+                    "type": "lap", "car": c["car"], "track": c["track"],
+                    "lap_index": summary.laps_new, "laps_new": summary.laps_new,
+                })
             summary.results.append(result)
 
         db.record_sync_state(
@@ -199,4 +213,9 @@ def sync_driver(
             synced_at=datetime.now(UTC).isoformat(),
         )
         summaries.append(summary)
+        _progress({
+            "type": "cohort_done", "car": c["car"], "track": c["track"],
+            "index": ci, "total": len(cohorts),
+            "laps_seen": summary.laps_seen, "laps_new": summary.laps_new,
+        })
     return summaries

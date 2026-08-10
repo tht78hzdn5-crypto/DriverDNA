@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { get, uploadLaps, send } from "../api.js";
+import { get, streamUpload, streamSync } from "../api.js";
 
 // Upload (UI-SPEC view 7: "Laps — Import/session listing"). A thin form over
 // POST /api/laps/upload, which is itself a thin wrapper over the same
@@ -19,10 +19,12 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // {results, evicted}
   const [landedCohorts, setLandedCohorts] = useState([]); // [{slug, car, track}]
-  
+  const [progress, setProgress] = useState(null); // {current, total, results}
+
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncError, setSyncError] = useState(null);
   const [syncResult, setSyncResult] = useState(null); // list[CohortSync]
+  const [syncProgress, setSyncProgress] = useState(null); // {message, current, total, results}
 
   async function submit(e) {
     e.preventDefault();
@@ -31,6 +33,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
     setError(null);
     setResult(null);
     setLandedCohorts([]);
+    setProgress({ current: 0, total: files.length, results: [] });
     try {
       const form = new FormData();
       for (const f of files) form.append("files", f);
@@ -42,19 +45,31 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
       if (date.trim()) form.append("date", date.trim());
       if (session.trim()) form.append("session", session.trim());
       if (role === "reference" && driver.trim()) form.append("driver", driver.trim());
-      const r = await uploadLaps(form);
-      setResult(r);
-      // The slug is server-truth, never computed here (UI-SPEC decision 2):
-      // re-fetch and match against each result's own (car, track) -- not
-      // the form fields, since auto-detected files can land in different
-      // cohorts within one batch.
-      const cohorts = await get("/api/cohorts");
-      const wanted = new Set(r.results.map((x) => `${x.car}::${x.track}`));
-      setLandedCohorts(cohorts.filter((c) => wanted.has(`${c.car}::${c.track}`)));
+
+      let finalResult = null;
+      await streamUpload(form, (event) => {
+        if (event.type === "progress") {
+          setProgress((prev) => ({
+            current: event.index + 1,
+            total: event.total,
+            results: [...(prev?.results || []), event.result],
+          }));
+        } else if (event.type === "complete") {
+          finalResult = event;
+        }
+      });
+
+      if (finalResult) {
+        setResult({ results: finalResult.results, evicted: finalResult.evicted });
+        const cohorts = await get("/api/cohorts");
+        const wanted = new Set(finalResult.results.map((x) => `${x.car}::${x.track}`));
+        setLandedCohorts(cohorts.filter((c) => wanted.has(`${c.car}::${c.track}`)));
+      }
     } catch (e2) {
       setError(String(e2.message || e2));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   }
 
@@ -62,17 +77,63 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
     setSyncBusy(true);
     setSyncError(null);
     setSyncResult(null);
+    setSyncProgress({ message: "Discovering cohorts…", current: 0, total: 0, results: [] });
     try {
       const payload = {};
       if (car.trim()) payload.car = car.trim();
       if (track.trim()) payload.track = track.trim();
-      const r = await send("POST", "/api/sync", payload);
-      setSyncResult(r);
+
+      let finalResult = null;
+      await streamSync(Object.keys(payload).length ? payload : null, (event) => {
+        if (event.type === "discovering") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            message: `Found ${event.cohorts} cohort${event.cohorts === 1 ? "" : "s"}…`,
+            total: event.cohorts,
+          }));
+        } else if (event.type === "cohort_start") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            message: `Syncing ${event.car} @ ${event.track}…`,
+            current: event.index,
+            total: event.total,
+          }));
+        } else if (event.type === "cohort_done") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            current: event.index + 1,
+            total: event.total,
+            results: [...(prev?.results || []), event],
+          }));
+        } else if (event.type === "complete") {
+          finalResult = event;
+        } else if (event.type === "error") {
+          throw new Error(event.detail);
+        }
+      });
+
+      if (finalResult) {
+        setSyncResult(finalResult.results);
+      }
     } catch (e) {
       setSyncError(String(e.message || e));
     } finally {
       setSyncBusy(false);
+      setSyncProgress(null);
     }
+  }
+
+  function ProgressBar({ current, total }) {
+    if (!total) return null;
+    const pct = Math.round((current / total) * 100);
+    return (
+      <div className="import-progress">
+        <div className="import-progress-bar">
+          <i style={{ width: `${pct}%` }} />
+        </div>
+        <span className="import-progress-label">{current} of {total}</span>
+      </div>
+    );
   }
 
   return (
@@ -100,6 +161,14 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
                   {syncBusy ? "Syncing…" : "Sync from Garage61"}
                 </button>
               </div>
+              {syncProgress && (
+                <div style={{ marginTop: "0.6rem" }}>
+                  <div className="dim" style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+                    {syncProgress.message}
+                  </div>
+                  <ProgressBar current={syncProgress.current} total={syncProgress.total} />
+                </div>
+              )}
               {syncError && <div className="error" style={{ marginTop: "0.6rem" }}>{syncError}</div>}
               {syncResult && (
                 syncResult.length === 0 ? (
@@ -115,8 +184,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
                           <span className="val num">{s.laps_new} new</span>
                         </div>
                         <div className="meta num">
-                          imported {s.laps_imported} / {s.laps_found} laps
-                          {s.evicted > 0 && ` · evicted ${s.evicted} old`}
+                          {s.laps_new} new / {s.laps_seen} seen
                         </div>
                       </div>
                     ))}
@@ -196,18 +264,23 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
             </div>
             <div className="actions">
               <button className="btn confirm" type="submit" disabled={busy || !files.length}>
-                {busy ? "Importing…" : "Import"}
+                {progress
+                  ? `Importing ${progress.current} of ${progress.total}…`
+                  : "Import"}
               </button>
             </div>
+            {progress && (
+              <ProgressBar current={progress.current} total={progress.total} />
+            )}
           </div>
         </form>
         {error && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
       </section>
 
-      {result && (
+      {(progress?.results?.length > 0 || result) && (
         <section className="panel">
           <p className="eyebrow">Import result</p>
-          {result.results.map((r) => (
+          {(progress?.results || result?.results || []).map((r) => (
             <div key={r.filename} className={`finding ${r.status !== "imported" ? "suppressed" : ""}`}>
               <div className="head">
                 <span className="desc">{r.filename}</span>
@@ -237,7 +310,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
               )}
             </div>
           ))}
-          {result.evicted > 0 && (
+          {result?.evicted > 0 && (
             <div className="sub">
               retention: {result.evicted} raw lap blob(s) evicted (summaries kept, never findings)
             </div>

@@ -17,8 +17,10 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import queue
 import secrets
 import tempfile
+import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -1162,7 +1164,7 @@ def create_app(
         date: str | None = Form(None),
         session: str | None = Form(None),
         driver: str | None = Form(None),
-    ) -> dict[str, Any]:
+    ) -> StreamingResponse:
         """Wraps `import_lap_file` — the exact function `driverdna import`
         calls per file (UI-SPEC decision 3: no business logic here). Unlike
         every read endpoint, this one does NOT require the DB to already
@@ -1180,7 +1182,11 @@ def create_app(
         filling just the box the filename no longer states is enough. A file
         still missing a field after that (old filename shape, nothing given) is
         rejected before anything is imported, listed by name with the field it
-        is missing — never silently skipped."""
+        is missing — never silently skipped.
+
+        Returns SSE: one ``progress`` event per file processed, then a
+        terminal ``complete`` event carrying the same ``{results, evicted}``
+        shape the old JSON response had."""
         if role not in ("self", "reference"):
             raise HTTPException(422, detail="role must be self or reference")
         if date is not None:
@@ -1273,56 +1279,68 @@ def create_app(
         if role != "self" and missing_reason(db_path):
             raise HTTPException(422, detail=_REFERENCE_FIRST_LAP_DETAIL)
 
+        # Read all file bytes before entering the generator so UploadFile
+        # objects are consumed while the request context is still active.
+        file_data: list[tuple[str | None, bytes, str, str, bool]] = []
+        for upload, file_car, file_track, auto_detected in resolved:
+            raw = await upload.read()
+            file_data.append((upload.filename, raw, file_car, file_track, auto_detected))
+
+        # Reference-orphan check (needs DB open briefly for the corner-map
+        # query). Runs before the stream starts so it can raise HTTPException.
+        user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
+        if role != "self":
+            with Database.open(db_path, user_pk=user_pk) as db:
+                orphans = sorted(
+                    {
+                        f"{c} @ {t}"
+                        for _fn, _raw, c, t, _d in file_data
+                        if db.load_corner_map(car=c, track=t) is None
+                    }
+                )
+                if orphans:
+                    raise HTTPException(
+                        422,
+                        detail=f"{_REFERENCE_FIRST_LAP_DETAIL} No laps of your "
+                        f"own yet in: {', '.join(orphans)}. Nothing was imported.",
+                    )
+
         config = load_config(config_path)
-        results: list[dict[str, Any]] = []
-        with tempfile.TemporaryDirectory() as tmp:
-            with Database.open(db_path, user_pk=request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1) as db:
-                if role != "self":
-                    orphans = sorted(
-                        {
-                            f"{c} @ {t}"
-                            for _u, c, t, _d in resolved
-                            if db.load_corner_map(car=c, track=t) is None
-                        }
-                    )
-                    if orphans:
-                        raise HTTPException(
-                            422,
-                            detail=f"{_REFERENCE_FIRST_LAP_DETAIL} No laps of your "
-                            f"own yet in: {', '.join(orphans)}. Nothing was imported.",
+        total = len(file_data)
+
+        def _upload_events():
+            results: list[dict[str, Any]] = []
+            with tempfile.TemporaryDirectory() as tmp:
+                with Database.open(db_path, user_pk=user_pk) as db:
+                    for i, (filename, raw, file_car, file_track, auto_detected) in enumerate(file_data):
+                        dest = Path(tmp) / (filename or "upload.csv")
+                        dest.write_bytes(raw)
+                        result = import_lap_file(
+                            db, dest, config=config, driver=driver, car=file_car,
+                            track=file_track, role=role, session_key=session, lap_date=date,
                         )
-                for upload, file_car, file_track, auto_detected in resolved:
-                    # Original filename preserved (not a random temp name):
-                    # parse_lap's Garage61 lap-ID regex reads it, same as a
-                    # real directory import.
-                    dest = Path(tmp) / (upload.filename or "upload.csv")
-                    dest.write_bytes(await upload.read())
-                    result = import_lap_file(
-                        db, dest, config=config, driver=driver, car=file_car,
-                        track=file_track, role=role, session_key=session, lap_date=date,
-                    )
-                    matched = sum(1 for a in result.assigned if a)
-                    results.append({
-                        "filename": upload.filename,
-                        "car": file_car,
-                        "track": file_track,
-                        # True when this file's car and/or track came from its
-                        # filename -- with a one-field override, part of the
-                        # pair can be given and the rest detected. The resolved
-                        # car/track above are what was actually used.
-                        "auto_detected": auto_detected,
-                        "status": result.status,
-                        "lap_pk": result.lap_pk,
-                        "corners_matched": matched,
-                        "corners_total": len(result.assigned),
-                        "admitted": result.admitted,
-                        "class_changes": [
-                            {"corner_id": c, "old": o, "new": n}
-                            for c, o, n in result.class_changes
-                        ],
-                    })
-                evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
-        return {"results": results, "evicted": evicted}
+                        matched = sum(1 for a in result.assigned if a)
+                        entry = {
+                            "filename": filename,
+                            "car": file_car,
+                            "track": file_track,
+                            "auto_detected": auto_detected,
+                            "status": result.status,
+                            "lap_pk": result.lap_pk,
+                            "corners_matched": matched,
+                            "corners_total": len(result.assigned),
+                            "admitted": result.admitted,
+                            "class_changes": [
+                                {"corner_id": c, "old": o, "new": n}
+                                for c, o, n in result.class_changes
+                            ],
+                        }
+                        results.append(entry)
+                        yield f"data: {json.dumps({'type': 'progress', 'index': i, 'total': total, 'result': entry}, sort_keys=True)}\n\n"
+                    evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
+            yield f"data: {json.dumps({'type': 'complete', 'results': results, 'evicted': evicted}, sort_keys=True)}\n\n"
+
+        return StreamingResponse(_upload_events(), media_type="text/event-stream")
 
     @app.get("/api/metrics/{corner_id}/{metric}/distribution")
     def metric_distribution(corner_id: str, metric: str, cohort: str, request: Request) -> dict[str, Any]:
@@ -1616,10 +1634,15 @@ def create_app(
         return {"disconnected": True}
 
     @app.post("/api/sync")
-    def sync(request: Request, body: SyncBody | None = None) -> list[dict[str, Any]]:
+    def sync(request: Request, body: SyncBody | None = None) -> StreamingResponse:
         """Wraps `sync_driver` (UI-SPEC U6 condition 1). Tries the stored
         Garage61 OAuth token first, then falls back to `GARAGE61_TOKEN` env
-        var. This endpoint never reads a token out of the request body."""
+        var. This endpoint never reads a token out of the request body.
+
+        Returns SSE: progress events as cohorts are discovered and laps
+        imported, then a terminal ``complete`` event with the full result
+        list. Keeps data flowing so a reverse proxy (Cloudflare) does not
+        time out on a slow multi-cohort sync."""
         from driverdna.garage61.client import Garage61Client
         from driverdna.garage61.sync import sync_driver
 
@@ -1629,17 +1652,45 @@ def create_app(
         except RuntimeError as e:
             raise HTTPException(400, detail=str(e)) from None
 
+        reason = missing_reason(db_path)
+        if reason:
+            raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
+
         config = load_config(config_path)
-        with open_db(request) as db:
-            summaries = sync_driver(
-                db, client, driver="owner", config=config,
-                car=body.car if body else None, track=body.track if body else None,
-            )
-            # Same conditional as the CLI: retention only runs once there is
-            # something to enforce it over (an empty discovery skips it too).
-            if summaries:
-                db.enforce_retention(config.retention.raw_laps_per_cohort)
-            return [_cohort_sync_dict(s) for s in summaries]
+        sync_car = body.car if body else None
+        sync_track = body.track if body else None
+        user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
+
+        def _sync_events():
+            q: queue.Queue[dict[str, Any]] = queue.Queue()
+
+            def run() -> None:
+                try:
+                    with Database.open(db_path, user_pk=user_pk) as db:
+                        summaries = sync_driver(
+                            db, client, driver="owner", config=config,
+                            car=sync_car, track=sync_track,
+                            on_progress=lambda evt: q.put(evt),
+                        )
+                        if summaries:
+                            db.enforce_retention(config.retention.raw_laps_per_cohort)
+                        q.put({
+                            "type": "complete",
+                            "results": [_cohort_sync_dict(s) for s in summaries],
+                        })
+                except Exception as exc:
+                    q.put({"type": "error", "detail": str(exc)})
+
+            t = threading.Thread(target=run, daemon=True)
+            t.start()
+            while True:
+                event = q.get()
+                yield f"data: {json.dumps(event, sort_keys=True)}\n\n"
+                if event["type"] in ("complete", "error"):
+                    break
+            t.join()
+
+        return StreamingResponse(_sync_events(), media_type="text/event-stream")
 
     @app.post("/api/cohorts/{slug}/rebuild-map")
     def rebuild_map(slug: str, request: Request) -> dict[str, Any]:
