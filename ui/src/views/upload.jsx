@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { get, uploadLaps } from "../api.js";
+import { get, uploadLaps, send } from "../api.js";
 
 // Upload (UI-SPEC view 7: "Laps — Import/session listing"). A thin form over
 // POST /api/laps/upload, which is itself a thin wrapper over the same
@@ -7,7 +7,7 @@ import { get, uploadLaps } from "../api.js";
 // nothing, it only collects the same inputs `driverdna import` takes as
 // flags and shows back exactly what the endpoint reports. Also the one true
 // cold-start path: no DB needs to exist yet.
-export default function Upload() {
+export default function Upload({ garage61Enabled, garage61Linked }) {
   const [files, setFiles] = useState([]);
   const [car, setCar] = useState("");
   const [track, setTrack] = useState("");
@@ -19,6 +19,10 @@ export default function Upload() {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // {results, evicted}
   const [landedCohorts, setLandedCohorts] = useState([]); // [{slug, car, track}]
+  
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const [syncResult, setSyncResult] = useState(null); // list[CohortSync]
 
   async function submit(e) {
     e.preventDefault();
@@ -54,12 +58,75 @@ export default function Upload() {
     }
   }
 
+  async function runSync() {
+    setSyncBusy(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const payload = {};
+      if (car.trim()) payload.car = car.trim();
+      if (track.trim()) payload.track = track.trim();
+      const r = await send("POST", "/api/sync", payload);
+      setSyncResult(r);
+    } catch (e) {
+      setSyncError(String(e.message || e));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   return (
     <div className="grid">
       <section className="panel">
         <h1>Import laps</h1>
         <div className="sub">Garage61 CSV exports — the same import as the CLI, from the browser.</div>
       </section>
+
+      {garage61Enabled && (
+        <section className="panel">
+          <p className="eyebrow">Garage61 Sync</p>
+          {!garage61Linked ? (
+            <>
+              <div className="sub">Link your Garage61 account to automatically sync your latest laps.</div>
+              <div className="actions" style={{ marginTop: "0.6rem" }}>
+                <a className="btn confirm" href="/api/auth/garage61/login">Link Garage61 Account</a>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="sub">Sync the latest laps directly from your connected Garage61 account.</div>
+              <div className="actions" style={{ marginTop: "0.6rem" }}>
+                <button className="btn confirm" disabled={syncBusy} onClick={runSync}>
+                  {syncBusy ? "Syncing…" : "Sync from Garage61"}
+                </button>
+              </div>
+              {syncError && <div className="error" style={{ marginTop: "0.6rem" }}>{syncError}</div>}
+              {syncResult && (
+                syncResult.length === 0 ? (
+                  <div className="dim" style={{ fontSize: "0.82rem", marginTop: "0.6rem" }}>
+                    No new laps found.
+                  </div>
+                ) : (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    {syncResult.map((s) => (
+                      <div key={`${s.car}::${s.track}`} className="finding">
+                        <div className="head">
+                          <span className="desc">{s.car} @ {s.track}</span>
+                          <span className="val num">{s.laps_new} new</span>
+                        </div>
+                        <div className="meta num">
+                          imported {s.laps_imported} / {s.laps_found} laps
+                          {s.evicted > 0 && ` · evicted ${s.evicted} old`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       <section className="panel">
         <form onSubmit={submit}>

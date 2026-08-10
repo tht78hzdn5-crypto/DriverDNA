@@ -871,11 +871,22 @@ def create_app(
         gate instead of ten failed panels. Deliberately says only whether a
         sign-in is required, whether this caller has one, and whether the
         Google button has anything to call — never the client secret."""
+        is_auth = authenticated(request)
+        garage61_linked = False
+        if is_auth:
+            try:
+                with open_db(request) as db:
+                    row = db.conn.execute("SELECT 1 FROM garage61_tokens WHERE owner_user_pk=?", (db.user_pk,)).fetchone()
+                    garage61_linked = row is not None
+            except Exception:
+                pass
+
         return {
             "required": session_secret is not None,
-            "authenticated": authenticated(request),
+            "authenticated": is_auth,
             "google_enabled": google_client_id is not None,
             "garage61_enabled": garage61_client_id is not None,
+            "garage61_linked": garage61_linked,
         }
 
     def make_chat_provider(*, api_key: str | None = None) -> ChatProvider:

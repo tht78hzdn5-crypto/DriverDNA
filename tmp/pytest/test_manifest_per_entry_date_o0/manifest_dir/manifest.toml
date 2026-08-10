@@ -1,0 +1,12 @@
+[[fixtures]]
+file = "a.csv"
+car = "GR86"
+track = "T"
+role = "self"
+date = "2026-01-15"
+
+[[fixtures]]
+file = "b.csv"
+car = "GR86"
+track = "T"
+role = "self"

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="1.521" timestamp="2026-07-28T11:20:55.092233-04:00" hostname="GreatFox"><testcase classname="tests.test_password_reset" name="test_forgot_password_sends_email_if_user_exists" time="0.084"><error message="failed on setup with &quot;assert 2 == 0&#10; +  where 2 = &lt;Result SystemExit(2)&gt;.exit_code&quot;">tests\test_password_reset.py:15: in db_path
+    assert result.exit_code == 0
+E   assert 2 == 0
+E    +  where 2 = &lt;Result SystemExit(2)&gt;.exit_code</error></testcase><testcase classname="tests.test_password_reset" name="test_reset_password_changes_password_and_clears_token" time="0.005"><error message="failed on setup with &quot;assert 2 == 0&#10; +  where 2 = &lt;Result SystemExit(2)&gt;.exit_code&quot;">tests\test_password_reset.py:15: in db_path
+    assert result.exit_code == 0
+E   assert 2 == 0
+E    +  where 2 = &lt;Result SystemExit(2)&gt;.exit_code</error></testcase></testsuite></testsuites>

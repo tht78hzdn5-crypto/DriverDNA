@@ -1,0 +1,38 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\benja\driverdna
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2
+collected 738 items
+
+tests\test_agent_contract.py ........                                    [  1%]
+tests\test_api.py ...........                                            [  2%]
+tests\test_attribution.py ............                                   [  4%]
+tests\test_auth.py .............................                         [  8%]
+tests\test_auth_api.py .................                                 [ 10%]
+tests\test_auth_cli.py ...............                                   [ 12%]
+tests\test_auth_ui.py sssssss                                            [ 13%]
+tests\test_blobs.py .............F..                                     [ 15%]
+tests\test_chat.py ..............                                        [ 17%]
+tests\test_chat_api.py ...........                                       [ 18%]
+tests\test_classify.py ................                                  [ 21%]
+tests\test_coach.py ......................                               [ 24%]
+tests\test_coaching_engine.py ..............                             [ 26%]
+tests\test_coaching_ontology.py .............                            [ 27%]
+tests\test_coaching_report.py ....                                       [ 28%]
+tests\test_cockpit_api.py ..........                                     [ 29%]
+tests\test_cockpit_ui.py ss                                              [ 29%]
+tests\test_cohort_drift.py ............                                  [ 31%]
+tests\test_corners_report.py ...                                         [ 31%]
+tests\test_dated_import.py .......                                       [ 32%]
+tests\test_db.py .........                                               [ 34%]
+tests\test_demo.py .....                                                 [ 34%]
+tests\test_dialect.py ...............sssss                               [ 37%]
+tests\test_garage61_client.py .................                          [ 39%]
+tests\test_garage61_sync.py ..................                           [ 42%]
+tests\test_hardening.py ............                                     [ 43%]
+tests\test_identity.py ..........                                        [ 45%]
+tests\test_import_cli.py ..........                                      [ 46%]
+tests\test_incidents.py .......................                          [ 49%]
+tests\test_metrics.py .........                                          [ 50%]

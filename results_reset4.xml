@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="1.700" timestamp="2026-07-28T11:23:36.295450-04:00" hostname="GreatFox"><testcase classname="tests.test_password_reset" name="test_forgot_password_sends_email_if_user_exists" time="0.128"><error message="failed on setup with &quot;pydantic_core._pydantic_core.ValidationError: 1 validation error for DriverDNAConfig&#10;ui&#10;  Extra inputs are not permitted [type=extra_forbidden, input_value={'smtp': {'host': 'test',...: 'a', 'password': 'b'}}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden&quot;">tests\test_password_reset.py:23: in app
+    api = create_app(db_path, config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\ui\api.py:136: in create_app
+    _startup = load_config(config_path)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\config.py:673: in load_config
+    return DriverDNAConfig.model_validate(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for DriverDNAConfig
+E   ui
+E     Extra inputs are not permitted [type=extra_forbidden, input_value={'smtp': {'host': 'test',...: 'a', 'password': 'b'}}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden</error></testcase><testcase classname="tests.test_password_reset" name="test_reset_password_changes_password_and_clears_token" time="0.126"><error message="failed on setup with &quot;pydantic_core._pydantic_core.ValidationError: 1 validation error for DriverDNAConfig&#10;ui&#10;  Extra inputs are not permitted [type=extra_forbidden, input_value={'smtp': {'host': 'test',...: 'a', 'password': 'b'}}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden&quot;">tests\test_password_reset.py:23: in app
+    api = create_app(db_path, config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\ui\api.py:136: in create_app
+    _startup = load_config(config_path)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\config.py:673: in load_config
+    return DriverDNAConfig.model_validate(data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for DriverDNAConfig
+E   ui
+E     Extra inputs are not permitted [type=extra_forbidden, input_value={'smtp': {'host': 'test',...: 'a', 'password': 'b'}}, input_type=dict]
+E       For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden</error></testcase></testsuite></testsuites>

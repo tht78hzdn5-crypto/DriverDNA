@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="1.674" timestamp="2026-07-28T11:21:58.174054-04:00" hostname="GreatFox"><testcase classname="tests.test_password_reset" name="test_forgot_password_sends_email_if_user_exists" time="0.126"><error message="failed on setup with &quot;sqlite3.IntegrityError: UNIQUE constraint failed: users.email&quot;">tests\test_password_reset.py:13: in db_path
+    db.conn.execute("INSERT INTO users (email, password_hash, session_epoch) VALUES (?, ?, ?)",
+src\driverdna\db.py:517: in execute
+    return self._raw.execute(sql, params) if params is not None else self._raw.execute(sql)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   sqlite3.IntegrityError: UNIQUE constraint failed: users.email</error></testcase><testcase classname="tests.test_password_reset" name="test_reset_password_changes_password_and_clears_token" time="0.123"><error message="failed on setup with &quot;sqlite3.IntegrityError: UNIQUE constraint failed: users.email&quot;">tests\test_password_reset.py:13: in db_path
+    db.conn.execute("INSERT INTO users (email, password_hash, session_epoch) VALUES (?, ?, ?)",
+src\driverdna\db.py:517: in execute
+    return self._raw.execute(sql, params) if params is not None else self._raw.execute(sql)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   sqlite3.IntegrityError: UNIQUE constraint failed: users.email</error></testcase></testsuite></testsuites>

@@ -1,0 +1,140 @@
+import re
+
+with open('src/driverdna/db.py', 'r') as f:
+    code = f.read()
+
+migration_008 = """    \"\"\"
+    -- Phase 2: Data Partitioning
+    CREATE TABLE laps_new (
+        lap_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_user_pk INTEGER NOT NULL,
+        lap_id TEXT NOT NULL,
+        source_file TEXT NOT NULL,
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('self', 'reference')),
+        session_key TEXT NOT NULL,
+        run_index INTEGER NOT NULL,
+        n_samples INTEGER NOT NULL,
+        duration_s REAL NOT NULL,
+        imported_at TEXT NOT NULL,
+        quality_flags TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        lap_date TEXT,
+        UNIQUE(content_hash, source_file, owner_user_pk)
+    );
+    INSERT INTO laps_new (lap_pk, owner_user_pk, lap_id, source_file, driver, car, track, role, session_key, run_index, n_samples, duration_s, imported_at, quality_flags, content_hash, lap_date)
+    SELECT lap_pk, 1, lap_id, source_file, driver, car, track, role, session_key, run_index, n_samples, duration_s, imported_at, quality_flags, content_hash, lap_date FROM laps;
+    DROP TABLE laps;
+    ALTER TABLE laps_new RENAME TO laps;
+    CREATE INDEX idx_laps_cohort ON laps(car, track, role);
+
+    CREATE TABLE corner_maps_new (
+        map_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_user_pk INTEGER NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        built_from_n_laps INTEGER NOT NULL,
+        UNIQUE(car, track, owner_user_pk)
+    );
+    INSERT INTO corner_maps_new (map_pk, owner_user_pk, car, track, built_from_n_laps)
+    SELECT map_pk, 1, car, track, built_from_n_laps FROM corner_maps;
+    DROP TABLE corner_maps;
+    ALTER TABLE corner_maps_new RENAME TO corner_maps;
+
+    CREATE TABLE incidents_new (
+        incident_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        lap_pk INTEGER NOT NULL REFERENCES laps(lap_pk) ON DELETE CASCADE,
+        owner_user_pk INTEGER NOT NULL,
+        corner_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        description TEXT NOT NULL
+    );
+    INSERT INTO incidents_new (incident_pk, lap_pk, owner_user_pk, corner_id, kind, description)
+    SELECT incident_pk, lap_pk, 1, corner_id, kind, description FROM incidents;
+    DROP TABLE incidents;
+    ALTER TABLE incidents_new RENAME TO incidents;
+    CREATE INDEX idx_incidents_lap ON incidents(lap_pk);
+
+    CREATE TABLE chat_transcripts_new (
+        session_id TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        index_in_session INTEGER NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('user', 'coach')),
+        content TEXT NOT NULL,
+        PRIMARY KEY (session_id, index_in_session)
+    );
+    INSERT INTO chat_transcripts_new (session_id, owner_user_pk, index_in_session, role, content)
+    SELECT session_id, 1, index_in_session, role, content FROM chat_transcripts;
+    DROP TABLE chat_transcripts;
+    ALTER TABLE chat_transcripts_new RENAME TO chat_transcripts;
+
+    CREATE TABLE driver_beliefs_new (
+        driver TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        fundamental TEXT NOT NULL,
+        scoring_model_version TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        confidence INTEGER NOT NULL,
+        evidence_count INTEGER NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (owner_user_pk, driver, fundamental, scoring_model_version)
+    );
+    INSERT INTO driver_beliefs_new (driver, owner_user_pk, fundamental, scoring_model_version, score, confidence, evidence_count, updated_at)
+    SELECT driver, 1, fundamental, scoring_model_version, score, confidence, evidence_count, updated_at FROM driver_beliefs;
+    DROP TABLE driver_beliefs;
+    ALTER TABLE driver_beliefs_new RENAME TO driver_beliefs;
+
+    CREATE TABLE coach_outputs_new (
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        focus TEXT NOT NULL,
+        explanation TEXT NOT NULL,
+        drills TEXT NOT NULL,
+        session_context TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (owner_user_pk, driver, car, track)
+    );
+    INSERT INTO coach_outputs_new (driver, car, track, owner_user_pk, focus, explanation, drills, session_context, updated_at)
+    SELECT driver, car, track, 1, focus, explanation, drills, session_context, updated_at FROM coach_outputs;
+    DROP TABLE coach_outputs;
+    ALTER TABLE coach_outputs_new RENAME TO coach_outputs;
+
+    CREATE TABLE garage61_sync_state_new (
+        driver TEXT NOT NULL,
+        car TEXT NOT NULL,
+        track TEXT NOT NULL,
+        owner_user_pk INTEGER NOT NULL,
+        last_sync_date TEXT NOT NULL,
+        PRIMARY KEY (owner_user_pk, driver, car, track)
+    );
+    INSERT INTO garage61_sync_state_new (driver, car, track, owner_user_pk, last_sync_date)
+    SELECT driver, car, track, 1, last_sync_date FROM garage61_sync_state;
+    DROP TABLE garage61_sync_state;
+    ALTER TABLE garage61_sync_state_new RENAME TO garage61_sync_state;
+
+    CREATE TABLE config_history_new (
+        change_pk INTEGER PRIMARY KEY AUTOINCREMENT,
+        owner_user_pk INTEGER NOT NULL,
+        applied_at TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        proposal_json TEXT,
+        change_reason TEXT,
+        reverts_change_pk INTEGER
+    );
+    INSERT INTO config_history_new (change_pk, owner_user_pk, applied_at, snapshot_json, proposal_json, change_reason, reverts_change_pk)
+    SELECT change_pk, 1, applied_at, snapshot_json, proposal_json, change_reason, reverts_change_pk FROM config_history;
+    DROP TABLE config_history;
+    ALTER TABLE config_history_new RENAME TO config_history;
+    \"\"\",
+"""
+
+if "CREATE TABLE laps_new" not in code:
+    print("Appending Migration 008")
+    code = code.replace('    """,\n]\n', '    """,\n' + migration_008 + ']\n')
+
+with open('src/driverdna/db.py', 'w') as f:
+    f.write(code)
