@@ -99,9 +99,11 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
    sudo -u driverdna tee /etc/driverdna/driverdna.env >/dev/null <<'EOF'
    DRIVERDNA_SESSION_SECRET=...      # required — keep STABLE, rotating logs you out
    GEMINI_API_KEY=...                # required for AI coaching/chat
-   GARAGE61_TOKEN=...                # required for driverdna sync
+   GARAGE61_TOKEN=...                # required for driverdna sync (env fallback)
    GOOGLE_CLIENT_ID=...              # optional — enables Google OAuth login
    GOOGLE_CLIENT_SECRET=...          # optional — required only if GOOGLE_CLIENT_ID is set
+   GARAGE61_CLIENT_ID=...            # optional — enables Garage61 OAuth login + per-user sync
+   GARAGE61_CLIENT_SECRET=...        # optional — required only if GARAGE61_CLIENT_ID is set
    EOF
    sudo chmod 0600 /etc/driverdna/driverdna.env
    ```

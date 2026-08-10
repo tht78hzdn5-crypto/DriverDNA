@@ -11,7 +11,7 @@ export default function Login({ onAuthenticated, googleEnabled, garage61Enabled 
     const authErr = params.get("auth_error");
     if (authErr) {
       window.history.replaceState({}, "", window.location.pathname + window.location.hash);
-      return `Google sign-in failed: ${authErr}`;
+      return `Sign-in failed: ${authErr}`;
     }
     return null;
   });
