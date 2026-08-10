@@ -2421,3 +2421,19 @@ Accepted at owner plan review; rationale recorded in the review:
   pass proved nothing about CI once already. Suite 905 → 909 passed (the
   gitleaks pin-format test), 16 skipped, 0 failed throughout; no engine
   number moved.
+
+  **Not resolved (2026-08-09): branch protection is blocked, not merely
+  pending.** The owner's account hit a GitHub plan restriction attempting
+  the Rulesets UI this amendment assumed was a formality — private-repo
+  Rulesets require a paid plan tier this account does not have. Classic
+  branch protection (`Settings → Branches`, the older, separate feature)
+  is untried and may or may not be gated the same way; not yet confirmed
+  either direction. Until one of them works, **there is no
+  platform-enforced block on a direct push to `main`** — every required
+  check still runs and still reports red/green on every push and PR, the
+  enforcement layer is just absent. AGENTS.md's Branches-and-merging
+  section is corrected accordingly: the PR-only rule is now stated as
+  binding by convention, not backed by a ruleset, and is written more
+  emphatically for exactly that reason — an agent reading it should treat
+  it as absolute regardless of whether GitHub would actually stop a
+  violation.

@@ -39,7 +39,15 @@ branch protection — SPEC.md A47).**
   in this session can write repo rulesets. Required checks:
   `pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`, `secrets` —
   deliberately not `mypy`. Owner stays on the bypass list for direct
-  hotfix pushes.
+  hotfix pushes. **Correction, same day: attempted and blocked.** The
+  owner's GitHub account hit a paid-plan restriction on private-repo
+  Rulesets — this was assumed to be a formality and was not. Classic
+  branch protection (the older, separate `Settings → Branches` feature)
+  is untried. Until one works, **main has no platform-enforced gate**:
+  every check above still runs and reports red/green, nothing stops a
+  direct push. AGENTS.md's Branches-and-merging section now states the
+  PR-only rule as binding by convention rather than implying a ruleset
+  backs it.
 
 ### Verified counts (2026-08-09, A47 CI quality gates)
 
