@@ -965,45 +965,163 @@ def create_app(
     def normalized(payload: dict) -> Response:
         return Response(content=to_normalized_json(payload), media_type="application/json")
 
+    def _json_default(obj: Any) -> Any:
+        if isinstance(obj, set):
+            return sorted(obj)
+        if isinstance(obj, float):
+            return round(obj, 6)
+        raise TypeError(f"not JSON serializable: {type(obj)}")
+
     # --- reads --------------------------------------------------------------
 
-    @app.get("/api/driver")
-    def driver(request: Request) -> Response:
+    @app.get("/api/driver/summary")
+    def driver_summary(request: Request) -> dict[str, Any]:
+        """Lightweight summary for instant first paint — no engine computation,
+        just DB counts.  The Driver page renders this immediately while the
+        full ``/api/driver`` SSE stream is still computing."""
         with open_db(request) as db:
-            return normalized(build_driver_payload(db, load_config(config_path)))
+            cohorts_list = list_cohorts(db)
+            lap_counts = {
+                (r["car"], r["track"]): {"self": r["n_self"], "reference": r["n_ref"]}
+                for r in db.conn.execute(
+                    """SELECT car, track,
+                              SUM(CASE WHEN role='self' THEN 1 ELSE 0 END) n_self,
+                              SUM(CASE WHEN role='reference' THEN 1 ELSE 0 END) n_ref
+                       FROM laps WHERE owner_user_pk=?
+                       GROUP BY car, track""",
+                    (db.user_pk,),
+                )
+            }
+            driver_name = cohorts_list[0]["driver"] if cohorts_list else None
+            sync_rows = {}
+            if driver_name:
+                for r in db.sync_states(driver_name):
+                    sync_rows[(r["car"], r["track"])] = r.get("last_synced_at")
+
+            cohort_summaries = []
+            for c in cohorts_list:
+                key = (c["car"], c["track"])
+                counts = lap_counts.get(key, {"self": 0, "reference": 0})
+                cohort_summaries.append({
+                    "car": c["car"], "track": c["track"],
+                    "n_laps": counts["self"],
+                    "n_reference_laps": counts["reference"],
+                    "last_synced_at": sync_rows.get(key),
+                })
+            return {
+                "n_cohorts": len(cohorts_list),
+                "n_self_laps": sum(s["n_laps"] for s in cohort_summaries),
+                "n_reference_laps": sum(s["n_reference_laps"] for s in cohort_summaries),
+                "cohorts": cohort_summaries,
+                "last_synced_at": max(
+                    (v for v in sync_rows.values() if v), default=None
+                ),
+            }
+
+    @app.get("/api/driver")
+    def driver(request: Request) -> StreamingResponse:
+        """Streams the driver payload via SSE so the UI can show per-cohort
+        progress instead of hanging on 'loading...' for 30+ seconds."""
+        open_db(request).close()
+        user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
+        config = load_config(config_path)
+
+        def _driver_events():
+            q: queue.Queue[dict[str, Any]] = queue.Queue()
+
+            def run() -> None:
+                try:
+                    with Database.open(db_path, user_pk=user_pk) as db:
+                        def on_progress(evt: dict[str, Any]) -> None:
+                            q.put(evt)
+                        payload = build_driver_payload(db, config, on_progress=on_progress)
+                        q.put({"type": "complete", "payload": payload})
+                except Exception as exc:
+                    q.put({"type": "error", "detail": str(exc)})
+
+            t = threading.Thread(target=run, daemon=True)
+            t.start()
+            while True:
+                event = q.get()
+                yield f"data: {json.dumps(event, sort_keys=True, default=_json_default)}\n\n"
+                if event["type"] in ("complete", "error"):
+                    break
+            t.join()
+
+        return StreamingResponse(_driver_events(), media_type="text/event-stream")
 
     @app.get("/api/driver/score-history")
-    def driver_score_history(request: Request) -> Response:
-        """Pass-through of model.history.score_history (SPEC.md A36) — the
-        score-over-time chart's data. Same "driver = the first cohort's
-        driver label" resolution build_driver_payload uses; None (no
-        cohorts yet) returns the same unavailable shape score_history
-        itself returns for too-few-dated-laps, so the chart's empty state
-        needs no separate cold-start branch."""
+    def driver_score_history(request: Request) -> StreamingResponse:
+        """Streams score_history via SSE so the Model page shows progress."""
         from driverdna.model.history import CAVEATS, SERIES_VERSION, score_history
         from driverdna.model.scoring import SCORING_MODEL_VERSION
 
-        with open_db(request) as db:
-            cohorts_list = list_cohorts(db)
-            driver_name = cohorts_list[0]["driver"] if cohorts_list else None
-            if driver_name is None:
-                return normalized({
-                    "series_version": SERIES_VERSION,
-                    "scoring_model_version": SCORING_MODEL_VERSION,
-                    "x_axis": {"kind": "unavailable", "labels": [], "bucket_lap_counts": []},
-                    "series": {},
-                    "caveats": list(CAVEATS),
-                })
-            return normalized(
-                score_history(db, driver=driver_name, config=load_config(config_path))
-            )
+        open_db(request).close()
+        user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
+        config = load_config(config_path)
+
+        def _history_events():
+            q: queue.Queue[dict[str, Any]] = queue.Queue()
+
+            def run() -> None:
+                try:
+                    with Database.open(db_path, user_pk=user_pk) as db:
+                        cohorts_list = list_cohorts(db)
+                        driver_name = cohorts_list[0]["driver"] if cohorts_list else None
+                        if driver_name is None:
+                            q.put({"type": "complete", "payload": {
+                                "series_version": SERIES_VERSION,
+                                "scoring_model_version": SCORING_MODEL_VERSION,
+                                "x_axis": {"kind": "unavailable", "labels": [], "bucket_lap_counts": []},
+                                "series": {},
+                                "caveats": list(CAVEATS),
+                            }})
+                            return
+                        q.put({"type": "progress", "message": "Computing score history…"})
+                        result = score_history(db, driver=driver_name, config=config)
+                        q.put({"type": "complete", "payload": result})
+                except Exception as exc:
+                    q.put({"type": "error", "detail": str(exc)})
+
+            t = threading.Thread(target=run, daemon=True)
+            t.start()
+            while True:
+                event = q.get()
+                yield f"data: {json.dumps(event, sort_keys=True, default=_json_default)}\n\n"
+                if event["type"] in ("complete", "error"):
+                    break
+            t.join()
+
+        return StreamingResponse(_history_events(), media_type="text/event-stream")
 
     @app.get("/api/cohorts")
-    def cohorts(request: Request) -> list[dict[str, str]]:
+    def cohorts(request: Request) -> list[dict[str, Any]]:
         with open_db(request) as db:
+            cohorts_list = list_cohorts(db)
+            lap_counts = {
+                (r["car"], r["track"]): {"self": r["n_self"], "reference": r["n_ref"]}
+                for r in db.conn.execute(
+                    """SELECT car, track,
+                              SUM(CASE WHEN role='self' THEN 1 ELSE 0 END) n_self,
+                              SUM(CASE WHEN role='reference' THEN 1 ELSE 0 END) n_ref
+                       FROM laps WHERE owner_user_pk=?
+                       GROUP BY car, track""",
+                    (db.user_pk,),
+                )
+            }
+            driver_name = cohorts_list[0]["driver"] if cohorts_list else None
+            sync_rows: dict[tuple[str, str], str | None] = {}
+            if driver_name:
+                for r in db.sync_states(driver_name):
+                    sync_rows[(r["car"], r["track"])] = r.get("last_synced_at")
             return [
-                c | {"slug": cohort_slug(c["car"], c["track"])}
-                for c in list_cohorts(db)
+                c | {
+                    "slug": cohort_slug(c["car"], c["track"]),
+                    "n_laps": lap_counts.get((c["car"], c["track"]), {"self": 0})["self"],
+                    "n_reference_laps": lap_counts.get((c["car"], c["track"]), {"reference": 0}).get("reference", 0),
+                    "last_synced_at": sync_rows.get((c["car"], c["track"])),
+                }
+                for c in cohorts_list
             ]
 
     @app.get("/api/cohorts/{slug}/payload")

@@ -389,3 +389,78 @@ def test_rebuild_map_response_includes_cleared_stale_phase_notice(tmp_path):
     assert body["total_cleared"] == 3 * len(CORNER_WINDOWS)
     cleared_lap_pks = {pk for c in body["corners"] for pk in c["laps_cleared"]}
     assert len(cleared_lap_pks) == 3
+
+
+# --- GET /api/driver/summary -----------------------------------------------
+
+
+def test_driver_summary_returns_counts_without_engine_computation(tmp_path):
+    """The summary endpoint returns cohort/lap counts from cheap DB queries,
+    not the full engine pipeline."""
+    db_path = tmp_path / "summary.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/driver/summary")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["n_cohorts"] == 2
+    assert body["n_self_laps"] > 0
+    assert isinstance(body["cohorts"], list)
+    assert len(body["cohorts"]) == 2
+    for c in body["cohorts"]:
+        assert "car" in c and "track" in c and "n_laps" in c
+
+
+def test_driver_summary_404s_without_a_db(tmp_path):
+    app = create_app(tmp_path / "nope.db", tmp_path / "cfg.toml")
+    r = TestClient(app).get("/api/driver/summary")
+    assert r.status_code == 404
+
+
+# --- GET /api/driver (SSE) --------------------------------------------------
+
+
+def test_driver_sse_streams_progress_then_complete(tmp_path):
+    """The SSE driver endpoint emits progress events per cohort then a
+    terminal complete event with the full payload."""
+    db_path = tmp_path / "sse.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/driver")
+    assert r.status_code == 200
+    events = _parse_sse(r)
+    types = [e["type"] for e in events]
+    assert "progress" in types
+    assert types[-1] == "complete"
+    payload = events[-1]["payload"]
+    assert "cross_track_rollups" in payload
+    assert "driver_model" in payload
+
+
+# --- GET /api/cohorts (enriched) --------------------------------------------
+
+
+def test_cohorts_include_lap_counts_and_sync_dates(tmp_path):
+    """The enriched /api/cohorts response includes n_laps, n_reference_laps,
+    and last_synced_at per cohort."""
+    db_path = tmp_path / "enriched.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/cohorts")
+    assert r.status_code == 200
+    cohorts = r.json()
+    assert len(cohorts) == 2
+    for c in cohorts:
+        assert "n_laps" in c
+        assert "n_reference_laps" in c
+        assert "last_synced_at" in c
+        assert c["n_laps"] > 0

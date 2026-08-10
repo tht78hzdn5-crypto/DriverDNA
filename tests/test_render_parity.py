@@ -20,6 +20,7 @@ the core suite stays browser-free.
 
 from __future__ import annotations
 
+import json
 import re
 import socket
 import threading
@@ -117,6 +118,20 @@ def server(tmp_path_factory):
     thread.join(timeout=5)
 
 
+def _sse_payload(response):
+    """Extract the 'complete' event's payload from an SSE response."""
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                event = json.loads(line[len("data: "):])
+                if event.get("type") == "complete":
+                    return event["payload"]
+    return None
+
+
 def _number_pool(base: str, slug: str) -> set[float]:
     """Every number the API serves for the crawled views."""
     pool: set[float] = set()
@@ -124,7 +139,7 @@ def _number_pool(base: str, slug: str) -> set[float]:
     def get(path: str):
         return httpx.get(f"{base}{path}", timeout=10).json()
 
-    number_pool(get("/api/driver"), pool)
+    number_pool(_sse_payload(httpx.get(f"{base}/api/driver", timeout=30)), pool)
     number_pool(get("/api/config"), pool)
     number_pool(get("/api/explain"), pool)
     for cohort in get("/api/cohorts"):

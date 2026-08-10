@@ -14,6 +14,7 @@ is absent.
 
 from __future__ import annotations
 
+import json
 import re
 import socket
 import threading
@@ -112,15 +113,26 @@ def server(tmp_path):
 _DECIMAL = re.compile(r"[-+]?\d+\.\d+")
 
 
+def _sse_payload(response):
+    """Extract the 'complete' event's payload from an SSE response."""
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                event = json.loads(line[len("data: "):])
+                if event.get("type") == "complete":
+                    return event["payload"]
+    return None
+
+
 def test_populated_score_history_chart_renders_lines_and_traces_to_payload(server):
     base = server
-    history = httpx.get(f"{base}/api/driver/score-history", timeout=10).json()
+    history = _sse_payload(httpx.get(f"{base}/api/driver/score-history", timeout=30))
     assert history["x_axis"]["kind"] == "date_bucket"
-    # #/model also renders /api/driver's own (non-bucketed) beliefs on the
-    # same page — its numbers must be in the pool too, or they'd falsely
-    # trip the check below as "invented".
     pool = number_pool(history)
-    number_pool(httpx.get(f"{base}/api/driver", timeout=10).json(), pool)
+    number_pool(_sse_payload(httpx.get(f"{base}/api/driver", timeout=30)), pool)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))

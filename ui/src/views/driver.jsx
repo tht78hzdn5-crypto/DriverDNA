@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { get, send } from "../api.js";
+import { useState, useEffect } from "react";
+import { get, streamGet, streamSync } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
 import { LossBars, Methodology } from "./shared.jsx";
@@ -11,28 +11,68 @@ import { LossBars, Methodology } from "./shared.jsx";
 const NO_DB = "no DB at"; // matches api.py's open_db() 404 detail exactly
 const NO_TOKEN = "GARAGE61_TOKEN"; // matches Garage61Client's own RuntimeError text
 
-// Sync (U6): a wrapper over sync_driver, nothing computed here — every
-// figure below is the endpoint's own response, replayed verbatim. The
-// missing-token state is guidance, never an input field (decision: secrets
-// stay env-only, never transit the browser).
+function ProgressBar({ current, total }) {
+  if (!total) return null;
+  const pct = Math.round((current / total) * 100);
+  return (
+    <div className="import-progress">
+      <div className="import-progress-bar">
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      <span className="import-progress-label">{current} of {total}</span>
+    </div>
+  );
+}
+
 function SyncPanel({ onSynced }) {
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null); // list[CohortSync] verbatim
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [syncProgress, setSyncProgress] = useState(null);
   const noToken = (error || "").includes(NO_TOKEN);
 
   async function runSync() {
     setBusy(true);
     setError(null);
     setResult(null);
+    setSyncProgress({ message: "Discovering cohorts…", current: 0, total: 0 });
     try {
-      const r = await send("POST", "/api/sync");
-      setResult(r);
-      onSynced();
+      let finalResult = null;
+      await streamSync(null, (event) => {
+        if (event.type === "discovering") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            message: `Found ${event.cohorts} cohort${event.cohorts === 1 ? "" : "s"}…`,
+            total: event.cohorts,
+          }));
+        } else if (event.type === "cohort_start") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            message: `Syncing ${event.car} @ ${event.track}…`,
+            current: event.index,
+            total: event.total,
+          }));
+        } else if (event.type === "cohort_done") {
+          setSyncProgress((prev) => ({
+            ...prev,
+            current: event.index + 1,
+            total: event.total,
+          }));
+        } else if (event.type === "complete") {
+          finalResult = event;
+        } else if (event.type === "error") {
+          throw new Error(event.detail);
+        }
+      });
+      if (finalResult) {
+        setResult(finalResult.results);
+        onSynced();
+      }
     } catch (e) {
       setError(String(e.message || e));
     } finally {
       setBusy(false);
+      setSyncProgress(null);
     }
   }
 
@@ -46,6 +86,15 @@ function SyncPanel({ onSynced }) {
         <a className="btn" href="#/garage">Open garage</a>
         <a className="btn" href="#/model">Driver model</a>
       </div>
+
+      {syncProgress && (
+        <div style={{ marginTop: "0.6rem" }}>
+          <div className="dim" style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+            {syncProgress.message}
+          </div>
+          <ProgressBar current={syncProgress.current} total={syncProgress.total} />
+        </div>
+      )}
 
       {noToken && <div className="reason" style={{ marginTop: "0.6rem" }}>Set GARAGE61_TOKEN to sync.</div>}
       {error && !noToken && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
@@ -119,15 +168,56 @@ function CensusPanel({ census }) {
   );
 }
 
+function RollupProgress({ progress }) {
+  if (!progress) return null;
+  return (
+    <section className="panel">
+      <div className="dim" style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+        Computing rollup — {progress.cohort || "starting…"}
+      </div>
+      <ProgressBar current={progress.index + 1} total={progress.total} />
+    </section>
+  );
+}
+
 export default function DriverHome() {
   const [reload, setReload] = useState(0);
-  const driver = useFetch(() => get("/api/driver"), [reload]);
+  const summary = useFetch(() => get("/api/driver/summary"), [reload]);
   const cohorts = useFetch(() => get("/api/cohorts"), [reload]);
-  const coldStart = (driver.error || "").includes(NO_DB) || (cohorts.error || "").includes(NO_DB);
-  if (!coldStart && (driver.error || cohorts.error)) {
-    return <Loading error={driver.error || cohorts.error} />;
+
+  const [driver, setDriver] = useState(null);
+  const [driverError, setDriverError] = useState(null);
+  const [rollupProgress, setRollupProgress] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    setDriver(null);
+    setDriverError(null);
+    setRollupProgress(null);
+    streamGet("/api/driver", (event) => {
+      if (!alive) return;
+      if (event.type === "progress") {
+        setRollupProgress(event);
+      } else if (event.type === "progress_phase") {
+        setRollupProgress((prev) => ({
+          ...prev,
+          cohort: event.phase === "driver_model" ? "computing driver model…" : "computing census…",
+        }));
+      }
+    })
+      .then((payload) => alive && setDriver(payload))
+      .catch((err) => alive && setDriverError(String(err.message || err)));
+    return () => { alive = false; };
+  }, [reload]);
+
+  const coldStart = (summary.error || "").includes(NO_DB) || (cohorts.error || "").includes(NO_DB)
+    || (driverError || "").includes(NO_DB);
+
+  if (!coldStart && summary.error && !driverError) {
+    return <Loading error={summary.error} />;
   }
-  if (!coldStart && (!driver.data || !cohorts.data)) return <Loading error={null} />;
+
+  const hasSummary = !!summary.data;
 
   if (coldStart || (cohorts.data && cohorts.data.length === 0)) {
     return (
@@ -144,7 +234,7 @@ export default function DriverHome() {
     );
   }
 
-  const rollups = driver.data.cross_track_rollups;
+  const rollups = driver ? driver.cross_track_rollups : [];
   const shown = rollups.filter((r) => r.shown);
   const gated = rollups.filter((r) => !r.shown);
 
@@ -155,33 +245,51 @@ export default function DriverHome() {
       </section>
 
       <div className="tiles grid-span">
-        <div className="tile"><div className="v num">{cohorts.data.length}</div><div className="k">Cohorts</div></div>
-        <div className="tile"><div className="v num">{shown.length}</div><div className="k">Rollups shown</div></div>
-        <div className="tile"><div className="v num">{gated.length}</div><div className="k">Gated</div>
-          {gated.length > 0 && <div className="s">reasons below</div>}</div>
+        <div className="tile">
+          <div className="v num">{hasSummary ? summary.data.n_cohorts : "…"}</div>
+          <div className="k">Cohorts</div>
+        </div>
+        <div className="tile">
+          <div className="v num">{hasSummary ? summary.data.n_self_laps : "…"}</div>
+          <div className="k">Laps</div>
+        </div>
+        {driver ? (
+          <>
+            <div className="tile"><div className="v num">{shown.length}</div><div className="k">Rollups shown</div></div>
+            <div className="tile"><div className="v num">{gated.length}</div><div className="k">Gated</div>
+              {gated.length > 0 && <div className="s">reasons below</div>}</div>
+          </>
+        ) : (
+          <div className="tile"><div className="v dim">…</div><div className="k">Rollups</div></div>
+        )}
       </div>
 
-      <section className="panel">
-        <p className="eyebrow">Cross-track loss by car and class (s/lap)</p>
-        <div className="sub" style={{ marginTop: 0, marginBottom: "0.6rem" }}>
-          Aggregated within one car and one class, at two or more tracks.
-        </div>
-        <Methodology id="gate.confidence" label="Why are some rollups gated?" />
-        {shown.length > 0
-          ? <LossBars entries={shown.map((r) => [`${r.car} · ${r.class}`, r.loss_s])} />
-          : <div className="dim" style={{ fontSize: "0.82rem" }}>Nothing clears the gate yet.</div>}
-        {gated.map((r) => (
-          <div key={`${r.car}-${r.class}`} className="finding suppressed">
-            <div className="head">
-              <span className="desc">{r.car} · {r.class}</span>
-              <span className="val num">{fmt(r.loss_s)} s</span>
-            </div>
-            <div className="reason">{r.gate_reason} — {r.n_tracks} track{r.n_tracks === 1 ? "" : "s"}</div>
-          </div>
-        ))}
-      </section>
+      {!driver && !driverError && <RollupProgress progress={rollupProgress} />}
+      {driverError && !coldStart && <section className="panel"><div className="error">{driverError}</div></section>}
 
-      <CensusPanel census={driver.data.census} />
+      {driver && (
+        <section className="panel">
+          <p className="eyebrow">Cross-track loss by car and class (s/lap)</p>
+          <div className="sub" style={{ marginTop: 0, marginBottom: "0.6rem" }}>
+            Aggregated within one car and one class, at two or more tracks.
+          </div>
+          <Methodology id="gate.confidence" label="Why are some rollups gated?" />
+          {shown.length > 0
+            ? <LossBars entries={shown.map((r) => [`${r.car} · ${r.class}`, r.loss_s])} />
+            : <div className="dim" style={{ fontSize: "0.82rem" }}>Nothing clears the gate yet.</div>}
+          {gated.map((r) => (
+            <div key={`${r.car}-${r.class}`} className="finding suppressed">
+              <div className="head">
+                <span className="desc">{r.car} · {r.class}</span>
+                <span className="val num">{fmt(r.loss_s)} s</span>
+              </div>
+              <div className="reason">{r.gate_reason} — {r.n_tracks} track{r.n_tracks === 1 ? "" : "s"}</div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {driver && <CensusPanel census={driver.census} />}
 
       <SyncPanel onSynced={() => setReload((n) => n + 1)} />
     </div>

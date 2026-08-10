@@ -137,13 +137,27 @@ def test_history_is_deterministic(db):
     assert first == second
 
 
-def test_score_history_endpoint_is_a_byte_identical_pass_through(tmp_path):
+def _sse_payload(response):
+    """Extract the 'complete' event's payload from an SSE response."""
+    import json
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                event = json.loads(line[len("data: "):])
+                if event.get("type") == "complete":
+                    return event["payload"]
+    return None
+
+
+def test_score_history_endpoint_passes_through_unchanged(tmp_path):
     """UI-SPEC decision 2: payload endpoints are pass-throughs, no
     aggregation or recomputation in api.py. Uses a real file-backed DB
     (TestClient needs a db_path, unlike the in-memory fixture above)."""
     from fastapi.testclient import TestClient
 
-    from driverdna.report.payload import to_normalized_json
     from driverdna.ui.api import create_app
 
     db_path = tmp_path / "history.db"
@@ -154,10 +168,12 @@ def test_score_history_endpoint_is_a_byte_identical_pass_through(tmp_path):
     client = TestClient(create_app(db_path, config_path))
     response = client.get("/api/driver/score-history")
     assert response.status_code == 200
+    payload = _sse_payload(response)
+    assert payload is not None
 
     with Database.open(db_path) as database:
         expected = score_history(database, driver="owner", config=CONFIG)
-    assert response.text == to_normalized_json(expected)
+    assert payload == expected
 
 
 def test_score_history_endpoint_cold_start_matches_unavailable_shape(tmp_path):
@@ -175,6 +191,6 @@ def test_score_history_endpoint_cold_start_matches_unavailable_shape(tmp_path):
     client = TestClient(create_app(db_path, tmp_path / "config.toml"))
     response = client.get("/api/driver/score-history")
     assert response.status_code == 200
-    body = response.json()
+    body = _sse_payload(response)
     assert body["x_axis"]["kind"] == "unavailable"
     assert body["series"] == {}

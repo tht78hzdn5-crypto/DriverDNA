@@ -61,6 +61,19 @@ async function readSSE(response, label, onEvent) {
   }
 }
 
+// SSE GET — for endpoints that stream progress (driver, score-history).
+// Returns the "complete" event's payload, calling onEvent for progress.
+export async function streamGet(path, onEvent) {
+  const response = await fetch(path);
+  let result = null;
+  await readSSE(response, path, (event) => {
+    if (event.type === "complete") result = event.payload;
+    else if (event.type === "error") throw new Error(event.detail);
+    else if (onEvent) onEvent(event);
+  });
+  return result;
+}
+
 // Upload (UI-SPEC decision 3, view 7): streams SSE progress events as each
 // file is imported, then a terminal "complete" event with the full result.
 export async function streamUpload(formData, onEvent) {
