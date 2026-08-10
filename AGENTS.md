@@ -102,15 +102,22 @@ One agent works at a time. The rules below ensure cheap handoffs.
 
 ### Branches and merging
 
-- **`main` is protected; every agent goes through a PR** (owner instruction,
+- **Every agent goes through a PR to `main` — no direct pushes, ever, no
+  exceptions for urgency or a trivial diff** (owner instruction,
   2026-08-09, SPEC.md A47) — supersedes the 2026-07-21 direct-push rule.
-  Required checks: `pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
-  `secrets` (not `mypy`, advisory only). Owner is on the bypass list for
-  direct hotfix pushes; agents are not.
+  **Convention, not a platform gate: GitHub is not enforcing this.** A
+  ruleset was attempted the same day and blocked by a paid-plan
+  restriction on private-repo Rulesets; classic branch protection is
+  untried. Nothing stops a direct push today, so the rule holds only
+  because you follow it. Checks to treat as blocking though none
+  mechanically are: `pytest (3.11)`, `pytest (3.12)`, `lint`,
+  `browser-tests`, `secrets` (not `mypy`, advisory). Owner may push
+  directly for a genuine hotfix; agents may not, ever.
   **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
   session by landing its PR, or saying plainly why not.
 - Branch naming: `gemini/<topic>`, `antigravity/<topic>`, `claude/<topic>`.
-- CI gates *merges* — a red required check blocks. If `main` is red, fix it before starting new work.
+- **A red check won't block you — nothing will.** Fix it before the next
+  commit anyway. If `main` is red, fix it before starting new work.
 
 ### Commit attribution
 
@@ -137,11 +144,11 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 
 CI (`tests.yml`) runs five jobs on pushes/PRs, all merge gates except `mypy`:
 
-1. **`pytest`** (Python 3.11 + 3.12): the suite minus `-m browser`, with a Postgres service container. Fails if Postgres tests skip due to missing infra.
+1. **`pytest`** (3.11 + 3.12): the suite minus `-m browser`, with a Postgres service container; fails if Postgres tests skip from missing infra.
 2. **`lint`**: `ruff check .` (Python) + `npm run lint` in `ui/` (SPA) — correctness rules only, no formatter (SPEC.md A47).
 3. **`secrets`**: gitleaks, pinned binary + checksum, full git history.
-4. **`browser-tests`** (Python 3.12): installs Chromium, builds the SPA, runs every `pytest.mark.browser` test. Fails if the skip guard still triggers despite installing Chromium.
-5. **`mypy`** (advisory, not required): ratchet against `ci/mypy-baseline.txt` — fails for real on a new finding, but can't block a merge.
+4. **`browser-tests`** (3.12): installs Chromium, builds the SPA, runs every `pytest.mark.browser` test; fails if the skip guard still triggers.
+5. **`mypy`** (advisory): ratchet against `ci/mypy-baseline.txt` — fails on a new finding, but can't block a merge.
 
 ### Working with the durable docs
 
