@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="1.734" timestamp="2026-07-28T11:22:35.141783-04:00" hostname="GreatFox"><testcase classname="tests.test_password_reset" name="test_forgot_password_sends_email_if_user_exists" time="0.143"><error message="failed on setup with &quot;tomllib.TOMLDecodeError: Invalid statement (at line 1, column 1)&quot;">tests\test_password_reset.py:23: in app
+    api = create_app(db_path, config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\ui\api.py:136: in create_app
+    _startup = load_config(config_path)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\config.py:672: in load_config
+    data = tomllib.load(f)
+           ^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\tomllib\_parser.py:141: in load
+    return loads(s, parse_float=parse_float)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\tomllib\_parser.py:196: in loads
+    raise TOMLDecodeError("Invalid statement", src, pos)
+E   tomllib.TOMLDecodeError: Invalid statement (at line 1, column 1)</error></testcase><testcase classname="tests.test_password_reset" name="test_reset_password_changes_password_and_clears_token" time="0.123"><error message="failed on setup with &quot;tomllib.TOMLDecodeError: Invalid statement (at line 1, column 1)&quot;">tests\test_password_reset.py:23: in app
+    api = create_app(db_path, config)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\ui\api.py:136: in create_app
+    _startup = load_config(config_path)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+src\driverdna\config.py:672: in load_config
+    data = tomllib.load(f)
+           ^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\tomllib\_parser.py:141: in load
+    return loads(s, parse_float=parse_float)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\tomllib\_parser.py:196: in loads
+    raise TOMLDecodeError("Invalid statement", src, pos)
+E   tomllib.TOMLDecodeError: Invalid statement (at line 1, column 1)</error></testcase></testsuite></testsuites>

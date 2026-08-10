@@ -135,7 +135,7 @@ export default function App() {
       {view === "laps" && <Laps slug={args[0]} />}
       {view === "config" && <Config />}
       {view === "model" && <DriverModel />}
-      {view === "upload" && <Upload />}
+      {view === "upload" && <Upload garage61Enabled={session.garage61_enabled} garage61Linked={session.garage61_linked} />}
       {view === "chat" && <Chat slug={args[0]} />}
     </>
   );

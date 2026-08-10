@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="17" time="5.087" timestamp="2026-07-28T11:12:57.226108-04:00" hostname="GreatFox"><testcase classname="tests.test_auth_api" name="test_every_api_route_refuses_an_unauthenticated_request" time="2.249"><failure message="AssertionError: these routes answered something other than 401 without a session: GET /api/auth/google/login → 400, GET /api/auth/google/callback → 422&#10;assert not ['GET /api/auth/google/login → 400', 'GET /api/auth/google/callback → 422']">guarded = &lt;starlette.testclient.TestClient object at 0x0000017EF485B380&gt;
+
+    def test_every_api_route_refuses_an_unauthenticated_request(guarded):
+        """DEPLOY-SPEC.md H done-criteria: *"Every /api/* route returns 401
+        without a session (a test that enumerates the app's own route table, so a
+        future endpoint can't be forgotten)."*"""
+        unguarded_routes = []
+        for method, declared, path in _concrete_api_routes(guarded.app):
+            if declared in PUBLIC_API_PATHS:
+                continue
+            response = guarded.request(method, path)
+            if response.status_code != 401:
+                unguarded_routes.append(f"{method} {declared} → {response.status_code}")
+&gt;       assert not unguarded_routes, (
+            "these routes answered something other than 401 without a session: "
+            + ", ".join(unguarded_routes)
+        )
+E       AssertionError: these routes answered something other than 401 without a session: GET /api/auth/google/login → 400, GET /api/auth/google/callback → 422
+E       assert not ['GET /api/auth/google/login → 400', 'GET /api/auth/google/callback → 422']
+
+tests\test_auth_api.py:96: AssertionError</failure></testcase><testcase classname="tests.test_auth_api" name="test_no_route_outside_api_is_left_open_either" time="0.080"><failure message="AssertionError: reachable without a session: GET /api/auth/google/login, GET /api/auth/google/callback&#10;assert not ['GET /api/auth/google/login', 'GET /api/auth/google/callback']">guarded = &lt;starlette.testclient.TestClient object at 0x0000017EF4C9DA90&gt;
+
+    def test_no_route_outside_api_is_left_open_either(guarded):
+        """Broader than DEPLOY-SPEC's criterion, because the narrow version missed
+        a real one. `/openapi.json` is registered by FastAPI with `add_route`, not
+        `add_api_route`, so app-level dependencies never see it — and a
+        `/api/`-prefixed enumeration never looks at it. It answered 200 on a live
+        server with a passphrase set, publishing the whole endpoint surface,
+        request models and all.
+    
+        So: enumerate *every* route the app declares and require each to be either
+        guarded or deliberately public. The static SPA shell is mounted after
+        `create_app` (in `cli.py`) and is intentionally public — it is what renders
+        the sign-in screen — so it is not in this app object at all.
+        """
+        import re
+    
+        open_routes = []
+        for route in guarded.app.routes:
+            path = getattr(route, "path", "")
+            if path in PUBLIC_API_PATHS:
+                continue
+            for method in sorted(getattr(route, "methods", set()) - {"HEAD", "OPTIONS"}):
+                concrete = re.sub(r"\{[^}]+\}", "1", path)
+                if guarded.request(method, concrete).status_code != 401:
+                    open_routes.append(f"{method} {path}")
+&gt;       assert not open_routes, (
+            "reachable without a session: " + ", ".join(open_routes)
+        )
+E       AssertionError: reachable without a session: GET /api/auth/google/login, GET /api/auth/google/callback
+E       assert not ['GET /api/auth/google/login', 'GET /api/auth/google/callback']
+
+tests\test_auth_api.py:126: AssertionError</failure></testcase><testcase classname="tests.test_auth_api" name="test_the_api_schema_is_not_public" time="0.057" /><testcase classname="tests.test_auth_api" name="test_the_guard_runs_before_body_validation" time="0.022" /><testcase classname="tests.test_auth_api" name="test_the_guard_runs_before_the_database_is_opened" time="0.023" /><testcase classname="tests.test_auth_api" name="test_the_right_passphrase_opens_the_cockpit" time="0.096" /><testcase classname="tests.test_auth_api" name="test_the_session_cookie_is_httponly_and_samesite" time="0.092" /><testcase classname="tests.test_auth_api" name="test_the_cookie_is_marked_secure_behind_an_https_proxy" time="0.147" /><testcase classname="tests.test_auth_api" name="test_a_wrong_passphrase_is_refused_and_never_echoed" time="0.091" /><testcase classname="tests.test_auth_api" name="test_logout_ends_the_session" time="0.094" /><testcase classname="tests.test_auth_api" name="test_a_forged_cookie_does_not_open_anything" time="0.022" /><testcase classname="tests.test_auth_api" name="test_status_reports_whether_auth_is_required_and_met" time="0.113" /><testcase classname="tests.test_auth_api" name="test_status_never_reveals_the_passphrase" time="0.028" /><testcase classname="tests.test_auth_api" name="test_without_a_token_every_route_stays_open" time="0.024"><failure message="AssertionError: assert 401 == 200&#10; +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code&#10; +    where &lt;Response [401 Unauthorized]&gt; = get('/api/driver')&#10; +      where get = &lt;starlette.testclient.TestClient object at 0x0000017EF4DAD260&gt;.get">unguarded = &lt;starlette.testclient.TestClient object at 0x0000017EF4DAD260&gt;
+
+    def test_without_a_token_every_route_stays_open(unguarded):
+        """This is what keeps the existing suite passing *unmodified* — the proof
+        that auth is additive rather than a rewrite. It is also the local
+        `driverdna ui` experience: no login on loopback."""
+&gt;       assert unguarded.get("/api/driver").status_code == 200
+E       AssertionError: assert 401 == 200
+E        +  where 401 = &lt;Response [401 Unauthorized]&gt;.status_code
+E        +    where &lt;Response [401 Unauthorized]&gt; = get('/api/driver')
+E        +      where get = &lt;starlette.testclient.TestClient object at 0x0000017EF4DAD260&gt;.get
+
+tests\test_auth_api.py:238: AssertionError</failure></testcase><testcase classname="tests.test_auth_api" name="test_logging_in_is_refused_when_no_passphrase_is_configured" time="0.023" /><testcase classname="tests.test_auth_api" name="test_repeated_wrong_guesses_are_locked_out" time="0.337" /><testcase classname="tests.test_auth_api" name="test_api_responses_carry_no_store" time="0.110" /></testsuite></testsuites>

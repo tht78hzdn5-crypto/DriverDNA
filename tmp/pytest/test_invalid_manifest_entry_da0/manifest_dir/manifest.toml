@@ -1,0 +1,6 @@
+[[fixtures]]
+file = "a.csv"
+car = "GR86"
+track = "T"
+role = "self"
+date = "not-a-real-date"
