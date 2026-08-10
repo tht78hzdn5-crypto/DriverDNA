@@ -2,7 +2,9 @@ import { useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
-import { FUNDAMENTAL_ORDER, Methodology, fundamentalLabels } from "./shared.jsx";
+import { FundamentalMark, Methodology, fundamentalLabels } from "./shared.jsx";
+import { FUNDAMENTAL_ORDER } from "./order.js";
+import { GAP, STEP, Y_BASE, tierPoints } from "./pyramid.js";
 
 // Driver Model (M6) — the constitution's centre of gravity, made visible.
 // Render-only: every number here is straight from the payload's driver_model
@@ -36,15 +38,10 @@ const DATA = "70, 100, 140"; // muted steel-grey, rgb
 const fillFor = (b) =>
   b.score == null ? "transparent" : `rgba(${DATA}, ${0.18 + 0.8 * (b.score / 100)})`;
 
-// Truncated pyramid so even the apex tier has room for a figure. Geometry in
-// SVG user units; tier 0 is the base (widest), tier 6 the peak.
-const Y_BASE = 65, Y_TOP = 3, TIERS = ORDER.length;
-const STEP = (Y_BASE - Y_TOP) / TIERS, GAP = 1.1;
-const edgeX = (y, side) => {
-  const t = (Y_BASE - y) / (Y_BASE - Y_TOP); // 0 base → 1 peak
-  const [baseL, baseR, apexL, apexR] = [4, 96, 39, 61];
-  return side < 0 ? baseL + t * (apexL - baseL) : baseR + t * (apexR - baseR);
-};
+// Truncated pyramid so even the apex tier has room for a figure. The geometry
+// itself lives in shared.jsx (A48) — the same trapezoids the tier mark beside
+// every fundamental name is cut from, so the two can never become two
+// different pyramids.
 
 function Pyramid({ beliefs }) {
   return (
@@ -54,14 +51,10 @@ function Pyramid({ beliefs }) {
         const b = beliefs[id] || { signal_status: "no_signal", score: null };
         const yb = Y_BASE - i * STEP, yt = Y_BASE - (i + 1) * STEP + GAP;
         const cy = (yb + yt) / 2;
-        const pts = [
-          [edgeX(yb, -1), yb], [edgeX(yb, 1), yb],
-          [edgeX(yt, 1), yt], [edgeX(yt, -1), yt],
-        ].map((p) => p.map((n) => n.toFixed(2)).join(",")).join(" ");
         const cls = `tier ${b.signal_status}`;
         return (
           <g key={id}>
-            <polygon className={cls} points={pts} style={{ fill: fillFor(b) }} />
+            <polygon className={cls} points={tierPoints(i)} style={{ fill: fillFor(b) }} />
             <text className="t-name" x="50" y={cy - 0.6}>{b.label || id}</text>
             <text className="t-score num" x="50" y={cy + 3.4}>
               {b.score == null ? "—" : fmt(b.score, 0)}
@@ -78,7 +71,11 @@ function Meter({ id, b }) {
   const t = TREND[b.trend] || TREND.unavailable;
   return (
     <div className={`fbar ${noSignal ? "off" : ""}`}>
+      {/* A48: the same tier mark and the same name treatment the cohort
+          page's fundamental landmarks use, so the two tabs read as one
+          system rather than two spellings of the same seven things. */}
       <div className="fbar-head">
+        <FundamentalMark id={id} label={b.label} />
         <span className="fbar-name">{b.label || id}</span>
         <span className="src-tag">{b.signal_status.replace("_", " ")}</span>
         <span className="num fbar-score">{b.score == null ? "—" : fmt(b.score, 0)}</span>

@@ -13,6 +13,12 @@ Laps: 11 · sessions: 3 · payload v7. Grouped by racing fundamental; sources ar
 
 ### Rotation
 
+> **Settle the entry, then one committed input to the apex.**
+>
+> Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.
+>
+> _Try this:_ Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.
+
 | source | finding | s | n | spread | evidence |
 |---|---|---|---|---|---|
 | vs-self | C01 mid-corner: 0.234 s between your fastest and slowest laps | 0.234 | 11 | 0.205 | 11 refs |
@@ -25,6 +31,12 @@ Laps: 11 · sessions: 3 · payload v7. Grouped by racing fundamental; sources ar
 
 ### Corner exit
 
+> **Pick up later but build smoothly; if you have to lift, you opened it too early.**
+>
+> A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.
+>
+> _Try this:_ Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle — no stabs, no lifts.
+
 | source | finding | s | n | spread | evidence |
 |---|---|---|---|---|---|
 | vs-self | C03 exit: 0.115 s between your fastest and slowest laps | 0.115 | 11 | 0.248 | 11 refs |
@@ -33,6 +45,16 @@ Laps: 11 · sessions: 3 · payload v7. Grouped by racing fundamental; sources ar
 | vs-self | C10 exit: 0.145 s between your fastest and slowest laps | 0.145 | 11 | 0.168 | 11 refs |
 | vs-principle | C01: lifting after throttle pickup on 7 of 11 laps | — | 11 | — | 7 refs |
 | vs-principle | C10: lifting after throttle pickup on 6 of 11 laps | — | 11 | — | 6 refs |
+
+### Consistency
+
+> **Match a lap before you try to beat it — repeatability comes before pace.**
+>
+> A technique that varies lap to lap isn't a technique yet — it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.
+>
+> _Try this:_ Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.
+
+_No finding clears the evidence gates here yet._
 
 
 Suppressed findings: 91 (each with its stated reason — see the JSON report for the full list).

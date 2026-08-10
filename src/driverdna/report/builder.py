@@ -47,9 +47,10 @@ _TOKENS = {
     "chrome": "#3FC7DE",
     "mono": "'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace",
     "sans": "'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
-    # v2 display face (structure labels only). Present so the byte-match test
-    # stays green with ui/tokens.json; the static reports don't reference it
-    # yet (SPA-only, like the bundled fonts).
+    # v2 display face (structure labels only) — used since A48 for the
+    # fundamental section headings, the same role it plays in the SPA. The
+    # font files themselves stay SPA-only, so an unavailable named family just
+    # falls through this stack and the report stays self-contained.
     "display": "'IBM Plex Sans Condensed', 'Roboto Condensed', 'Archivo Narrow', 'Arial Narrow', var(--sans)",
 }
 
@@ -65,7 +66,7 @@ _CSS = ("""
   --base: {base}; --panel: {panel}; --raised: {raised}; --line: {line};
   --text: {text}; --dim: {dim}; --best: {best}; --ok: {ok};
   --warn: {warn}; --bad: {bad}; --accent: {accent};
-  --mono: {mono}; --sans: {sans};
+  --mono: {mono}; --sans: {sans}; --display: {display};
 }}
 body {{
   font-family: var(--sans); max-width: 60rem; margin: 2rem auto; padding: 0 1rem;
@@ -82,6 +83,19 @@ th {{ border-top: 0; color: var(--dim); font-weight: 500; font-size: 0.72rem;
 .tag {{ font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
         color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
         padding: 0.05rem 0.4rem; margin-right: 0.4rem; background: var(--raised); }}
+/* A48: a fundamental reads as a section landmark here too, and its racing
+   takeaway sits above the measurements — the SPA's "lens rule", within what a
+   scriptless single file can do. Neutral ink only: a fundamental is never
+   colour-coded, so its identity can't be mistaken for a verdict. */
+h3.fgroup {{ font-family: var(--display); text-transform: uppercase;
+             letter-spacing: 0.08em; font-size: 1.2rem; margin: 2rem 0 0.5rem;
+             padding-left: 0.8rem; border-left: 3px solid var(--dim); }}
+.lede {{ padding-left: 0.85rem; border-left: 3px solid var(--line);
+         max-width: 42rem; margin: 0 0 0.9rem; }}
+.lede .say {{ font-size: 1.02rem; font-weight: 500; margin: 0; }}
+.lede .why {{ color: var(--dim); font-size: 0.88rem; margin: 0.35rem 0 0; }}
+.lede .drill {{ font-size: 0.88rem; margin: 0.5rem 0 0; }}
+.none {{ color: var(--dim); font-size: 0.88rem; }}
 svg {{ max-width: 100%; height: auto; }}
 svg text {{ fill: var(--dim); font-family: var(--mono); }}
 .caveat {{ background: var(--raised); border-left: 3px solid var(--warn);
@@ -142,26 +156,92 @@ def _line_chart(title: str, values: list[float], unit: str = "s") -> str:
     )
 
 
+def _coaching_ledes(coaching: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Each fundamental's lede coaching principle: the headline first, then
+    `secondary` in the engine's own ranked order (A48).
+
+    This mirrors `ui/src/views/shared.jsx`'s `FundamentalSections` exactly, and
+    deliberately reads the same two payload fields in the same order rather
+    than a third precomputed one — `tests/test_report.py` anchors both surfaces
+    to the payload's own `headline`, so the two cannot silently start leding
+    with different principles.
+    """
+    if not coaching:
+        return {}
+    ranked = ([coaching["headline"]] if coaching.get("headline") else []) + list(
+        coaching.get("secondary") or []
+    )
+    ledes: dict[str, dict[str, Any]] = {}
+    for candidate in ranked:
+        ledes.setdefault(candidate.get("fundamental") or "_other", candidate)
+    return ledes
+
+
 def _by_fundamental(
-    findings: list[dict[str, Any]]
-) -> list[tuple[str, list[dict[str, Any]]]]:
-    """Findings grouped by racing fundamental, in the pyramid's fixed order
-    (A46) — the same order model.jsx renders, so the two surfaces agree.
+    findings: list[dict[str, Any]],
+    coaching: dict[str, Any] | None = None,
+) -> list[tuple[str, str, list[dict[str, Any]]]]:
+    """(id, label, findings) grouped by racing fundamental, in the pyramid's
+    fixed order (A46) — the same order model.jsx renders, so the two surfaces
+    agree.
 
     Grouping is presentation only: each finding keeps its own source tag and
     its own arithmetic (SPEC decision 3), and no group carries a combined
     figure. A finding with no fundamental — impossible today, but a taxonomy
     gap tomorrow — lands in a stated "Other" group rather than vanishing.
+
+    A fundamental the engine can coach but has no *shown* finding for still
+    gets its section (A48). On the real fixture cohort that is `consistency`:
+    a major signal at sixteen corners with nothing clearing the finding gates.
+    The SPA has always rendered that group; a report that dropped it would be
+    hiding the loudest thing the engine has to say about this driver.
     """
     groups: dict[str, list[dict[str, Any]]] = {}
     for f in findings:
         groups.setdefault(f.get("fundamental") or "_other", []).append(f)
+    for fid in _coaching_ledes(coaching):
+        groups.setdefault(fid, [])
     ordered = [fid for fid in FUNDAMENTAL_ORDER if fid in groups]
     ordered += sorted(k for k in groups if k not in FUNDAMENTAL_ORDER)
     return [
-        (FUNDAMENTALS[fid].label if fid in FUNDAMENTALS else "Other", groups[fid])
+        (fid, FUNDAMENTALS[fid].label if fid in FUNDAMENTALS else "Other", groups[fid])
         for fid in ordered
     ]
+
+
+def _coaching_lede_md(lede: dict[str, Any] | None) -> list[str]:
+    """A fundamental's racing takeaway, above its measurements (A48).
+
+    Every word is `coaching/ontology.py`'s, verbatim — the report composes no
+    sentence of its own, exactly as the SPA doesn't. The drill rides along
+    because it is written practice the driver could otherwise only ever see on
+    the single headline principle.
+    """
+    if not lede or not lede.get("coaching_expression"):
+        return []
+    lines = [f"> **{lede['coaching_expression']}**", ">"]
+    lines.append(f"> {lede['driving_principle']}")
+    if lede.get("drill"):
+        lines += [">", f"> _Try this:_ {lede['drill']}"]
+    return lines + [""]
+
+
+def _coaching_lede_html(lede: dict[str, Any] | None) -> str:
+    """The Markdown lede's HTML twin — same words, same order, styled to echo
+    the SPA's lens rule within a static file's means (a left rule and the
+    fundamental named in the display face; no script, no external asset)."""
+    if not lede or not lede.get("coaching_expression"):
+        return ""
+    parts = [
+        "<div class='lede'>",
+        f"<p class='say'>{html.escape(lede['coaching_expression'])}</p>",
+        f"<p class='why'>{html.escape(lede['driving_principle'])}</p>",
+    ]
+    if lede.get("drill"):
+        parts.append(
+            f"<p class='drill'><b>Try this:</b> {html.escape(lede['drill'])}</p>"
+        )
+    return "".join(parts) + "</div>"
 
 
 def _findings_rows_md(findings: list[dict[str, Any]]) -> list[str]:
@@ -196,9 +276,16 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
     shown = [f for f in payload["findings"] if f["shown"] and not f.get("annotation")]
     annotated = [f for f in payload["findings"] if f["shown"] and f.get("annotation")]
     suppressed = [f for f in payload["findings"] if not f["shown"]]
-    if shown:
-        for label, group in _by_fundamental(shown):
-            lines += [f"### {label}", ""] + _findings_rows_md(group) + [""]
+    ledes = _coaching_ledes(payload.get("coaching"))
+    groups = _by_fundamental(shown, payload.get("coaching"))
+    if groups:
+        for fid, label, group in groups:
+            lines += [f"### {label}", ""]
+            lines += _coaching_lede_md(ledes.get(fid))
+            if group:
+                lines += _findings_rows_md(group) + [""]
+            else:
+                lines += ["_No finding clears the evidence gates here yet._", ""]
     else:
         lines.append(
             "No findings pass the confidence gates yet — insufficient data "
@@ -262,9 +349,16 @@ def render_cohort_html(payload: dict[str, Any]) -> str:
         "sources are never blended.</p>",
         "<h2>Findings</h2>",
     ]
-    if shown:
-        for label, group in _by_fundamental(shown):
-            parts.append(f"<h3>{html.escape(label)}</h3>")
+    ledes = _coaching_ledes(payload.get("coaching"))
+    groups = _by_fundamental(shown, payload.get("coaching"))
+    if groups:
+        for fid, label, group in groups:
+            parts.append(f"<h3 class='fgroup'>{html.escape(label)}</h3>")
+            parts.append(_coaching_lede_html(ledes.get(fid)))
+            if not group:
+                parts.append("<p class='none'>No finding clears the evidence "
+                             "gates here yet.</p>")
+                continue
             parts.append("<table><tr><th>source</th><th>finding</th><th>s</th>"
                          "<th>n</th><th>spread</th><th>evidence</th></tr>")
             for f in group:

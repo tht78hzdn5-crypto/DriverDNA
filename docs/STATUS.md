@@ -1,5 +1,59 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-10 (fundamentals as landmarks; the feedback section
+reads as coaching — SPEC.md A48).**
+
+- **Owner-directed presentation pass, chosen from a mockup rather than from
+  prose.** Four header treatments were built against the real GR86/Spa fixture
+  — every sentence, corner and figure real engine output — and the owner picked
+  "lens rule": `docs/ui-fundamentals-mockup.html`. One rule runs the height of
+  a fundamental's group, brightest where it is named and fading down it, with a
+  **tier mark** (the Driver Model pyramid in miniature, this fundamental's tier
+  lit) sitting on it. The same treatment carries onto `#/model`'s meters, so
+  the two tabs read as one system; `ui/src/views/pyramid.js` holds the tier
+  geometry once, so the full-size pyramid and the 22px mark cannot become two
+  shapes.
+- **The section now leads with coaching.** Each fundamental opens with its
+  top-ranked principle in full — expression, driving principle, **and the
+  drill**, which until now rendered on the single headline card only, so eight
+  of the nine seed principles carried a written practice step the driver could
+  never see. The measurements collapse into one disclosure per group. The
+  fundamental owning the page headline carries a `priority` chip, which retires
+  `CoachingSecondary`'s "Same as the headline above" branch entirely.
+- **"Hide the vs-self/vs-principle/vs-reference stuff" is implemented as
+  collapse, never delete** — stated plainly rather than quietly widened or
+  quietly ignored. Every row stays in the DOM with its own source tag, and the
+  render-parity crawler reads inside closed `<details>`, so AGENTS.md's
+  "every finding carries N, spread, source tag, and evidence IDs" and UI-SPEC
+  decision 6's binding half are untouched. Deleting the tags would contradict
+  the constraint the same request opened with and would need its own owner
+  decision.
+- **The static report gained a section it had been dropping.** A fundamental
+  the engine can coach but has no shown finding for — `consistency` on the real
+  fixture, a major signal at sixteen corners — now gets its heading and lede in
+  Markdown and HTML. The SPA always rendered it; the report was silently hiding
+  the loudest thing the engine had to say about this driver.
+
+### Verified counts (2026-08-10, A48)
+
+| What | Result | Command |
+| --- | --- | --- |
+| Tests, before this change | **963 passed, 16 skipped, 0 failed** | `python3 -m pytest -q -rs` |
+| Tests, after | **971 passed, 16 skipped, 0 failed** | `python3 -m pytest -q -rs` |
+| New tests | **+8** — 4 browser (`test_feedback_hierarchy_ui.py`: sentence before measurement in DOM order; `priority` chip on exactly the headline's fundamental and said once; findings collapsed-not-dropped with every row still tagged; the tier mark on both surfaces) and 4 report (`test_report.py`: Markdown and HTML lede each fundamental with its coaching expression; a coached-but-ungated fundamental still gets its section; each expression said once per section) | — |
+| Skips | **16, all Postgres-absent.** No browser skips — Chromium installed via `python -m playwright install chromium`, all seven browser-gated files ran | `pytest -rs` skip lines |
+| ruff / eslint | **clean** / **0 errors, 6 warnings** (7 before this change — one fewer, from splitting the shared constants out of `shared.jsx`) | `ruff check .`; `npm run lint` in `ui/` |
+| Backend under test | SQLite (no Postgres, no secrets, no live server) | — |
+| Browser verification | Real Chromium against the fixture DB at 1180px and 390×844: group headers read as landmarks, the coaching lede sits above the first finding row, the `priority` chip lands on Rotation, the collapsed measurements open, `#/model` shows the tier mark per fundamental, 0 px horizontal overflow, no JS errors | Playwright drive script + `test_render_parity.py` |
+| Number neutrality | `PAYLOAD_VERSION` unchanged at 7. `gr86-spa-francorchamps.json`, `driver.json`, `driver.md` and all eight `docs/*-report.md` regenerate **byte-identical**; `gr86-spa-francorchamps.md`'s numeric multiset is identical (129 numerals), prose only; the two HTML reports' **reader-visible** numerals are identical (533 and 27), every numeric delta inside `<style>` | numeric-multiset diff vs `HEAD` |
+
+One process note worth keeping: the first regeneration pass wrote
+`docs/model-report.md` instead of the committed `docs/driver-model-report.md`,
+and `test_artifact_freshness.py`'s coverage guard caught the stray file
+immediately. That guard is a week old and has now paid for itself twice.
+
+---
+
 **Snapshot date: 2026-08-09 (CI quality gates: lint, secrets, mypy ratchet,
 branch protection — SPEC.md A47).**
 
