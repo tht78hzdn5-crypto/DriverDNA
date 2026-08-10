@@ -300,8 +300,7 @@ export default function Cohort({ slug }) {
         <SourceLegend />
         <FundamentalSections
           findings={p.findings} slug={slug} labels={labels}
-          coaching={p.coaching.secondary}
-          headlinePrincipleId={p.coaching.headline?.coaching_principle_id}
+          coaching={p.coaching}
         />
       </section>
 

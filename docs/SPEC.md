@@ -2437,3 +2437,97 @@ Accepted at owner plan review; rationale recorded in the review:
   emphatically for exactly that reason — an agent reading it should treat
   it as absolute regardless of whether GitHub would actually stop a
   violation.
+
+- **A48** (2026-08-10): **Fundamentals read as landmarks, and the feedback
+  section reads as coaching** (owner-directed: the fundamental names should
+  "feel like section landmarks, not just list headers … like a coach has seven
+  fundamentals they look at everything through as a lens"; then, on seeing the
+  mockup, "hide the 'vs reference/principle' and 'vs self' stuff and instead
+  show more targeted coaching feedback in that section").
+
+  *What was actually wrong.* A46 put the right structure on the page and left
+  the rendering behind it. `.fgroup-name` was 0.92rem — barely larger than the
+  0.86rem finding rows it headed — on a `--line` left rule with almost no
+  contrast against `--panel`; and the fundamental's racing sentence sat *below*
+  the header inside `CoachingSecondary`, so the first thing read under
+  "Rotation" was an engine-voice measurement row, not the coach's takeaway.
+  Two of A46's own goals were therefore only half-delivered.
+
+  *Chosen from a mockup, not from prose.* Four header treatments were built
+  against the real GR86/Spa fixture — every sentence, corner and figure real
+  engine output, not placeholders — and the owner picked "lens rule":
+  `docs/ui-fundamentals-mockup.html` (the `docs/ui-redesign-mockup.html`
+  precedent). One rule runs the height of the group, brightest where the
+  fundamental is named and fading down it, with the tier mark sitting on it.
+
+  *The tier mark.* A 22px inline SVG: the Driver Model pyramid in miniature
+  with this fundamental's tier lit, beside every fundamental name on the cohort
+  page, the corner drill and `#/model`. `ui/src/views/pyramid.js` now holds the
+  tier geometry once and `model.jsx`'s full-size `Pyramid` cuts its tiers from
+  the same `tierPoints()`, so the two drawings cannot become two pyramids;
+  `ui/src/views/order.js` holds `FUNDAMENTAL_ORDER`. It encodes position in the
+  fixed seven and nothing else — no score, no semantic colour, so it can never
+  read as a verdict (colour grammar rule 2 untouched).
+
+  *Coaching leads; measurement is one click under it.* Each fundamental opens
+  with its top-ranked principle said in full — expression, driving principle,
+  **and the drill**, which until now rendered on the single headline card only,
+  so eight of the nine seed principles carried a written practice step the
+  driver could never see. The findings collapse into one `<details>` per group
+  ("The 7 findings behind this"). The headline's fundamental is marked with a
+  `priority` chip and the headline is prepended to its own fundamental's
+  ranked list, which is what retires `CoachingSecondary`'s "Same as the
+  headline above, also at:" branch: the headline principle now always *is* its
+  fundamental's lede, so there is nothing left to cross-refer to.
+
+  *What was asked for and deliberately not done, stated rather than quietly
+  ignored.* "Hide the vs-self / vs-principle / vs-reference stuff" is
+  implemented as **collapse, never delete**. Every finding row is still in the
+  DOM, still carries its own `.src-tag`, and the render-parity crawler reads
+  inside closed `<details>` — so the guarantee AGENTS.md calls non-negotiable
+  ("every finding carries N, spread, source tag, and evidence IDs") and
+  UI-SPEC decision 6's binding half are untouched, while the section reads the
+  way the owner asked. Deleting the tags would have contradicted the
+  constraint the same request opened with ("Source tag stays on every finding
+  row") and is not a change any renderer should make on its own; it would need
+  its own owner decision. Also rejected: putting the Driver Model score on the
+  cohort group header. That score is driver-level, pooled across every cohort;
+  on a per-cohort page it would be a number that is not about the cohort being
+  read.
+
+  *A fundamental with coaching but no shown finding now gets its section in
+  the static report too.* On the real fixture that is `consistency` — a major
+  signal at sixteen corners with nothing clearing the finding gates. The SPA
+  has always rendered that group; the report dropped it, which meant the report
+  was silently hiding the loudest thing the engine had to say about this
+  driver. A fundamental with findings but no eligible principle (`braking`
+  here) invents no sentence and keeps its rows in the clear.
+
+  *Group headers stop carrying a bare count.* Decision 6 permits a count of
+  rendered items; it never required one. With the measurements collapsed the
+  figure had nothing next to it to say what it counted, and every count is now
+  stated in words where it does the work ("The 7 findings behind this", "33 not
+  shown yet — evidence gates", "Nothing clears the gates here yet").
+
+  *Number-neutral, proven.* No payload field was added, so `PAYLOAD_VERSION`
+  stays 7 and `coach-v3`/`chat-v3` are untouched. `gr86-spa-francorchamps.json`,
+  `driver.json` and `driver.md` regenerate byte-identical; all eight
+  `docs/*-report.md` regenerate byte-identical;
+  `gr86-spa-francorchamps.md`'s numeric multiset is identical across the
+  change (129 numerals) and only prose was added; the two HTML reports' *reader
+  visible* numerals are identical (533 and 27) with every numeric delta inside
+  the `<style>` block, which is the new CSS lengths. The lede ordering rule is
+  implemented once per surface (`shared.jsx`, `report/builder.py`) and pinned
+  on both against the payload's own `coaching.headline` rather than against a
+  restatement of the rule, so the two cannot start leding with different
+  principles.
+
+  Suite 963 → 971 passed, 16 skipped (Postgres-absent only; Chromium present,
+  every browser-gated file ran), 0 failed. +8 tests: four browser
+  (`tests/test_feedback_hierarchy_ui.py` — sentence-before-measurement in DOM
+  order, the `priority` chip on exactly the headline's fundamental and said
+  once, findings collapsed-not-dropped with every row still tagged, the tier
+  mark on both surfaces) and four report (`tests/test_report.py` — Markdown and
+  HTML lede each fundamental with its coaching expression, a coached-but-
+  ungated fundamental still gets its section, each expression said once per
+  section).

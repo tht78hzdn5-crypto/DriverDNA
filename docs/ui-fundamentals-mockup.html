@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DriverDNA — fundamentals as landmarks (header variants)</title>
+<style>
+/* ------------------------------------------------------------------ */
+/* DriverDNA — "the seven fundamentals as a lens" header study.        */
+/* Self-contained, no external requests, dark-only. Every colour is    */
+/* ui/tokens.json verbatim; nothing new. The display face falls back   */
+/* to system condensed cuts here — the built SPA self-hosts IBM Plex   */
+/* Sans Condensed (latin, 600/700).                                    */
+/*                                                                     */
+/* UNLIKE docs/ui-redesign-mockup.html, EVERY NUMBER AND EVERY         */
+/* SENTENCE HERE IS REAL ENGINE OUTPUT — the committed GR86 @ Spa      */
+/* fixture cohort (tests/fixtures/, 11 laps, 3 sessions), read out of  */
+/* build_cohort_payload() and coaching/ontology.py. Density is honest. */
+/* ------------------------------------------------------------------ */
+:root {
+  --base: #101318; --panel: #171B22; --raised: #1F242D; --line: #2A303A;
+  --text: #E8EAED; --dim: #8C93A0;
+  --best: #B48CFF; --ok: #3ECF8E; --warn: #E8A13C; --bad: #E5484D;
+  --accent: #6EA8D8; --chrome: #3FC7DE;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  --sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --display: 'IBM Plex Sans Condensed', 'Roboto Condensed', 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  --chamfer: 10px; --chamfer-s: 8px;
+}
+* { box-sizing: border-box; }
+html { background: var(--base); }
+body {
+  margin: 0; background: var(--base); color: var(--text);
+  font-family: var(--sans); font-size: 15px; line-height: 1.45;
+}
+.wrap { max-width: 60rem; margin: 0 auto; padding: 0 1rem 5rem; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.disp {
+  font-family: var(--display); text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 600;
+}
+h1 {
+  font-family: var(--display); font-size: 1.5rem; font-weight: 700;
+  margin: 1.6rem 0 0.2rem; letter-spacing: 0.01em;
+}
+.lead { color: var(--dim); font-size: 0.86rem; margin: 0 0 1.2rem; max-width: 44rem; }
+
+/* Mockup chrome — this document, NOT the product UI. */
+.mock-banner {
+  border: 1px solid var(--warn); color: var(--warn); background: var(--panel);
+  font-size: 0.78rem; padding: 0.55rem 0.8rem; margin: 1rem 0 1.4rem;
+}
+.mock-note {
+  color: var(--dim); font-size: 0.76rem; margin: 2.4rem 0 0;
+  border-top: 1px solid var(--line); padding-top: 0.9rem; line-height: 1.6;
+}
+.mock-note b { color: var(--text); }
+.switch { display: flex; gap: 0.3rem; flex-wrap: wrap; position: sticky; top: 0;
+  background: var(--base); padding: 0.7rem 0 0.8rem; z-index: 5;
+  border-bottom: 1px solid var(--line); margin-bottom: 1.4rem; }
+.switch button {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 600; font-size: 0.78rem; cursor: pointer; color: var(--dim);
+  background: var(--raised); border: 1px solid var(--line); padding: 0.45rem 0.85rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-s)) 0, 100% var(--chamfer-s), 100% 100%, 0 100%);
+}
+.switch button.on { color: var(--text); border-color: var(--chrome); }
+.variant-head {
+  margin: 2.4rem 0 0.8rem; display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap;
+}
+.variant-head h2 {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.07em;
+  font-weight: 700; font-size: 1.05rem; margin: 0; color: var(--chrome);
+}
+.variant-head .why { color: var(--dim); font-size: 0.8rem; }
+.variant-head .why b { color: var(--text); font-weight: 500; }
+.chosen { font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--base); background: var(--chrome);
+  padding: 0.1rem 0.4rem; vertical-align: middle; margin-left: 0.4rem; }
+.variant + .variant { margin-top: 3rem; }
+
+/* ---------------- shared product-side chrome (unchanged today) ------ */
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 0.9rem 1rem 1.1rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.eyebrow {
+  font-family: var(--display); font-size: 0.72rem; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--dim); margin: 0 0 0.55rem; font-weight: 600;
+}
+.src-tag {
+  font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.05rem 0.35rem; margin-right: 0.5rem; font-family: var(--display);
+}
+.chip {
+  font-size: 0.68rem; color: var(--dim); border: 1px solid var(--line);
+  border-radius: 2px; padding: 0.12rem 0.45rem; background: var(--raised);
+}
+.finding { border-top: 1px solid var(--line); padding: 0.5rem 0.1rem 0.55rem; }
+.finding:first-of-type { border-top: 0; }
+.finding .head { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
+.finding .desc { font-size: 0.86rem; }
+.finding .val { font-size: 0.95rem; white-space: nowrap; }
+.disclosure { margin-top: 0.5rem; }
+.disclosure > summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center;
+  gap: 0.35rem; color: var(--dim); font-size: 0.74rem;
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em;
+  min-height: 1.6rem; user-select: none;
+}
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary:hover { color: var(--chrome); }
+.disclosure > summary .chev { color: var(--chrome); display: inline-block; }
+.disclosure[open] > summary .chev { transform: rotate(90deg); }
+.disclosure-body { color: var(--dim); font-size: 0.8rem; line-height: 1.5;
+  padding: 0.4rem 0 0.1rem; max-width: 42rem; }
+.coach-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.55rem; align-items: center; }
+.nothing { color: var(--dim); font-size: 0.8rem; padding: 0.35rem 0 0.2rem; }
+
+/* The tier mark — settled, shared by every variant and by #/model.
+   Seven tiers, this fundamental's lit. Position only, never a score. */
+.tiermark { flex: none; display: block; }
+.tiermark .silhouette { fill: none; stroke: var(--dim); stroke-width: 0.7; opacity: 0.45; }
+.tiermark .t { fill: none; }
+.tiermark.i0 .t0, .tiermark.i1 .t1, .tiermark.i2 .t2, .tiermark.i3 .t3,
+.tiermark.i4 .t4, .tiermark.i5 .t5, .tiermark.i6 .t6 { fill: var(--text); }
+
+/* ================= V1 "Chapter" ==================================== */
+.v1 .g { margin-top: 2rem; }
+.v1 .g:first-of-type { margin-top: 0.4rem; }
+.v1 .ghead { display: flex; align-items: center; gap: 0.55rem; }
+.v1 .gname {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; font-size: 1.35rem; line-height: 1.1;
+}
+.v1 .gcount { margin-left: auto; color: var(--dim); font-size: 0.78rem; }
+.v1 .grule { height: 1px; background: var(--line); margin: 0.5rem 0 0.75rem; }
+.v1 .lede { font-size: 1rem; line-height: 1.45; max-width: 40rem; }
+.v1 .why { color: var(--dim); font-size: 0.82rem; margin-top: 0.35rem; max-width: 40rem; line-height: 1.5; }
+.v1 .rows { margin-top: 0.9rem; }
+
+/* ================= V2 "Pit-board card" ============================= */
+.v2 .g { margin-top: 1.6rem; }
+.v2 .g:first-of-type { margin-top: 0.3rem; }
+.v2 .band {
+  background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--dim);
+  padding: 0.65rem 0.85rem 0.75rem;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-s)) 0, 100% var(--chamfer-s), 100% 100%, 0 100%);
+}
+.v2 .ghead { display: flex; align-items: center; gap: 0.55rem; }
+.v2 .gname {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.07em;
+  font-weight: 700; font-size: 1.15rem; line-height: 1.1;
+}
+.v2 .gcount { margin-left: auto; color: var(--dim); font-size: 0.76rem; }
+.v2 .bandrule { height: 1px; background: var(--line); margin: 0.6rem 0 0.6rem; }
+.v2 .lede { font-size: 0.96rem; line-height: 1.45; max-width: 40rem; }
+.v2 .why { color: var(--dim); font-size: 0.8rem; margin-top: 0.3rem; max-width: 40rem; line-height: 1.5; }
+.v2 .rows { padding: 0.25rem 0 0 0.85rem; }
+
+/* ================= V3 "Lens rule" ================================== */
+.v3 .g { position: relative; padding-left: 1.5rem; margin-top: 2rem; }
+.v3 .g:first-of-type { margin-top: 0.4rem; }
+.v3 .g::before {
+  content: ""; position: absolute; left: 0; top: 0.15rem; bottom: 0.2rem; width: 3px;
+  background: linear-gradient(to bottom, var(--dim) 0%, var(--line) 65%);
+}
+.v3 .ghead { display: flex; align-items: center; gap: 0.5rem; margin-left: -1.15rem; }
+.v3 .tiermark { background: var(--panel); padding: 0.2rem 0.12rem; }
+.v3 .gname {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; font-size: 1.2rem; line-height: 1.1;
+}
+.v3 .gcount { margin-left: auto; color: var(--dim); font-size: 0.78rem; }
+.v3 .lede { font-size: 0.98rem; line-height: 1.45; margin-top: 0.55rem; max-width: 39rem; }
+.v3 .why { color: var(--dim); font-size: 0.82rem; margin-top: 0.3rem; max-width: 39rem; line-height: 1.5; }
+.v3 .rows { margin-top: 0.85rem; }
+
+/* ================= V4 "Coach's voice" ============================== */
+.v4 .g { margin-top: 2.2rem; }
+.v4 .g:first-of-type { margin-top: 0.4rem; }
+.v4 .ghead { display: flex; align-items: center; gap: 0.45rem; }
+.v4 .gname {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.11em;
+  font-weight: 600; font-size: 0.74rem; color: var(--dim);
+}
+.v4 .gcount { margin-left: auto; color: var(--dim); font-size: 0.74rem; }
+.v4 .lede {
+  font-size: 1.28rem; line-height: 1.32; font-weight: 500; margin-top: 0.4rem;
+  max-width: 34rem; text-wrap: balance;
+}
+.v4 .why { color: var(--dim); font-size: 0.85rem; margin-top: 0.5rem; max-width: 38rem; line-height: 1.55; }
+.v4 .rows { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.2rem; }
+
+@media (max-width: 48rem) {
+  .v1 .gname { font-size: 1.15rem; }
+  .v4 .lede { font-size: 1.12rem; }
+  .v2 .rows { padding-left: 0.5rem; }
+  .finding .head { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Fundamentals as landmarks — four header treatments</h1>
+<p class="lead">
+  Same content in all four, same settled pieces: the coaching sentence promoted above the
+  findings, a <span class="chip">priority</span> chip where the fundamental owns the page
+  headline, and the shared tier mark tying each fundamental to its tier of the Driver Model
+  pyramid. They differ only in how the header carries the fundamental.
+</p>
+
+<div class="mock-banner">
+  <b>REAL ENGINE OUTPUT.</b> Every sentence, corner ID, second and count below is the committed
+  GR86&nbsp;@&nbsp;Spa fixture (11 laps, 3 sessions) — coaching text from
+  <code>coaching/ontology.py</code>, findings and gate counts from the real payload. Nothing is
+  a placeholder, so the density you see is the density you get. Judge the type, not the fonts:
+  this file falls back to a system condensed face; the built SPA self-hosts IBM Plex Sans
+  Condensed.
+</div>
+
+<div class="switch">
+  <button data-v="v1">V1 · Chapter</button>
+  <button data-v="v2">V2 · Pit-board card</button>
+  <button data-v="v3" class="on">V3 · Lens rule</button>
+  <button data-v="v4">V4 · Coach's voice</button>
+  <button data-v="all">Compare all</button>
+</div>
+
+<!-- ================================================================= -->
+<section class="variant v1" data-variant="v1" hidden>
+  <div class="variant-head">
+    <h2>V1 · Chapter</h2>
+    <span class="why">The fundamental as a chapter title with a rule under it. No vertical rail — the name and the rule do the work. Reads like a coach's notebook.</span>
+  </div>
+  <section class="panel">
+    <p class="eyebrow">By fundamental</p>
+    <details class="disclosure"><summary><span class="chev">▸</span> How this is grouped, and what the tags mean</summary>
+      <div class="disclosure-body">Findings are grouped by the racing fundamental they belong to — braking, rotation, corner exit — rather than by how the engine measured them.</div>
+    </details>
+
+    <!-- BRAKING: findings, no coaching principle eligible -->
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i0" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Braking — tier 1 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Braking</span>
+        <span class="gcount num">2 shown</span>
+      </div>
+      <div class="grule"></div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 entry: 0.105 s between your fastest and slowest laps</a></span><span class="val num">0.105 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.072</span></div></details></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C14 entry: 0.204 s between your fastest and slowest laps</a></span><span class="val num">0.204 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.138</span></div></details></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 37 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <!-- ROTATION: owns the page headline -->
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i1" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Rotation — tier 2 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Rotation</span>
+        <span class="chip">priority</span>
+        <span class="gcount num">7 shown</span>
+      </div>
+      <div class="grule"></div>
+      <div class="lede">Settle the entry, then one committed input to the apex.</div>
+      <div class="why">Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 4 corners:</span>
+        <span class="chip num"><a href="#">C14</a> 0.591 s</span><span class="chip num"><a href="#">C01</a> 0.269 s</span>
+        <span class="chip num"><a href="#">C09</a> 0.149 s</span><span class="chip num"><a href="#">C02</a> 0.116 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C01 mid-corner: 0.234 s between your fastest and slowest laps</a></span><span class="val num">0.234 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 mid-corner: 0.182 s between your fastest and slowest laps</a></span><span class="val num">0.182 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C02: extra steering corrections on 9 of 10 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C05: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 33 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <!-- CORNER EXIT -->
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i2" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Corner exit — tier 3 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Corner exit</span>
+        <span class="gcount num">6 shown</span>
+      </div>
+      <div class="grule"></div>
+      <div class="lede">Pick up later but build smoothly; if you have to lift, you opened it too early.</div>
+      <div class="why">A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 2 corners:</span>
+        <span class="chip num"><a href="#">C10</a> 0.243 s</span><span class="chip num"><a href="#">C01</a> 0.127 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C03 exit: 0.115 s between your fastest and slowest laps</a></span><span class="val num">0.115 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 exit: 0.053 s between your fastest and slowest laps</a></span><span class="val num">0.053 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C08 exit: 0.205 s between your fastest and slowest laps</a></span><span class="val num">0.205 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C10 exit: 0.145 s between your fastest and slowest laps</a></span><span class="val num">0.145 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: lifting after throttle pickup on 7 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C10: lifting after throttle pickup on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 21 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <!-- CONSISTENCY: coaching, zero findings -->
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i4" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Consistency — tier 5 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Consistency</span>
+        <span class="gcount num">0 shown</span>
+      </div>
+      <div class="grule"></div>
+      <div class="lede">Match a lap before you try to beat it — repeatability comes before pace.</div>
+      <div class="why">A technique that varies lap to lap isn't a technique yet — it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 16 corners:</span>
+        <span class="chip num"><a href="#">C02</a> CV 2.72</span><span class="chip num"><a href="#">C08</a> CV 1.43</span>
+        <span class="chip num"><a href="#">C01</a> CV 1.40</span><span class="chip num dim">+13 more</span>
+      </div>
+      <div class="rows"><div class="nothing">No finding clears the gates here yet.</div></div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================= -->
+<section class="variant v2" data-variant="v2" hidden>
+  <div class="variant-head">
+    <h2>V2 · Pit-board card</h2>
+    <span class="why">The header is a raised, chamfered band carrying the name and the sentence together; findings hang off it. Reads like the instrument's own card system.</span>
+  </div>
+  <section class="panel">
+    <p class="eyebrow">By fundamental</p>
+    <details class="disclosure"><summary><span class="chev">▸</span> How this is grouped, and what the tags mean</summary>
+      <div class="disclosure-body">Findings are grouped by the racing fundamental they belong to — braking, rotation, corner exit — rather than by how the engine measured them.</div>
+    </details>
+
+    <div class="g">
+      <div class="band">
+        <div class="ghead">
+          <svg class="tiermark i0" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Braking — tier 1 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+          <span class="gname">Braking</span><span class="gcount num">2 shown</span>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 entry: 0.105 s between your fastest and slowest laps</a></span><span class="val num">0.105 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.072</span></div></details></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C14 entry: 0.204 s between your fastest and slowest laps</a></span><span class="val num">0.204 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.138</span></div></details></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 37 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="band">
+        <div class="ghead">
+          <svg class="tiermark i1" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Rotation — tier 2 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+          <span class="gname">Rotation</span><span class="chip">priority</span><span class="gcount num">7 shown</span>
+        </div>
+        <div class="bandrule"></div>
+        <div class="lede">Settle the entry, then one committed input to the apex.</div>
+        <div class="why">Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.</div>
+        <div class="coach-tags">
+          <span class="chip num">at 4 corners:</span>
+          <span class="chip num"><a href="#">C14</a> 0.591 s</span><span class="chip num"><a href="#">C01</a> 0.269 s</span>
+          <span class="chip num"><a href="#">C09</a> 0.149 s</span><span class="chip num"><a href="#">C02</a> 0.116 s</span>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C01 mid-corner: 0.234 s between your fastest and slowest laps</a></span><span class="val num">0.234 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 mid-corner: 0.182 s between your fastest and slowest laps</a></span><span class="val num">0.182 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C02: extra steering corrections on 9 of 10 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C05: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 33 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="band">
+        <div class="ghead">
+          <svg class="tiermark i2" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Corner exit — tier 3 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+          <span class="gname">Corner exit</span><span class="gcount num">6 shown</span>
+        </div>
+        <div class="bandrule"></div>
+        <div class="lede">Pick up later but build smoothly; if you have to lift, you opened it too early.</div>
+        <div class="why">A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.</div>
+        <div class="coach-tags">
+          <span class="chip num">at 2 corners:</span>
+          <span class="chip num"><a href="#">C10</a> 0.243 s</span><span class="chip num"><a href="#">C01</a> 0.127 s</span>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C03 exit: 0.115 s between your fastest and slowest laps</a></span><span class="val num">0.115 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 exit: 0.053 s between your fastest and slowest laps</a></span><span class="val num">0.053 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C08 exit: 0.205 s between your fastest and slowest laps</a></span><span class="val num">0.205 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C10 exit: 0.145 s between your fastest and slowest laps</a></span><span class="val num">0.145 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: lifting after throttle pickup on 7 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C10: lifting after throttle pickup on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 21 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="band">
+        <div class="ghead">
+          <svg class="tiermark i4" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Consistency — tier 5 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+          <span class="gname">Consistency</span><span class="gcount num">0 shown</span>
+        </div>
+        <div class="bandrule"></div>
+        <div class="lede">Match a lap before you try to beat it — repeatability comes before pace.</div>
+        <div class="why">A technique that varies lap to lap isn't a technique yet — it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.</div>
+        <div class="coach-tags">
+          <span class="chip num">at 16 corners:</span>
+          <span class="chip num"><a href="#">C02</a> CV 2.72</span><span class="chip num"><a href="#">C08</a> CV 1.43</span>
+          <span class="chip num"><a href="#">C01</a> CV 1.40</span><span class="chip num dim">+13 more</span>
+        </div>
+      </div>
+      <div class="rows"><div class="nothing">No finding clears the gates here yet.</div></div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================= -->
+<section class="variant v3" data-variant="v3">
+  <div class="variant-head">
+    <h2>V3 · Lens rule <span class="chosen">chosen</span></h2>
+    <span class="why">One rule runs the height of the group, strongest at the top and fading out; the tier mark sits on it like a bookmark. Everything below is read through that lens. <b>This is the treatment that shipped (SPEC.md A48).</b></span>
+  </div>
+  <section class="panel">
+    <p class="eyebrow">By fundamental</p>
+    <details class="disclosure"><summary><span class="chev">▸</span> How this is grouped, and what the tags mean</summary>
+      <div class="disclosure-body">Findings are grouped by the racing fundamental they belong to — braking, rotation, corner exit — rather than by how the engine measured them.</div>
+    </details>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i0" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Braking — tier 1 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Braking</span><span class="gcount num">2 shown</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 entry: 0.105 s between your fastest and slowest laps</a></span><span class="val num">0.105 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.072</span></div></details></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C14 entry: 0.204 s between your fastest and slowest laps</a></span><span class="val num">0.204 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.138</span></div></details></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 37 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i1" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Rotation — tier 2 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Rotation</span><span class="chip">priority</span><span class="gcount num">7 shown</span>
+      </div>
+      <div class="lede">Settle the entry, then one committed input to the apex.</div>
+      <div class="why">Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 4 corners:</span>
+        <span class="chip num"><a href="#">C14</a> 0.591 s</span><span class="chip num"><a href="#">C01</a> 0.269 s</span>
+        <span class="chip num"><a href="#">C09</a> 0.149 s</span><span class="chip num"><a href="#">C02</a> 0.116 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C01 mid-corner: 0.234 s between your fastest and slowest laps</a></span><span class="val num">0.234 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 mid-corner: 0.182 s between your fastest and slowest laps</a></span><span class="val num">0.182 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C02: extra steering corrections on 9 of 10 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C05: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 33 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i2" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Corner exit — tier 3 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Corner exit</span><span class="gcount num">6 shown</span>
+      </div>
+      <div class="lede">Pick up later but build smoothly; if you have to lift, you opened it too early.</div>
+      <div class="why">A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 2 corners:</span>
+        <span class="chip num"><a href="#">C10</a> 0.243 s</span><span class="chip num"><a href="#">C01</a> 0.127 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C03 exit: 0.115 s between your fastest and slowest laps</a></span><span class="val num">0.115 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 exit: 0.053 s between your fastest and slowest laps</a></span><span class="val num">0.053 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C08 exit: 0.205 s between your fastest and slowest laps</a></span><span class="val num">0.205 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C10 exit: 0.145 s between your fastest and slowest laps</a></span><span class="val num">0.145 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: lifting after throttle pickup on 7 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C10: lifting after throttle pickup on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 21 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i4" width="20" height="20" viewBox="0 0 15 15" role="img" aria-label="Consistency — tier 5 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Consistency</span><span class="gcount num">0 shown</span>
+      </div>
+      <div class="lede">Match a lap before you try to beat it — repeatability comes before pace.</div>
+      <div class="why">A technique that varies lap to lap isn't a technique yet — it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 16 corners:</span>
+        <span class="chip num"><a href="#">C02</a> CV 2.72</span><span class="chip num"><a href="#">C08</a> CV 1.43</span>
+        <span class="chip num"><a href="#">C01</a> CV 1.40</span><span class="chip num dim">+13 more</span>
+      </div>
+      <div class="rows"><div class="nothing">No finding clears the gates here yet.</div></div>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================= -->
+<section class="variant v4" data-variant="v4" hidden>
+  <div class="variant-head">
+    <h2>V4 · Coach's voice</h2>
+    <span class="why">The coaching sentence is the largest thing in the group; the fundamental name shrinks to a label above it. Most human — the measurement rows become supporting evidence.</span>
+  </div>
+  <section class="panel">
+    <p class="eyebrow">By fundamental</p>
+    <details class="disclosure"><summary><span class="chev">▸</span> How this is grouped, and what the tags mean</summary>
+      <div class="disclosure-body">Findings are grouped by the racing fundamental they belong to — braking, rotation, corner exit — rather than by how the engine measured them.</div>
+    </details>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i0" width="18" height="18" viewBox="0 0 15 15" role="img" aria-label="Braking — tier 1 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Braking</span><span class="gcount num">2 shown</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 entry: 0.105 s between your fastest and slowest laps</a></span><span class="val num">0.105 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.072</span></div></details></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C14 entry: 0.204 s between your fastest and slowest laps</a></span><span class="val num">0.204 s</span></div>
+          <details class="disclosure"><summary><span class="chev">▸</span> Evidence</summary><div class="disclosure-body"><span class="num">n=11 · spread 0.138</span></div></details></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 37 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i1" width="18" height="18" viewBox="0 0 15 15" role="img" aria-label="Rotation — tier 2 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Rotation</span><span class="chip">priority</span><span class="gcount num">7 shown</span>
+      </div>
+      <div class="lede">Settle the entry, then one committed input to the apex.</div>
+      <div class="why">Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 4 corners:</span>
+        <span class="chip num"><a href="#">C14</a> 0.591 s</span><span class="chip num"><a href="#">C01</a> 0.269 s</span>
+        <span class="chip num"><a href="#">C09</a> 0.149 s</span><span class="chip num"><a href="#">C02</a> 0.116 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C01 mid-corner: 0.234 s between your fastest and slowest laps</a></span><span class="val num">0.234 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 mid-corner: 0.182 s between your fastest and slowest laps</a></span><span class="val num">0.182 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C02: extra steering corrections on 9 of 10 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C05: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: coasting mid-corner on 11 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C14: extra steering corrections on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 33 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i2" width="18" height="18" viewBox="0 0 15 15" role="img" aria-label="Corner exit — tier 3 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Corner exit</span><span class="gcount num">6 shown</span>
+      </div>
+      <div class="lede">Pick up later but build smoothly; if you have to lift, you opened it too early.</div>
+      <div class="why">A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 2 corners:</span>
+        <span class="chip num"><a href="#">C10</a> 0.243 s</span><span class="chip num"><a href="#">C01</a> 0.127 s</span>
+      </div>
+      <div class="rows">
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C03 exit: 0.115 s between your fastest and slowest laps</a></span><span class="val num">0.115 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C05 exit: 0.053 s between your fastest and slowest laps</a></span><span class="val num">0.053 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C08 exit: 0.205 s between your fastest and slowest laps</a></span><span class="val num">0.205 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-self</span><a href="#">C10 exit: 0.145 s between your fastest and slowest laps</a></span><span class="val num">0.145 s</span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C01: lifting after throttle pickup on 7 of 11 laps</a></span><span class="val num"></span></div></div>
+        <div class="finding"><div class="head"><span class="desc"><span class="src-tag">vs-principle</span><a href="#">C10: lifting after throttle pickup on 6 of 11 laps</a></span><span class="val num"></span></div></div>
+        <details class="disclosure"><summary><span class="chev">▸</span> 21 not shown yet — evidence gates</summary><div class="disclosure-body">Every suppressed finding, each with its exact gate reason.</div></details>
+      </div>
+    </div>
+
+    <div class="g">
+      <div class="ghead">
+        <svg class="tiermark i4" width="18" height="18" viewBox="0 0 15 15" role="img" aria-label="Consistency — tier 5 of the 7 Driver Model fundamentals"><polygon class="silhouette" points="0.5,14.7 14.5,14.7 9.5,0.3 5.5,0.3"/><rect class="t t0" x="0.50" y="13.20" width="14.00" height="1.5"/><rect class="t t1" x="1.33" y="11.05" width="12.33" height="1.5"/><rect class="t t2" x="2.17" y="8.90" width="10.67" height="1.5"/><rect class="t t3" x="3.00" y="6.75" width="9.00" height="1.5"/><rect class="t t4" x="3.83" y="4.60" width="7.33" height="1.5"/><rect class="t t5" x="4.67" y="2.45" width="5.67" height="1.5"/><rect class="t t6" x="5.50" y="0.30" width="4.00" height="1.5"/></svg>
+        <span class="gname">Consistency</span><span class="gcount num">0 shown</span>
+      </div>
+      <div class="lede">Match a lap before you try to beat it — repeatability comes before pace.</div>
+      <div class="why">A technique that varies lap to lap isn't a technique yet — it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.</div>
+      <div class="coach-tags">
+        <span class="chip num">at 16 corners:</span>
+        <span class="chip num"><a href="#">C02</a> CV 2.72</span><span class="chip num"><a href="#">C08</a> CV 1.43</span>
+        <span class="chip num"><a href="#">C01</a> CV 1.40</span><span class="chip num dim">+13 more</span>
+      </div>
+      <div class="rows"><div class="nothing">No finding clears the gates here yet.</div></div>
+    </div>
+  </section>
+</section>
+
+<p class="mock-note">
+  <b>What is the same in all four, and stays that way.</b>
+  Every finding row keeps its own <span class="src-tag">source</span> tag — the three sources are
+  never blended (SPEC decision 3). No group header carries an aggregate: a per-fundamental
+  seconds total would double-count, because <code>cumulative_loss</code> is per phase and
+  <code>entry</code> maps to two fundamentals. The header shows a name and a count of rendered
+  rows, nothing else. Suppressed findings are collapsed, never dropped, each with its exact gate
+  reason. The order is the Driver Model pyramid's fixed order, so it never implies a ranking.
+  <br><br>
+  <b>Two honest edge cases are in every variant.</b> <em>Braking</em> has findings but no coaching
+  principle eligible — no sentence is invented for it. <em>Consistency</em> is the reverse: a
+  major coaching signal at 16 corners with zero findings clearing the gates, which is exactly the
+  case the current layout renders as a bare "Nothing clears the gates here yet."
+  <br><br>
+  <b>The tier mark</b> beside each name is the settled shared device: seven tiers, this
+  fundamental's lit, the same glyph on the Driver Model tab. It encodes position in the fixed
+  seven — never a score, never a colour with meaning.
+</p>
+
+</div>
+<script>
+const buttons = document.querySelectorAll(".switch button");
+const variants = document.querySelectorAll(".variant");
+buttons.forEach((b) => b.addEventListener("click", () => {
+  buttons.forEach((x) => x.classList.toggle("on", x === b));
+  const want = b.dataset.v;
+  variants.forEach((v) => { v.hidden = want !== "all" && v.dataset.variant !== want; });
+  window.scrollTo({ top: 0 });
+}));
+</script>
+</body>
+</html>

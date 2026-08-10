@@ -211,23 +211,57 @@ a.btn-primary { color: var(--base); }
 }
 .empty p { margin: 0 0 0.7rem; color: var(--dim); font-size: 0.88rem; }
 
-/* --- Fundamental groups (A46): feedback organised the way a driver drives.
-   Source identity moved onto each row's own tag (structural, never colour —
-   the rule is unchanged, only where it is carried). ---------------------- */
-.fgroup { border-left: 3px solid var(--line); padding-left: 0.8rem; margin-top: 1.1rem; }
-.fgroup:first-of-type { margin-top: 0.2rem; }
-@media (max-width: 48rem) {
-  .fgroup { padding-left: 0.55rem; }
+/* --- Fundamental groups (A46/A48): feedback organised the way a driver
+   drives, and read the way a coach reads it. Source identity stays on each
+   row's own tag (structural, never colour — the rule is unchanged, only
+   where it is carried).
+
+   A48 "lens rule": one rule runs the height of the group, brightest where the
+   fundamental is named and fading out down the group, with the tier mark
+   sitting on it like a bookmark. Everything below is read through that lens —
+   which is the point: a coach has seven fundamentals and looks at everything
+   through them. Neutral ink only; a fundamental is never colour-coded, so a
+   section's identity can't be mistaken for a verdict (colour grammar 2). --- */
+.fgroup { position: relative; padding-left: 1.5rem; margin-top: 2rem; }
+.fgroup:first-of-type { margin-top: 0.5rem; }
+.fgroup::before {
+  content: ""; position: absolute; left: 0; top: 0.15rem; bottom: 0.2rem; width: 3px;
+  background: linear-gradient(to bottom, var(--dim) 0%, var(--line) 65%);
 }
 .fgroup-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: 0.6rem; margin-bottom: 0.3rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-left: -1.15rem; margin-bottom: 0.15rem;
 }
 .fgroup-name {
-  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
-  font-weight: 600; font-size: 0.92rem;
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; font-size: 1.2rem; line-height: 1.1;
 }
-.fgroup-count { color: var(--dim); font-size: 0.8rem; }
+/* Not a semantic colour: the same quiet chip every other label uses, saying
+   only that this fundamental owns the page's headline. */
+.chip-priority { letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--display); }
+.fgroup-lede { margin-top: 0.5rem; }
+.fgroup-lede .coach-say { font-size: 1rem; font-weight: 500; line-height: 1.4; max-width: 39rem; }
+.fgroup-lede .coach-why,
+.fgroup-lede .coach-drill { max-width: 39rem; }
+/* The measurements, collapsed under the coaching rather than leading it
+   (A48, owner-directed). Still every row, still tagged, still crawled — the
+   parity crawler reads inside a closed <details>. */
+.fgroup-findings > .disclosure-body { color: var(--text); max-width: none; }
+@media (max-width: 48rem) {
+  .fgroup { padding-left: 1.1rem; margin-top: 1.6rem; }
+  .fgroup-head { margin-left: -0.95rem; }
+  .fgroup-name { font-size: 1.05rem; }
+}
+
+/* The tier mark: the Driver Model pyramid in miniature, this fundamental's
+   tier lit. Position in the fixed seven, never a score — so it is drawn in
+   neutral ink, never a semantic hue. `--panel` behind it masks the lens rule
+   it sits on. */
+.tiermark { flex: none; display: block; width: 22px; height: 15px; }
+.fgroup-head .tiermark { background: var(--panel); padding: 0.2rem 0.1rem; box-sizing: content-box; }
+.tiermark .silhouette { fill: none; stroke: var(--dim); stroke-width: 2.6; opacity: 0.45; }
+.tiermark .lit { fill: var(--text); }
 .src-tag {
   font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--dim); border: 1px solid var(--line); border-radius: 2px;
@@ -375,10 +409,24 @@ a.btn-primary { color: var(--base); }
 .pyramid .t-score { fill: var(--text); font-family: var(--mono); font-size: 3.8px;
   text-anchor: middle; font-variant-numeric: tabular-nums; }
 
-.fbar { border-top: 1px solid var(--line); padding: 0.55rem 0.1rem; }
+/* A48: the meters carry the cohort page's fundamental treatment — the tier
+   mark, the condensed name, the same lens rule — so #/model and the feedback
+   section read as one system. Same seven, same order, same ink. */
+.fbar {
+  position: relative; border-top: 1px solid var(--line);
+  padding: 0.55rem 0.1rem 0.55rem 1.5rem;
+}
 .fbar:first-of-type { border-top: 0; }
-.fbar-head { display: flex; align-items: baseline; gap: 0.5rem; }
-.fbar-name { font-size: 0.9rem; }
+.fbar::before {
+  content: ""; position: absolute; left: 0; top: 0.5rem; bottom: 0.25rem; width: 3px;
+  background: linear-gradient(to bottom, var(--dim) 0%, var(--line) 65%);
+}
+.fbar-head { display: flex; align-items: center; gap: 0.5rem; margin-left: -1.15rem; }
+.fbar-head .tiermark { background: var(--panel); padding: 0.2rem 0.1rem; box-sizing: content-box; }
+.fbar-name {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; font-size: 1.05rem; line-height: 1.1;
+}
 .fbar-score { margin-left: auto; font-size: 1.05rem; }
 .fbar .track { height: 6px; margin: 0.4rem 0 0.3rem; }
 .fbar .track i { display: block; height: 100%; background: rgba(70, 100, 140, 0.9); border-radius: 2px; }

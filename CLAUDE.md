@@ -497,6 +497,39 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   `gr86-spa-francorchamps.*`) were **already stale on `main`** from A42's
   `coach-onto-v2` and A43's census — regenerated here, so most of their diff
   is that catching up, not A46. Suite 908 → 924.
+- **Fundamentals read as landmarks; the feedback section reads as coaching
+  (2026-08-10, SPEC.md A48)** — owner-directed follow-on to A46, which put the
+  right structure on the page and left the rendering behind it (`.fgroup-name`
+  was 0.92rem against 0.86rem finding rows, on a `--line` rule with almost no
+  contrast, and the racing sentence sat *below* the header). Chosen from a
+  mockup, not from prose: four treatments built against the real GR86/Spa
+  fixture — every sentence and figure real engine output —
+  (`docs/ui-fundamentals-mockup.html`), owner picked **"lens rule"**. One rule
+  runs the height of a group, brightest where the fundamental is named and
+  fading down it, with a **tier mark** (the Driver Model pyramid in miniature,
+  this fundamental's tier lit) sitting on it; the same treatment carries onto
+  `#/model`'s meters, and `ui/src/views/pyramid.js` holds the tier geometry
+  once so the full-size pyramid and the 22px mark cannot become two shapes.
+  Each fundamental now opens with its top-ranked principle in full —
+  expression, driving principle **and the drill**, which had rendered on the
+  single headline card only, so eight of the nine seed principles carried a
+  practice step the driver could never see; the measurements collapse into one
+  disclosure per group, and the headline's fundamental carries a `priority`
+  chip (which retires `CoachingSecondary`'s "Same as the headline above"
+  branch). **The owner's "hide the vs-self/vs-principle/vs-reference stuff" is
+  implemented as collapse, never delete** — every row stays in the DOM with its
+  source tag and the parity crawler reads inside closed `<details>`, so
+  AGENTS.md's evidence guarantee and UI-SPEC decision 6's binding half are
+  untouched; deleting the tags would contradict the constraint the same request
+  opened with and needs its own owner decision. Also rejected, and recorded:
+  the Driver Model score on a cohort group header (it is driver-level, pooled
+  across every cohort). The static report gained a section it had been
+  dropping — a fundamental the engine can coach but has no shown finding for
+  (`consistency`: a major signal at sixteen corners). Number-neutral:
+  `PAYLOAD_VERSION` stays 7, both JSONs and all eight `docs/*-report.md`
+  byte-identical, the cohort `.md`'s numeric multiset identical, the two HTML
+  reports' reader-visible numerals identical with every delta inside `<style>`.
+  Suite 963 → 971, 16 Postgres skips, 0 browser skips.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)
@@ -694,6 +727,8 @@ map, which is a drift waiting to happen, and A46 deleted it.
 | "how is this measured" disclosure text | `explain.py` `METHODOLOGY` | id must exist before a view names it |
 | a fundamental's display name | `model/taxonomy.py` `Fundamental.label` | travels via `belief.label` |
 | a gate's stated reason | `attribution/ranker.py` `_gate` | exempt from copy trimming |
+| how a fundamental's group *looks* — the landmark header, the lens rule, the tier mark | `ui/src/views/shared.jsx` (`FundamentalSections`, `FundamentalMark`) + `ui/src/app.css`; geometry in `ui/src/views/pyramid.js` | mirrored in `report/builder.py` (`_coaching_lede_md`/`_html`) — change both |
+| which principle ledes a fundamental | `coaching/engine.py`'s ranking; the renderers only read `headline` then `secondary` | implemented once per surface, pinned on both against the payload's own `coaching.headline` |
 
 **Slugs are identity, labels are language.** `coast-window`,
 `one-steering-input`, `cp.*` ids and `finding_id`s are load-bearing — evidence
@@ -720,10 +755,15 @@ Renaming a slug silently orphans stored annotations.
    `<details>`. So a number that isn't in the payload must not sit in a `.num`
    element *anywhere*, open or not. This is why the vs-principle rationale —
    which quotes one lap's figure — renders as prose.
-4. **Suppression may be collapsed, never dropped.** Every suppressed finding
-   stays listed with its `gate_reason` **verbatim**; UI-SPEC's copy-density
-   rule explicitly exempts measurement copy and gate reasons ("accuracy over
-   brevity there"). Trim chrome around them, never them.
+4. **Suppression may be collapsed, never dropped** — and since A48 the *shown*
+   findings collapse too, under their fundamental's coaching lede. Same rule
+   governs both: every suppressed finding stays listed with its `gate_reason`
+   **verbatim**, every shown finding stays in the DOM with its own `.src-tag`,
+   and nothing is removed to make the page quieter. UI-SPEC's copy-density rule
+   explicitly exempts measurement copy and gate reasons ("accuracy over brevity
+   there"). Trim chrome around them, never them. If a future request is
+   "get rid of the source tags", that is an AGENTS.md non-negotiable and needs
+   an explicit owner re-decision, not a renderer change.
 5. **A confidence value never launders an unmeasured inference.** A
    `no_signal` principle gets a self-check and no score, magnitude, band or
    confidence at any level — the grounding validator rejects it mechanically,

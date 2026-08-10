@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
+import { FUNDAMENTAL_ORDER } from "./order.js";
+import { SILHOUETTE, tierPoints } from "./pyramid.js";
 
 // Methodology disclosure ("the arrow", SPEC.md A35): text comes from the
 // engine (GET /api/explain), never hand-written per view, so the SPA and a
@@ -44,15 +46,23 @@ export function Methodology({ id, label = "How is this measured?" }) {
   );
 }
 
-// The pyramid's fixed order — foundations first, higher-order skills after
-// (shared with model.jsx so the two tabs read the same way). Layout only:
-// fixed regardless of score, so the order never implies a ranking. The
-// *labels* are not here — they come from the payload (`belief.label`), the
-// engine owning its own words.
-export const FUNDAMENTAL_ORDER = [
-  "braking", "rotation", "corner_exit",
-  "commitment", "consistency", "vehicle_management", "vision",
-];
+// The tier mark (A48): the Driver Model pyramid in miniature, this
+// fundamental's tier lit. It encodes POSITION in the fixed seven and nothing
+// else — never a score, never a semantic colour, so it can't be read as a
+// verdict on how the driver drives. Used beside every fundamental name, on
+// the cohort page, the corner drill and #/model alike; an unknown id (a
+// taxonomy gap) draws the silhouette alone rather than lighting a wrong tier.
+export function FundamentalMark({ id, label }) {
+  const i = FUNDAMENTAL_ORDER.indexOf(id);
+  const name = label || (id || "").replace(/_/g, " ");
+  return (
+    <svg className="tiermark" viewBox="0 0 100 68" role="img"
+         aria-label={i < 0 ? name : `${name}: tier ${i + 1} of the seven fundamentals`}>
+      <polygon className="silhouette" points={SILHOUETTE} />
+      {i >= 0 && <polygon className="lit" points={tierPoints(i)} />}
+    </svg>
+  );
+}
 
 // id -> driver-facing name, straight from the payload's driver_model section.
 export function fundamentalLabels(driverModel) {
@@ -123,19 +133,33 @@ export function FindingRow({ finding, slug }) {
   );
 }
 
-// Findings grouped by racing fundamental (A46) rather than by source.
-// Grouping is presentation: each row still carries its own source tag and
-// its own arithmetic, and no group shows a combined figure — summing the
-// per-phase losses into a per-fundamental total would be the UI computing a
-// measurement, which the binding render rule forbids.
-export function FundamentalSections({ findings, slug, labels, coaching, headlinePrincipleId }) {
+// Findings grouped by racing fundamental (A46) rather than by source, and
+// since A48 read *as* coaching: the fundamental's own racing takeaway leads
+// the group, the measurements that triggered it sit one click below it.
+//
+// Grouping and disclosure are presentation. What they are not allowed to
+// touch stays exactly as it was: every finding row still carries its own
+// source tag and its own arithmetic (SPEC decision 3), every row is still in
+// the DOM — the render-parity crawler reads inside closed <details>, so
+// collapsing hides nothing from the guarantee — and no group shows a combined
+// figure. Summing the per-phase losses into a per-fundamental total would be
+// the UI computing a measurement, which the binding render rule forbids.
+export function FundamentalSections({ findings, slug, labels, coaching }) {
   const byId = {};
   for (const f of findings) {
     const id = f.fundamental || "_other";
     (byId[id] = byId[id] || []).push(f);
   }
+  // The headline is the top-ranked coaching item overall, so it also leads
+  // its own fundamental. Prepending it here (rather than reading only
+  // `secondary`) is what lets a group open with the page's own priority
+  // instead of restating it further down — the A46 duplication, one level in.
+  const ranked = coaching
+    ? [...(coaching.headline ? [coaching.headline] : []), ...(coaching.secondary || [])]
+    : [];
+  const headlineId = coaching?.headline?.coaching_principle_id ?? null;
   const coachById = {};
-  for (const c of coaching || []) {
+  for (const c of ranked) {
     const id = c.fundamental || "_other";
     (coachById[id] = coachById[id] || []).push(c);
   }
@@ -146,28 +170,47 @@ export function FundamentalSections({ findings, slug, labels, coaching, headline
     const shown = group.filter((f) => f.shown && !f.annotation);
     const annotated = group.filter((f) => f.shown && f.annotation);
     const suppressed = group.filter((f) => !f.shown);
+    // No count on the header (A48): it used to sit there as a bare figure with
+    // nothing to say what it counted, and every count is now stated in words
+    // where it does the work — "The 7 findings behind this", "33 not shown yet
+    // — evidence gates", "Nothing clears the gates here yet." UI-SPEC decision
+    // 6 permits a count of rendered items on the header; it never required one.
+    const rows = [...shown, ...annotated];
+    const [lede, ...rest] = groupByPrinciple(coachById[id] || []);
+    const isPriority = !!lede && lede[0].coaching_principle_id === headlineId;
+
+    // With a coaching lede the measurements are supporting evidence and
+    // collapse behind it; with no eligible principle they ARE the group, and
+    // hiding them would leave a header over an empty box.
+    const findingRows = rows.map((f) => (
+      <FindingRow key={f.finding_id} finding={f} slug={slug} />
+    ));
+
     return (
       <div key={id} className="fgroup">
         <div className="fgroup-head">
+          <FundamentalMark id={id} label={labels[id]} />
           <span className="fgroup-name">{labels[id] || id.replace(/_/g, " ")}</span>
-          <span className="fgroup-count num">{shown.length}</span>
+          {isPriority && <span className="chip chip-priority">priority</span>}
         </div>
 
-        {coachById[id] && (
-          <CoachingSecondary
-            items={coachById[id]} slug={slug}
-            headlinePrincipleId={headlinePrincipleId}
-          />
-        )}
+        {lede && <CoachingLede group={lede} slug={slug} />}
+        {rest.length > 0 && <CoachingSecondary groups={rest} slug={slug} />}
 
-        {shown.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
-        {annotated.map((f) => <FindingRow key={f.finding_id} finding={f} slug={slug} />)}
-
-        {!shown.length && !annotated.length && (
+        {rows.length === 0 && (
           <div className="dim" style={{ fontSize: "0.8rem", padding: "0.2rem 0 0.4rem" }}>
             Nothing clears the gates here yet.
           </div>
         )}
+        {rows.length > 0 && (lede ? (
+          <details className="disclosure fgroup-findings">
+            <summary>
+              <span className="chev" aria-hidden="true">▸</span>{" "}
+              The {rows.length} finding{rows.length === 1 ? "" : "s"} behind this
+            </summary>
+            <div className="disclosure-body">{findingRows}</div>
+          </details>
+        ) : findingRows)}
 
         {suppressed.length > 0 && (
           <details className="disclosure">
@@ -259,6 +302,48 @@ function CoachingTags({ item, slug }) {
   );
 }
 
+// One principle's instances. A principle often clears the gate at several
+// corners independently and the engine, correctly, treats each as its own
+// eligible instance — so every corner and every magnitude here is that
+// instance's own record, never a total across them.
+function CoachingInstances({ group, slug }) {
+  const head = group[0];
+  if (group.length === 1) return <CoachingTags item={head} slug={slug} />;
+  return (
+    // The fundamental is the group heading, so naming it on every chip row
+    // would repeat it once per principle.
+    <div className="coach-tags">
+      <span className="chip num dim">at {group.length} corners:</span>
+      {group.map((c) => (
+        <span key={c.corner_id} className="chip num">
+          {c.corner_id ? <a href={`#/corner/${slug}/${c.corner_id}`}>{c.corner_id}</a> : "—"}
+          {" "}{magnitudeText(c.magnitude_kind, c.magnitude)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// The lede (A48): the fundamental's top-ranked principle, said in full —
+// expression, why, and the drill. The drill used to render on the headline
+// card alone, so eight of the nine seed principles carried a written practice
+// step the driver could never see; promoting it here is what turns the group
+// from a label into the "targeted coaching" the section is for. Every word is
+// `coaching/ontology.py`'s, verbatim — the SPA composes no sentence of its
+// own, and nothing here is inside a `.num` element (the drill quotes a figure
+// in prose, e.g. "~0.2 s", which is not a payload number).
+function CoachingLede({ group, slug }) {
+  const head = group[0];
+  return (
+    <div className="fgroup-lede">
+      <div className="coach-say">{head.coaching_expression}</div>
+      <div className="coach-why">{head.driving_principle}</div>
+      {head.drill && <div className="coach-drill"><b>Try this:</b> {head.drill}</div>}
+      <CoachingInstances group={group} slug={slug} />
+    </div>
+  );
+}
+
 export function CoachingHeadline({ headline, headline_reason, silent_count, slug }) {
   if (!headline) {
     return (
@@ -294,49 +379,23 @@ function groupByPrinciple(items) {
   return [...groups.values()];
 }
 
-export function CoachingSecondary({ items, slug, limit = 4, headlinePrincipleId = null }) {
+// The fundamental's remaining principles, under its lede. Takes groups the
+// caller has already formed, so the lede cannot also appear here — which is
+// why the old "Same as the headline above, also at:" cross-reference is gone
+// rather than merely unused: the headline principle now always *is* its
+// fundamental's lede, so there is nothing left to cross-refer to.
+export function CoachingSecondary({ groups, slug, limit = 3 }) {
   const [shown, setShown] = useState(limit);
-  if (!items.length) return <div className="dim" style={{ fontSize: "0.82rem" }}>Nothing else notable right now.</div>;
-  const groups = groupByPrinciple(items);
+  if (!groups.length) return null;
   return (
     <>
-      {groups.slice(0, shown).map((g) => {
-        const head = g[0];
-        // The headline already said this principle's expression/why in full;
-        // repeating the identical paragraph here would read as a duplicate.
-        // Its OTHER corners are still real, separate findings — worth
-        // keeping, just cross-referenced instead of restated.
-        const sameAsHeadline = head.coaching_principle_id === headlinePrincipleId;
-        return (
-          <div key={head.coaching_principle_id} className="coach-item">
-            {sameAsHeadline ? (
-              <div className="coach-say dim" style={{ fontWeight: 400 }}>
-                Same as the headline above, also at:
-              </div>
-            ) : (
-              <>
-                <div className="coach-say">{head.coaching_expression}</div>
-                <div className="coach-why">{head.driving_principle}</div>
-              </>
-            )}
-            {g.length === 1 ? (
-              <CoachingTags item={head} slug={slug} />
-            ) : (
-              // The fundamental is the group heading now, so naming it on
-              // every chip row would repeat it once per principle.
-              <div className="coach-tags">
-                <span className="chip num dim">at {g.length} corners:</span>
-                {g.map((c) => (
-                  <span key={c.corner_id} className="chip num">
-                    {c.corner_id ? <a href={`#/corner/${slug}/${c.corner_id}`}>{c.corner_id}</a> : "—"}
-                    {" "}{magnitudeText(c.magnitude_kind, c.magnitude)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {groups.slice(0, shown).map((g) => (
+        <div key={g[0].coaching_principle_id} className="coach-item">
+          <div className="coach-say">{g[0].coaching_expression}</div>
+          <div className="coach-why">{g[0].driving_principle}</div>
+          <CoachingInstances group={g} slug={slug} />
+        </div>
+      ))}
       {groups.length > shown && (
         <button className="btn small" style={{ marginTop: "0.5rem" }}
                 onClick={() => setShown(groups.length)}>

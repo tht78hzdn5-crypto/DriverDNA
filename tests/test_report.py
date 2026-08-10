@@ -233,3 +233,86 @@ def test_html_groups_findings_by_fundamental(tmp_path):
     shown = [f for f in payload["findings"] if f["shown"]]
     for fundamental in {f["fundamental"] for f in shown}:
         assert FUNDAMENTALS[fundamental].label in html
+
+
+# --- A48: the report echoes the SPA's coaching-led fundamental sections ----
+# The SPA promotes each fundamental's top-ranked coaching principle above its
+# measurements. A report that still opened every section with a table would be
+# a second, quieter voice for the same data — the exact divergence A46 exists
+# to prevent. Markdown and inline CSS can't collapse the tables the way the
+# browser does, so the report states the order rather than the affordance:
+# coaching first, measurements under it.
+
+
+def _lede_principle(payload, fundamental):
+    """The principle the SPA would lede this fundamental with: headline first,
+    then `secondary` in the engine's own ranked order. Anchored to the payload
+    rather than restating the rule, so this test fails if either surface
+    starts choosing differently."""
+    coaching = payload["coaching"]
+    ranked = ([coaching["headline"]] if coaching["headline"] else []) + coaching["secondary"]
+    for c in ranked:
+        if c["fundamental"] == fundamental:
+            return c
+    return None
+
+
+def test_markdown_ledes_each_fundamental_with_its_coaching_expression(tmp_path):
+    payload = _fixture_payload(tmp_path)
+    md = render_cohort_markdown(payload)
+    coached = {c["fundamental"] for c in payload["coaching"]["secondary"]}
+    assert coached, "sanity: the fixtures must produce coaching candidates"
+    for fundamental in coached:
+        lede = _lede_principle(payload, fundamental)
+        label = FUNDAMENTALS[fundamental].label
+        assert f"### {label}" in md, f"no section for {label}"
+        section = md.split(f"### {label}", 1)[1]
+        expression = lede["coaching_expression"]
+        assert expression in section.split("###", 1)[0], (
+            f"{label}'s section does not lede with its coaching expression"
+        )
+        # Coaching above the measurements, not below them.
+        body = section.split("###", 1)[0]
+        if "| source |" in body:
+            assert body.index(expression) < body.index("| source |")
+
+
+def test_html_ledes_each_fundamental_with_its_coaching_expression(tmp_path):
+    import html as html_mod
+
+    payload = _fixture_payload(tmp_path)
+    rendered = render_cohort_html(payload)
+    for fundamental in {c["fundamental"] for c in payload["coaching"]["secondary"]}:
+        lede = _lede_principle(payload, fundamental)
+        # Escaped, like every other driver-facing string in this report — the
+        # ontology's prose is full of apostrophes ("haven't committed to").
+        assert html_mod.escape(lede["coaching_expression"]) in rendered
+        assert html_mod.escape(lede["driving_principle"]) in rendered
+
+
+def test_report_shows_a_coached_fundamental_with_no_findings(tmp_path):
+    """`consistency` is the honest edge case: a major coaching signal at many
+    corners with nothing clearing the finding gates. Dropping its section
+    because the table would be empty would hide the loudest thing the engine
+    has to say about this driver."""
+    payload = _fixture_payload(tmp_path)
+    shown = {f["fundamental"] for f in payload["findings"] if f["shown"]}
+    coached = {c["fundamental"] for c in payload["coaching"]["secondary"]}
+    orphans = coached - shown
+    assert orphans, "sanity: the fixtures must include a coached-but-ungated fundamental"
+    md = render_cohort_markdown(payload)
+    for fundamental in orphans:
+        assert f"### {FUNDAMENTALS[fundamental].label}" in md
+        assert _lede_principle(payload, fundamental)["coaching_expression"] in md
+
+
+def test_report_says_each_coaching_expression_once_per_section(tmp_path):
+    """The lede is the section's voice; repeating it under its own heading is
+    the two-voices problem one level in (A46)."""
+    payload = _fixture_payload(tmp_path)
+    md = render_cohort_markdown(payload)
+    for fundamental in {c["fundamental"] for c in payload["coaching"]["secondary"]}:
+        label = FUNDAMENTALS[fundamental].label
+        section = md.split(f"### {label}", 1)[1].split("###", 1)[0]
+        expression = _lede_principle(payload, fundamental)["coaching_expression"]
+        assert section.count(expression) == 1
