@@ -26,7 +26,24 @@ export default function Garage() {
               {cohorts.data.map((c) => (
                 <a key={c.slug} className="card" href={`#/cohort/${c.slug}`}>
                   <div className="cohort-name">{c.car} @ {c.track}</div>
-                  <div className="dim" style={{ fontSize: "0.74rem", marginTop: "0.2rem" }}>{c.driver}</div>
+                  <div className="dim" style={{ fontSize: "0.74rem", marginTop: "0.2rem" }}>
+                    {c.driver}
+                    <span className="num" style={{ marginLeft: "0.5em" }}>
+                      {c.n_laps} lap{c.n_laps === 1 ? "" : "s"}
+                    </span>
+                    {c.n_reference_laps > 0 && (
+                      <span className="num" style={{ marginLeft: "0.3em" }}>
+                        · {c.n_reference_laps} ref
+                      </span>
+                    )}
+                    {c.last_synced_at ? (
+                      <span style={{ marginLeft: "0.5em" }}>
+                        · synced {new Date(c.last_synced_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
+                    ) : (
+                      <span style={{ marginLeft: "0.5em" }}>· imported</span>
+                    )}
+                  </div>
                 </a>
               ))}
             </div>

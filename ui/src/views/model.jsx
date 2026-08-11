@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { get } from "../api.js";
+import { useState, useEffect } from "react";
+import { streamGet } from "../api.js";
 import { fmt } from "../format.js";
-import { Loading, useFetch } from "../app.jsx";
+import { Loading } from "../app.jsx";
 import { FundamentalMark, Methodology, fundamentalLabels } from "./shared.jsx";
 import { FUNDAMENTAL_ORDER } from "./order.js";
 import { GAP, STEP, Y_BASE, tierPoints } from "./pyramid.js";
@@ -248,11 +248,70 @@ function ScoreHistoryChart({ history, names = {} }) {
   );
 }
 
+function ProgressBar({ current, total }) {
+  if (!total) return null;
+  const pct = Math.round((current / total) * 100);
+  return (
+    <div className="import-progress">
+      <div className="import-progress-bar">
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      <span className="import-progress-label">{current} of {total}</span>
+    </div>
+  );
+}
+
 export default function DriverModel() {
-  const driver = useFetch(() => get("/api/driver"), []);
-  const history = useFetch(() => get("/api/driver/score-history"), []);
-  if (!driver.data) return <Loading error={driver.error} />;
-  const model = driver.data.driver_model;
+  const [driver, setDriver] = useState(null);
+  const [driverError, setDriverError] = useState(null);
+  const [rollupProgress, setRollupProgress] = useState(null);
+
+  const [history, setHistory] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    streamGet("/api/driver", (event) => {
+      if (!alive) return;
+      if (event.type === "progress") setRollupProgress(event);
+      else if (event.type === "progress_phase") {
+        setRollupProgress((prev) => ({
+          ...prev,
+          cohort: event.phase === "driver_model" ? "computing driver model…" : "computing census…",
+        }));
+      }
+    })
+      .then((payload) => { if (alive) { setDriver(payload); setRollupProgress(null); } })
+      .catch((err) => alive && setDriverError(String(err.message || err)));
+
+    streamGet("/api/driver/score-history")
+      .then((payload) => alive && setHistory(payload))
+      .catch(() => {});
+
+    return () => { alive = false; };
+  }, []);
+
+  if (driverError) return <Loading error={driverError} />;
+
+  if (!driver) {
+    return (
+      <div className="grid">
+        <section className="panel">
+          <h1>Driver Model</h1>
+        </section>
+        {rollupProgress && (
+          <section className="panel">
+            <div className="dim" style={{ fontSize: "0.82rem", marginBottom: "0.3rem" }}>
+              {rollupProgress.cohort || `Computing cohort ${(rollupProgress.index || 0) + 1} of ${rollupProgress.total || "…"}…`}
+            </div>
+            <ProgressBar current={(rollupProgress.index || 0) + 1} total={rollupProgress.total} />
+          </section>
+        )}
+        {!rollupProgress && <Loading error={null} />}
+      </div>
+    );
+  }
+
+  const model = driver.driver_model;
   if (!model) {
     return (
       <div className="grid"><section className="panel">
@@ -308,7 +367,7 @@ export default function DriverModel() {
         </section>
       )}
 
-      {history.data && <ScoreHistoryChart history={history.data} names={fundamentalLabels(model)} />}
+      {history && <ScoreHistoryChart history={history} names={fundamentalLabels(model)} />}
     </div>
   );
 }

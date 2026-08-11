@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Callable
 
 from driverdna.attribution.engine import PHASES, baseline, reference_envelope
 from driverdna.attribution.ranker import (
@@ -284,19 +284,32 @@ def build_cohort_payload(
 
 
 def build_driver_payload(
-    db: Database, config: DriverDNAConfig, *, _include_census: bool = True
+    db: Database, config: DriverDNAConfig, *, _include_census: bool = True,
+    on_progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Cross-cohort rollup. Cross-track aggregation only within car + class,
     and only with enough tracks (gated, stated).
 
     _include_census: internal sentinel used by census._suppression_section to
     break the recursion (census calls build_driver_payload for rollup reasons,
-    which must not trigger another census build). Never set by callers."""
+    which must not trigger another census build). Never set by callers.
+
+    on_progress: optional callback for SSE streaming — called once per cohort
+    rollup so the UI can show "Computing cohort 3 of 25..."."""
+    def _progress(evt: dict[str, Any]) -> None:
+        if on_progress is not None:
+            on_progress(evt)
+
     cohorts = list_cohorts(db)
-    rollup_payloads = [
-        build_cohort_payload(db, **c, config=config, _for_driver_rollup=True)
-        for c in cohorts
-    ]
+    rollup_payloads = []
+    for i, c in enumerate(cohorts):
+        _progress({
+            "type": "progress", "index": i, "total": len(cohorts),
+            "cohort": f"{c['car']} @ {c['track']}",
+        })
+        rollup_payloads.append(
+            build_cohort_payload(db, **c, config=config, _for_driver_rollup=True)
+        )
 
     by_car_class: dict[str, dict[str, Any]] = {}
     for p in rollup_payloads:
@@ -328,10 +341,12 @@ def build_driver_payload(
             })
 
     driver_name = cohorts[0]["driver"] if cohorts else None
+    _progress({"type": "progress_phase", "phase": "driver_model"})
     driver_model = driver_model_section(db, driver=driver_name, config=config) if driver_name else None
 
     census_data = None
     if _include_census and driver_name:
+        _progress({"type": "progress_phase", "phase": "census"})
         from driverdna.census import build_census, census_to_dict
         try:
             census_data = census_to_dict(build_census(db, config, driver=driver_name))

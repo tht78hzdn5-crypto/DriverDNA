@@ -101,7 +101,8 @@ def test_discover_cohorts_uses_statistics_and_skips_zero_laps():
     client = Garage61Client(transport=transport)
     cohorts = discover_cohorts(client)
     assert cohorts == [
-        {"car_id": 8, "track_id": 69, "car": "Mazda MX-5", "track": "Laguna Seca"}
+        {"car_id": 8, "track_id": 69, "car": "Mazda MX-5", "track": "Laguna Seca",
+         "last_driven": ""}
     ]
 
 
@@ -391,3 +392,177 @@ def test_sync_auth_error_still_aborts(db):
     client = Garage61Client(transport=transport)
     with pytest.raises(Garage61AuthError):
         sync_driver(db, client, driver="owner", config=DriverDNAConfig())
+
+
+# ---------------------------------------------------------------------------
+# Cohort cap + newest-first ordering (SPEC.md A49)
+# ---------------------------------------------------------------------------
+
+CARS_MANY = [CAR, {"id": 9, "name": "Porsche 911"}]
+TRACKS_MANY = [TRACK, TRACK_VARIANT, {"id": 71, "name": "Okayama", "variant": ""}]
+
+
+def _cfg(**sync_kwargs) -> DriverDNAConfig:
+    return DriverDNAConfig.model_validate({"sync": sync_kwargs})
+
+
+def test_discover_cohorts_orders_newest_driven_first():
+    """The cap takes a prefix of this list, so the order is load-bearing."""
+    transport = FakeTransport(
+        statistics=[
+            {"car": 8, "track": 69, "lapsDriven": 2, "day": "2026-01-05"},
+            {"car": 9, "track": 71, "lapsDriven": 2, "day": "2026-07-30"},
+            {"car": 8, "track": 70, "lapsDriven": 2, "day": "2026-03-14"},
+        ],
+        cars=CARS_MANY, tracks=TRACKS_MANY, laps_by_track={},
+    )
+    cohorts = discover_cohorts(Garage61Client(transport=transport))
+    assert [(c["car"], c["track"]) for c in cohorts] == [
+        ("Porsche 911", "Okayama"),
+        ("Mazda MX-5", "Spa (Grand Prix)"),
+        ("Mazda MX-5", "Laguna Seca"),
+    ]
+
+
+def test_discover_cohorts_last_driven_is_the_newest_day_across_rows():
+    """/me/statistics is per (day, car, track, sessionType) — one cohort spans
+    many rows, and the newest of them is what orders it."""
+    transport = FakeTransport(
+        statistics=[
+            {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-01-05"},
+            {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-06-20"},
+            {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-02-11"},
+        ],
+        cars=CARS_MANY, tracks=TRACKS_MANY, laps_by_track={},
+    )
+    cohorts = discover_cohorts(Garage61Client(transport=transport))
+    assert cohorts[0]["last_driven"] == "2026-06-20"
+
+
+def test_discover_cohorts_ties_stay_alphabetical():
+    """Guards the two-pass stable sort: a single reverse=True over a
+    (day, car, track) tuple would flip same-day cohorts to Z->A."""
+    transport = FakeTransport(
+        statistics=[
+            {"car": 9, "track": 71, "lapsDriven": 1, "day": "2026-05-01"},
+            {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-05-01"},
+        ],
+        cars=CARS_MANY, tracks=TRACKS_MANY, laps_by_track={},
+    )
+    cohorts = discover_cohorts(Garage61Client(transport=transport))
+    assert [c["car"] for c in cohorts] == ["Mazda MX-5", "Porsche 911"]
+
+
+def _three_cohort_transport() -> FakeTransport:
+    return FakeTransport(
+        statistics=[
+            {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-01-05"},
+            {"car": 9, "track": 71, "lapsDriven": 1, "day": "2026-07-30"},
+            {"car": 8, "track": 70, "lapsDriven": 1, "day": "2026-03-14"},
+        ],
+        cars=CARS_MANY, tracks=TRACKS_MANY,
+        laps_by_track={
+            69: [_lap("L-old")],
+            70: [_lap("L-mid")],
+            71: [_lap("L-new")],
+        },
+        csv_by_id={"L-old": FIXTURE_CSV, "L-mid": FIXTURE_CSV_2, "L-new": FIXTURE_CSV},
+    )
+
+
+def test_max_cohorts_syncs_only_the_most_recent(db):
+    client = Garage61Client(transport=_three_cohort_transport())
+    summaries = sync_driver(db, client, driver="owner", config=_cfg(max_cohorts=1))
+    assert [(s.car, s.track) for s in summaries] == [("Porsche 911", "Okayama")]
+
+
+def test_max_cohorts_reports_the_skipped_ones_by_name_and_date(db):
+    """Counted is not enough: the ordering rests on the API's `day`, whose
+    format is unverified, so a wrong order has to be visible."""
+    events: list[dict] = []
+    client = Garage61Client(transport=_three_cohort_transport())
+    sync_driver(db, client, driver="owner", config=_cfg(max_cohorts=1),
+                on_progress=events.append)
+    discovering = next(e for e in events if e["type"] == "discovering")
+    assert discovering["cohorts"] == 1
+    assert discovering["cohorts_total"] == 3
+    assert discovering["cohorts_skipped"] == [
+        {"car": "Mazda MX-5", "track": "Spa (Grand Prix)", "last_driven": "2026-03-14"},
+        {"car": "Mazda MX-5", "track": "Laguna Seca", "last_driven": "2026-01-05"},
+    ]
+
+
+def test_max_cohorts_zero_syncs_everything(db):
+    client = Garage61Client(transport=_three_cohort_transport())
+    summaries = sync_driver(db, client, driver="owner", config=_cfg(max_cohorts=0))
+    assert len(summaries) == 3
+
+
+def test_max_cohorts_never_overrides_an_explicit_car_track_filter(db):
+    """The cap runs after --car/--track, so an explicitly requested cohort is
+    never capped out from under the driver."""
+    client = Garage61Client(transport=_three_cohort_transport())
+    summaries = sync_driver(
+        db, client, driver="owner", config=_cfg(max_cohorts=1),
+        car="Mazda MX-5", track="Laguna Seca",
+    )
+    assert [(s.car, s.track) for s in summaries] == [("Mazda MX-5", "Laguna Seca")]
+
+
+def test_cap_is_refused_when_no_cohort_carries_a_date(db):
+    """Without `day` the order is arbitrary, so capping would shed cohorts at
+    random — insufficient data over guessing."""
+    transport = FakeTransport(
+        statistics=[
+            {"car": 8, "track": 69, "lapsDriven": 1},
+            {"car": 9, "track": 71, "lapsDriven": 1},
+            {"car": 8, "track": 70, "lapsDriven": 1},
+        ],
+        cars=CARS_MANY, tracks=TRACKS_MANY,
+        laps_by_track={
+            69: [_lap("L-a")], 70: [_lap("L-b")], 71: [_lap("L-c")],
+        },
+        csv_by_id={"L-a": FIXTURE_CSV, "L-b": FIXTURE_CSV_2, "L-c": FIXTURE_CSV},
+    )
+    events: list[dict] = []
+    summaries = sync_driver(db, Garage61Client(transport=transport), driver="owner",
+                            config=_cfg(max_cohorts=1), on_progress=events.append)
+    assert len(summaries) == 3
+    assert next(e for e in events if e["type"] == "discovering")["cohorts_skipped"] == []
+
+
+# ---------------------------------------------------------------------------
+# Pit-lane laps: counted always, skipped only on request
+# ---------------------------------------------------------------------------
+
+def _pitlane_transport() -> FakeTransport:
+    pit = _lap("L-pit")
+    pit["pitlane"] = True
+    return FakeTransport(
+        statistics=[{"car": 8, "track": 69, "lapsDriven": 2, "day": "2026-05-01"}],
+        cars=[CAR], tracks=[TRACK],
+        laps_by_track={69: [pit, _lap("L-clean")]},
+        csv_by_id={"L-pit": FIXTURE_CSV, "L-clean": FIXTURE_CSV_2},
+    )
+
+
+def test_pitlane_laps_are_counted_but_imported_by_default(db):
+    """Default off: the field's meaning is unverified, so sync measures how
+    often it would have fired rather than dropping laps on a guess."""
+    transport = _pitlane_transport()
+    s = sync_driver(db, Garage61Client(transport=transport), driver="owner",
+                    config=DriverDNAConfig())[0]
+    assert s.laps_pitlane == 1
+    assert s.laps_new == 2
+    assert "L-pit" in transport.csv_calls
+    assert not any(reason == "pit-lane start" for _, reason in s.laps_skipped)
+
+
+def test_pitlane_laps_are_skipped_before_any_fetch_when_enabled(db):
+    transport = _pitlane_transport()
+    s = sync_driver(db, Garage61Client(transport=transport), driver="owner",
+                    config=_cfg(skip_pitlane_laps=True))[0]
+    assert s.laps_pitlane == 1
+    assert s.laps_new == 1
+    assert ("L-pit", "pit-lane start") in s.laps_skipped
+    assert "L-pit" not in transport.csv_calls

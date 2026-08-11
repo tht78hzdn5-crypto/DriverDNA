@@ -35,6 +35,27 @@ CAR = {"id": 8, "name": "GR86"}
 TRACK = {"id": 69, "name": "Spa-Francorchamps", "variant": ""}
 
 
+def _parse_sse(response):
+    """Parse an SSE response into a list of event dicts."""
+    events = []
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+    return events
+
+
+def _sse_complete(response):
+    """Parse SSE and return the terminal 'complete' event."""
+    events = _parse_sse(response)
+    complete = [e for e in events if e["type"] == "complete"]
+    assert len(complete) == 1, f"expected 1 complete event, got {len(complete)}"
+    return complete[0]
+
+
 def _resp(status: int, obj) -> tuple[int, bytes]:
     return status, json.dumps(obj).encode("utf-8")
 
@@ -148,7 +169,8 @@ def test_sync_car_track_body_scopes_discovery(tmp_path, monkeypatch):
     r = TestClient(app).post("/api/sync", json={"car": "Nope"})
 
     assert r.status_code == 200
-    assert r.json() == []
+    complete = _sse_complete(r)
+    assert complete["results"] == []
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 0
 
@@ -169,9 +191,10 @@ def test_sync_effects_identical_to_cli_sync(tmp_path, monkeypatch):
     app = create_app(api_db, tmp_path / "api-cfg.toml")
     r = TestClient(app).post("/api/sync")
     assert r.status_code == 200
-    assert r.json() == [{
+    complete = _sse_complete(r)
+    assert complete["results"] == [{
         "car": "GR86", "track": "Spa-Francorchamps",
-        "laps_seen": 1, "laps_new": 1, "laps_skipped": [],
+        "laps_seen": 1, "laps_new": 1, "laps_pitlane": 0, "laps_skipped": [],
         "results": [{"lap_pk": 1, "status": "imported", "admitted": [], "class_changes": []}],
     }]
 
@@ -208,17 +231,37 @@ def test_sync_never_refetches_a_lap_already_synced(tmp_path, monkeypatch):
     app = create_app(db_path, tmp_path / "cfg.toml")
     client = TestClient(app)
 
-    first = client.post("/api/sync").json()
-    assert first[0]["laps_new"] == 1
-    second = client.post("/api/sync").json()
+    first = _sse_complete(client.post("/api/sync"))
+    assert first["results"][0]["laps_new"] == 1
+    second = _sse_complete(client.post("/api/sync"))
 
-    assert second[0] == {
+    assert second["results"][0] == {
         "car": "GR86", "track": "Spa-Francorchamps",
-        "laps_seen": 1, "laps_new": 0, "laps_skipped": [], "results": [],
+        "laps_seen": 1, "laps_new": 0, "laps_pitlane": 0,
+        "laps_skipped": [], "results": [],
     }
     assert transport.csv_calls == ["L1"]  # never re-fetched
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
+
+
+def test_sync_emits_progress_events(tmp_path, monkeypatch):
+    """Sync streams per-cohort progress before the terminal complete event."""
+    _mock_garage61_client(
+        monkeypatch,
+        FakeTransport(laps=[_lap_item("L1")], csv_bytes=ONE_LAP.read_bytes()),
+    )
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    r = TestClient(app).post("/api/sync")
+    events = _parse_sse(r)
+    types = [e["type"] for e in events]
+    assert "discovering" in types
+    assert "cohort_start" in types
+    assert "cohort_done" in types
+    assert types[-1] == "complete"
 
 
 # --- POST /api/cohorts/{slug}/rebuild-map --------------------------------
@@ -347,3 +390,171 @@ def test_rebuild_map_response_includes_cleared_stale_phase_notice(tmp_path):
     assert body["total_cleared"] == 3 * len(CORNER_WINDOWS)
     cleared_lap_pks = {pk for c in body["corners"] for pk in c["laps_cleared"]}
     assert len(cleared_lap_pks) == 3
+
+
+# --- GET /api/driver/summary -----------------------------------------------
+
+
+def test_driver_summary_returns_counts_without_engine_computation(tmp_path):
+    """The summary endpoint returns cohort/lap counts from cheap DB queries,
+    not the full engine pipeline."""
+    db_path = tmp_path / "summary.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/driver/summary")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["n_cohorts"] == 2
+    assert body["n_self_laps"] > 0
+    assert isinstance(body["cohorts"], list)
+    assert len(body["cohorts"]) == 2
+    for c in body["cohorts"]:
+        assert "car" in c and "track" in c and "n_laps" in c
+
+
+def test_driver_summary_404s_without_a_db(tmp_path):
+    app = create_app(tmp_path / "nope.db", tmp_path / "cfg.toml")
+    r = TestClient(app).get("/api/driver/summary")
+    assert r.status_code == 404
+
+
+# --- GET /api/driver (SSE) --------------------------------------------------
+
+
+def test_driver_sse_streams_progress_then_complete(tmp_path):
+    """The SSE driver endpoint emits progress events per cohort then a
+    terminal complete event with the full payload."""
+    db_path = tmp_path / "sse.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/driver")
+    assert r.status_code == 200
+    events = _parse_sse(r)
+    types = [e["type"] for e in events]
+    assert "progress" in types
+    assert types[-1] == "complete"
+    payload = events[-1]["payload"]
+    assert "cross_track_rollups" in payload
+    assert "driver_model" in payload
+
+
+# --- GET /api/cohorts (enriched) --------------------------------------------
+
+
+def test_cohorts_include_lap_counts_and_sync_dates(tmp_path):
+    """The enriched /api/cohorts response includes n_laps, n_reference_laps,
+    and last_synced_at per cohort."""
+    db_path = tmp_path / "enriched.db"
+    result = CliRunner().invoke(cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)])
+    assert result.exit_code == 0, result.output
+    app = create_app(db_path, tmp_path / "cfg.toml")
+    client = TestClient(app)
+
+    r = client.get("/api/cohorts")
+    assert r.status_code == 200
+    cohorts = r.json()
+    assert len(cohorts) == 2
+    for c in cohorts:
+        assert "n_laps" in c
+        assert "n_reference_laps" in c
+        assert "last_synced_at" in c
+        assert c["n_laps"] > 0
+
+
+# --- cohort cap surfaces through the sync SSE stream (SPEC.md A49) --------
+
+TWO_LAP = FIXTURES_DIR / "Garage_61_RH11X7.csv"
+CAR_B = {"id": 9, "name": "Mustang GT4"}
+TRACK_B = {"id": 71, "name": "Okayama", "variant": ""}
+
+
+class MultiCohortTransport:
+    """Two cohorts with different last-driven dates, so the cap has something
+    to shed. Separate from FakeTransport above, which is deliberately
+    single-cohort -- the cap's own logic is covered in test_garage61_sync.py;
+    this only proves it reaches the stream."""
+
+    def __init__(self) -> None:
+        self.csv_calls: list[str] = []
+
+    def get(self, path: str, params):
+        if path == "/me":
+            return _resp(200, ME)
+        if path == "/me/statistics":
+            return _resp(200, {"drivingStatistics": [
+                {"car": 8, "track": 69, "lapsDriven": 1, "day": "2026-01-05"},
+                {"car": 9, "track": 71, "lapsDriven": 1, "day": "2026-07-30"},
+            ]})
+        if path == "/cars":
+            return _resp(200, {"items": [CAR, CAR_B]})
+        if path == "/tracks":
+            return _resp(200, {"items": [TRACK, TRACK_B]})
+        if path == "/laps":
+            lap_id = "L-spa" if params["tracks"] == 69 else "L-oka"
+            return _resp(200, {"items": [_lap_item(lap_id)], "total": 1})
+        if path.endswith("/csv"):
+            lap_id = path.split("/")[2]
+            self.csv_calls.append(lap_id)
+            return 200, (ONE_LAP if lap_id == "L-spa" else TWO_LAP).read_bytes()
+        raise AssertionError(f"unexpected path {path}")
+
+
+def test_sync_complete_event_names_the_cohorts_the_cap_skipped(tmp_path, monkeypatch):
+    """The driver has to be able to see which cohorts went unsynced, and when
+    each was last driven -- a silent cap would hide a wrong ordering."""
+    transport = MultiCohortTransport()
+    _mock_garage61_client(monkeypatch, transport)
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    (tmp_path / "cfg.toml").write_text("[sync]\nmax_cohorts = 1\n")
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    complete = _sse_complete(TestClient(app).post("/api/sync"))
+
+    assert complete["cohorts_total"] == 2
+    assert complete["max_cohorts"] == 1
+    assert complete["cohorts_skipped"] == [
+        {"car": "GR86", "track": "Spa-Francorchamps", "last_driven": "2026-01-05"}
+    ]
+    # Newest-first: only Okayama synced, and Spa never cost a CSV fetch.
+    assert [r["car"] for r in complete["results"]] == ["Mustang GT4"]
+    assert transport.csv_calls == ["L-oka"]
+
+
+def test_sync_complete_event_reports_no_skips_when_under_the_cap(tmp_path, monkeypatch):
+    _mock_garage61_client(
+        monkeypatch,
+        FakeTransport(laps=[_lap_item("L1")], csv_bytes=ONE_LAP.read_bytes()),
+    )
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    complete = _sse_complete(TestClient(app).post("/api/sync"))
+
+    assert complete["cohorts_skipped"] == []
+    assert complete["cohorts_total"] == 1
+
+
+def test_sync_results_carry_the_pitlane_count(tmp_path, monkeypatch):
+    """Counted whether or not it was skipped -- with skip_pitlane_laps off by
+    default this is the evidence for deciding whether skipping is right."""
+    pit = _lap_item("L1")
+    pit["pitlane"] = True
+    _mock_garage61_client(
+        monkeypatch, FakeTransport(laps=[pit], csv_bytes=ONE_LAP.read_bytes())
+    )
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    complete = _sse_complete(TestClient(app).post("/api/sync"))
+
+    assert complete["results"][0]["laps_pitlane"] == 1
+    assert complete["results"][0]["laps_new"] == 1  # counted, not dropped

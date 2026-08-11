@@ -8,6 +8,7 @@ cockpit through the browser alone.
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -22,6 +23,28 @@ from driverdna.ui.api import create_app
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 ONE_LAP = FIXTURES_DIR / "Garage_61_HKWPXX.csv"  # GR86 @ Spa-Francorchamps
+
+
+def _parse_sse(response):
+    """Parse an SSE response into a list of event dicts."""
+    events = []
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+    return events
+
+
+def _sse_complete(response):
+    """Parse SSE and return the terminal 'complete' event's payload,
+    shaped like the old JSON response for backwards-compatible assertions."""
+    events = _parse_sse(response)
+    complete = [e for e in events if e["type"] == "complete"]
+    assert len(complete) == 1, f"expected 1 complete event, got {len(complete)}"
+    return complete[0]
 
 
 @pytest.fixture()
@@ -45,7 +68,7 @@ def test_upload_creates_a_fresh_db_and_imports(client):
     assert not db_path.exists()
     r = _upload(c, ONE_LAP)
     assert r.status_code == 200
-    body = r.json()
+    body = _sse_complete(r)
     assert body["results"] == [{
         "filename": "Garage_61_HKWPXX.csv", "car": "GR86", "track": "Spa-Francorchamps",
         "auto_detected": False, "status": "imported", "lap_pk": 1,
@@ -58,7 +81,7 @@ def test_reupload_same_file_is_a_reported_duplicate_not_double_counted(client):
     c, _ = client
     _upload(c, ONE_LAP)
     r = _upload(c, ONE_LAP)
-    assert r.json()["results"][0]["status"] == "duplicate"
+    assert _sse_complete(r)["results"][0]["status"] == "duplicate"
     with Database.open(client[1]) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 1
 
@@ -138,9 +161,31 @@ def test_multi_file_upload_in_one_request(client):
     for _, (_, fh, _) in files:
         fh.close()
     assert r.status_code == 200
-    assert [x["status"] for x in r.json()["results"]] == ["imported", "imported"]
+    body = _sse_complete(r)
+    assert [x["status"] for x in body["results"]] == ["imported", "imported"]
     with Database.open(db_path) as db:
         assert db.conn.execute("SELECT COUNT(*) n FROM laps").fetchone()["n"] == 2
+
+
+def test_multi_file_upload_emits_per_file_progress_events(client):
+    """Each file yields a 'progress' SSE event before the terminal 'complete'."""
+    c, db_path = client
+    files = [
+        ("files", (p.name, open(p, "rb"), "text/csv"))
+        for p in [ONE_LAP, FIXTURES_DIR / "Garage_61_W5JRZB.csv"]
+    ]
+    r = c.post("/api/laps/upload", files=files,
+               data={"car": "GR86", "track": "Spa-Francorchamps"})
+    for _, (_, fh, _) in files:
+        fh.close()
+    events = _parse_sse(r)
+    progress_events = [e for e in events if e["type"] == "progress"]
+    assert len(progress_events) == 2
+    assert progress_events[0]["index"] == 0
+    assert progress_events[0]["total"] == 2
+    assert progress_events[1]["index"] == 1
+    assert progress_events[1]["total"] == 2
+    assert progress_events[0]["result"]["status"] == "imported"
 
 
 def _as_new_filename_format(tmp_path, src, *, car="Ford_Mustang_GT4",
@@ -161,7 +206,7 @@ def test_upload_without_car_track_auto_detects_from_new_filename_format(client):
     with open(new_style, "rb") as fh:
         r = c.post("/api/laps/upload", files=[("files", (new_style.name, fh, "text/csv"))], data={})
     assert r.status_code == 200
-    result = r.json()["results"][0]
+    result = _sse_complete(r)["results"][0]
     assert result["car"] == "Ford Mustang GT4"
     assert result["track"] == "Summit Point Raceway"
     assert result["auto_detected"] is True
@@ -200,7 +245,7 @@ def test_upload_without_car_track_auto_detects_from_hyphen_filename_shape(client
     with open(hyphen, "rb") as fh:
         r = c.post("/api/laps/upload", files=[("files", (hyphen.name, fh, "text/csv"))], data={})
     assert r.status_code == 200, r.text
-    result = r.json()["results"][0]
+    result = _sse_complete(r)["results"][0]
     assert result["car"] == "Ford Mustang GT4"
     assert result["track"] == "Summit Point Raceway"
     assert result["auto_detected"] is True
@@ -224,7 +269,7 @@ def test_both_filename_shapes_land_in_one_cohort(client):
             ("files", (hyphen.name, f2, "text/csv")),
         ], data={})
     assert r.status_code == 200, r.text
-    assert [x["status"] for x in r.json()["results"]] == ["imported", "imported"]
+    assert [x["status"] for x in _sse_complete(r)["results"]] == ["imported", "imported"]
     with Database.open(db_path) as db:
         cohorts = db.conn.execute("SELECT DISTINCT car, track FROM laps").fetchall()
     assert [(row["car"], row["track"]) for row in cohorts] == [
@@ -244,7 +289,7 @@ def test_upload_with_only_car_applies_it_and_auto_detects_track(client):
             data={"car": "GR86"},
         )
     assert r.status_code == 200, r.text
-    result = r.json()["results"][0]
+    result = _sse_complete(r)["results"][0]
     assert result["car"] == "GR86"  # given, applied
     assert result["track"] == "Summit Point Raceway"  # blank, detected
     assert result["auto_detected"] is True
@@ -278,7 +323,7 @@ def test_explicit_car_track_overrides_filename_for_every_file(client):
             files=[("files", (new_style.name, fh, "text/csv"))],
             data={"car": "GR86", "track": "Spa-Francorchamps"},
         )
-    result = r.json()["results"][0]
+    result = _sse_complete(r)["results"][0]
     assert result["car"] == "GR86" and result["track"] == "Spa-Francorchamps"
     assert result["auto_detected"] is False
 

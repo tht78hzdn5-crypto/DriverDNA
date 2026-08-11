@@ -1,5 +1,6 @@
 """U0 contract tests: pass-through fidelity and write-path equivalence."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,27 @@ from conftest import requires_postgres
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SPA_SLUG = "gr86-spa-francorchamps"
+
+
+def _parse_sse(response):
+    """Parse an SSE response into a list of event dicts."""
+    events = []
+    for frame in response.text.split("\n\n"):
+        frame = frame.strip()
+        if not frame:
+            continue
+        for line in frame.split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+    return events
+
+
+def _sse_payload(response):
+    """Extract the 'complete' event's payload from an SSE response."""
+    events = _parse_sse(response)
+    complete = [e for e in events if e["type"] == "complete"]
+    assert len(complete) == 1, f"expected 1 complete event, got {len(complete)}"
+    return complete[0]["payload"]
 
 
 @pytest.fixture(scope="module")
@@ -78,24 +100,22 @@ def test_health_reports_auth_configured_and_never_the_secret():
     assert "a-real-secret" not in resp.text
 
 
-def test_unhandled_exception_returns_structured_500_not_a_traceback(env, monkeypatch):
+def test_unhandled_exception_returns_structured_error_event(env, monkeypatch):
     import driverdna.ui.api as api_module
 
     def boom(*args, **kwargs):
         raise RuntimeError("simulated unhandled failure")
 
     monkeypatch.setattr(api_module, "build_driver_payload", boom)
-    # raise_server_exceptions=False: the default TestClient re-raises server
-    # errors for the test to catch directly, which is the opposite of what
-    # this test checks — that a live deployment gets a structured response,
-    # not a bare crash.
     no_raise_client = TestClient(
         create_app(env["db_path"], env["config_path"]), raise_server_exceptions=False
     )
     resp = no_raise_client.get("/api/driver")
-    assert resp.status_code == 500
-    body = resp.json()
-    assert body.get("detail") == "internal server error"
+    assert resp.status_code == 200
+    events = _parse_sse(resp)
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert "simulated unhandled failure" in errors[0]["detail"]
 
 
 @requires_postgres
@@ -126,10 +146,10 @@ def test_cohort_payload_byte_identical_to_report_json(env):
     assert api_bytes == file_bytes
 
 
-def test_driver_payload_byte_identical_to_report_json(env):
-    assert env["client"].get("/api/driver").text == (
-        env["out_dir"] / "driver.json"
-    ).read_text()
+def test_driver_payload_matches_report_json(env):
+    sse_payload = _sse_payload(env["client"].get("/api/driver"))
+    file_payload = json.loads((env["out_dir"] / "driver.json").read_text())
+    assert sse_payload == file_payload
 
 
 def test_cohorts_and_corners(env):

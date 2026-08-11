@@ -530,6 +530,43 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   byte-identical, the cohort `.md`'s numeric multiset identical, the two HTML
   reports' reader-visible numerals identical with every delta inside `<style>`.
   Suite 963 → 971, 16 Postgres skips, 0 browser skips.
+- **Sync bounded by cohort, newest first; pit-lane laps counted before they
+  are judged (2026-08-11, SPEC.md A49)** — owner-directed. An account holds a
+  cohort per (car, track) ever driven (~25 for the owner), and sync listed
+  every one on every run while `discover_cohorts` sorted *alphabetically* — the
+  one order carrying no information about which combos are live.
+  `config.sync.max_cohorts` (default 10, `0` disables) caps the run, and
+  discovery now orders newest-driven first off `/me/statistics`' `day`, a field
+  that was already in the response and being thrown away. **The trade is
+  recorded, not implied:** `sync_driver` deliberately keeps no automatic
+  watermark (`after` filters on when a lap was *driven*, not synced), and a
+  cohort cap reintroduces exactly that one axis up — so only the cohort axis is
+  capped (within a synced cohort the full listing is still re-read) and every
+  skipped cohort is reported **by name with its last-driven date**, never as a
+  count. That is deliberate: `day`'s format is documented nowhere and is
+  compared as a string (right for `YYYY-MM-DD` and ISO-8601, wrong for an epoch
+  int), so a wrong ordering has to be visible on the first run; a dateless row
+  sorts oldest, and if no cohort has a date the cap is refused outright and the
+  full sync runs. **Pit-lane laps are counted, not dropped:** formation laps
+  never arrive (the API's `lapTypes` default is normal laps only), so what
+  remains is a normal lap that began in the pits, flagged `pitlane` — also
+  undocumented, and its two readings imply opposite behaviour, so
+  `skip_pitlane_laps` ships **off** with `CohortSync.laps_pitlane` surfaced in
+  CLI, SSE and SPA. Number-neutral by construction; all 14 committed artifacts
+  byte-identical. **Found and filed, not fixed:** `INCOMPLETE_LAP` is raised at
+  `parser.py:328` and **never read** — partial laps are measured as if complete
+  on every ingest path (BUG-022, owner's call to file; the fix belongs at the
+  query surface where role isolation lives and moves real numbers). Three more
+  defects found on the way: `main` was red from PR #21 (BUG-023, fixed);
+  `ruff check .` red from fifteen dead root scratch scripts — one-shot
+  `db.py` rewriters left over from the identity/Postgres work, deleted
+  owner-directed, so the `lint` gate is green rather than permanently red
+  (BUG-024, fixed); and **all 26 browser tests had been
+  silently skipping** (image ships Chromium 1194, Playwright resolves 1234),
+  which had hidden a broken `/api/cohorts` assertion on this branch for two
+  commits (BUG-025, fixed — 26 browser tests now run and pass).
+  Suite 971 → 993 passed / 16 skipped (Postgres-absent only) / 0 failed, with
+  the 26 browser tests running again for the first time in this environment.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

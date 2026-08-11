@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Callable
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -68,11 +68,28 @@ class CohortSync:
     laps_csv_not_found: int = 0
     #: CSV fetch returned 403 — permission denied despite listing.
     laps_csv_forbidden: int = 0
+    #: Laps the API flagged `pitlane`. Counted whether or not they were
+    #: skipped, because `config.sync.skip_pitlane_laps` defaults off: the
+    #: field's meaning is unverified, so this is the evidence for deciding
+    #: whether skipping them is right, not a measurement of the driver.
+    laps_pitlane: int = 0
 
 
 def discover_cohorts(client: Garage61Client) -> list[dict[str, Any]]:
-    """(car_id, track_id, car label, track label) for every cohort this
-    account has actually driven at least one lap in, per `/me/statistics`.
+    """(car_id, track_id, car label, track label, last_driven) for every cohort
+    this account has actually driven at least one lap in, per `/me/statistics`,
+    **most recently driven first**.
+
+    `/me/statistics` is per (day, car, track, sessionType), so one cohort spans
+    many rows; `last_driven` is the newest `day` across them. Ordering matters
+    because `config.sync.max_cohorts` takes a prefix of this list — the cap
+    keeps the combos being worked on now and sheds the finished ones.
+
+    `day`'s format is **assumed, not observed** (docs/garage61-api.md): it is
+    compared as a string, which is correct for the `YYYY-MM-DD` the endpoint
+    appears to return and for any ISO-8601 timestamp. A row with no usable
+    `day` sorts oldest rather than raising, and `sync_driver` refuses to apply
+    the cap at all when no cohort has a date — see its `_capped` helper.
     """
     cars_by_id = {c["id"]: c for c in client.cars()}
     tracks_by_id = {t["id"]: t for t in client.tracks()}
@@ -81,7 +98,10 @@ def discover_cohorts(client: Garage61Client) -> list[dict[str, Any]]:
         if row.get("lapsDriven", 0) <= 0:
             continue
         key = (row["car"], row["track"])
+        day = str(row.get("day") or "")
         if key in seen:
+            if day > seen[key]["last_driven"]:
+                seen[key]["last_driven"] = day
             continue
         car = cars_by_id.get(row["car"])
         track = tracks_by_id.get(row["track"])
@@ -90,8 +110,32 @@ def discover_cohorts(client: Garage61Client) -> list[dict[str, Any]]:
         seen[key] = {
             "car_id": row["car"], "track_id": row["track"],
             "car": car["name"], "track": _track_label(track),
+            "last_driven": day,
         }
-    return sorted(seen.values(), key=lambda c: (c["car"], c["track"]))
+    # Two passes, not one reversed tuple sort: `reverse=True` over
+    # (last_driven, car, track) would flip the alphabetical tiebreak too, so
+    # same-day cohorts would come back Z->A. Python's sort is stable, so
+    # sorting alphabetically first and then by date descending keeps A->Z
+    # within a date.
+    cohorts = sorted(seen.values(), key=lambda c: (c["car"], c["track"]))
+    cohorts.sort(key=lambda c: c["last_driven"], reverse=True)
+    return cohorts
+
+
+def _capped(
+    cohorts: list[dict[str, Any]], max_cohorts: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split `cohorts` (already newest-first) into (synced, skipped).
+
+    Refuses to cap when no cohort carries a `last_driven`: the order would then
+    be arbitrary and the cap would drop cohorts at random. "Insufficient data
+    over guessing" — a slow full sync beats a fast wrong one.
+    """
+    if max_cohorts <= 0 or len(cohorts) <= max_cohorts:
+        return cohorts, []
+    if not any(c.get("last_driven") for c in cohorts):
+        return cohorts, []
+    return cohorts[:max_cohorts], cohorts[max_cohorts:]
 
 
 def sync_driver(
@@ -105,6 +149,7 @@ def sync_driver(
     unclean: bool = True,
     after: str | None = None,
     max_age_days: int | None = None,
+    on_progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[CohortSync]:
     """Discover cohorts (or restrict to a given car/track), pull every new
     self-lap through the import pipeline, and record sync state per cohort.
@@ -117,15 +162,44 @@ def sync_driver(
     Re-listing a cohort in full is cheap (the `source_file` pre-check below
     means an already-synced lap never costs a CSV fetch); silently missing a
     lap is not.
+
+    `config.sync.max_cohorts` narrows that guarantee along the cohort axis
+    (SPEC.md A49): a lap uploaded late to a cohort outside the window is not
+    seen until that cohort is driven again. That is a deliberate trade, which
+    is why every skipped cohort is named with its last-driven date rather than
+    counted — a wrong ordering has to be visible, not silent. Only the cohort
+    axis is capped; within a synced cohort the full listing is still re-read.
     """
+    def _progress(event: dict[str, Any]) -> None:
+        if on_progress is not None:
+            on_progress(event)
+
     cohorts = discover_cohorts(client)
     if car:
         cohorts = [c for c in cohorts if c["car"] == car]
     if track:
         cohorts = [c for c in cohorts if c["track"] == track]
+    # After the car/track filters, so an explicit request is never capped out
+    # from under the driver.
+    total_discovered = len(cohorts)
+    cohorts, skipped_cohorts = _capped(cohorts, config.sync.max_cohorts)
+    _progress({
+        "type": "discovering",
+        "cohorts": len(cohorts),
+        "cohorts_total": total_discovered,
+        "cohorts_skipped": [
+            {"car": c["car"], "track": c["track"],
+             "last_driven": c.get("last_driven", "")}
+            for c in skipped_cohorts
+        ],
+    })
 
     summaries: list[CohortSync] = []
-    for c in cohorts:
+    for ci, c in enumerate(cohorts):
+        _progress({
+            "type": "cohort_start", "car": c["car"], "track": c["track"],
+            "index": ci, "total": len(cohorts),
+        })
         summary = CohortSync(car=c["car"], track=c["track"])
         listing = client.list_own_laps(
             track_id=c["track_id"], car_id=c["car_id"],
@@ -140,6 +214,17 @@ def sync_driver(
                 reason = "missing" if item.get("missing") else "incomplete"
                 summary.laps_skipped.append((lap_id, reason))
                 continue
+
+            # A pit-lane start does not cover a full LapDistPct range, so it
+            # is not the single lap the rest of the engine assumes. Counted
+            # unconditionally, skipped only on request: the field's meaning is
+            # unverified (docs/garage61-api.md), and dropping laps on a guess
+            # is worse than measuring how often the guess would have fired.
+            if item.get("pitlane"):
+                summary.laps_pitlane += 1
+                if config.sync.skip_pitlane_laps:
+                    summary.laps_skipped.append((lap_id, "pit-lane start"))
+                    continue
 
             # Only an explicit `false` — the field is required by the spec,
             # but a missing key must not be read as "no access" and silently
@@ -191,6 +276,10 @@ def sync_driver(
             )
             if result.was_new:
                 summary.laps_new += 1
+                _progress({
+                    "type": "lap", "car": c["car"], "track": c["track"],
+                    "lap_index": summary.laps_new, "laps_new": summary.laps_new,
+                })
             summary.results.append(result)
 
         db.record_sync_state(
@@ -199,4 +288,9 @@ def sync_driver(
             synced_at=datetime.now(UTC).isoformat(),
         )
         summaries.append(summary)
+        _progress({
+            "type": "cohort_done", "car": c["car"], "track": c["track"],
+            "index": ci, "total": len(cohorts),
+            "laps_seen": summary.laps_seen, "laps_new": summary.laps_new,
+        })
     return summaries

@@ -349,10 +349,17 @@ def sync(
         typer.echo(f"error: {e}")
         raise typer.Exit(code=2) from None
 
+    # The cohort cap is a property of the run, not of any one cohort, so it
+    # arrives on the `discovering` progress event rather than in the summaries.
+    discovery: dict = {}
+
     with Database.open(_store(db_path)) as db:
         summaries = sync_driver(
             db, client, driver=driver, config=config, car=car, track=track,
             unclean=not clean_only, after=after, max_age_days=max_age_days,
+            on_progress=lambda e: (
+                discovery.update(e) if e.get("type") == "discovering" else None
+            ),
         )
         if not summaries:
             typer.echo("no cohorts found (nothing driven yet, or --car/--track matched none)")
@@ -382,6 +389,34 @@ def sync(
                     typer.echo(f"  ADMITTED to map: {', '.join(r.admitted)}")
                 for corner_id, old, new in r.class_changes:
                     typer.echo(f"  CLASS CHANGE {corner_id}: {old} -> {new}")
+
+        # Named, not counted: the newest-first order rests on the API's `day`
+        # field, whose format is unverified, so a wrong ordering has to be
+        # visible here rather than silently shedding the wrong cohorts.
+        skipped = discovery.get("cohorts_skipped") or []
+        if skipped:
+            typer.echo(
+                f"\n{len(skipped)} cohort(s) not synced "
+                f"(sync.max_cohorts={config.sync.max_cohorts}), least recently "
+                f"driven first:"
+            )
+            for c in skipped:
+                when = c.get("last_driven") or "date unknown"
+                typer.echo(f"  {c['car']} @ {c['track']} (last driven {when})")
+            typer.echo(
+                "Raise sync.max_cohorts, or set it to 0, to sync every cohort. "
+                "A cohort re-enters the window as soon as you drive it again."
+            )
+
+        pitlane = sum(s.laps_pitlane for s in summaries)
+        if pitlane and not config.sync.skip_pitlane_laps:
+            typer.echo(
+                f"\nnote: {pitlane} lap(s) flagged `pitlane` were imported "
+                f"anyway (sync.skip_pitlane_laps is off). A pit-lane start "
+                f"does not cover a full lap; set sync.skip_pitlane_laps = true "
+                f"to leave them out."
+            )
+
         evicted = db.enforce_retention(config.retention.raw_laps_per_cohort)
         if evicted:
             typer.echo(f"retention: evicted {evicted} raw lap blob(s); summaries kept")

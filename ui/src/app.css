@@ -461,6 +461,15 @@ a.btn-primary { color: var(--base); }
 }
 .upload-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .upload-field input[type="file"] { font-size: 0.82rem; color: var(--text); }
+.import-progress { display: flex; align-items: center; gap: 0.5rem; }
+.import-progress-bar {
+  flex: 1; height: 6px; background: var(--raised); border-radius: 3px; overflow: hidden;
+}
+.import-progress-bar i {
+  display: block; height: 100%; background: var(--accent); border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.import-progress-label { font-size: 0.78rem; color: var(--dim); white-space: nowrap; }
 
 /* --- Sign-in gate (DEPLOY-SPEC track H1) --------------------------------
    Rendered instead of the shell, so it centres in the viewport rather than
