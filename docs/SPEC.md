@@ -2591,18 +2591,35 @@ Accepted at owner plan review; rationale recorded in the review:
   real sync settles the question; the counter is what will settle it. This keeps
   the change number-neutral: no lap that was imported before is skipped now.
 
-  *A real bug found while doing this, and deliberately not fixed here.* The
-  engine already detects this class of lap and then ignores its own finding:
-  `ingest/parser.py:328` raises `INCOMPLETE_LAP` when `LapDistPct` coverage is
-  under 0.97, and nothing reads the flag — it is stored, displayed, and never
-  consulted by any measurement query. Partial laps are therefore measured as if
-  complete, on every ingest path, not just sync. Filed as **BUG-022** and left
-  open on the owner's call: the honest fix is to exclude such laps at the query
-  surface where role isolation already lives (A34's discipline), which moves
-  real numbers and needs its own before/after measurement and a model version
-  bump. A49's `laps_pitlane` counter is the evidence-gathering step toward it —
-  in particular, whether `pitlane` and low coverage coincide is what would
-  settle what `pitlane` means.
+  *A real bug found while doing this, and deliberately not fixed here.* Filed as
+  **BUG-022**. It was first written up as "`ingest/parser.py:328` raises
+  `INCOMPLETE_LAP`, nothing reads it, so partial laps are measured as if
+  complete on every ingest path" — and that consequence was **inferred from the
+  unread flag rather than checked**. The owner then supplied the missing product
+  intent — an incomplete lap is *wanted*, because a lap that ends in a virtual
+  tow is the incident record ("measure the driver, not the lap", A19) — which
+  forced the check. The check disproves the original scope and finds a narrower
+  real defect. Both are recorded in BUG-022; the correction is the point.
+
+  Measured on `Garage_61_HKWPXX.csv` truncated to 40%: the per-corner layer is
+  **correct by construction** — the segmenter finds 4 corners instead of 14, so
+  an incomplete lap contributes fewer *valid* observations, never fabricated
+  ones, and phase times, metrics, the Driver Model and trend are all unaffected.
+  What is actually broken is whole-lap `duration_s` (`n_samples /
+  SAMPLE_RATE_HZ`, i.e. trace length) being used as though it were a lap time:
+  `report/payload.py:183-186` measures `lap_delta_s` against `min(duration_s)`
+  with no completeness filter, so the truncated lap's 68.50 s becomes the
+  cohort's "fastest" and a genuine 171.25 s lap renders at **+102.75 s**.
+  `references_section` (`payload.py:149`) has the same exposure for a towed
+  reference lap. Dormant on the committed fixtures, which are all complete —
+  and it activates exactly as incident capture starts working.
+
+  The fix must therefore *keep* these laps and stop mis-reading one column, not
+  gate measurement on `INCOMPLETE_LAP` as the first filing proposed — that would
+  have deleted the evidence the incidents subsystem exists to collect. Left for
+  its own change because it moves real numbers in `lap_delta_s` and the
+  reference envelope. Separately, A49's `laps_pitlane` counter still answers
+  what `pitlane` means: whether it coincides with low coverage.
 
   *Not changed.* No model version bump: this is ingest scope, not a scoring
   parameter, and with the pit-lane skip off by default no existing measurement

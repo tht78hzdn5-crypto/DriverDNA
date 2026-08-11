@@ -28,13 +28,18 @@ laps counted before they are judged — SPEC.md A49).**
   `CohortSync.laps_pitlane` surfaced in the CLI, the SSE `complete` event and
   the SPA. Number-neutral by construction: no lap imported before is skipped
   now.
-- **A real bug found and deliberately left open (BUG-022).** `INCOMPLETE_LAP`
-  is raised at `ingest/parser.py:328` for sub-0.97 `LapDistPct` coverage and
-  **never read** — grep confirms it appears only in the parser and its own
-  test, and no measurement query filters `quality_flags`. Partial laps are
-  measured as if complete on every ingest path. Owner's call to file rather
-  than fix: the honest fix belongs at the query surface where role isolation
-  lives (A34's discipline) and moves real numbers.
+- **A real bug found and deliberately left open (BUG-022)** — and its own
+  first filing corrected the same day. Originally written up as "`INCOMPLETE_LAP`
+  is flagged and never read, so partial laps are measured as if complete"; the
+  owner then said incomplete laps are **wanted** (a lap ending in a virtual tow
+  *is* the incident record, A19), which forced the unchecked inference to be
+  measured. It is wrong: the segmenter finds 4 corners instead of 14 on a
+  40%-truncated lap, so the per-corner layer is correct by construction and
+  phase times, metrics, Driver Model and trend are unaffected. The real defect
+  is narrower — whole-lap `duration_s` (trace length) used as a lap time in
+  `payload.py:183-186` and `:149`, so a towed 68.50 s lap becomes the cohort's
+  "fastest" and a genuine 171.25 s lap renders at +102.75 s. Dormant on the
+  fixtures; activates as incident capture starts working.
 - **Three defects found on the way**, all filed: `main` was red from PR #21
   adding `garage61_linked` without updating its assertion (BUG-023, fixed);
   `ruff check .` is red from fifteen dead root-level scratch scripts (BUG-024,

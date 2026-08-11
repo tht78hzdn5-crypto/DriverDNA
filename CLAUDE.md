@@ -553,10 +553,17 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   undocumented, and its two readings imply opposite behaviour, so
   `skip_pitlane_laps` ships **off** with `CohortSync.laps_pitlane` surfaced in
   CLI, SSE and SPA. Number-neutral by construction; all 14 committed artifacts
-  byte-identical. **Found and filed, not fixed:** `INCOMPLETE_LAP` is raised at
-  `parser.py:328` and **never read** — partial laps are measured as if complete
-  on every ingest path (BUG-022, owner's call to file; the fix belongs at the
-  query surface where role isolation lives and moves real numbers). Three more
+  byte-identical. **Found and filed, not fixed:** a towed lap's *trace*
+  duration is used as if it were a lap time — `payload.py:183-186` measures
+  `lap_delta_s` against `min(duration_s)` with no completeness check, so a lap
+  ending in a virtual tow becomes the cohort's "fastest" (measured: 68.50 s vs a
+  real 171.25 s lap, which then renders at +102.75 s). BUG-022, which also
+  records that its own first filing — "`INCOMPLETE_LAP` is never read, so
+  partial laps are measured as if complete" — was an inference from the unread
+  flag, and is disproven: the segmenter finds 4 corners instead of 14, so the
+  per-corner layer is correct by construction. Owner-stated intent, now binding:
+  incomplete laps are **wanted** (a tow is the incident record, A19), so the fix
+  must keep them and stop mis-reading one column. Three more
   defects found on the way: `main` was red from PR #21 (BUG-023, fixed);
   `ruff check .` red from fifteen dead root scratch scripts — one-shot
   `db.py` rewriters left over from the identity/Postgres work, deleted
