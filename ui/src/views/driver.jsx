@@ -65,7 +65,7 @@ function SyncPanel({ onSynced }) {
         }
       });
       if (finalResult) {
-        setResult(finalResult.results);
+        setResult(finalResult);
         onSynced();
       }
     } catch (e) {
@@ -99,14 +99,33 @@ function SyncPanel({ onSynced }) {
       {noToken && <div className="reason" style={{ marginTop: "0.6rem" }}>Set GARAGE61_TOKEN to sync.</div>}
       {error && !noToken && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
 
+      {result && result.cohorts_skipped?.length > 0 && (
+        <div className="reason" style={{ marginTop: "0.6rem" }}>
+          {result.cohorts_skipped.length} older cohort
+          {result.cohorts_skipped.length === 1 ? "" : "s"} not synced (limit{" "}
+          {result.max_cohorts}). <a href="#/config">Change in Config</a>
+          <details className="disclosure">
+            <summary><span className="chev" aria-hidden="true">▸</span> Which ones</summary>
+            <div className="disclosure-body">
+              {result.cohorts_skipped.map((c) => (
+                <div key={`${c.car}::${c.track}`}>
+                  {c.car} @ {c.track}
+                  {c.last_driven ? ` — last driven ${c.last_driven}` : ""}
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
+
       {result && (
-        result.length === 0 ? (
+        result.results.length === 0 ? (
           <div className="dim" style={{ fontSize: "0.82rem", marginTop: "0.6rem" }}>
             No cohorts found — nothing driven yet, or the filter matched none.
           </div>
         ) : (
           <div style={{ marginTop: "0.6rem" }}>
-            {result.map((s) => (
+            {result.results.map((s) => (
               <div key={`${s.car}::${s.track}`} className="finding">
                 <div className="head">
                   <span className="desc">{s.car} @ {s.track}</span>
@@ -115,6 +134,7 @@ function SyncPanel({ onSynced }) {
                 <div className="meta num">
                   {s.laps_seen} seen
                   {s.laps_skipped.length > 0 && <> · {s.laps_skipped.length} skipped</>}
+                  {s.laps_pitlane > 0 && <> · {s.laps_pitlane} pit-lane start</>}
                 </div>
                 {s.laps_skipped.map((sk) => (
                   <div key={sk.lap_id} className="reason">skipped {sk.lap_id}: {sk.reason}</div>

@@ -677,6 +677,36 @@ class ApiConfig(_Section):
     )
 
 
+class SyncConfig(_Section):
+    """Bounds on what one `driverdna sync` pulls from Garage61.
+
+    Ingest scope, not measurement: nothing here changes how a lap is scored,
+    only which laps are offered to the pipeline in the first place.
+    """
+
+    max_cohorts: int = Field(
+        default=10,
+        ge=0,
+        description="How many cohorts one sync pulls, most recently driven "
+        "first. An account accumulates a cohort per (car, track) ever driven, "
+        "most of which never gain another lap, so a full sync spends its time "
+        "on combos that are finished. 0 syncs every cohort. Cohorts past the "
+        "limit are reported by name with their last-driven date, never "
+        "silently dropped — and a cohort re-enters the window as soon as it "
+        "is driven again.",
+    )
+    skip_pitlane_laps: bool = Field(
+        default=False,
+        description="Skip laps the API flags `pitlane`. A lap that starts in "
+        "the pit lane does not cover the full LapDistPct range, so it is not "
+        "the single lap the rest of the engine assumes. Default off on "
+        "purpose: the field's exact meaning is documented nowhere, and under "
+        "the reading 'touched the pit lane at all' this would discard laps "
+        "whose driving is fine. Until a real sync settles it, sync counts "
+        "these laps and reports them without dropping any.",
+    )
+
+
 class DriverDNAConfig(_Section):
     """Root configuration. One TOML file; sections per subsystem."""
 
@@ -695,6 +725,7 @@ class DriverDNAConfig(_Section):
     coaching: CoachingConfig = Field(default_factory=CoachingConfig)
     auth: AuthConfig = Field(default_factory=AuthConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
+    sync: SyncConfig = Field(default_factory=SyncConfig)
 
 
 def load_config(path: Path | None = None) -> DriverDNAConfig:

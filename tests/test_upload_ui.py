@@ -120,7 +120,10 @@ def test_upload_flow_end_to_end_through_the_real_browser(cold_server):
     # that drives it renders real, correct numbers end to end.
     assert httpx.get(f"{base}/api/cohorts").json() == [
         {"driver": "owner", "car": "GR86", "track": "Spa-Francorchamps",
-         "slug": "gr86-spa-francorchamps"}
+         "slug": "gr86-spa-francorchamps",
+         # Garage-card metadata: one uploaded self lap, no references, and no
+         # sync state -- this cohort arrived through the browser, not the API.
+         "n_laps": 1, "n_reference_laps": 0, "last_synced_at": None}
     ]
 
 

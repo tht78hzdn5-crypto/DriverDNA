@@ -67,6 +67,40 @@ Writing that down is the point.
 - **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
   on the VM. Do not theorise before reading it.
 
+### BUG-022 — `INCOMPLETE_LAP` is flagged at ingest and never read
+- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49)
+- **Symptom**: a lap that does not cover a full `LapDistPct` range — a pit-lane
+  start, a formation lap, a trace cut short — is measured as if it were a
+  complete lap. Its phase times, metrics and baselines all enter the driver
+  model alongside genuine flying laps.
+- **Root cause**: `ingest/parser.py:328` raises
+  `QualityFlag(FlagCode.INCOMPLETE_LAP, {"coverage": …})` when coverage is under
+  `_MIN_LAP_COVERAGE` (0.97), and **nothing consumes it**. Grep is unambiguous:
+  `INCOMPLETE_LAP` appears in `parser.py` and `tests/test_parser.py` and nowhere
+  else. `quality_flags` is stored as TEXT and only ever *displayed*
+  (`report/payload.py` counts laps-carrying-any-flag; `ui/api.py` returns the
+  list); no measurement query filters on it.
+- **Blast radius**: every ingest path — `driverdna sync`, `driverdna import`,
+  `#/upload` — and from there baselines, vs-self ranking, the Driver Model and
+  trend. Unknown magnitude in the owner's production store; zero in this repo,
+  since the committed fixtures are all complete laps (which is also why no
+  committed artifact moves).
+- **How it was missed**: the flag exists, is populated correctly, is persisted,
+  and is rendered in the laps view. Everything about it *looks* handled. The
+  parser test asserts the flag is raised (`test_parser.py:165`) and the
+  guarantee was never pinned one layer down, at the point where a measurement
+  decides which laps it is allowed to use — the same shape of miss as BUG-013,
+  where a `role='self'` guarantee was pinned above the layer that broke it.
+- **Not fixed here, deliberately**: A49 adds a `pitlane` counter at sync so the
+  frequency is measurable before behaviour changes, but that only covers laps
+  the *API* labels, only on the sync path, and it is off by default. The real
+  fix — excluding an `INCOMPLETE_LAP` lap from measurement at the query surface,
+  which is where role isolation already lives — moves real numbers and needs its
+  own before/after measurement and a model version bump.
+- **Next step**: measure first. Count `INCOMPLETE_LAP` laps in the production
+  store, and check whether `pitlane` and low coverage actually coincide (that
+  correlation is what would settle what `pitlane` means — see A49).
+
 ### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
 - **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
 - **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
@@ -86,6 +120,92 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-023 — `main` merged red: an endpoint field with no test update
+- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
+- **Symptom**: `tests/test_auth_api.py::test_status_reports_whether_auth_is_required_and_met`
+  failed on `main` and on every branch cut from it.
+- **Root cause**: commit `4414117` ("add Garage61 import to upload view", PR #21)
+  added `garage61_linked` to `GET /api/auth/status` (`ui/api.py:891`) without
+  updating the test's exact-equality assertion. The endpoint change is correct;
+  only the assertion was stale.
+- **Fix**: added `"garage61_linked": False` to all three expected dicts. The
+  assertion keeps its exact-equality form — the strong version that caught this
+  in the first place — rather than being relaxed to a subset check.
+- **Blast radius**: no product behaviour. The cost was to trust: a red suite on
+  `main` trains everyone to treat red as background noise, which is exactly what
+  AGENTS.md's "never assume a failure is synthetic" rule exists to prevent. It
+  was very nearly written off here as "branch is behind main" — `git rev-list
+  --count HEAD..origin/main` returned 0, which disproved that in one command.
+- **How it was missed**: nothing enforces the checks. AGENTS.md already records
+  that the PR-to-`main` rule is convention-only (a Ruleset was blocked by a
+  paid-plan restriction on private repos), so a red `pytest` job does not block
+  a merge. This is the first entry where that gap actually cost something.
+- **Related, still open**: `ruff check .` is also red on `main` — 25 findings,
+  all in dead root-level scratch scripts (`apply_phase1_phase2.py`, `db_patch*.py`,
+  `inject*.py`, `phase1.py`, `phase2.py`, `refactor_db_*.py`, `rewrite_queries.py`,
+  `tests/run_blobs*.py`), which are referenced only by each other. Untouched
+  here: deleting fifteen tracked files is an owner call, not a side effect of a
+  sync change. Filed as **BUG-024**.
+
+### BUG-024 — `ruff check .` is red on `main` from dead scratch scripts
+- **Status**: open · **Severity**: breaks · **Found**: 2026-08-11 (A49)
+- **Symptom**: `python3 -m ruff check .` reports 25 findings (22 auto-fixable):
+  unused imports, `E741` ambiguous `l`, `E402` late import. CI's `lint` job is a
+  declared merge gate, so it is red for every PR regardless of the PR's content.
+- **Root cause**: one-off migration/patch scripts were committed at the repo
+  root and never removed: `apply_phase1_phase2.py`, `db_patch.py`,
+  `db_patch2.py`, `db_patch3.py`, `fix_patch.py`, `inject.py`, `inject2.py`,
+  `inject3.py`, `phase1.py`, `phase2.py`, `refactor_db_1.py`,
+  `refactor_db_2.py`, `rewrite_queries.py`, plus `tests/run_blobs.py` and
+  `tests/run_blobs_debug.py`. Nothing in the package imports any of them; the
+  only cross-reference is `fix_patch.py` naming its siblings.
+- **Blast radius**: no product behaviour — but a permanently red gate is
+  indistinguishable from a newly red gate, so it hides real lint regressions.
+  All of `src/driverdna/` and the real test files pass cleanly.
+- **How it was caught**: running `ruff check .` before committing A49, per
+  AGENTS.md's command list.
+- **Next step**: owner decision — delete them (they look like completed
+  one-shots), or move them under a `scripts/` path excluded in `pyproject.toml`.
+  Auto-fixing in place would leave dead code lint-clean and still dead.
+
+### BUG-025 — Browser tests skipped silently, hiding a broken assertion for two commits
+- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
+- **Symptom**: `tests/test_upload_ui.py::test_upload_flow_end_to_end_through_the_real_browser`
+  asserted `GET /api/cohorts` equalled a four-key dict. Two commits earlier on
+  the same branch, `/api/cohorts` gained `n_laps`, `n_reference_laps` and
+  `last_synced_at` for the Garage cards. The test had been failing ever since
+  and nobody saw it.
+- **Root cause of the *hiding*** (the interesting half): `tests/browser.py`
+  asks Playwright for `p.chromium.executable_path` and skips the whole
+  browser-marked suite when that path does not exist. The installed Playwright
+  resolves `/opt/pw-browsers/chromium-1234/chrome-linux64/chrome`; the image
+  ships build **1194** at `chromium-1194/chrome-linux/chrome`. Nothing was
+  broken in the repo — the environment simply had a different Chromium build,
+  so all 26 browser tests reported as skips and the suite read green.
+- **Blast radius**: no product behaviour; the endpoint change was correct and
+  the SPA consumed the new fields fine. What was lost was the guarantee — for
+  two commits, every browser-gated trust gate (render parity, offline, auth UI,
+  feedback hierarchy, cockpit, reference curation) was unverified while
+  appearing to pass.
+- **Fix**: expected dict updated to the endpoint's real shape, keeping exact
+  equality. Chromium made discoverable in this environment by symlinking the
+  expected build path at the real one — an environment fix, no repo change:
+  `ln -sfn /opt/pw-browsers/chromium-1194/chrome-linux /opt/pw-browsers/chromium-1234/chrome-linux64`.
+  All 26 browser tests then ran and passed.
+- **How it was caught**: reading the skip list instead of the pass count —
+  AGENTS.md's "a skipped test is not a pass" applied literally. 42 skips broke
+  down as 16 Postgres (expected, no `DRIVERDNA_TEST_DATABASE_URL`) and 26
+  browser (not expected — the environment advertises a pre-installed Chromium).
+- **Why the guard did not fire**: `browser.py`'s docstring says its whole reason
+  for existing is that a *previous* hardcoded-layout version silently stopped
+  matching after Playwright changed its unpack layout, and that CI's grep-based
+  guard caught it but was non-blocking. Asking Playwright for its own path
+  removed the layout guess but not the failure mode: the answer can still point
+  at a build the machine does not have, and the result is still a silent skip.
+  CI is unaffected (its `browser-tests` job installs the matching build and
+  fails if the skip guard triggers) — this bites local and remote dev
+  environments, which is where most of this repo's work happens.
 
 ### BUG-020 — Committed artifacts could drift from what the code regenerates
 - **Status**: fixed 2026-08-09 · **Severity**: silent-wrong · **SPEC**: A46 (found), fix in `tests/test_artifact_freshness.py`

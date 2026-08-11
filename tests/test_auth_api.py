@@ -337,16 +337,16 @@ def test_a_forged_cookie_does_not_open_anything(guarded):
 def test_status_reports_whether_auth_is_required_and_met(guarded, unguarded):
     assert guarded.get("/api/auth/status").json() == {
         "required": True, "authenticated": False, "google_enabled": False,
-        "garage61_enabled": False,
+        "garage61_enabled": False, "garage61_linked": False,
     }
     guarded.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
     assert guarded.get("/api/auth/status").json() == {
         "required": True, "authenticated": True, "google_enabled": False,
-        "garage61_enabled": False,
+        "garage61_enabled": False, "garage61_linked": False,
     }
     assert unguarded.get("/api/auth/status").json() == {
         "required": False, "authenticated": True, "google_enabled": False,
-        "garage61_enabled": False,
+        "garage61_enabled": False, "garage61_linked": False,
     }
 
 

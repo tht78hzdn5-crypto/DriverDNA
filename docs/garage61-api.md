@@ -127,6 +127,19 @@ listing call (see below, `/laps` has none).
 not the iRacing `platform_id` strings — these integer IDs are what
 `/laps`'s `cars`/`tracks` filters expect.
 
+**`day`'s format is assumed, not observed (A49).** `discover_cohorts` takes
+each cohort's `last_driven` as the newest `day` across its statistics rows and
+orders cohorts by it, because `config.sync.max_cohorts` takes a prefix of that
+list. The comparison is a plain string compare — correct for the `YYYY-MM-DD`
+the field appears to hold, and for any ISO-8601 timestamp; **wrong for an epoch
+integer**, which would sort plausibly and silently shed the wrong cohorts.
+Nothing here has been checked against a live response. Three guards stand in
+for that verification until someone runs one: a row with no usable `day` sorts
+oldest instead of raising, the cap is refused outright when no cohort carries a
+date at all, and every skipped cohort is reported by name *with its
+last-driven date* so a wrong ordering is visible on the first run.
+**To confirm:** one authenticated `GET /me/statistics` and read a `day` value.
+
 ## Lap listing — `/laps`
 
 - **`tracks` is a required query parameter.** Omitting it →
@@ -286,6 +299,28 @@ Others already used or worth knowing: `id`, `driver`, `event`, `session`,
 `sessionType`, `eventType`, `missing`, `incomplete`, `offtrack`,
 `discontinuity`, `pitlane`/`pitIn`/`pitOut`, `trackTemp`, `trackUsage`,
 `trackWetness`, plus fuel, tyre-compound and weather fields.
+
+**`pitlane`'s meaning is assumed, not observed (A49).** The spec names the
+field and never defines it, and two readings lead to opposite behaviour:
+
+- *"the lap started in the pit lane"* — then it marks exactly the laps that
+  break the single-lap contract (`LapDistPct` never reaches 0), and skipping
+  them is right.
+- *"the lap involved the pit lane at all"* — then it also marks a lap where
+  the driver pitted at the *end*, whose driving is perfectly measurable, and
+  skipping them discards good data.
+
+So `config.sync.skip_pitlane_laps` defaults **off**: sync counts these laps
+(`CohortSync.laps_pitlane`) and imports them anyway, rather than dropping laps
+on a guess. **To confirm:** on a real sync, compare the `pitlane` count against
+the `INCOMPLETE_LAP` quality flag the parser raises for sub-0.97 `LapDistPct`
+coverage. If they coincide, the first reading holds and the default flips. That
+same comparison is the measurement BUG-022 needs.
+
+Note the API's `lapTypes` default already excludes out and in laps (types 3
+and 4) server-side, so declared formation laps never reach the client at all —
+what `pitlane` catches is a *normal*-typed lap that nonetheless began in the
+pits.
 
 ### `PositionType` (per spec, matches the M0a contract)
 

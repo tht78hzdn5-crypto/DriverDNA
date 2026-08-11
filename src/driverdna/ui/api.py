@@ -1684,6 +1684,7 @@ def create_app(
             "track": s.track,
             "laps_seen": s.laps_seen,
             "laps_new": s.laps_new,
+            "laps_pitlane": s.laps_pitlane,
             "laps_skipped": [
                 {"lap_id": lap_id, "reason": reason} for lap_id, reason in s.laps_skipped
             ],
@@ -1781,6 +1782,15 @@ def create_app(
 
         def _sync_events():
             q: queue.Queue[dict[str, Any]] = queue.Queue()
+            # The cohort cap is a property of the run, not of any cohort, so it
+            # rides the `discovering` event. Repeated on `complete` so the SPA
+            # can render it without holding progress state across the stream.
+            discovery: dict[str, Any] = {}
+
+            def _forward(evt: dict[str, Any]) -> None:
+                if evt.get("type") == "discovering":
+                    discovery.update(evt)
+                q.put(evt)
 
             def run() -> None:
                 try:
@@ -1788,13 +1798,18 @@ def create_app(
                         summaries = sync_driver(
                             db, client, driver="owner", config=config,
                             car=sync_car, track=sync_track,
-                            on_progress=lambda evt: q.put(evt),
+                            on_progress=_forward,
                         )
                         if summaries:
                             db.enforce_retention(config.retention.raw_laps_per_cohort)
                         q.put({
                             "type": "complete",
                             "results": [_cohort_sync_dict(s) for s in summaries],
+                            "cohorts_total": discovery.get(
+                                "cohorts_total", len(summaries)
+                            ),
+                            "cohorts_skipped": discovery.get("cohorts_skipped", []),
+                            "max_cohorts": config.sync.max_cohorts,
                         })
                 except Exception as exc:
                     q.put({"type": "error", "detail": str(exc)})

@@ -2531,3 +2531,91 @@ Accepted at owner plan review; rationale recorded in the review:
   HTML lede each fundamental with its coaching expression, a coached-but-
   ungated fundamental still gets its section, each expression said once per
   section).
+
+- **A49** (2026-08-11): **Sync is bounded by cohort, newest first; pit-lane laps
+  are counted before they are judged** (owner-directed: "is there a limit to how
+  many cohorts can be loaded and synced? I'd want the g61 sync to pull from the
+  latest and go on down sequentially to that #", then "have it ignore laps that
+  don't start at the finish line or laps that are just starting formation laps.
+  propose a max # and a way to communicate that # to users").
+
+  *The problem.* An account accumulates a cohort per (car, track) ever driven —
+  the owner's has ~25 — and `sync_driver` listed every one of them on every run.
+  Most will never gain another lap. `discover_cohorts` sorted alphabetically,
+  which is the one order that carries no information about which combos are
+  live.
+
+  *What changed.* `config.sync.max_cohorts` (default **10**, `0` disables) caps
+  how many cohorts one sync pulls, and `discover_cohorts` now returns them
+  newest-driven first. `/me/statistics` is per (day, car, track, sessionType),
+  so a cohort's `last_driven` is the newest `day` across its rows — the field
+  was already in the response and was being discarded. Ten covers 2–4 active
+  combos a season plus a couple carried over; the cap is a prefix of a
+  recency-ordered list, so a cohort re-enters the window the moment it is driven
+  again.
+
+  *The trade this makes, stated rather than implied.* `sync_driver`'s docstring
+  explains why there is deliberately **no** automatic watermark off
+  `last_synced_at`: `after` filters on when a lap was *driven*, not when it was
+  synced, so a lap uploaded after the last sync but driven before it would be
+  silently skipped forever. A cohort cap reintroduces exactly that failure mode
+  one axis up — a lap uploaded late to a cohort outside the window is not seen
+  until that cohort is driven again. This is a narrowing of a documented
+  guarantee, which is why it is an amendment and not a default. Two things bound
+  it: only the *cohort* axis is capped (within a synced cohort the full listing
+  is still re-read, so the original reasoning holds unchanged there), and every
+  skipped cohort is reported **by name with its last-driven date**, in the CLI
+  and in the SPA, never as a bare count.
+
+  *Why named and not counted.* The ordering rests on `day`, whose format is
+  documented nowhere — `docs/garage61-api.md` lists the field and never shows a
+  value. It is compared as a string, correct for `YYYY-MM-DD` and for any
+  ISO-8601 timestamp, wrong for an epoch integer. Naming the shed cohorts makes
+  a wrong ordering visible on the first run instead of silently dropping the
+  wrong fifteen. Two further guards: a row with no usable `day` sorts oldest
+  rather than raising, and if *no* cohort carries a date the cap is refused
+  outright and the full sync runs — a slow correct sync beats a fast arbitrary
+  one ("insufficient data over guessing").
+
+  *Pit-lane laps: measured, not assumed.* The owner asked for laps that don't
+  start at the finish line, and formation laps, to be ignored. Formation laps
+  are already excluded server-side: the API's `lapTypes` default returns normal
+  full laps only, so out/in laps (types 3 and 4) never arrive. What remains is a
+  *normal*-typed lap that nonetheless began in the pit lane, which the listing
+  marks with a `pitlane` boolean — also undocumented beyond a field-name
+  mention. Under the reading "started in the pit lane" skipping is right; under
+  "touched the pit lane at all" it would discard laps whose driving is fine. So
+  `config.sync.skip_pitlane_laps` ships **defaulting off**, and sync counts
+  these laps (`CohortSync.laps_pitlane`, surfaced in the CLI, the SSE
+  `complete` event and the SPA) without dropping any. The default flips when a
+  real sync settles the question; the counter is what will settle it. This keeps
+  the change number-neutral: no lap that was imported before is skipped now.
+
+  *A real bug found while doing this, and deliberately not fixed here.* The
+  engine already detects this class of lap and then ignores its own finding:
+  `ingest/parser.py:328` raises `INCOMPLETE_LAP` when `LapDistPct` coverage is
+  under 0.97, and nothing reads the flag — it is stored, displayed, and never
+  consulted by any measurement query. Partial laps are therefore measured as if
+  complete, on every ingest path, not just sync. Filed as **BUG-022** and left
+  open on the owner's call: the honest fix is to exclude such laps at the query
+  surface where role isolation already lives (A34's discipline), which moves
+  real numbers and needs its own before/after measurement and a model version
+  bump. A49's `laps_pitlane` counter is the evidence-gathering step toward it —
+  in particular, whether `pitlane` and low coverage coincide is what would
+  settle what `pitlane` means.
+
+  *Not changed.* No model version bump: this is ingest scope, not a scoring
+  parameter, and with the pit-lane skip off by default no existing measurement
+  moves. No committed artifact moves either — the fixtures are imported, not
+  synced, so `test_artifact_freshness.py` stays green untouched. `sync_driver`'s
+  return type stays `list[CohortSync]`; the run-level cap counts ride the
+  existing `discovering` progress event (repeated on the SSE `complete` event so
+  the SPA need not hold progress state), which is how the CLI and the UI both
+  get them without a signature change across ~20 call sites.
+
+  *Also fixed on the way, unrelated to this change.* `main` was red: PR #21
+  added `garage61_linked` to `GET /api/auth/status` without updating the
+  assertion in `tests/test_auth_api.py` (**BUG-023**). And `ruff check .` — a
+  declared CI merge gate — reports 25 findings in dead root-level scratch
+  scripts that nothing imports (**BUG-024**, left open: deleting fifteen tracked
+  files is an owner decision, not a side effect of a sync change).

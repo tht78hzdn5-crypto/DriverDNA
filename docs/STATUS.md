@@ -1,5 +1,61 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-11 (sync bounded by cohort, newest first; pit-lane
+laps counted before they are judged — SPEC.md A49).**
+
+- **`config.sync.max_cohorts` (default 10, `0` disables)** caps how many
+  cohorts one `driverdna sync` pulls, and `discover_cohorts` now orders them
+  **newest-driven first** off `/me/statistics`' `day` field, which was present
+  in the response and being discarded. The owner's account holds ~25 cohorts,
+  most of them finished one-offs.
+- **The trade is recorded, not implied.** `sync_driver` deliberately keeps no
+  automatic watermark, because `after` filters on when a lap was *driven*, not
+  synced. A cohort cap reintroduces that failure mode one axis up: a lap
+  uploaded late to a cohort outside the window waits until that cohort is
+  driven again. Bounded two ways — only the cohort axis is capped (within a
+  synced cohort the full listing is still re-read), and every skipped cohort is
+  reported **by name with its last-driven date**, in the CLI and the SPA.
+- **Ordering rests on an unverified field, so it is made visible rather than
+  trusted.** `day`'s format is documented nowhere; it is compared as a string
+  (right for `YYYY-MM-DD` and ISO-8601, wrong for an epoch int). A row with no
+  usable date sorts oldest, and if *no* cohort carries a date the cap is
+  refused outright and the full sync runs.
+- **Pit-lane laps are counted, not yet dropped.** Formation laps never arrive
+  (the API's `lapTypes` default returns normal laps only). What remains is a
+  normal lap that began in the pit lane, flagged `pitlane` — a field whose
+  meaning is also undocumented, and whose two readings imply opposite
+  behaviour. `config.sync.skip_pitlane_laps` therefore ships **off**, with
+  `CohortSync.laps_pitlane` surfaced in the CLI, the SSE `complete` event and
+  the SPA. Number-neutral by construction: no lap imported before is skipped
+  now.
+- **A real bug found and deliberately left open (BUG-022).** `INCOMPLETE_LAP`
+  is raised at `ingest/parser.py:328` for sub-0.97 `LapDistPct` coverage and
+  **never read** — grep confirms it appears only in the parser and its own
+  test, and no measurement query filters `quality_flags`. Partial laps are
+  measured as if complete on every ingest path. Owner's call to file rather
+  than fix: the honest fix belongs at the query surface where role isolation
+  lives (A34's discipline) and moves real numbers.
+- **Three defects found on the way**, all filed: `main` was red from PR #21
+  adding `garage61_linked` without updating its assertion (BUG-023, fixed);
+  `ruff check .` is red from fifteen dead root-level scratch scripts (BUG-024,
+  left open — deleting tracked files is an owner decision); and **all 26
+  browser tests had been silently skipping** because the image ships Chromium
+  build 1194 while Playwright resolves 1234, which had been hiding a broken
+  `/api/cohorts` assertion on this branch for two commits (BUG-025, fixed).
+- **Verified counts:** `python3 -m pytest` → **993 passed, 16 skipped, 0
+  failed** (6m43s, SQLite backend). The 16 skips are Postgres-absent only
+  (`DRIVERDNA_TEST_DATABASE_URL` unset); **0 browser skips** — the 26
+  browser-gated tests ran, for the first time in this environment, after
+  BUG-025. Before that fix the same suite read *964 passed, 42 skipped*, the
+  extra 26 being browser tests skipping silently. `pytest -m browser` → 26
+  passed. `ruff check` on every touched file: clean (repo-wide is red from
+  pre-existing debris, BUG-024). `npm run lint`: 0 errors, 6 pre-existing
+  warnings. `tests/test_artifact_freshness.py`: 16 passed, and no committed
+  artifact file shows as modified — the change is ingest scope and the fixtures
+  are imported, not synced.
+
+---
+
 **Snapshot date: 2026-08-10 (fundamentals as landmarks; the feedback section
 reads as coaching — SPEC.md A48).**
 
