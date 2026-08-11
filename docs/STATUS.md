@@ -48,9 +48,10 @@ laps counted before they are judged — SPEC.md A49).**
   browser-gated tests ran, for the first time in this environment, after
   BUG-025. Before that fix the same suite read *964 passed, 42 skipped*, the
   extra 26 being browser tests skipping silently. `pytest -m browser` → 26
-  passed. `ruff check` on every touched file: clean (repo-wide is red from
-  pre-existing debris, BUG-024). `npm run lint`: 0 errors, 6 pre-existing
-  warnings. `tests/test_artifact_freshness.py`: 16 passed, and no committed
+  passed. **`ruff check .` now passes repo-wide** — the fifteen dead root-level
+  scratch scripts behind BUG-024 were deleted (owner-directed), so the `lint`
+  gate is green for the first time rather than permanently red. `npm run lint`:
+  0 errors, 6 pre-existing warnings. `tests/test_artifact_freshness.py`: 16 passed, and no committed
   artifact file shows as modified — the change is ingest scope and the fixtures
   are imported, not synced.
 

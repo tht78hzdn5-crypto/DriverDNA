@@ -2616,6 +2616,14 @@ Accepted at owner plan review; rationale recorded in the review:
   *Also fixed on the way, unrelated to this change.* `main` was red: PR #21
   added `garage61_linked` to `GET /api/auth/status` without updating the
   assertion in `tests/test_auth_api.py` (**BUG-023**). And `ruff check .` — a
-  declared CI merge gate — reports 25 findings in dead root-level scratch
-  scripts that nothing imports (**BUG-024**, left open: deleting fifteen tracked
-  files is an owner decision, not a side effect of a sync change).
+  declared CI merge gate — reported 25 findings in fifteen dead root-level
+  scratch scripts that nothing imports: one-shot rewriters that opened
+  `src/driverdna/db.py`, applied string replacements and wrote it back, left
+  over from the identity/`users` phase work and the Postgres move (A23). Raised
+  as an owner decision rather than folded in silently, then deleted on the
+  owner's instruction (**BUG-024**) — their output has been in `db.py` for
+  months, so they were both dead and misleading. Auto-fixing the unused imports
+  was rejected: it would have left dead code lint-clean and still dead.
+  `ruff check .` now passes repo-wide, so `lint` is a real signal instead of a
+  permanently red one — which matters, because BUG-023 was a genuine regression
+  sitting in the same run and was nearly written off as environmental.

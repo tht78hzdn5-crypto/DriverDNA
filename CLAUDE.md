@@ -558,8 +558,10 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   on every ingest path (BUG-022, owner's call to file; the fix belongs at the
   query surface where role isolation lives and moves real numbers). Three more
   defects found on the way: `main` was red from PR #21 (BUG-023, fixed);
-  `ruff check .` red from fifteen dead root scratch scripts (BUG-024, open —
-  deleting tracked files is an owner call); and **all 26 browser tests had been
+  `ruff check .` red from fifteen dead root scratch scripts — one-shot
+  `db.py` rewriters left over from the identity/Postgres work, deleted
+  owner-directed, so the `lint` gate is green rather than permanently red
+  (BUG-024, fixed); and **all 26 browser tests had been
   silently skipping** (image ships Chromium 1194, Playwright resolves 1234),
   which had hidden a broken `/api/cohorts` assertion on this branch for two
   commits (BUG-025, fixed — 26 browser tests now run and pass).

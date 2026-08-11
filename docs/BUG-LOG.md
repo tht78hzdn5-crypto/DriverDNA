@@ -149,7 +149,7 @@ Newest first. The amendment named in each entry carries the full narrative.
   sync change. Filed as **BUG-024**.
 
 ### BUG-024 — `ruff check .` is red on `main` from dead scratch scripts
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-11 (A49)
+- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49
 - **Symptom**: `python3 -m ruff check .` reports 25 findings (22 auto-fixable):
   unused imports, `E741` ambiguous `l`, `E402` late import. CI's `lint` job is a
   declared merge gate, so it is red for every PR regardless of the PR's content.
@@ -165,9 +165,20 @@ Newest first. The amendment named in each entry carries the full narrative.
   All of `src/driverdna/` and the real test files pass cleanly.
 - **How it was caught**: running `ruff check .` before committing A49, per
   AGENTS.md's command list.
-- **Next step**: owner decision — delete them (they look like completed
-  one-shots), or move them under a `scripts/` path excluded in `pyproject.toml`.
-  Auto-fixing in place would leave dead code lint-clean and still dead.
+- **Fix**: all fifteen deleted (owner-directed). They are one-shot source
+  rewriters — each opens `src/driverdna/db.py`, runs string replacements and
+  writes it back — left over from the identity/`users` phase work and the
+  Postgres move (A23). Their output has been in `db.py` for months, so the
+  scripts were both dead and misleading: a reader could mistake them for a
+  supported migration path. Auto-fixing the imports instead was rejected for
+  exactly that reason — it would have left dead code lint-clean and still dead.
+  Verified before removal: no module imports any of them (the only
+  cross-references were `fix_patch.py` naming its siblings, and the English
+  word "inject" in unrelated prose). After: `ruff check .` passes repo-wide for
+  the first time, and the suite is unchanged at 993 passed / 16 skipped.
+- **Worth noting**: this had been red long enough that a permanently-red gate
+  read as normal. That is the actual cost — BUG-023 (a genuine regression on
+  `main`) sat in the same CI run and was nearly dismissed as environmental.
 
 ### BUG-025 — Browser tests skipped silently, hiding a broken assertion for two commits
 - **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
