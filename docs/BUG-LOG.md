@@ -67,39 +67,65 @@ Writing that down is the point.
 - **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
   on the VM. Do not theorise before reading it.
 
-### BUG-022 — `INCOMPLETE_LAP` is flagged at ingest and never read
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49)
-- **Symptom**: a lap that does not cover a full `LapDistPct` range — a pit-lane
-  start, a formation lap, a trace cut short — is measured as if it were a
-  complete lap. Its phase times, metrics and baselines all enter the driver
-  model alongside genuine flying laps.
-- **Root cause**: `ingest/parser.py:328` raises
-  `QualityFlag(FlagCode.INCOMPLETE_LAP, {"coverage": …})` when coverage is under
-  `_MIN_LAP_COVERAGE` (0.97), and **nothing consumes it**. Grep is unambiguous:
-  `INCOMPLETE_LAP` appears in `parser.py` and `tests/test_parser.py` and nowhere
-  else. `quality_flags` is stored as TEXT and only ever *displayed*
-  (`report/payload.py` counts laps-carrying-any-flag; `ui/api.py` returns the
-  list); no measurement query filters on it.
-- **Blast radius**: every ingest path — `driverdna sync`, `driverdna import`,
-  `#/upload` — and from there baselines, vs-self ranking, the Driver Model and
-  trend. Unknown magnitude in the owner's production store; zero in this repo,
-  since the committed fixtures are all complete laps (which is also why no
-  committed artifact moves).
-- **How it was missed**: the flag exists, is populated correctly, is persisted,
-  and is rendered in the laps view. Everything about it *looks* handled. The
-  parser test asserts the flag is raised (`test_parser.py:165`) and the
-  guarantee was never pinned one layer down, at the point where a measurement
-  decides which laps it is allowed to use — the same shape of miss as BUG-013,
-  where a `role='self'` guarantee was pinned above the layer that broke it.
-- **Not fixed here, deliberately**: A49 adds a `pitlane` counter at sync so the
-  frequency is measurable before behaviour changes, but that only covers laps
-  the *API* labels, only on the sync path, and it is off by default. The real
-  fix — excluding an `INCOMPLETE_LAP` lap from measurement at the query surface,
-  which is where role isolation already lives — moves real numbers and needs its
-  own before/after measurement and a model version bump.
-- **Next step**: measure first. Count `INCOMPLETE_LAP` laps in the production
-  store, and check whether `pitlane` and low coverage actually coincide (that
-  correlation is what would settle what `pitlane` means — see A49).
+### BUG-022 — A towed lap's trace duration is used as if it were a lap time
+- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
+  **scope corrected the same day** after owner input — see "The first filing was
+  wrong" below.
+- **Symptom**: a lap that ends early — the driver crashes, calls a virtual tow,
+  and is returned to the pits — carries a `duration_s` of however long the
+  *trace* ran. Nothing checks completeness before treating that as a lap time,
+  so the towed lap becomes the cohort's fastest and every real lap renders as
+  slower than a lap that was never completed.
+- **Measured on real fixture telemetry** (`Garage_61_HKWPXX.csv`, truncated to
+  40% to simulate a tow):
+
+  | | `duration_s` | `lap_dist` span | corners found |
+  |---|---|---|---|
+  | complete | 171.25 s | 1.000 | 14 |
+  | towed at 40% | **68.50 s** | 0.414 | 4 |
+
+  `min(duration_s)` across that two-lap cohort becomes 68.50 s, so the genuine
+  lap renders at **+102.75 s**.
+- **Root cause**: `report/payload.py:183-186` computes `lap_delta_s` against
+  `min(duration_s)` over every self lap with no completeness filter, and
+  `references_section` (`payload.py:149`) feeds the same unfiltered `duration_s`
+  into `reference_envelope`, so a towed *reference* lap sets a bogus "best".
+  `duration_s` is `n_samples / SAMPLE_RATE_HZ` (`parser.py:348`) — trace length,
+  which equals lap time only when the lap is complete.
+- **Blast radius**: whole-lap figures only — `lap_durations_s`, `lap_delta_s`,
+  and the reference envelope. Zero on the committed fixtures (all complete), so
+  no artifact moves. The exposure is the owner's production store, and it grows
+  precisely as incident capture succeeds.
+- **Not the per-corner layer, which is correct by construction.** The segmenter
+  finds only corners actually present in the trace (4 vs 14 above), so an
+  incomplete lap contributes *fewer valid* observations, never fabricated ones.
+  Phase times, metrics, the Driver Model and trend are unaffected.
+- **The first filing was wrong, and how.** This was originally filed as
+  "`INCOMPLETE_LAP` is flagged and never read → partial laps are measured as if
+  complete", with a blast radius of "baselines, vs-self ranking, the Driver Model
+  and trend". The *premise* is accurate — the flag genuinely is raised at
+  `parser.py:328` and consumed nowhere — but the consequence was **inferred from
+  that fact rather than checked**, and checking disproves it. The unread flag is
+  a real loose end; it is not the defect. Same failure the repo already has a
+  standing lesson for (A28: a capability claim needs a source, not an inference;
+  A25: an unverified guess presented as observed).
+- **Product intent, owner-stated (2026-08-11), now on the record**: an incomplete
+  lap is **wanted**. A lap that ends in a tow is the incident record — "measure
+  the driver, not the lap" (A19). Any fix here must keep ingesting and measuring
+  these laps; excluding them would delete exactly the evidence the incidents
+  subsystem exists to capture. That also retires the original entry's proposed
+  next step of gating measurement on `INCOMPLETE_LAP` — it would have been the
+  wrong fix, and would have thrown away real data.
+- **Correct fix (not applied)**: stop treating `duration_s` as a lap time for a
+  lap that did not cover the lap. Either exclude incomplete laps from the
+  *lap-time* comparison only, keeping every per-corner measurement, or carry a
+  distinct nullable lap-time column and leave `duration_s` as the honest trace
+  length it already is. Moves real numbers in `lap_delta_s` and the reference
+  envelope, so it needs a before/after measurement of its own.
+- **How it was caught**: not by a test — by the owner saying they *wanted*
+  incomplete laps, which forced the original filing to be re-examined and the
+  mechanism actually measured. Worth recording: the entry read as authoritative
+  while resting on an inference nobody had run.
 
 ### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
 - **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
