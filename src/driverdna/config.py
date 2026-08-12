@@ -666,6 +666,17 @@ class ApiConfig(_Section):
         "order of magnitude for a long track at a high sample rate while "
         "still bounding what one request can spend.",
     )
+    sse_heartbeat_seconds: float = Field(
+        default=15.0,
+        gt=0,
+        description="How often a streaming endpoint emits an SSE comment while "
+        "the work behind it is silent. The long phases of a driver payload "
+        "(driver model, census) announce themselves once and then compute for "
+        "minutes with nothing to report, and a reverse proxy reads that silence "
+        "as a dead connection — Cloudflare's idle timeout is ~100 s, which is "
+        "what killed /api/driver in production (BUG-026). Comments are ignored "
+        "by EventSource, so this costs one line and changes no payload.",
+    )
     chat_requests_per_minute: int = Field(
         default=20,
         gt=0,

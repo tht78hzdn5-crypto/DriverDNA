@@ -12,6 +12,7 @@ real token.
 from __future__ import annotations
 
 import json
+import time
 import shutil
 from pathlib import Path
 
@@ -46,6 +47,22 @@ def _parse_sse(response):
             if line.startswith("data: "):
                 events.append(json.loads(line[len("data: "):]))
     return events
+
+
+def _parse_sse_from_text(text):
+    """Parse a raw SSE body. Comment lines (`: ...`) are not events."""
+    events = []
+    for frame in text.split("\n\n"):
+        for line in frame.strip().split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[len("data: "):]))
+    return events
+
+
+def _sse_complete_from_text(text):
+    complete = [e for e in _parse_sse_from_text(text) if e["type"] == "complete"]
+    assert len(complete) == 1, f"expected 1 complete event, got {len(complete)}"
+    return complete[0]
 
 
 def _sse_complete(response):
@@ -558,3 +575,68 @@ def test_sync_results_carry_the_pitlane_count(tmp_path, monkeypatch):
 
     assert complete["results"][0]["laps_pitlane"] == 1
     assert complete["results"][0]["laps_new"] == 1  # counted, not dropped
+
+
+# --- SSE heartbeat during silent compute phases (BUG-026) ----------------
+
+def test_sse_emits_keepalives_while_the_worker_is_silent(tmp_path, monkeypatch):
+    """`build_driver_payload` announces `driver_model` and `census` and then
+    computes for minutes with nothing to report. Without a heartbeat the stream
+    is indistinguishable from a dead connection, and Cloudflare's ~100s idle
+    timeout closed it mid-compute in production. Comments keep it warm."""
+    import driverdna.ui.api as api_module
+
+    db_path = tmp_path / "hb.db"
+    assert CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)]
+    ).exit_code == 0
+    (tmp_path / "cfg.toml").write_text("[api]\nsse_heartbeat_seconds = 0.05\n")
+
+    real_build = api_module.build_driver_payload
+
+    def slow_build(db, config, **kwargs):
+        on_progress = kwargs.get("on_progress")
+        if on_progress:
+            on_progress({"type": "progress_phase", "phase": "driver_model"})
+        time.sleep(0.35)  # the silent stretch that used to kill the stream
+        return real_build(db, config, **kwargs)
+
+    monkeypatch.setattr(api_module, "build_driver_payload", slow_build)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    body = TestClient(app).get("/api/driver").text
+
+    assert ": keepalive" in body, "silent stretch produced no heartbeat"
+    complete = _sse_complete_from_text(body)
+    assert complete["payload"]["payload_version"] >= 1
+
+
+def test_sse_keepalives_are_comments_not_events(tmp_path, monkeypatch):
+    """A heartbeat must be an SSE *comment*: EventSource ignores it, so no
+    client code changes and no consumer can mistake it for a payload."""
+    import driverdna.ui.api as api_module
+
+    db_path = tmp_path / "hb2.db"
+    assert CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)]
+    ).exit_code == 0
+    (tmp_path / "cfg.toml").write_text("[api]\nsse_heartbeat_seconds = 0.05\n")
+
+    real_build = api_module.build_driver_payload
+
+    def slow_build(db, config, **kwargs):
+        time.sleep(0.3)
+        return real_build(db, config, **kwargs)
+
+    monkeypatch.setattr(api_module, "build_driver_payload", slow_build)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    body = TestClient(app).get("/api/driver").text
+
+    for line in body.split("\n"):
+        if line.startswith(":"):
+            continue
+        assert "keepalive" not in line, f"heartbeat leaked into a data frame: {line}"
+    # And the parsed event stream is unaffected by however many fired.
+    events = _parse_sse_from_text(body)
+    assert [e for e in events if e["type"] == "complete"]

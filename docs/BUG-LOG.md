@@ -147,6 +147,67 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
+### BUG-026 — SSE streams died during the silent phases they were added to survive
+- **Status**: fixed 2026-08-11 · **Severity**: breaks · **Found**: 2026-08-11,
+  from the production journal while diagnosing BUG-018
+- **Symptom**: `cloudflared[…] ERR Request failed error="Incoming request ended
+  abruptly: context canceled" dest=https://driver-dna.com/api/driver`. The
+  Driver page hangs and then dies — the exact failure the SSE work was built to
+  eliminate, still happening after it shipped.
+- **Root cause**: `build_driver_payload` emits one `progress_phase` event
+  *before* `driver_model` and one before `census`, then computes. On a real
+  cohort count each of those phases runs for minutes with nothing to report
+  (`census` re-enters `build_driver_payload` internally). The three SSE queue
+  loops used a bare blocking `q.get()`, so the stream emitted **nothing** for
+  that entire window, and a reverse proxy cannot distinguish a working stream
+  from a dead one: Cloudflare's idle timeout (~100 s) closed the connection
+  mid-compute.
+- **Blast radius**: `/api/driver`, `/api/driver/score-history`, `/api/sync` —
+  every long-running stream, and worst exactly where the payload is biggest, so
+  it got *more* likely as the corpus grew. Local and CI never saw it: the
+  fixture corpus computes in seconds, and neither `TestClient` nor a loopback
+  request has an idle timeout.
+- **Fix**: one `_drain_sse` helper for all three loops, `q.get(timeout=…)` with
+  an SSE **comment** (`: keepalive`) on each idle tick — ignored by EventSource,
+  so no client change and no payload change. Interval is
+  `config.api.sse_heartbeat_seconds` (default 15 s, well inside 100 s). The
+  helper also ends the stream with an error event if the worker dies without
+  posting a terminal event, instead of heartbeating forever against a dead
+  thread.
+- **How it was caught**: reading the production journal. Not by any test —
+  and the two new tests only exist because a real log line pointed at the
+  route. Pinned now by `test_sse_emits_keepalives_while_the_worker_is_silent`
+  (a deliberately stalled worker must produce keepalives) and
+  `test_sse_keepalives_are_comments_not_events`; the first was verified to fail
+  against a reverted `q.get()`.
+- **How it was missed**: the SSE work was reviewed and tested for *event
+  correctness* — the right events in the right order — and never for *timing*.
+  Nothing in the suite models a proxy, an idle timeout, or a slow phase, so a
+  stream that is correct but silent looked identical to a healthy one.
+  Related: the same diagnosis initially mis-attributed this to an expired
+  Garage61 token (see BUG-027) — two real defects in the same journal, 21
+  minutes apart, on different routes.
+
+### BUG-027 — An expired Garage61 token surfaces as a raw traceback
+- **Status**: open · **Severity**: breaks · **Found**: 2026-08-11 (production
+  journal)
+- **Symptom**: `driverdna.garage61.client.Garage61AuthError: GET
+  /laps/…/csv: Bad authentication: operation GetLapCSV: security "OAuth2":
+  expired access token.` followed by `ERROR: Exception in ASGI application`.
+  The driver gets an error string, not "your Garage61 sign-in expired,
+  reconnect".
+- **Root cause**: the OAuth access token expires and nothing refreshes it or
+  detects the expiry ahead of a call. `_resolve_garage61_token` decrypts a
+  stored token and hands it over without checking validity; a stale one only
+  fails at the point of use, deep inside a sync.
+- **Blast radius**: `/api/sync` and the CLI `sync`. No measurement is affected
+  — nothing is imported — but the recovery path is invisible to the driver even
+  though the OAuth flow and `/api/garage61/status` already exist.
+- **How it was caught**: production journal, during BUG-018 triage.
+- **Next step**: treat `Garage61AuthError` as a distinct, named condition at
+  the sync surface and render it as a reconnect prompt rather than an error
+  string. Refresh-token handling, if the API offers one, is the deeper fix.
+
 ### BUG-023 — `main` merged red: an endpoint field with no test update
 - **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
 - **Symptom**: `tests/test_auth_api.py::test_status_reports_whether_auth_is_required_and_met`

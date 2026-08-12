@@ -972,6 +972,37 @@ def create_app(
             return round(obj, 6)
         raise TypeError(f"not JSON serializable: {type(obj)}")
 
+    def _drain_sse(
+        q: "queue.Queue[dict[str, Any]]",
+        worker: threading.Thread,
+        heartbeat: float,
+    ):
+        """Yield queued events as SSE frames, with a heartbeat while silent.
+
+        The worker announces a phase and then computes — `driver_model` and
+        `census` each run for minutes on a real cohort count with nothing to
+        report in between. A bare blocking `q.get()` emits nothing during that
+        window, and a reverse proxy cannot tell a working stream from a dead
+        one: Cloudflare's ~100 s idle timeout closed `/api/driver` mid-compute
+        in production (BUG-026). An SSE *comment* (`: …`) keeps the connection
+        warm and is ignored by EventSource, so no client code has to know.
+        """
+        while True:
+            try:
+                event = q.get(timeout=heartbeat)
+            except queue.Empty:
+                if not worker.is_alive():
+                    # Died without posting a terminal event — say so rather
+                    # than heartbeat forever against a thread that is gone.
+                    yield ('data: {"type": "error", "detail": '
+                           '"stream worker stopped without completing"}\n\n')
+                    return
+                yield ": keepalive\n\n"
+                continue
+            yield f"data: {json.dumps(event, sort_keys=True, default=_json_default)}\n\n"
+            if event["type"] in ("complete", "error"):
+                return
+
     # --- reads --------------------------------------------------------------
 
     @app.get("/api/driver/summary")
@@ -1041,11 +1072,7 @@ def create_app(
 
             t = threading.Thread(target=run, daemon=True)
             t.start()
-            while True:
-                event = q.get()
-                yield f"data: {json.dumps(event, sort_keys=True, default=_json_default)}\n\n"
-                if event["type"] in ("complete", "error"):
-                    break
+            yield from _drain_sse(q, t, config.api.sse_heartbeat_seconds)
             t.join()
 
         return StreamingResponse(_driver_events(), media_type="text/event-stream")
@@ -1085,11 +1112,7 @@ def create_app(
 
             t = threading.Thread(target=run, daemon=True)
             t.start()
-            while True:
-                event = q.get()
-                yield f"data: {json.dumps(event, sort_keys=True, default=_json_default)}\n\n"
-                if event["type"] in ("complete", "error"):
-                    break
+            yield from _drain_sse(q, t, config.api.sse_heartbeat_seconds)
             t.join()
 
         return StreamingResponse(_history_events(), media_type="text/event-stream")
@@ -1816,11 +1839,7 @@ def create_app(
 
             t = threading.Thread(target=run, daemon=True)
             t.start()
-            while True:
-                event = q.get()
-                yield f"data: {json.dumps(event, sort_keys=True)}\n\n"
-                if event["type"] in ("complete", "error"):
-                    break
+            yield from _drain_sse(q, t, config.api.sse_heartbeat_seconds)
             t.join()
 
         return StreamingResponse(_sync_events(), media_type="text/event-stream")
