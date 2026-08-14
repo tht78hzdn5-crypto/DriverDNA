@@ -1,5 +1,27 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-14 (BUG-022 fixed, BUG-026 fixed, stale Cloud Run
+comments removed — SPEC.md A50).**
+
+- **BUG-022 fixed:** `INCOMPLETE_LAP`-flagged laps excluded from the lap-time
+  comparison. `lap_delta_s` computed from complete laps only; incomplete entries
+  are `null`. New `lap_incomplete` boolean array in the cohort payload. Reference
+  envelope also filters incomplete reference laps. `PAYLOAD_VERSION` 7→8.
+  Number-neutral on committed fixtures (all complete).
+- **BUG-026 fixed:** SSE streams (sync, rebuild-map, report) used bare `q.get()`
+  with no timeout. During silent compute phases (driver model, census — up to
+  minutes), nothing was emitted and Cloudflare's ~100s idle timeout killed the
+  connection. `_drain_sse` helper with `q.get(timeout=heartbeat)` + `: keepalive`
+  SSE comments. New `api.sse_heartbeat_seconds` config key (default 15s).
+- **Stale Cloud Run references** in `api.py` comments cleaned up (Cloud Run was
+  retired at A40).
+- **Verified counts:** `python3 -m pytest` → **994 passed, 16 skipped, 0
+  failed** (SQLite backend). The 16 skips are Postgres-absent only. `ruff
+  check .`: clean. `npm run lint`: 0 errors. `npm run build`: clean.
+  `test_artifact_freshness.py`: 16 passed; only `payload_version` changed.
+
+---
+
 **Snapshot date: 2026-08-11 (sync bounded by cohort, newest first; pit-lane
 laps counted before they are judged — SPEC.md A49).**
 

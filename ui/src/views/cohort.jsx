@@ -351,12 +351,15 @@ export default function Cohort({ slug }) {
         {c.lap_durations_s.map((duration, i) => {
           const hasIncident = p.incidents && c.lap_ids &&
             p.incidents.events.some((e) => e.lap_id === c.lap_ids[i]);
+          const isIncomplete = c.lap_incomplete && c.lap_incomplete[i];
+          const delta = c.lap_delta_s[i];
           return (
-            <div key={i} className="lap-row">
+            <div key={i} className={`lap-row${isIncomplete ? " lap-incomplete" : ""}`}>
               <span className="lap-idx num">{i + 1}</span>
-              <span className={`lap-time num ${c.lap_delta_s[i] === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</span>
+              <span className={`lap-time num ${delta === 0 ? "lap-best" : ""}`}>{lapTime(duration)}</span>
+              {isIncomplete && <span className="chip">incomplete</span>}
               {hasIncident && <span className="chip incident">incident</span>}
-              <span className="lap-delta num">{c.lap_delta_s[i] === 0 ? "best" : `+${fmt(c.lap_delta_s[i])}`}</span>
+              <span className="lap-delta num">{delta === 0 ? "best" : delta == null ? "—" : `+${fmt(delta)}`}</span>
             </div>
           );
         })}

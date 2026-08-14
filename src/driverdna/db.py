@@ -1454,7 +1454,7 @@ class Database:
         `phase_history`) only ever reflects the active subset."""
         exclusions = self.reference_exclusions()
         rows = self.conn.execute(
-            """SELECT lap_pk, lap_id, driver, duration_s, lap_date
+            """SELECT lap_pk, lap_id, driver, duration_s, lap_date, quality_flags
                FROM laps WHERE role='reference' AND car=? AND track=? AND owner_user_pk=?
                ORDER BY lap_pk""",
             (car, track, self.user_pk),
@@ -1467,6 +1467,10 @@ class Database:
                 "duration_s": float(r["duration_s"]),
                 "lap_date": r["lap_date"],
                 "excluded": int(r["lap_pk"]) in exclusions,
+                "incomplete": any(
+                    f["code"] == "incomplete_lap"
+                    for f in json.loads(r["quality_flags"])
+                ),
             }
             for r in rows
         ]

@@ -68,7 +68,7 @@ Writing that down is the point.
   on the VM. Do not theorise before reading it.
 
 ### BUG-022 — A towed lap's trace duration is used as if it were a lap time
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
+- **Status**: fixed (2026-08-14, A50) · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
   **scope corrected the same day** after owner input — see "The first filing was
   wrong" below.
 - **Symptom**: a lap that ends early — the driver crashes, calls a virtual tow,
@@ -116,12 +116,16 @@ Writing that down is the point.
   subsystem exists to capture. That also retires the original entry's proposed
   next step of gating measurement on `INCOMPLETE_LAP` — it would have been the
   wrong fix, and would have thrown away real data.
-- **Correct fix (not applied)**: stop treating `duration_s` as a lap time for a
-  lap that did not cover the lap. Either exclude incomplete laps from the
-  *lap-time* comparison only, keeping every per-corner measurement, or carry a
-  distinct nullable lap-time column and leave `duration_s` as the honest trace
-  length it already is. Moves real numbers in `lap_delta_s` and the reference
-  envelope, so it needs a before/after measurement of its own.
+- **Fix (2026-08-14, SPEC.md A50)**: `INCOMPLETE_LAP`-flagged laps are excluded
+  from the lap-time comparison only. `lap_delta_s` is computed from
+  `min(duration_s)` of complete laps; an incomplete lap's entry is `null`.
+  `lap_incomplete` boolean array added to the cohort payload (parallel to
+  `lap_ids`). Reference envelope filters incomplete reference laps. The HTML
+  line chart excludes them. SPA renders "incomplete" chip and "—" delta.
+  `PAYLOAD_VERSION` 7→8 (additive field + type change). Per-corner measurement
+  unchanged — incomplete laps still contribute their valid corners. Number-neutral
+  on committed fixtures (all complete). Pinned by
+  `test_incomplete_lap_excluded_from_lap_time_comparison`.
 - **How it was caught**: not by a test — by the owner saying they *wanted*
   incomplete laps, which forced the original filing to be re-examined and the
   mechanism actually measured. Worth recording: the entry read as authoritative

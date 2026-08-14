@@ -2644,3 +2644,19 @@ Accepted at owner plan review; rationale recorded in the review:
   `ruff check .` now passes repo-wide, so `lint` is a real signal instead of a
   permanently red one — which matters, because BUG-023 was a genuine regression
   sitting in the same run and was nearly written off as environmental.
+
+- **A50** (2026-08-14): **BUG-022 fixed: incomplete laps excluded from lap-time
+  comparison.** `INCOMPLETE_LAP`-flagged laps no longer enter the `lap_delta_s`
+  comparison or the reference envelope: `lap_delta_s` is computed from
+  `min(duration_s)` of complete laps only, an incomplete lap's entry is `null`,
+  and a new `lap_incomplete` boolean array (parallel to `lap_ids`) lets every
+  consumer distinguish them. Reference `reference_envelope` also filters
+  incomplete reference laps (the `incomplete` field now travels with the
+  contributor dict from `reference_laps_for_cohort`). The HTML chart excludes
+  incomplete laps so a 68 s trace doesn't distort the Y scale. SPA shows an
+  "incomplete" chip and "—" delta. Per-corner measurement is unchanged —
+  incomplete laps still contribute their valid corners, as A19/A49 require.
+  `PAYLOAD_VERSION` 7→8: additive field, `lap_delta_s` entries may be `null`.
+  Number-neutral on committed fixtures (all complete laps). Stale Cloud Run
+  references in `api.py` comments cleaned up (A40 retired it). BUG-026 (SSE
+  heartbeat) separately fixed and merged.

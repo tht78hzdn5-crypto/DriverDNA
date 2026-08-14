@@ -127,7 +127,7 @@ class ResetPasswordBody(BaseModel):
 #: the SPA uses to decide whether to draw the login gate. The static shell is
 #: also public — it is a `StaticFiles` mount rather than a route, so the guard
 #: never sees it, which is correct: the shell is what renders the login screen.
-#: `/health` is Cloud Run's liveness probe — it carries no session cookie, and
+#: `/health` is the liveness probe — it carries no session cookie, and
 #: must answer even while the store is unreachable or still migrating.
 PUBLIC_API_PATHS = frozenset({
     "/health",
@@ -375,11 +375,11 @@ def create_app(
         too would have no trust boundary at the app layer and would believe
         anyone who could reach the port at all.
 
-        `behind_proxy=False` (e.g. Cloud Run): its front end forwards
-        `X-Forwarded-Proto` from an address outside uvicorn's
-        `forwarded_allow_ips`, so the middleware never rewrites the scheme.
-        Read the header directly, as before — the only way to avoid shipping
-        an unmarked session cookie over a real HTTPS deployment there.
+        `behind_proxy=False` (e.g. a managed platform whose front end
+        forwards `X-Forwarded-Proto` from an address outside uvicorn's
+        `forwarded_allow_ips`): the middleware never rewrites the scheme.
+        Read the header directly — the only way to avoid shipping an
+        unmarked session cookie over a real HTTPS deployment there.
         """
         if behind_proxy:
             return request.url.scheme == "https"

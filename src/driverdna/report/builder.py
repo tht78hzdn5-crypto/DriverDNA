@@ -402,8 +402,12 @@ def render_cohort_html(payload: dict[str, Any]) -> str:
             "Cumulative typical loss by corner class (s/lap)",
             sorted(loss["by_class"].items()),
         ))
+    chart_durations = [
+        d for d, inc in zip(c["lap_durations_s"], c.get("lap_incomplete", [False] * len(c["lap_durations_s"])), strict=True)
+        if not inc
+    ] or c["lap_durations_s"]
     parts.append(_line_chart(
-        "Lap time trend (imported order)", c["lap_durations_s"]
+        "Lap time trend (imported order)", chart_durations
     ))
 
     parts.append("<h2>Corner map</h2><table><tr><th>corner</th><th>class</th>"
