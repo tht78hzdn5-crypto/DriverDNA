@@ -334,7 +334,7 @@ def test_references_section_appears_in_the_payload_with_one_reference_lap(ref_en
     assert refs["contributors"] == [{
         "lap_pk": ref_env["lap_pk"], "lap_id": "60GBCK", "driver": "teammate JD",
         "duration_s": refs["contributors"][0]["duration_s"],
-        "lap_date": None, "excluded": False,
+        "lap_date": None, "excluded": False, "incomplete": False,
     }]
 
 

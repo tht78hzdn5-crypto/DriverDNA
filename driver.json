@@ -218,6 +218,19 @@
     "59384F",
     "5ZBWTZ"
    ],
+   "lap_incomplete": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
    "n_laps": 11,
    "n_sessions": 3,
    "track": "Spa-Francorchamps"
@@ -233,6 +246,9 @@
    ],
    "lap_ids": [
     "RH11X7"
+   ],
+   "lap_incomplete": [
+    false
    ],
    "n_laps": 1,
    "n_sessions": 0,
@@ -353,5 +369,5 @@
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 7
+ "payload_version": 8
 }

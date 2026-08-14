@@ -28,7 +28,7 @@ from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 7  # +finding.fundamental, +belief.label (A46)
+PAYLOAD_VERSION = 8  # +cohort.lap_incomplete, lap_delta_s excludes incomplete (BUG-022)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -145,7 +145,7 @@ def references_section(db: Database, *, car: str, track: str) -> dict[str, Any]:
     which only ever reflects the active pool `phase_history` itself already
     filters to."""
     contributors = db.reference_laps_for_cohort(car=car, track=track)
-    active = [c for c in contributors if not c["excluded"]]
+    active = [c for c in contributors if not c["excluded"] and not c["incomplete"]]
     envelope = reference_envelope([c["duration_s"] for c in active])
     return {
         "n": len(active),
@@ -175,15 +175,25 @@ def build_cohort_payload(
     ).fetchall()
     sessions = {r["session_key"] for r in laps if r["session_key"] is not None}
 
+    incomplete = [
+        any(f["code"] == "incomplete_lap" for f in json.loads(r["quality_flags"]))
+        for r in laps
+    ]
+    complete_durations = [
+        float(r["duration_s"]) for r, inc in zip(laps, incomplete, strict=True) if not inc
+    ]
+    best_complete = min(complete_durations) if complete_durations else None
+
     cohort_dict = {
         "driver": driver, "car": car, "track": track,
         "n_laps": len(laps), "n_sessions": len(sessions),
         "lap_durations_s": [round(float(r["duration_s"]), 4) for r in laps],
         "lap_ids": [r["lap_id"] for r in laps],
+        "lap_incomplete": incomplete,
         "lap_delta_s": [
-            round(float(r["duration_s"]) - min(float(x["duration_s"]) for x in laps), 4)
-            for r in laps
-        ] if laps else [],
+            None if inc else round(float(r["duration_s"]) - best_complete, 4)
+            for r, inc in zip(laps, incomplete, strict=True)
+        ] if laps and best_complete is not None else [],
     }
 
     corner_map_list = [

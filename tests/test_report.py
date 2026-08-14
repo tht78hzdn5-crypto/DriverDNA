@@ -126,6 +126,38 @@ def test_cohort_payload_carries_driver_model_beliefs():
     assert rotation["score"] is None or 0.0 <= rotation["score"] <= 100.0
 
 
+def test_incomplete_lap_excluded_from_lap_time_comparison():
+    """BUG-022: a towed lap's trace duration is not a lap time — an
+    incomplete lap must not enter the lap_delta_s comparison."""
+    from driverdna.ingest.parser import FlagCode, QualityFlag
+
+    db = Database.open(":memory:")
+    for i in range(3):
+        run_synthetic_lap(db, track_lap(src=f"complete{i}.csv"), session_key="s1")
+
+    towed = track_lap(src="towed.csv")
+    towed.quality_flags.append(
+        QualityFlag(FlagCode.INCOMPLETE_LAP, {"coverage": 0.40})
+    )
+    towed.duration_s = 25.0
+    run_synthetic_lap(db, towed, session_key="s1")
+
+    p = build_cohort_payload(db, driver="owner", car="TestCar",
+                             track="SynthRing", config=CONFIG)
+    c = p["cohort"]
+
+    assert c["n_laps"] == 4
+    assert len(c["lap_ids"]) == 4
+    assert len(c["lap_durations_s"]) == 4
+    assert len(c["lap_delta_s"]) == 4
+    assert c["lap_incomplete"] == [False, False, False, True]
+    assert c["lap_delta_s"][3] is None
+    complete_deltas = [d for d in c["lap_delta_s"] if d is not None]
+    assert min(complete_deltas) == 0
+    assert all(d >= 0 for d in complete_deltas)
+    db.close()
+
+
 def test_driver_payload_reuses_cohort_driver_model_without_recomputing():
     with _build_db() as db:
         cohort_payload = build_cohort_payload(db, **COHORT, config=CONFIG)
