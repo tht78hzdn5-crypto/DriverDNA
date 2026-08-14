@@ -393,8 +393,20 @@ def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tm
         m.__exit__ = MagicMock(return_value=False)
         return m
 
+    # Initiate the Google login to obtain the state cookie and state param.
+    login_r = client.get("/api/auth/google/login")
+    assert login_r.status_code == 307
+    import urllib.parse
+    location = login_r.headers["location"]
+    qs = urllib.parse.parse_qs(urllib.parse.urlparse(location).query)
+    state = qs["state"][0]
+    state_cookie = login_r.cookies["_google_oauth_state"]
+
     with patch("urllib.request.urlopen", _mock_urlopen):
-        r2 = client.get("/api/auth/google/callback?code=abc")
+        r2 = client.get(
+            f"/api/auth/google/callback?code=abc&state={state}",
+            cookies={"_google_oauth_state": state_cookie},
+        )
     assert r2.status_code == 200  # HTML meta-refresh page, not a redirect
 
     # Old cookie must now be rejected — epoch was bumped by the OAuth sign-in.
