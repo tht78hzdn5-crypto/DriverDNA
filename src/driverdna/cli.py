@@ -337,7 +337,7 @@ def sync(
     """
     from driverdna.config import load_config
     from driverdna.db import Database
-    from driverdna.garage61.client import Garage61Client
+    from driverdna.garage61.client import Garage61AuthError, Garage61Client
     from driverdna.garage61.sync import sync_driver
 
     config = load_config()
@@ -354,13 +354,20 @@ def sync(
     discovery: dict = {}
 
     with Database.open(_store(db_path)) as db:
-        summaries = sync_driver(
-            db, client, driver=driver, config=config, car=car, track=track,
-            unclean=not clean_only, after=after, max_age_days=max_age_days,
-            on_progress=lambda e: (
-                discovery.update(e) if e.get("type") == "discovering" else None
-            ),
-        )
+        try:
+            summaries = sync_driver(
+                db, client, driver=driver, config=config, car=car, track=track,
+                unclean=not clean_only, after=after, max_age_days=max_age_days,
+                on_progress=lambda e: (
+                    discovery.update(e) if e.get("type") == "discovering" else None
+                ),
+            )
+        except Garage61AuthError:
+            typer.echo(
+                "error: Garage61 sign-in expired — reconnect via the "
+                "OAuth flow (#/import) or set a fresh GARAGE61_TOKEN."
+            )
+            raise typer.Exit(code=2) from None
         if not summaries:
             typer.echo("no cohorts found (nothing driven yet, or --car/--track matched none)")
             raise typer.Exit(code=0)

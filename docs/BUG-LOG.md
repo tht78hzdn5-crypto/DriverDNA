@@ -37,21 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-018 — Service unreachable on the Oracle VM (Cloudflare 1033)
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
-- **Symptom**: `driver-dna.com` returns Cloudflare error 1033. Persisted after
-  a service restart following `pip install .[dev]` against the live venv.
-- **Root cause**: unknown. Not diagnosed — `journalctl -u driverdna -n 100
-  --no-pager` has not been run since.
-- **Blast radius**: the deployed instrument is down. Local and test paths
-  unaffected.
-- **How it was caught**: owner-visible outage.
-- **Next step**: capture the unit's journal before theorising. Candidate
-  suspects (unverified): the `pip install` shifting a dependency the unit
-  needs, or the interlock in `driverdna ui` refusing to start — A41 made a
-  missing passphrase fail closed, which is a *correct* refusal that presents
-  as a dead port.
-
 ### BUG-019 — Test suite fails on ARM64, passes on x86
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
 - **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
@@ -66,6 +51,26 @@ Writing that down is the point.
   x86 CI cannot do.
 - **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
   on the VM. Do not theorise before reading it.
+
+### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
+- **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
+- **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
+  whose map was already founded or shifted by a reference lap keeps that
+  geometry.
+- **Blast radius**: none in this repo (both fixture manifests hold zero
+  reference laps, and 7/7 committed reports were byte-identical after the fix)
+  — but unknown in the owner's production store.
+- **Mitigation**: `driverdna rebuild-map` is the recovery path, and after A34
+  its refreeze queries are self-only.
+- **Open part**: nothing *detects* an affected cohort, so nobody knows to run
+  the recovery. A check comparing a cohort's map provenance against its
+  role-filtered lap set would close it.
+
+---
+
+## Fixed
+
+Newest first. The amendment named in each entry carries the full narrative.
 
 ### BUG-022 — A towed lap's trace duration is used as if it were a lap time
 - **Status**: fixed (2026-08-14, A50) · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
@@ -131,25 +136,29 @@ Writing that down is the point.
   mechanism actually measured. Worth recording: the entry read as authoritative
   while resting on an inference nobody had run.
 
-### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
-- **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
-- **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
-  whose map was already founded or shifted by a reference lap keeps that
-  geometry.
-- **Blast radius**: none in this repo (both fixture manifests hold zero
-  reference laps, and 7/7 committed reports were byte-identical after the fix)
-  — but unknown in the owner's production store.
-- **Mitigation**: `driverdna rebuild-map` is the recovery path, and after A34
-  its refreeze queries are self-only.
-- **Open part**: nothing *detects* an affected cohort, so nobody knows to run
-  the recovery. A check comparing a cohort's map provenance against its
-  role-filtered lap set would close it.
-
----
-
-## Fixed
-
-Newest first. The amendment named in each entry carries the full narrative.
+### BUG-018 — Service unreachable on the Oracle VM (Cloudflare 1033)
+- **Status**: closed-undiagnosed (2026-08-15) · **Severity**: breaks · **Found**: 2026-08-08
+- **Symptom**: `driver-dna.com` returns Cloudflare error 1033. Persisted after
+  a service restart following `pip install .[dev]` against the live venv.
+- **Root cause**: never established. The journal was not captured before the
+  service recovered (systemd's volatile default drops logs on reboot). Two real
+  bugs were found in the same triage session — BUG-026 (SSE heartbeat: the
+  proxied connection died during silent compute phases) and BUG-027 (expired
+  Garage61 token surfaced as a raw traceback) — but neither is a 1033. The
+  leading candidate remains the `pip install` shifting a dependency or the A41
+  interlock refusing a start on a missing/stale `DRIVERDNA_SESSION_SECRET`, but
+  that is an inference, not a diagnosis.
+- **Blast radius**: the deployed instrument was down. Local and test paths
+  unaffected. The outage was transient — the service recovered, likely on the
+  next `Restart=always` cycle or the next reboot.
+- **How it was caught**: owner-visible outage.
+- **How it was missed**: journald defaults to volatile storage on most
+  distributions. A crash-loop or a refused start leaves no trace after the next
+  reboot. Persistent journal storage is now documented in DEPLOY-RUNBOOK.md
+  Part G and shipped as `deploy/journald-driverdna.conf`.
+- **Why closed without a root cause**: the evidence is gone (no journal), the
+  service is up, and the two real bugs found in the same triage are both fixed.
+  Reopening requires a reproduction or a fresh journal capture.
 
 ### BUG-026 — SSE streams died during the silent phases they were added to survive
 - **Status**: fixed 2026-08-11 · **Severity**: breaks · **Found**: 2026-08-11,
@@ -193,8 +202,8 @@ Newest first. The amendment named in each entry carries the full narrative.
   minutes apart, on different routes.
 
 ### BUG-027 — An expired Garage61 token surfaces as a raw traceback
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-11 (production
-  journal)
+- **Status**: fixed (2026-08-15) · **Severity**: breaks · **Found**: 2026-08-11
+  (production journal)
 - **Symptom**: `driverdna.garage61.client.Garage61AuthError: GET
   /laps/…/csv: Bad authentication: operation GetLapCSV: security "OAuth2":
   expired access token.` followed by `ERROR: Exception in ASGI application`.
@@ -208,9 +217,15 @@ Newest first. The amendment named in each entry carries the full narrative.
   — nothing is imported — but the recovery path is invisible to the driver even
   though the OAuth flow and `/api/garage61/status` already exist.
 - **How it was caught**: production journal, during BUG-018 triage.
-- **Next step**: treat `Garage61AuthError` as a distinct, named condition at
-  the sync surface and render it as a reconnect prompt rather than an error
-  string. Refresh-token handling, if the API offers one, is the deeper fix.
+- **Fix**: `Garage61AuthError` is now caught at both sync surfaces. The SSE
+  worker in `api.py` emits `{"type": "error", "detail": "Garage61 sign-in
+  expired — reconnect…", "auth_expired": true}` — the SPA detects
+  `auth_expired` in both `SyncPanel` (driver home) and `#/import` and renders a
+  reconnect link to the OAuth flow instead of the raw traceback. The CLI prints
+  the same message and exits 2. Refresh-token handling is still the deeper fix
+  if the API offers one.
+- **Test**: `test_sync_auth_expired_returns_structured_error` in
+  `test_cockpit_api.py`.
 
 ### BUG-023 — `main` merged red: an endpoint field with no test update
 - **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)

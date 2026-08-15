@@ -577,6 +577,18 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   commits (BUG-025, fixed — 26 browser tests now run and pass).
   Suite 971 → 993 passed / 16 skipped (Postgres-absent only) / 0 failed, with
   the 26 browser tests running again for the first time in this environment.
+- **BUG-018 closed-undiagnosed; BUG-027 fixed; persistent journald
+  (2026-08-15)** — BUG-018 (Oracle VM 1033 outage, 2026-08-08) cannot be
+  diagnosed: journald defaulted to volatile storage and every crash log was
+  lost on reboot; the service recovered on `Restart=always`. Both real bugs
+  found during the same triage are now fixed (BUG-026 heartbeat, BUG-027
+  auth-expired). BUG-027: `Garage61AuthError` (HTTP 401 from an expired OAuth
+  token) was caught by a generic `except Exception`, surfacing a raw traceback.
+  Now caught specifically at both sync surfaces — the SSE worker emits a
+  structured `auth_expired` error event, the SPA renders a reconnect link, the
+  CLI exits 2. `deploy/journald-driverdna.conf` (`Storage=persistent`,
+  `SystemMaxUse=200M`) + runbook Part G make future outages diagnosable.
+  Suite 993 → 997 passed / 16 skipped / 0 failed.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

@@ -281,6 +281,30 @@ def test_sync_emits_progress_events(tmp_path, monkeypatch):
     assert types[-1] == "complete"
 
 
+def test_sync_auth_expired_returns_structured_error(tmp_path, monkeypatch):
+    """A Garage61AuthError (HTTP 401) surfaces as an SSE error event with
+    auth_expired: true so the SPA can render a reconnect link instead of
+    a raw traceback (BUG-027)."""
+    from driverdna.garage61.client import Garage61AuthError
+
+    class ExpiredTransport:
+        def get(self, path, params):
+            raise Garage61AuthError("token expired")
+
+    _mock_garage61_client(monkeypatch, ExpiredTransport())
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")
+
+    r = TestClient(app).post("/api/sync")
+    assert r.status_code == 200  # SSE stream, error is in the event
+    events = _parse_sse(r)
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["auth_expired"] is True
+    assert "sign-in expired" in errors[0]["detail"]
+
+
 # --- POST /api/cohorts/{slug}/rebuild-map --------------------------------
 
 

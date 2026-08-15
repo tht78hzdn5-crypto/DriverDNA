@@ -1,5 +1,29 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-15 (BUG-018 closed-undiagnosed, BUG-027 fixed,
+persistent journald for future crash diagnosis).**
+
+- **BUG-018 closed-undiagnosed:** the Oracle VM 1033 outage from 2026-08-08
+  remains undiagnosable — journald's volatile storage lost every crash log on
+  reboot. The service recovered on its own (`Restart=always`). Both real bugs
+  found in the same triage (BUG-026, BUG-027) are now fixed. Reopening
+  requires reproduction or fresh journal evidence.
+- **BUG-027 fixed:** `Garage61AuthError` (HTTP 401 from an expired OAuth token)
+  was caught by a generic `except Exception`, surfacing a raw traceback to the
+  driver. Now caught specifically at both sync surfaces: the SSE worker in
+  `api.py` emits `{"type": "error", "detail": "… sign-in expired …",
+  "auth_expired": true}`; the SPA's `SyncPanel` (driver home) and `#/import`
+  detect the substring and render a reconnect link to the OAuth flow; the CLI
+  prints the message and exits 2.
+- **Persistent journald:** `deploy/journald-driverdna.conf` drop-in
+  (`Storage=persistent`, `SystemMaxUse=200M`) ensures crash logs survive
+  reboots. Install documented in `docs/DEPLOY-RUNBOOK.md` Part G.
+- **Verified counts:** `python3 -m pytest` → **997 passed, 16 skipped, 0
+  failed** (SQLite backend). The 16 skips are Postgres-absent only. `ruff
+  check .`: clean. `npm run lint`: 0 errors. `npm run build`: clean.
+
+---
+
 **Snapshot date: 2026-08-14 (BUG-022 fixed, BUG-026 fixed, stale Cloud Run
 comments removed — SPEC.md A50).**
 
