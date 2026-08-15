@@ -10,6 +10,7 @@ import { LossBars, Methodology } from "./shared.jsx";
 // routes to the same "import to get started" direction, not a raw CLI error.
 const NO_DB = "no DB at"; // matches api.py's open_db() 404 detail exactly
 const NO_TOKEN = "GARAGE61_TOKEN"; // matches Garage61Client's own RuntimeError text
+const AUTH_EXPIRED = "sign-in expired"; // matches api.py's Garage61AuthError detail
 
 function ProgressBar({ current, total }) {
   if (!total) return null;
@@ -30,6 +31,7 @@ function SyncPanel({ onSynced }) {
   const [error, setError] = useState(null);
   const [syncProgress, setSyncProgress] = useState(null);
   const noToken = (error || "").includes(NO_TOKEN);
+  const authExpired = (error || "").includes(AUTH_EXPIRED);
 
   async function runSync() {
     setBusy(true);
@@ -97,7 +99,8 @@ function SyncPanel({ onSynced }) {
       )}
 
       {noToken && <div className="reason" style={{ marginTop: "0.6rem" }}>Set GARAGE61_TOKEN to sync.</div>}
-      {error && !noToken && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
+      {authExpired && <div className="reason" style={{ marginTop: "0.6rem" }}>Garage61 sign-in expired. <a href="#/import">Reconnect</a></div>}
+      {error && !noToken && !authExpired && <div className="error" style={{ marginTop: "0.6rem" }}>{error}</div>}
 
       {result && result.cohorts_skipped?.length > 0 && (
         <div className="reason" style={{ marginTop: "0.6rem" }}>

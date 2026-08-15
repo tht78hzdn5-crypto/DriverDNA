@@ -1816,6 +1816,7 @@ def create_app(
                 q.put(evt)
 
             def run() -> None:
+                from driverdna.garage61.client import Garage61AuthError
                 try:
                     with Database.open(db_path, user_pk=user_pk) as db:
                         summaries = sync_driver(
@@ -1834,6 +1835,12 @@ def create_app(
                             "cohorts_skipped": discovery.get("cohorts_skipped", []),
                             "max_cohorts": config.sync.max_cohorts,
                         })
+                except Garage61AuthError:
+                    q.put({
+                        "type": "error",
+                        "detail": "Garage61 sign-in expired — reconnect at Import › Connect Garage61.",
+                        "auth_expired": True,
+                    })
                 except Exception as exc:
                     q.put({"type": "error", "detail": str(exc)})
 

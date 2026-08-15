@@ -169,7 +169,10 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
                   <ProgressBar current={syncProgress.current} total={syncProgress.total} />
                 </div>
               )}
-              {syncError && <div className="error" style={{ marginTop: "0.6rem" }}>{syncError}</div>}
+              {syncError && (syncError.includes("sign-in expired")
+                ? <div className="reason" style={{ marginTop: "0.6rem" }}>Garage61 sign-in expired. <a className="btn small" href="/api/auth/garage61/login">Reconnect</a></div>
+                : <div className="error" style={{ marginTop: "0.6rem" }}>{syncError}</div>
+              )}
               {syncResult && (
                 syncResult.length === 0 ? (
                   <div className="dim" style={{ fontSize: "0.82rem", marginTop: "0.6rem" }}>

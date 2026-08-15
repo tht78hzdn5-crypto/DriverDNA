@@ -194,3 +194,63 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
   `/var/lib/driverdna/backups/`. Pull one to your own machine occasionally —
   the dated Driver-Model history and chat/coach transcripts are the
   irreplaceable rows.
+
+---
+
+## Part G — Troubleshooting
+
+BUG-018 was lost because journald defaulted to volatile storage — the service
+crashed (or refused to start), and the evidence vanished on the next reboot.
+The steps below make that impossible going forward.
+
+### 1. Enable persistent journal storage
+
+Without this, `journalctl -u driverdna` shows nothing after a reboot.
+
+```bash
+sudo mkdir -p /etc/systemd/journald.conf.d
+sudo cp /opt/driverdna/DriverDNA/deploy/journald-driverdna.conf \
+    /etc/systemd/journald.conf.d/
+sudo systemctl restart systemd-journald
+```
+
+Verify: `journalctl --disk-usage` should report a non-zero archived size after
+the next service restart.
+
+### 2. Service won't start (Cloudflare 1033 / port unreachable)
+
+```bash
+# What the unit thinks happened:
+sudo systemctl status driverdna --no-pager
+sudo journalctl -u driverdna -n 100 --no-pager
+
+# Health probe (if the port is up at all):
+curl -s http://127.0.0.1:8710/health | python3 -m json.tool
+
+# Common causes, most likely first:
+# - auth=false in /health → DRIVERDNA_SESSION_SECRET missing or empty in
+#   /etc/driverdna/driverdna.env. The interlock (A41) refuses a non-loopback
+#   bind without one, and --behind-proxy makes every bind non-loopback.
+# - "Address already in use" → another process on port 8710.
+# - Import error after pip install → a dependency shifted. Check the traceback.
+```
+
+### 3. Garage61 sync fails with an auth error
+
+A `Garage61AuthError` in the journal means the stored OAuth token expired.
+The SPA shows "Garage61 sign-in expired — reconnect" with a link; the CLI
+prints the same. Reconnect through the OAuth flow at `#/import` → "Connect
+Garage61" (or set a fresh `GARAGE61_TOKEN` in the env file and restart).
+
+### 4. Capturing a full diagnostic snapshot
+
+If the service is misbehaving and you need to share the state:
+
+```bash
+sudo journalctl -u driverdna --since "1 hour ago" --no-pager > ~/driverdna-journal.txt
+sudo systemctl status driverdna --no-pager >> ~/driverdna-journal.txt
+curl -s http://127.0.0.1:8710/health >> ~/driverdna-journal.txt 2>&1
+```
+
+This captures the journal, the unit status, and the health probe in one file.
+**Never include `/etc/driverdna/driverdna.env`** — it contains secrets.
