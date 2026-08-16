@@ -428,6 +428,66 @@ def render_cohort_html(payload: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _reading_md(reading: dict[str, Any] | None) -> list[str]:
+    """A51's reading, mirrored into the static report — the SPA and the
+    report must not read as two different products."""
+    if not reading:
+        return []
+    lines = ["", "## Where you stand", ""]
+    if not reading.get("strongest"):
+        return lines + [f"_{reading.get('verdict_reason', 'no verdict yet')}._", ""]
+    for label, key in (("Strongest", "strongest"), ("Weakest", "weakest")):
+        e = reading[key]
+        lines.append(
+            f"- **{label}: {e['fundamental'].replace('_', ' ')}** — {e['score']:.1f} "
+            f"(confidence {e['confidence']:.2f}, {e['evidence_count']} laps)"
+        )
+        if e.get("basis_reason"):
+            lines.append(f"    - {e['basis_reason']}")
+    lines += [
+        "",
+        f"_{reading['separation_points']:.1f} points apart. Ranked within this "
+        "driver only — never against other drivers, and never against an "
+        "absolute standard. Only measured fundamentals can take a verdict "
+        "slot._",
+        "",
+    ]
+    return lines
+
+
+def _coaching_rollup_md(rollup: dict[str, Any] | None) -> list[str]:
+    if not rollup or not rollup.get("patterns"):
+        return []
+    shown = [p for p in rollup["patterns"] if p["shown"]]
+    suppressed = [p for p in rollup["patterns"] if not p["shown"]]
+    lines = ["", "## Work on this everywhere (cross-track patterns)", ""]
+    if not shown:
+        lines.append(
+            f"_No pattern yet appears at {rollup['min_tracks']} or more tracks._"
+        )
+    for p in shown:
+        lines.append(
+            f"- **{p['coaching_expression']}** — {p['fundamental'].replace('_', ' ')}, "
+            f"{p['n_tracks']} tracks, {p['n_instances']} corners"
+        )
+        if p.get("drill"):
+            lines.append(f"    - _Try this:_ {p['drill']}")
+    strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
+    if strengths:
+        lines += ["", "### Holding up across tracks", ""]
+        for s in strengths:
+            lines.append(
+                f"- {s['strength_expression']} — {s['n_tracks']} tracks, "
+                f"{s['n_instances']} corners"
+            )
+    if suppressed:
+        lines += ["", f"{len(suppressed)} pattern(s) seen at one track only:", ""]
+        for p in suppressed:
+            lines.append(f"- {p['coaching_principle_id']} — {p['gate_reason']}")
+    lines.append("")
+    return lines
+
+
 def render_driver_markdown(payload: dict[str, Any]) -> str:
     lines = ["# DriverDNA — driver rollup", ""]
     for c in payload["cohorts"]:
@@ -435,6 +495,8 @@ def render_driver_markdown(payload: dict[str, Any]) -> str:
             f"- {c['driver']} / {c['car']} @ {c['track']}: {c['n_laps']} laps, "
             f"{c['n_sessions']} sessions"
         )
+    lines += _reading_md((payload.get("driver_model") or {}).get("reading"))
+    lines += _coaching_rollup_md(payload.get("coaching_rollup"))
     lines += ["", "## Cross-track rollups (within car, within class)", "",
               "| car | class | loss s/lap | tracks | status |", "|---|---|---|---|---|"]
     for r in payload["cross_track_rollups"]:
@@ -458,7 +520,67 @@ def render_driver_html(payload: dict[str, Any]) -> str:
             f"<li>{html.escape(c['driver'])} / {html.escape(c['car'])} @ "
             f"{html.escape(c['track'])}: {c['n_laps']} laps</li>"
         )
-    parts.append("</ul><h2>Cross-track rollups (within car, within class)</h2>")
+    parts.append("</ul>")
+
+    reading = (payload.get("driver_model") or {}).get("reading")
+    if reading:
+        parts.append("<h2>Where you stand</h2>")
+        if reading.get("strongest"):
+            parts.append("<ul>")
+            for label, key in (("Strongest", "strongest"), ("Weakest", "weakest")):
+                e = reading[key]
+                basis = (
+                    f"<br><small>{html.escape(e['basis_reason'])}</small>"
+                    if e.get("basis_reason") else ""
+                )
+                parts.append(
+                    f"<li><b>{label}: "
+                    f"{html.escape(e['fundamental'].replace('_', ' '))}</b> — "
+                    f"{e['score']:.1f} (confidence {e['confidence']:.2f}, "
+                    f"{e['evidence_count']} laps){basis}</li>"
+                )
+            parts.append(
+                f"</ul><p><em>{reading['separation_points']:.1f} points apart. "
+                "Ranked within this driver only — never against other drivers, "
+                "and never against an absolute standard. Only measured "
+                "fundamentals can take a verdict slot.</em></p>"
+            )
+        else:
+            parts.append(
+                f"<p><em>{html.escape(reading.get('verdict_reason') or '')}</em></p>"
+            )
+
+    rollup = payload.get("coaching_rollup")
+    if rollup and rollup.get("patterns"):
+        parts.append("<h2>Work on this everywhere (cross-track patterns)</h2><ul>")
+        shown = [p for p in rollup["patterns"] if p["shown"]]
+        if not shown:
+            parts.append(
+                f"<li><em>No pattern yet appears at {rollup['min_tracks']} or "
+                "more tracks.</em></li>"
+            )
+        for p in shown:
+            drill = (
+                f"<br><small><b>Try this:</b> {html.escape(p['drill'])}</small>"
+                if p.get("drill") else ""
+            )
+            parts.append(
+                f"<li><b>{html.escape(p['coaching_expression'])}</b> — "
+                f"{html.escape(p['fundamental'].replace('_', ' '))}, "
+                f"{p['n_tracks']} tracks, {p['n_instances']} corners{drill}</li>"
+            )
+        parts.append("</ul>")
+        strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
+        if strengths:
+            parts.append("<h3>Holding up across tracks</h3><ul>")
+            for s in strengths:
+                parts.append(
+                    f"<li>{html.escape(s['strength_expression'])} — "
+                    f"{s['n_tracks']} tracks, {s['n_instances']} corners</li>"
+                )
+            parts.append("</ul>")
+
+    parts.append("<h2>Cross-track rollups (within car, within class)</h2>")
     shown = [(f"{r['car']} · {r['class']}", r["loss_s"])
              for r in payload["cross_track_rollups"] if r["shown"]]
     if shown:

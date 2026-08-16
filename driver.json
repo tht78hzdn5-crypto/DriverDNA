@@ -175,6 +175,1054 @@
    "no effect: faster and slower laps do not differ here"
   ]
  },
+ "coaching_rollup": {
+  "min_tracks": 2,
+  "n_cohorts": 2,
+  "ontology_version": "coach-onto-v3",
+  "patterns": [
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "fundamental": "rotation",
+    "gate_reason": null,
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C05",
+      "gap_band": "moderate",
+      "magnitude": 0.0832,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0225,
+      "magnitude_kind": "seconds_lost",
+      "n": 4,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C09",
+      "gap_band": "moderate",
+      "magnitude": 0.1493,
+      "magnitude_kind": "seconds_lost",
+      "n": 7,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C13",
+      "gap_band": "negligible",
+      "magnitude": 0.0274,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C14",
+      "gap_band": "major",
+      "magnitude": 0.5906,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C01",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C02",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C08",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     }
+    ],
+    "n_cohorts": 2,
+    "n_instances": 9,
+    "n_tracks": 2,
+    "shown": true,
+    "signal_status": "measured",
+    "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
+    "technique": "coasting"
+   },
+   {
+    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
+    "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
+    "fundamental": "corner_exit",
+    "gate_reason": null,
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C01",
+      "gap_band": "moderate",
+      "magnitude": 0.1269,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C10",
+      "gap_band": "notable",
+      "magnitude": 0.2428,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C04",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     }
+    ],
+    "n_cohorts": 2,
+    "n_instances": 4,
+    "n_tracks": 2,
+    "shown": true,
+    "signal_status": "measured",
+    "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
+    "technique": "throttle_pickup"
+   },
+   {
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "fundamental": "rotation",
+    "gate_reason": null,
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C01",
+      "gap_band": "notable",
+      "magnitude": 0.2691,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C02",
+      "gap_band": "moderate",
+      "magnitude": 0.116,
+      "magnitude_kind": "seconds_lost",
+      "n": 10,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C06",
+      "gap_band": "negligible",
+      "magnitude": 0.0423,
+      "magnitude_kind": "seconds_lost",
+      "n": 9,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0225,
+      "magnitude_kind": "seconds_lost",
+      "n": 5,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C09",
+      "gap_band": "moderate",
+      "magnitude": 0.1493,
+      "magnitude_kind": "seconds_lost",
+      "n": 7,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C13",
+      "gap_band": "negligible",
+      "magnitude": 0.0274,
+      "magnitude_kind": "seconds_lost",
+      "n": 7,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C14",
+      "gap_band": "major",
+      "magnitude": 0.5906,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C01",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C02",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C08",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     }
+    ],
+    "n_cohorts": 2,
+    "n_instances": 11,
+    "n_tracks": 2,
+    "shown": true,
+    "signal_status": "measured",
+    "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
+    "technique": "turn_in"
+   },
+   {
+    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C02",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     },
+     {
+      "car": "Mustang",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C07",
+      "gap_band": "negligible",
+      "magnitude": 0.0,
+      "magnitude_kind": "seconds_lost",
+      "n": 1,
+      "track": "Laguna Seca"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 2,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
+    "technique": "pedal_overlap"
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "fundamental": "consistency",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C01",
+      "gap_band": "major",
+      "magnitude": 1.4001,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 198,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C02",
+      "gap_band": "major",
+      "magnitude": 2.7236,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 104,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C03",
+      "gap_band": "major",
+      "magnitude": 1.361,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 198,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C04",
+      "gap_band": "major",
+      "magnitude": 1.3686,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 148,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C05",
+      "gap_band": "major",
+      "magnitude": 1.2627,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 198,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C06",
+      "gap_band": "major",
+      "magnitude": 1.1312,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 162,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C07",
+      "gap_band": "major",
+      "magnitude": 0.9461,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 78,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C08",
+      "gap_band": "major",
+      "magnitude": 1.4278,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 120,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C09",
+      "gap_band": "major",
+      "magnitude": 0.9821,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 128,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C10",
+      "gap_band": "major",
+      "magnitude": 1.2358,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 197,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C11",
+      "gap_band": "major",
+      "magnitude": 1.3857,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 89,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C12",
+      "gap_band": "major",
+      "magnitude": 0.8488,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 59,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C13",
+      "gap_band": "major",
+      "magnitude": 1.3954,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 63,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C14",
+      "gap_band": "major",
+      "magnitude": 1.3518,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 198,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C15",
+      "gap_band": "major",
+      "magnitude": 0.9587,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 18,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C16",
+      "gap_band": "major",
+      "magnitude": 0.8984,
+      "magnitude_kind": "coefficient_of_variation",
+      "n": 59,
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 16,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
+    "technique": "repeatability"
+   },
+   {
+    "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
+    "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
+    "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "fundamental": "rotation",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C01",
+      "gap_band": "notable",
+      "magnitude": 0.2691,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C05",
+      "gap_band": "moderate",
+      "magnitude": 0.0832,
+      "magnitude_kind": "seconds_lost",
+      "n": 11,
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 2,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
+    "technique": "rotation_efficiency"
+   }
+  ],
+  "strengths": [
+   {
+    "coaching_expression": "Let the fronts finish their work before you ask them to steer \u2014 trail the brake in, don't drop it.",
+    "coaching_principle_id": "cp.brake_release.finish_the_front",
+    "drill": "Next session: on medium-speed corners, deliberately delay full brake release ~0.2 s into the corner. Ignore lap time. Feel the car keep pointing at the apex.",
+    "driving_principle": "Front tires can't both decelerate and steer at the limit. Releasing brake pressure well before turn-in unloads the front axle before it has finished slowing the car, so there's no grip left to rotate.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_release.finish_the_front",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your brake release is doing its job \u2014 the fronts stay loaded into the corner instead of being dropped at turn-in.",
+    "technique": "brake_release"
+   },
+   {
+    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_principle_id": "cp.coasting.always_working",
+    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "fundamental": "rotation",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.3333,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.coasting.always_working",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 4,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
+    "technique": "coasting"
+   },
+   {
+    "coaching_expression": "This might be about commitment more than outright speed \u2014 you're giving up entry speed sooner than the corner needs.",
+    "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+    "drill": "Worth testing: hold your entry line half a beat longer and see if the exit actually gets worse.",
+    "driving_principle": "Brake-point timing is an indirect stand-in for entry commitment, not a direct measurement of it \u2014 a moving brake point can mean the driver is protecting margin rather than driving to the corner's actual limit.",
+    "fundamental": "commitment",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.0416,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.0116,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.0039,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.0033,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.002,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.0032,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "proxy",
+    "strength_expression": "Your braking points are settled lap to lap \u2014 which reads as entry commitment, though this one is inferred from brake point rather than measured directly.",
+    "technique": "entry_commitment"
+   },
+   {
+    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.0909,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C02",
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.0909,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C04",
+      "n": 9,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C08",
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C09",
+      "n": 8,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C11",
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C12",
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 12,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
+    "technique": "pedal_overlap"
+   },
+   {
+    "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
+    "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
+    "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "fundamental": "rotation",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C02",
+      "n": 10,
+      "observed": 0.006,
+      "observed_kind": "seconds_lost",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": -0.1778,
+      "observed_kind": "seconds_lost",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.0215,
+      "observed_kind": "seconds_lost",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": -0.3342,
+      "observed_kind": "seconds_lost",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 4,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
+    "technique": "rotation_efficiency"
+   },
+   {
+    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
+    "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
+    "fundamental": "corner_exit",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C04",
+      "n": 9,
+      "observed": 0.4444,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.2222,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C09",
+      "n": 8,
+      "observed": 0.375,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.2727,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
+    "technique": "throttle_pickup"
+   },
+   {
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "fundamental": "rotation",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C04",
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.2727,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.turn_in.one_commitment",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.1818,
+      "observed_kind": "trigger_rate",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 4,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
+    "technique": "turn_in"
+   }
+  ]
+ },
  "cohorts": [
   {
    "car": "GR86",
@@ -300,6 +1348,24 @@
  "driver_model": {
   "beliefs": {
    "braking": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 253,
+      "value": 0.9565,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 596,
+      "value": 0.344,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -309,6 +1375,24 @@
     "trend": "unavailable"
    },
    "commitment": {
+    "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 94,
+      "value": 0.0,
+      "weight": 0.4167
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.5833
+     }
+    },
     "confidence": 0.5,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -318,6 +1402,24 @@
     "trend": "unavailable"
    },
    "consistency": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 2017,
+      "value": 0.3431,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -327,6 +1429,24 @@
     "trend": "unavailable"
    },
    "corner_exit": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 122,
+      "value": 0.6967,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 472,
+      "value": 0.1635,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9497,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -336,6 +1456,24 @@
     "trend": "unavailable"
    },
    "rotation": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 224,
+      "value": 0.4777,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 866,
+      "value": 0.3552,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9196,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -345,6 +1483,24 @@
     "trend": "unavailable"
    },
    "vehicle_management": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 83,
+      "value": 0.0,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
     "confidence": 0.5,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -354,6 +1510,8 @@
     "trend": "unavailable"
    },
    "vision": {
+    "basis_reason": null,
+    "components": {},
     "confidence": 0.0,
     "evidence_count": 0,
     "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
@@ -365,9 +1523,86 @@
   },
   "driver": "owner",
   "note": "model estimate, not a measurement of truth \u2014 confidence and evidence count say how much to trust it; more laps (more sessions, tracks, cars) sharpen it",
+  "reading": {
+   "basis": "rank_within_driver",
+   "excluded_proxy": [
+    "commitment",
+    "vehicle_management"
+   ],
+   "min_confidence": 0.6017,
+   "ordering": [
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "braking",
+     "score": 80.52,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "corner_exit",
+     "score": 65.19,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 60.17,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "commitment",
+     "score": 56.1,
+     "signal_status": "proxy"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "consistency",
+     "score": 34.31,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "vehicle_management",
+     "score": 0.0,
+     "signal_status": "proxy"
+    }
+   ],
+   "reading_version": "read-v1",
+   "separation_points": 46.21,
+   "strongest": {
+    "basis_reason": null,
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "braking",
+    "score": 80.52,
+    "signal_status": "measured"
+   },
+   "verdict_reason": null,
+   "weakest": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "consistency",
+    "score": 34.31,
+    "signal_status": "measured"
+   }
+  },
   "scoring_model_version": "dm-v2",
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 8
+ "payload_version": 9
 }

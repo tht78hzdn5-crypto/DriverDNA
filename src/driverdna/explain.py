@@ -112,6 +112,44 @@ METHODOLOGY: dict[str, str] = {
         "otherwise a naturally-noisy unit would dominate the average "
         "regardless of your actual consistency (SPEC.md A21)."
     ),
+    "model.reading": (
+        "Which fundamentals are your strongest and weakest, ranked against "
+        "each other — not against other drivers, and not against an "
+        "absolute standard. These 0-100 scores are not calibrated to any "
+        "driver population, so calling a number 'good' would be an "
+        "assertion; calling it your highest is a fact about your own "
+        "measurements. Only directly-measured fundamentals can take the "
+        "strongest or weakest slot: a proxy is a step removed from what it "
+        "describes, and naming your greatest weakness from an indirect "
+        "inference would put the least-supported number on the headline."
+    ),
+    "model.basis": (
+        "Some fundamentals are scored on fewer than the three components, "
+        "and for two different reasons. A fundamental that owns no "
+        "detectors or no phase windows can never gain that component — no "
+        "quantity of laps changes it. A fundamental whose detectors simply "
+        "have no rows yet will fill in as you drive. The note on each score "
+        "says which case applies, so a permanent limit is never mistaken "
+        "for a temporary one."
+    ),
+    "coaching.strength": (
+        "A principle you are clearing on real evidence: the detector stayed "
+        "quiet, or your variation stayed under its floor, at a corner where "
+        "there were enough observations to say so. This is the exact "
+        "inverse of how a fault is found — the same tables and the same "
+        "thresholds, read for the opposite outcome — so a strength and a "
+        "fault can never be claimed for the same corner. Thin evidence "
+        "yields no strength at all: a claim that you do something well "
+        "needs more support than a note that something cost you time."
+    ),
+    "coaching.cross_track": (
+        "A coaching pattern seen at more than one track. One track can "
+        "always be a corner you have not learned yet; the same pattern at "
+        "several tracks is a habit you carry with you, which is what makes "
+        "it worth practising deliberately. Patterns seen at a single track "
+        "are still listed, marked with how many tracks they were seen at, "
+        "rather than hidden."
+    ),
     "model.confidence": (
         "How much evidence backs this fundamental's score: sample count "
         "plus session and track/car diversity, each capped at a floor "

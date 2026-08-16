@@ -451,3 +451,40 @@ engine's verdict *exactly*, not merely be "an eligible principle" — the
 mapping is 1:1, so there's nothing for the AI to choose. `unclassified`/
 `external` incidents map to no principle and cannot be explained at all,
 mirroring a `no_signal` fundamental one level down.
+
+## The strength half of the ontology (2026-08-16, SPEC.md A51)
+
+Everything above describes finding what is *wrong*. That is half a coaching
+layer, and it was the half that shipped: all nine seed principles were phrased
+as error modes, and nothing in the engine could say a driver was good at
+anything. `CoachingPrinciple` now also carries `strength_expression`.
+
+**Where the signal comes from — and the trap.** It is tempting to read the
+`negligible` gap band as "does this well". It is not. A `CoachingCandidate`
+exists **only where a gate cleared** — the detector triggers above
+`min_trigger_rate`, the CV sits above its floor. `negligible` therefore means
+*the fault pattern is present and costs almost no time*. Reading it as a
+strength would praise a driver for the exact thing they are worst at.
+
+The real signal is the strict inverse: corners where there **is** evidence and
+the gate stayed shut. That produced no record at all until `eligible_strengths`,
+which walks the same tables, with the same thresholds, for the opposite
+outcome. Because both passes read one gate, a strength and a fault can never be
+claimed for the same (principle, corner) — a test pins exactly that.
+
+Three rules keep a strength as honest as a finding:
+
+- **`no_signal` never becomes a strength.** A self-check exists precisely
+  because nothing was measured; there is nothing to be good at. Enforced by the
+  same rule that stops a confidence value laundering an unmeasured inference.
+- **Thin evidence yields no strength at all** — not a flagged one. A candidate
+  merely sets `thin_evidence`, because "this cost you time" survives being
+  hedged. "You do this well" is a positive claim about the driver and is
+  withheld below `thin_evidence_floor_n` entirely.
+- **`FindingGate` reads the ranker's own words.** Its strength signal is the
+  suppression reason `"no effect: faster and slower laps do not differ here"` —
+  the one gate string that means competence rather than ignorance. Read off the
+  string rather than re-deriving the test, the same discipline `census.py`
+  follows, so the two can never disagree about what "no effect" means.
+
+`silent_count` is untouched. A51 explains that pile; it does not repurpose it.

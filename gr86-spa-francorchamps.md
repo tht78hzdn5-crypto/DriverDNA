@@ -1,6 +1,6 @@
 # DriverDNA report — owner / GR86 @ Spa-Francorchamps
 
-Laps: 11 · sessions: 3 · payload v8. Grouped by racing fundamental; sources are never blended, and every finding keeps its own source tag, N, spread, and evidence IDs.
+Laps: 11 · sessions: 3 · payload v9. Grouped by racing fundamental; sources are never blended, and every finding keeps its own source tag, N, spread, and evidence IDs.
 
 ## Findings
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.model.history import SERIES_VERSION, score_history
+from driverdna.model.reading import READING_VERSION, build_reading
 from driverdna.model.scoring import SCORING_MODEL_VERSION, store_all_beliefs
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 
@@ -57,13 +58,45 @@ def build_model_report(db: Database, config: DriverDNAConfig) -> str:
         ]
         for fid in sorted(FUNDAMENTALS):
             b = beliefs[fid]
-            note = b.insufficient_reason or ""
+            # A51: `basis_reason` accompanies a real score (which components
+            # it rests on, and whether that limit is structural or pending),
+            # where `insufficient_reason` means there is no score at all.
+            # Only one is ever set.
+            note = b.insufficient_reason or b.basis_reason or ""
             lines.append(
                 f"| {fid} | {b.signal_status.value} | {_fmt_score(b.score)} | "
                 f"{_fmt_confidence(b.confidence)} | {b.evidence_count} | "
                 f"{b.trend} | {note} |"
             )
         lines.append("")
+
+        # A51: which end of that table is which. The artifact listed seven
+        # scores and, like the UI before it, never said which was the
+        # driver's strength.
+        reading = build_reading(beliefs, config)
+        lines += [f"### {driver} — strongest and weakest (`{READING_VERSION}`)", ""]
+        if reading["strongest"]:
+            for label, key in (("Strongest", "strongest"), ("Weakest", "weakest")):
+                e = reading[key]
+                lines.append(
+                    f"- **{label}: {e['fundamental']}** — {e['score']:.2f} "
+                    f"(confidence {e['confidence']:.2f}, {e['evidence_count']} laps)"
+                )
+            lines += [
+                "",
+                f"{reading['separation_points']:.2f} points apart. Ranked within "
+                "this driver only — never against other drivers and never "
+                "against an absolute standard, because these scores are not "
+                "calibrated to any driver population. Only measured "
+                "fundamentals take a verdict slot; "
+                f"{len(reading['excluded_proxy'])} proxy fundamental(s) are "
+                "ranked below but never named, since naming a greatest "
+                "weakness from an indirect inference would headline the "
+                "least-supported number here.",
+                "",
+            ]
+        else:
+            lines += [f"Unavailable: {reading['verdict_reason']}.", ""]
 
         history = score_history(db, driver=driver, config=config)
         lines += [

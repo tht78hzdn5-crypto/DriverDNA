@@ -133,6 +133,56 @@ export function FindingRow({ finding, slug }) {
   );
 }
 
+// The strongest/weakest reading (A51). Half of what this product exists to
+// say is "here is what you are good at", and until now it said none of it —
+// #/model rendered seven bare scores and left the driver to do the
+// comparison. Render-only: the ranking, the gate and the wording are all the
+// engine's (model/reading.py), because the UI deriving "your strength is
+// braking" from scores would be the UI computing a measurement.
+export function ReadingPanel({ reading, labels = {}, compact = false }) {
+  if (!reading) return null;
+  const { strongest, weakest, verdict_reason, separation_points } = reading;
+  const name = (e) => labels[e.fundamental] || e.fundamental.replace(/_/g, " ");
+
+  if (!strongest || !weakest) {
+    return (
+      <div className="dim" style={{ fontSize: "0.85rem" }}>
+        {verdict_reason || "Not enough scored fundamentals to rank yet."}
+      </div>
+    );
+  }
+  return (
+    <div className="reading">
+      {[["Strongest", strongest, "strong"], ["Weakest", weakest, "weak"]].map(
+        ([label, entry, cls]) => (
+          <div key={cls} className={`reading-slot ${cls}`}>
+            <div className="reading-label">{label}</div>
+            <div className="reading-head">
+              <FundamentalMark id={entry.fundamental} label={name(entry)} />
+              <span className="reading-name">{name(entry)}</span>
+              <span className="num reading-score">{fmt(entry.score, 0)}</span>
+            </div>
+            {/* A narrow basis is disclosed where the fundamental is NAMED,
+                not a click away — `consistency` is this corpus's weakest on
+                one component of three and the driver should see that here. */}
+            {entry.basis_reason && <div className="reason">{entry.basis_reason}</div>}
+          </div>
+        ),
+      )}
+      {!compact && (
+        <div className="reading-foot">
+          <span className="num">{fmt(separation_points, 1)}</span> points apart
+          {reading.excluded_proxy?.length > 0 && (
+            <> · {reading.excluded_proxy.length} proxy fundamental
+              {reading.excluded_proxy.length === 1 ? "" : "s"} ranked but never a verdict</>
+          )}
+          <Methodology id="model.reading" label="How is this ranked?" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Findings grouped by racing fundamental (A46) rather than by source, and
 // since A48 read *as* coaching: the fundamental's own racing takeaway leads
 // the group, the measurements that triggered it sit one click below it.

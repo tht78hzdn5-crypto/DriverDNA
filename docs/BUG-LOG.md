@@ -583,6 +583,36 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Lesson**: this is the entry that justifies the whole practice of running
   the instrument blind against real laps.
 
+### BUG-028 — Six methodology texts written, none reachable; the guard only checked one direction
+- **Status**: fixed 2026-08-16 · **Severity**: dead-weight · **SPEC**: A51 (found during)
+- **Symptom**: `explain.py` defined `model.adherence`, `model.opportunity`,
+  `model.consistency`, `model.evidence_count`, `baseline.spread` and
+  `baseline.outliers_screened`. Grepping the SPA for each returned **zero**
+  references. Six carefully written driver-facing explanations shipped in the
+  package and could not be reached from any route.
+- **Root cause**: `tests/test_explain.py` checks JSX -> engine (every id a view
+  names must exist in the dict) and nothing checks engine -> JSX. A typo'd id
+  fails loudly; an unused id is silent forever. The three component texts were
+  the most costly case: they explain exactly the decomposition that A14
+  requires a composite score to expose, and the payload was not carrying the
+  components at all, so the texts had nothing to attach to even if a view had
+  wanted them.
+- **Blast radius**: no wrong number and no wrong claim — purely absent
+  explanation. But it is the direct cause of `#/model` reading as seven
+  uninterpretable scores, which is half of what A51 exists to fix.
+- **How it was caught**: an audit of the product against its own stated goal,
+  not by a test. Grepping each defined id against `ui/src/` took one command
+  and nothing had ever run it.
+- **Fix**: the three component texts are now rendered behind each meter's
+  disclosure on `#/model` (A51 work item 1). The remaining three
+  (`model.evidence_count`, `baseline.spread`, `baseline.outliers_screened`)
+  are **still unreferenced** and left open deliberately — they belong to
+  surfaces this change did not touch, and inventing a home for them to clear a
+  grep would be worse than leaving them listed here.
+- **Lesson**: a cross-reference test has two directions and checking one of
+  them feels like checking both. Same shape as BUG-013 — the guard was pinned
+  where the failure was loud, not where it was silent.
+
 ---
 
 ## Patterns worth not repeating
