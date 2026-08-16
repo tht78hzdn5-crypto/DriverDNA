@@ -240,3 +240,78 @@ def test_an_active_session_is_not_evicted_by_age(env, monkeypatch):
     create_session(client)        # forces an eviction
 
     assert not _is_unknown_session(_probe(client, keep))
+
+
+# --- chat session tenant isolation -------------------------------------------
+
+
+def test_chat_session_scoped_to_creating_user(tmp_path):
+    """A chat session created by user A must be invisible to user B.
+
+    Without the user_pk ownership check, any authenticated user who learns
+    another user's 12-hex-char session ID can read/send/confirm on it.
+    """
+    from driverdna.db import Database
+    from driverdna.ui import auth as _auth
+    from driverdna.ui.api import create_app as _create_app
+
+    db_path = tmp_path / "iso.db"
+    config_path = tmp_path / "iso-config.toml"
+    secret = "test-session-secret-for-isolation"
+
+    # Import fixtures first — creates user_pk=1 row and imports data under it.
+    result = CliRunner().invoke(
+        cli_app, ["import", str(FIXTURES_DIR), "--db", str(db_path)]
+    )
+    assert result.exit_code == 0, result.output
+
+    # Set a password on the default user (pk=1) so we can log in as user A,
+    # and create user B as a separate account.
+    with Database.open(db_path) as db:
+        with db.conn:
+            db.conn.execute(
+                "UPDATE users SET email='user-a@test.com', password_hash=? WHERE user_pk=1",
+                (_auth.hash_password("pass-a"),),
+            )
+            db.conn.execute(
+                "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+                ("user-b@test.com", _auth.hash_password("pass-b")),
+            )
+
+    app = _create_app(
+        db_path, config_path,
+        session_secret=secret,
+        chat_provider_factory=lambda: MockProvider([{"text": "hello"}]),
+    )
+    client = TestClient(app)
+
+    # User A (pk=1, owns the imported data) logs in and creates a chat session.
+    r = client.post("/api/auth/login", json={"email": "user-a@test.com", "password": "pass-a"})
+    assert r.status_code == 200
+    cookie_a = r.cookies[_auth.SESSION_COOKIE]
+
+    r = client.post(
+        "/api/chat/sessions",
+        json={"cohort": SPA_SLUG, "driver": "owner"},
+        cookies={_auth.SESSION_COOKIE: cookie_a},
+    )
+    assert r.status_code == 200, r.text
+    session_id = r.json()["session_id"]
+
+    # User B logs in and tries to access user A's session.
+    r = client.post("/api/auth/login", json={"email": "user-b@test.com", "password": "pass-b"})
+    assert r.status_code == 200
+    cookie_b = r.cookies[_auth.SESSION_COOKIE]
+
+    r = client.post(
+        f"/api/chat/sessions/{session_id}/messages",
+        json={"text": "hi"},
+        cookies={_auth.SESSION_COOKIE: cookie_b},
+    )
+    assert r.status_code == 404, "user B must not access user A's chat session"
+
+    r = client.post(
+        f"/api/chat/sessions/{session_id}/confirm/0",
+        cookies={_auth.SESSION_COOKIE: cookie_b},
+    )
+    assert r.status_code == 404, "user B must not confirm on user A's chat session"

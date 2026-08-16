@@ -354,14 +354,9 @@ def test_status_never_reveals_the_passphrase(guarded):
     assert TOKEN not in guarded.get("/api/auth/status").text
 
 
-def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tmp_path):
-    """A second Google sign-in for an existing user must end the prior session
-    (SPEC.md A41: session-per-device inconsistency). The OAuth path must bump
-    session_epoch just like the password login path does."""
-    import json as _json
-    from unittest.mock import MagicMock, patch
-
-    client = TestClient(
+def _google_oauth_client(db_path, tmp_path):
+    """Helper: build a TestClient with Google OAuth configured."""
+    return TestClient(
         create_app(
             db_path, tmp_path / "config.toml",
             session_secret=TOKEN,
@@ -371,15 +366,26 @@ def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tm
         follow_redirects=False,
     )
 
-    # First login via password → captures old session cookie.
-    r = client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
-    assert r.status_code == 200
-    old_cookie = r.cookies[auth.SESSION_COOKIE]
 
-    # Verify old cookie is valid.
-    assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 200
+def _do_google_login(client):
+    """Drive the full Google OAuth flow (login → state cookie → mocked callback).
 
-    # Mock Google's token + tokeninfo endpoints so the callback never hits the wire.
+    Returns the callback response with the session cookie set.
+    """
+    import json as _json
+    from unittest.mock import MagicMock, patch
+
+    # Step 1: hit /login to get the state cookie + redirect URL.
+    r = client.get("/api/auth/google/login")
+    assert r.status_code == 307
+    state_cookie = r.cookies.get("_google_oauth_state")
+    assert state_cookie, "login must set the _google_oauth_state cookie"
+    # Extract the state param from the redirect URL.
+    from urllib.parse import parse_qs, urlparse
+    qs = parse_qs(urlparse(r.headers["location"]).query)
+    state = qs["state"][0]
+
+    # Step 2: mock Google's token + tokeninfo endpoints.
     def _mock_urlopen(req):
         m = MagicMock()
         url = req.full_url
@@ -394,11 +400,65 @@ def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tm
         return m
 
     with patch("urllib.request.urlopen", _mock_urlopen):
-        r2 = client.get("/api/auth/google/callback?code=abc")
-    assert r2.status_code == 200  # HTML meta-refresh page, not a redirect
+        r2 = client.get(
+            f"/api/auth/google/callback?code=abc&state={state}",
+            cookies={"_google_oauth_state": state_cookie},
+        )
+    return r2
+
+
+def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tmp_path):
+    """A second Google sign-in for an existing user must end the prior session
+    (SPEC.md A41: session-per-device inconsistency). The OAuth path must bump
+    session_epoch just like the password login path does."""
+    client = _google_oauth_client(db_path, tmp_path)
+
+    # First login via password -> captures old session cookie.
+    r = client.post("/api/auth/login", json={"email": "driver@driverdna.com", "password": TOKEN})
+    assert r.status_code == 200
+    old_cookie = r.cookies[auth.SESSION_COOKIE]
+    assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 200
+
+    r2 = _do_google_login(client)
+    assert r2.status_code == 200
 
     # Old cookie must now be rejected — epoch was bumped by the OAuth sign-in.
     assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 401
+
+
+def test_google_oauth_login_sets_state_cookie(db_path, tmp_path):
+    """The login redirect must include a state param and set a signed cookie."""
+    client = _google_oauth_client(db_path, tmp_path)
+    r = client.get("/api/auth/google/login")
+    assert r.status_code == 307
+    assert "_google_oauth_state" in r.cookies
+    from urllib.parse import parse_qs, urlparse
+    qs = parse_qs(urlparse(r.headers["location"]).query)
+    assert "state" in qs, "redirect URL must include state param"
+
+
+def test_google_oauth_callback_rejects_missing_state_cookie(db_path, tmp_path):
+    """Callback without the state cookie is a CSRF attempt."""
+    client = _google_oauth_client(db_path, tmp_path)
+    r = client.get("/api/auth/google/callback?code=abc&state=forged", follow_redirects=False)
+    assert r.status_code == 302 or r.status_code == 307
+    assert "missing state cookie" in r.headers.get("location", "").lower() or \
+           r.status_code in (302, 307)
+
+
+def test_google_oauth_callback_rejects_wrong_state(db_path, tmp_path):
+    """A forged state value must be rejected even if the cookie is present."""
+    client = _google_oauth_client(db_path, tmp_path)
+    r = client.get("/api/auth/google/login")
+    state_cookie = r.cookies.get("_google_oauth_state")
+    r2 = client.get(
+        "/api/auth/google/callback?code=abc&state=wrong-forged-state",
+        cookies={"_google_oauth_state": state_cookie},
+        follow_redirects=False,
+    )
+    assert r2.status_code in (302, 307)
+    assert "state mismatch" in r2.headers.get("location", "").lower() or \
+           r2.status_code in (302, 307)
 
 
 def test_google_enabled_reflects_configuration_not_the_secret(db_path, tmp_path):

@@ -536,28 +536,56 @@ def create_app(
     def google_login(request: Request) -> Response:
         if not google_client_id:
             raise HTTPException(400, "Google OAuth not configured")
-            
+        if not session_secret:
+            raise HTTPException(400, "session secret required for Google OAuth")
+
         import urllib.parse
+
         url_obj = request.url_for("google_callback")
         if _is_https(request):
             url_obj = url_obj.replace(scheme="https")
-            
+
+        state = secrets.token_urlsafe(32)
+        from driverdna.coach.keystore import encrypt_api_key
+        ct, nonce = encrypt_api_key(state, session_secret=session_secret)
+        state_cookie = f"{ct}.{nonce}"
+
         url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode({
             "client_id": google_client_id,
             "redirect_uri": str(url_obj),
             "response_type": "code",
             "scope": "openid email profile",
             "access_type": "online",
+            "state": state,
         })
-        return RedirectResponse(url)
+        response = RedirectResponse(url)
+        response.set_cookie(
+            "_google_oauth_state", state_cookie,
+            max_age=600, httponly=True, samesite="lax",
+            secure=_is_https(request), path="/api/auth/google/callback",
+        )
+        return response
 
     @app.get("/api/auth/google/callback")
-    def google_callback(code: str, request: Request) -> Response:
+    def google_callback(code: str, state: str, request: Request) -> Response:
         if not google_client_id or not google_client_secret or not session_secret:
             raise HTTPException(400, "Google OAuth not configured")
 
         import urllib.request
         import urllib.parse
+
+        state_cookie = request.cookies.get("_google_oauth_state")
+        if not state_cookie:
+            return _google_error_redirect("missing state cookie — try again")
+        try:
+            ct, nonce = state_cookie.rsplit(".", 1)
+            from driverdna.coach.keystore import decrypt_api_key
+            expected_state = decrypt_api_key(ct, nonce, session_secret=session_secret)
+        except Exception:
+            return _google_error_redirect("invalid state cookie — try again")
+
+        if not secrets.compare_digest(state, expected_state):
+            return _google_error_redirect("state mismatch — possible CSRF")
 
         try:
             url_obj = request.url_for("google_callback")
@@ -638,6 +666,9 @@ def create_app(
                 samesite="lax",
                 secure=_is_https(request),
                 path="/",
+            )
+            response.delete_cookie(
+                "_google_oauth_state", path="/api/auth/google/callback",
             )
             return response
 
@@ -1923,9 +1954,12 @@ def create_app(
         if entry is not None:
             entry["db"].close()
 
-    def _touch_chat_session(session_id: str) -> dict[str, Any]:
+    def _touch_chat_session(session_id: str, request: Request) -> dict[str, Any]:
         entry = chat_sessions.get(session_id)
         if entry is None:
+            raise HTTPException(404, detail=f"unknown chat session: {session_id}")
+        user_pk = getattr(request.state, "user_pk", 1)
+        if entry.get("user_pk") is not None and entry["user_pk"] != user_pk:
             raise HTTPException(404, detail=f"unknown chat session: {session_id}")
         entry["touched"] = time.monotonic()
         return entry
@@ -1961,8 +1995,10 @@ def create_app(
         except Exception:
             db.close()
             raise
+        user_pk = getattr(request.state, "user_pk", None)
         chat_sessions[session_id] = {
             "session": session, "db": db, "touched": time.monotonic(),
+            "user_pk": user_pk,
         }
         _evict_chat_sessions()
         return {
@@ -1971,27 +2007,22 @@ def create_app(
             "bundle_version": session.bundle["bundle_version"],
         }
 
-    def _get_session(session_id: str) -> ChatSession:
-        return _touch_chat_session(session_id)["session"]
+    def _get_session(session_id: str, request: Request) -> ChatSession:
+        return _touch_chat_session(session_id, request)["session"]
 
     @app.post("/api/chat/sessions/{session_id}/messages")
     def chat_message(session_id: str, body: ChatMessageBody, request: Request) -> StreamingResponse:
-        session = _get_session(session_id)
+        session = _get_session(session_id, request)
 
         def events():
-            # SSE progress states (UI-SPEC decision 4): thinking ->
-            # consulting_tool* -> validating -> response|error. No text
-            # streams token-by-token — the validated reply arrives whole in
-            # the terminal "response" event, or "error" replaces it, never
-            # retracted partial text.
             for event in session.ask_stream(body.text):
                 yield f"data: {json.dumps(event, sort_keys=True)}\n\n"
 
         return StreamingResponse(events(), media_type="text/event-stream")
 
     @app.post("/api/chat/sessions/{session_id}/confirm/{index}")
-    def chat_confirm(session_id: str, index: int) -> dict[str, Any]:
-        session = _get_session(session_id)
+    def chat_confirm(session_id: str, index: int, request: Request) -> dict[str, Any]:
+        session = _get_session(session_id, request)
         try:
             return session.confirm(index)
         except IndexError as e:
