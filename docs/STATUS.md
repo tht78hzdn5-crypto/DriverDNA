@@ -1,5 +1,66 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-16 (A51 — strengths, score decomposition, and
+driver-level coaching; BUG-028 filed).**
+
+- **What prompted it:** an audit of the build against its own stated goal —
+  "make it obvious what your strengths and weaknesses are, in coaching
+  language". Scored 0/10 on strengths (the word occurred **zero** times in
+  `src/` and `ui/src/`; all nine principles error-framed), 4/10 on weaknesses
+  (scores rendered with no ordering, no anchor, no decomposition), 7/10 on
+  what-to-work-on (excellent per cohort, nonexistent driver-wide).
+- **Score decomposition (A14 gap closed):** `Belief` now carries the three
+  components it was computing and discarding, each with value, `n`, and the
+  share it carried after redistribution.
+- **`basis_reason`:** explains a narrow basis and distinguishes **structural**
+  from **pending**. A fundamental owning no detectors can never gain adherence;
+  saying "not yet" would be a lie. This is what makes `vehicle_management`'s
+  bare `0.0` honest — it now reads "scored on one component; only 1 of its 4
+  techniques carries a telemetry signal".
+- **`model/reading.py` (`read-v1`):** names a strongest and weakest.
+  **Rank-only** (these scores are calibrated against no driver population, so
+  an absolute band would be asserted, not earned) and **measured-only** (a
+  proxy at 0.0 would otherwise become "your greatest weakness", headlining the
+  least-supported number in the system). Gated on `reading_min_scored` (3) and
+  `reading_min_separation` (10.0), each stating its reason.
+- **Coaching strengths:** `strength_expression` on all eight measured/proxy
+  principles + `eligible_strengths`. **A `negligible` band is not a strength** —
+  a candidate exists only where a gate *cleared*, so `negligible` means the
+  fault is present but cheap; the signal is the inverse pass, which produced no
+  record before. Strengths require the full `thin_evidence_floor_n`, stricter
+  than a candidate's flag.
+- **`coaching/rollup.py`:** driver-level coaching. *A principle firing at more
+  than one track is the driver, not the track.* Reuses
+  `gates.min_tracks_for_rollup`; single-track patterns are suppressed **with
+  reason**, never dropped; no magnitude is ever combined across cohorts.
+- **On the real corpus:** strongest braking 80.5, weakest consistency 34.3
+  (46.2 points apart), and coasting confirmed as a genuine cross-track habit
+  (2 tracks, 9 corners) with its drill on driver home.
+- **Versions:** `PAYLOAD_VERSION` 8→9, `ONTOLOGY_VERSION` →`coach-onto-v3`,
+  `READING_VERSION` `read-v1` new. `SCORING_MODEL_VERSION` **unchanged**
+  (`dm-v2`) — no score moved.
+- **Number-neutrality proven, not asserted:** both payloads regenerated on a
+  clean `main` worktree and diffed as numeric multisets — **zero numbers lost**
+  in any of the three payloads; `payload_version` is the only value that moved
+  anywhere.
+- **BUG-028 filed:** six `explain.py` texts written and referenced by no view
+  (`test_explain.py` checks JSX→engine only). The three component texts are now
+  live; the other three remain open deliberately.
+- **Environment fix (not a repo change):** the 26 browser tests had been
+  skipping here on BUG-025's mismatch (image ships Chromium 1194, this
+  Playwright resolves 1234) plus an unbuilt SPA. Bridged the path and built the
+  SPA; the render-parity crawler is running again, which this change needed.
+- **Deferred, with reasons stated in A51:** CV band saturation
+  (`cv_band_major` 0.5 vs observed 0.849–2.724 → all 16 repeatability items
+  band "major") and headline eligibility (`consistency` can never headline).
+  Both move engine numbers.
+- **Verified counts:** `python3 -m pytest` → **1035 passed, 16 skipped, 0
+  failed** (SQLite backend, 8m39s). All 16 skips are Postgres-absent; **zero
+  browser skips** — the 26 browser tests ran. `ruff check .`: clean.
+  `npm run lint`: 0 errors, 6 pre-existing warnings. `npm run build`: clean.
+
+---
+
 **Snapshot date: 2026-08-15 (BUG-018 closed-undiagnosed, BUG-027 fixed,
 persistent journald for future crash diagnosis).**
 

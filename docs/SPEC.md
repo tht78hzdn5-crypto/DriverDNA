@@ -2660,3 +2660,85 @@ Accepted at owner plan review; rationale recorded in the review:
   Number-neutral on committed fixtures (all complete laps). Stale Cloud Run
   references in `api.py` comments cleaned up (A40 retired it). BUG-026 (SSE
   heartbeat) separately fixed and merged.
+
+- **A51** (2026-08-16): **The reading, the strength layer, and driver-level
+  coaching — half the product's stated purpose, built.** The goal DriverDNA
+  exists to serve is "make it obvious what your strengths and weaknesses are,
+  in coaching language". An audit against the bundled 12-lap corpus found the
+  strengths half entirely absent — the word did not occur once in `src/` or
+  `ui/src/`, all nine coaching principles were phrased as error modes, and
+  `#/model` rendered seven bare scores with no ordering, no anchor and no
+  decomposition. Driver home, the page opened first, carried **no coaching
+  content whatever**, because coaching was computed per (car, track) and had no
+  driver-level form. Five changes, all additive:
+
+  1. **Scores are decomposable.** `Belief` now carries the three components
+     (`adherence`/`opportunity`/`consistency`) it was already computing and
+     discarding, each with its value, its observation count, and the share it
+     actually carried *after* redistribution. Closes a standing A14 gap
+     ("always decomposable to the sources; never opaque") and wires up three
+     `explain.py` texts that had been written for exactly these components and
+     referenced by no view at all (see BUG-028).
+
+  2. **`basis_reason` explains a narrow basis, and distinguishes two causes.**
+     A component is absent either structurally (the fundamental owns no
+     detectors, or no phase windows — no quantity of laps will change it) or
+     because evidence has not arrived yet. Conflating them would tell a driver
+     more laps will widen a basis that can never widen. This is what turns
+     `vehicle_management`'s bare `0.0` — which reads as total failure — into
+     "scored on one component, and only 1 of its 4 techniques carries a
+     telemetry signal at all".
+
+  3. **`model/reading.py` (`read-v1`) names a strongest and weakest.**
+     Rank-only and **measured-only**. Rank-only because these 0-100 scores are
+     not calibrated against any driver population, so an absolute band would be
+     asserted rather than earned (owner decision; revisit only if a calibration
+     corpus exists). Measured-only because `vehicle_management` scores 0.0 off a
+     single proxy component and, ranked naively, becomes "your greatest
+     weakness" — headlining the least-supported number in the system. Proxies
+     stay in the ordering, marked, never in a verdict slot. Gated on
+     `model.reading_min_scored` (3) and `model.reading_min_separation` (10.0
+     points), each stating its reason when it declines.
+
+  4. **Coaching gained a strength half.** `CoachingPrinciple` gains
+     `strength_expression` (measured/proxy only — a `no_signal` self-check can
+     never become a strength), and `eligible_strengths` walks the same tables
+     and thresholds as `eligible_principles` for the opposite outcome.
+     **The mechanism matters:** a `negligible` gap band is *not* a strength —
+     a candidate only exists where a gate CLEARED, so `negligible` means "the
+     fault is present but costs little". The real signal is the inverse, which
+     produced no record at all before this. `silent_count` is unchanged; it is
+     explained, not repurposed. A strength requires the full
+     `thin_evidence_floor_n`, stricter than a candidate, which merely flags
+     thin evidence — a positive claim about the driver deserves more support
+     than a note that something cost time. For `FindingGate` principles the
+     signal is the ranker's own `"no effect: faster and slower laps do not
+     differ here"`, the one suppression reason meaning competence rather than
+     ignorance, read off its string rather than re-derived.
+
+  5. **`coaching/rollup.py` aggregates coaching to driver level.** Organising
+     idea: **a principle that fires at more than one track is the driver, not
+     the track.** Gated on the existing `gates.min_tracks_for_rollup` rather
+     than a second threshold; below it a pattern is listed and suppressed with
+     its reason, exactly as `cross_track_rollups` does. **No magnitude is ever
+     combined across cohorts** — seconds, trigger rates and CVs are different
+     units and a total over them would be a number the engine invented; every
+     instance keeps its own car, track, corner and value.
+
+  Surfaced on `#/model` (the reading above the pyramid; components behind each
+  meter's existing disclosure), on driver home (the reading, the top
+  cross-track pattern with its drill, and any cross-track strength), and
+  mirrored into `driver.md`/`driver.html` and `docs/driver-model-report.md`.
+  `PAYLOAD_VERSION` 8→9, `ONTOLOGY_VERSION` `coach-onto-v2`→`coach-onto-v3`.
+  `SCORING_MODEL_VERSION` deliberately **unchanged** at `dm-v2`: no score
+  moves. **Proven, not asserted** — both payloads regenerated on a clean `main`
+  checkout and diffed as numeric multisets: zero numbers lost anywhere, and the
+  only value that moved in any of the three payloads is `payload_version`
+  itself.
+
+  Deferred, and still open: the CV band saturation (`cv_band_major` is 0.5
+  against observed 0.849–2.724, so all 16 repeatability items band "major" and
+  the band carries no information) and headline eligibility (`headline_eligible`
+  requires seconds-banding, so `consistency` — the lowest-scoring fundamental,
+  firing at 16 corners — can never be the headline). Both change engine numbers
+  and need their own amendment and model version bump.

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { get, streamGet, streamSync } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
-import { LossBars, Methodology } from "./shared.jsx";
+import { LossBars, Methodology, ReadingPanel, fundamentalLabels } from "./shared.jsx";
 
 // Driver home (UI-SPEC view 1, v2): the rollup and its gates panel. The
 // cohort list moved to the Garage tab; home is purely the driver-wide view.
@@ -157,6 +157,71 @@ function SyncPanel({ onSynced }) {
   );
 }
 
+// A51: the panel that closes driver home's biggest gap. This page used to
+// carry no coaching content at all — tiles, a loss chart, corpus readiness
+// and a Sync button — because coaching was computed per (car, track) and had
+// no driver-level form. Everything here is a straight render of
+// payload.driver_model.reading and payload.coaching_rollup; the SPA composes
+// no sentence and computes no figure of its own.
+function WhereYouStandPanel({ driver }) {
+  const reading = driver?.driver_model?.reading;
+  const rollup = driver?.coaching_rollup;
+  if (!reading && !rollup) return null;
+
+  const labels = fundamentalLabels(driver.driver_model);
+  const patterns = (rollup?.patterns || []).filter((p) => p.shown);
+  const strengths = (rollup?.strengths || []).filter((s) => s.shown);
+  const lede = patterns[0];
+  const win = strengths[0];
+
+  return (
+    <section className="panel grid-span">
+      <p className="eyebrow">Where you stand</p>
+      <ReadingPanel reading={reading} labels={labels} />
+
+      {win && (
+        <div className="fgroup-lede" style={{ marginTop: "1rem" }}>
+          <div className="coach-say">{win.strength_expression}</div>
+          <div className="coach-tags">
+            <span className="chip">{labels[win.fundamental] || win.fundamental.replace(/_/g, " ")}</span>
+            <span className="chip num">
+              {win.n_tracks} tracks · {win.n_instances} corners
+            </span>
+          </div>
+        </div>
+      )}
+
+      {lede ? (
+        <>
+          <p className="eyebrow" style={{ marginTop: "1.2rem", marginBottom: "0.3rem" }}>
+            Work on this everywhere
+          </p>
+          <div className="fgroup-lede">
+            <div className="coach-say">{lede.coaching_expression}</div>
+            <div className="coach-why">{lede.driving_principle}</div>
+            {lede.drill && <div className="coach-drill"><b>Try this:</b> {lede.drill}</div>}
+            <div className="coach-tags">
+              <span className="chip">{labels[lede.fundamental] || lede.fundamental.replace(/_/g, " ")}</span>
+              <span className="chip num">
+                {lede.n_tracks} tracks · {lede.n_instances} corners
+              </span>
+            </div>
+            <Methodology id="coaching.cross_track" label="Why does more than one track matter?" />
+          </div>
+        </>
+      ) : (
+        rollup && (
+          <div className="dim" style={{ fontSize: "0.82rem", marginTop: "1rem" }}>
+            No pattern yet appears at {rollup.min_tracks} or more tracks — drive
+            somewhere else and the habits you carry with you separate from the
+            corners you have not learned.
+          </div>
+        )
+      )}
+    </section>
+  );
+}
+
 function CensusPanel({ census }) {
   if (!census) return null;
   const { n_self_laps, n_reference_laps, confidence_ceiling_pct, next_steps, cohorts } = census;
@@ -286,6 +351,8 @@ export default function DriverHome() {
           <div className="tile"><div className="v dim">…</div><div className="k">Rollups</div></div>
         )}
       </div>
+
+      {driver && <WhereYouStandPanel driver={driver} />}
 
       {!driver && !driverError && <RollupProgress progress={rollupProgress} />}
       {driverError && !coldStart && <section className="panel"><div className="error">{driverError}</div></section>}

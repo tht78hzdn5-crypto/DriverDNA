@@ -21,14 +21,20 @@ from driverdna.attribution.ranker import (
     vs_self_findings,
 )
 from driverdna.coaching.payload import coaching_section
+from driverdna.coaching.rollup import build_coaching_rollup
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.metrics.technique import METRIC_DEFS, summarize
-from driverdna.model.scoring import SCORING_MODEL_VERSION, compute_all_beliefs
+from driverdna.model.reading import build_reading
+from driverdna.model.scoring import (
+    SCORING_MODEL_VERSION,
+    _effective_weights,
+    compute_all_beliefs,
+)
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 8  # +cohort.lap_incomplete, lap_delta_s excludes incomplete (BUG-022)
+PAYLOAD_VERSION = 9  # +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -54,6 +60,29 @@ def list_cohorts(db: Database) -> list[dict[str, str]]:
     return [dict(r) for r in rows]
 
 
+def _components_dict(belief, config: DriverDNAConfig) -> dict[str, Any]:
+    """A51: the score, decomposed, plus why the basis is narrow when it is.
+
+    A14 requires a composite score to be "always decomposable to the
+    sources". These three were computed inside scoring.py and dropped, so
+    `score` reached the driver as an opaque number with no way to open it
+    up. `weight` is the share the component actually carried AFTER
+    redistribution — value x weight, summed, is the score.
+    """
+    effective = _effective_weights(belief.components, config)
+    return {
+        "components": {
+            name: {
+                "value": None if c.value is None else round(c.value, 4),
+                "n": c.n,
+                "weight": round(effective[name], 4),
+            }
+            for name, c in sorted(belief.components.items())
+        },
+        "basis_reason": belief.basis_reason,
+    }
+
+
 def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) -> dict[str, Any]:
     """Per-fundamental beliefs (M6, dm-v1) — driver-level, pooled across ALL
     of the driver's cohorts, so it is identical across every cohort payload
@@ -70,6 +99,10 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
         "driver": driver,
         "scoring_model_version": SCORING_MODEL_VERSION,
         "taxonomy_version": TAXONOMY_VERSION,
+        # A51: which fundamentals are this driver's strength and weakness.
+        # Rank-only and measured-only — see model/reading.py for why a proxy
+        # never takes a verdict slot.
+        "reading": build_reading(beliefs, config),
         "note": (
             "model estimate, not a measurement of truth — confidence and "
             "evidence count say how much to trust it; more laps (more "
@@ -88,6 +121,7 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
                 "evidence_count": b.evidence_count,
                 "trend": b.trend,
                 "insufficient_reason": b.insufficient_reason,
+                **_components_dict(b, config),
             }
             for fid, b in beliefs.items()
         },
@@ -354,6 +388,14 @@ def build_driver_payload(
     _progress({"type": "progress_phase", "phase": "driver_model"})
     driver_model = driver_model_section(db, driver=driver_name, config=config) if driver_name else None
 
+    # A51: driver-level coaching. Until now coaching existed only per
+    # (car, track), so driver home had none at all.
+    _progress({"type": "progress_phase", "phase": "coaching_rollup"})
+    coaching_rollup = (
+        build_coaching_rollup(db, driver=driver_name, config=config, on_progress=on_progress)
+        if driver_name else None
+    )
+
     census_data = None
     if _include_census and driver_name:
         _progress({"type": "progress_phase", "phase": "census"})
@@ -368,6 +410,7 @@ def build_driver_payload(
         "cohorts": [p["cohort"] for p in rollup_payloads],
         "cross_track_rollups": rollups,
         "driver_model": driver_model,
+        "coaching_rollup": coaching_rollup,
         "census": census_data,
         "note": "cross-car claims are computed but never reported in v1",
     }

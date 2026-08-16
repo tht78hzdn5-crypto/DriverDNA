@@ -91,7 +91,7 @@ by this change.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -124,6 +124,15 @@ class Belief:
     insufficient_reason: str | None
     scoring_model_version: str
     taxonomy_version: str
+    #: The three components the score was built from (A51). Computed here all
+    #: along and discarded before this — which left `score` an opaque number,
+    #: against A14's "always decomposable to the sources". Empty for a belief
+    #: that never scored.
+    components: dict[str, "_Component"] = field(default_factory=dict)
+    #: Set when the score rests on fewer than all three components, naming
+    #: which are missing AND why. Distinct from `insufficient_reason`, which
+    #: means there is no score at all; this one accompanies a real number.
+    basis_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -312,6 +321,93 @@ def _weighted_score(
         return None
     total_w = sum(weights[k] for k in available)
     return sum(c.value * weights[k] for k, c in available.items()) / total_w * 100.0
+
+
+def _effective_weights(
+    components: dict[str, _Component], config: DriverDNAConfig
+) -> dict[str, float]:
+    """The share of the score each component ACTUALLY carried, after
+    `_weighted_score`'s redistribution — 0.0 for one with no value.
+
+    Deliberately a second expression of the same rule rather than a
+    refactor of `_weighted_score`: that function's exact arithmetic order
+    produces every committed number, and reassociating it risks moving a
+    last digit for no gain. `test_effective_weights_agree_with_weighted_score`
+    pins the two together instead, so they cannot drift.
+    """
+    weights = {
+        "adherence": config.model.weight_adherence,
+        "opportunity": config.model.weight_opportunity,
+        "consistency": config.model.weight_consistency,
+    }
+    available = {k for k, c in components.items() if c.value is not None}
+    total_w = sum(weights[k] for k in available)
+    return {
+        k: (weights[k] / total_w if k in available and total_w > 0 else 0.0)
+        for k in weights
+    }
+
+
+def _oxford(items: list[str]) -> str:
+    if len(items) == 1:
+        return items[0]
+    return f"{', '.join(items[:-1])} and {items[-1]}"
+
+
+def _basis_reason(
+    fundamental_id: str, components: dict[str, _Component]
+) -> str | None:
+    """Why this score rests on fewer than three components — None when it
+    rests on all three.
+
+    The distinction this function exists to preserve: a component is absent
+    either STRUCTURALLY (the fundamental owns no detectors, or no phase
+    windows — no quantity of laps will ever populate it) or because its
+    evidence has not arrived YET. Wording them the same way would tell a
+    driver that more laps will widen a basis that can never widen.
+    """
+    absent = sorted(k for k, c in components.items() if c.value is None)
+    if not absent:
+        return None
+
+    fundamental = FUNDAMENTALS[fundamental_id]
+    structural: list[str] = []
+    pending: list[str] = []
+    for name in absent:
+        no_detectors = name == "adherence" and not fundamental_detectors(fundamental_id)
+        no_phases = name == "opportunity" and not fundamental.phases
+        (structural if (no_detectors or no_phases) else pending).append(name)
+
+    present = sorted(k for k, c in components.items() if c.value is not None)
+    parts = [f"Scored on {_oxford(present)} alone." if present else "Not scored."]
+
+    if structural:
+        why = []
+        if "adherence" in structural:
+            why.append("no detectors")
+        if "opportunity" in structural:
+            why.append("no phase windows")
+        parts.append(
+            f"This fundamental has {_oxford(why)} of its own, so "
+            f"{_oxford(structural)} can never be measured for it."
+        )
+    if pending:
+        parts.append(f"No {_oxford(pending)} evidence yet — more laps will add it.")
+
+    # A proxy technique IS observed, just indirectly — only no_signal is
+    # genuinely unobservable. Counting proxy as unobservable told the driver
+    # "0 of its 1 techniques carries a telemetry signal" about `commitment`,
+    # a fundamental that had just scored 56.1 off real opportunity evidence.
+    techniques = [t for t in TECHNIQUES.values() if t.fundamental == fundamental_id]
+    blind = sorted(
+        t.id for t in techniques if t.signal_status is SignalStatus.NO_SIGNAL
+    )
+    if blind:
+        parts.append(
+            f"Only {len(techniques) - len(blind)} of its {len(techniques)} techniques "
+            f"carries a telemetry signal — {_oxford(blind)} cannot be observed."
+        )
+    return " ".join(parts)
 
 
 @dataclass(frozen=True)
@@ -580,6 +676,8 @@ def compute_belief(
         trend=_trend(db, driver, fundamental_id, cohorts, config),
         insufficient_reason=None,
         scoring_model_version=SCORING_MODEL_VERSION, taxonomy_version=TAXONOMY_VERSION,
+        components=components,
+        basis_reason=_basis_reason(fundamental_id, components),
     )
 
 

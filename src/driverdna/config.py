@@ -428,6 +428,18 @@ class ModelConfig(_Section):
         "mapped phases considered maximal (scores 0); scaled linearly from 0 "
         "loss (scores 100) to this ceiling.",
     )
+    reading_min_scored: int = Field(
+        default=3,
+        description="Minimum MEASURED fundamentals carrying a score before "
+        "the strongest/weakest reading (A51, read-v1) states a verdict. "
+        "Below this a ranking is noise, and the reading says so instead.",
+    )
+    reading_min_separation: float = Field(
+        default=10.0,
+        description="Minimum score points between the highest and lowest "
+        "measured fundamental before the reading names a strongest and a "
+        "weakest. Closer than this and they are not meaningfully different.",
+    )
     consistency_unit_reference_cv: dict[str, float] = Field(
         default={
             "% lap": 0.007,

@@ -438,6 +438,46 @@ a.btn-primary { color: var(--base); }
   .fbar .track { height: 8px; }
 }
 
+/* --- The reading: strongest / weakest (A51) ----------------------------- */
+/* Colour grammar: the two slots are distinguished STRUCTURALLY (position,
+   label, rule weight) and by the reserved ok/warn hues used nowhere else on
+   this page — never by the interactive accent, which would read as a
+   control. Neither slot is a verdict on the driver; the label says which end
+   of their own range it is, which is all the engine claims. */
+.reading { display: flex; flex-wrap: wrap; gap: 0.9rem; }
+.reading-slot {
+  flex: 1 1 14rem; border: 1px solid var(--line); background: var(--raised);
+  padding: 0.7rem 0.8rem; border-left: 3px solid var(--dim);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+}
+.reading-slot.strong { border-left-color: var(--ok); }
+.reading-slot.weak { border-left-color: var(--warn); }
+.reading-label {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.12em;
+  font-size: 0.66rem; font-weight: 700; color: var(--dim); margin-bottom: 0.35rem;
+}
+.reading-head { display: flex; align-items: center; gap: 0.5rem; }
+.reading-name {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; font-size: 1rem; line-height: 1.1;
+}
+.reading-score { margin-left: auto; font-size: 1.15rem; }
+.reading-slot .reason { margin-top: 0.4rem; }
+.reading-foot { flex: 1 1 100%; color: var(--dim); font-size: 0.76rem; }
+
+/* Score components, behind the meter's disclosure (A51) */
+.cbar { margin-bottom: 0.7rem; }
+.cbar:last-child { margin-bottom: 0; }
+.cbar-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.cbar-name {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em;
+  font-size: 0.74rem; font-weight: 600;
+}
+.cbar-val { margin-left: auto; font-size: 0.9rem; }
+.cbar .track { height: 5px; margin: 0.3rem 0 0.25rem; }
+.cbar .track i { display: block; height: 100%; background: rgba(70, 100, 140, 0.9); border-radius: 2px; }
+.cbar-meta { color: var(--dim); font-size: 0.72rem; }
+
 /* --- Coaching cards (M7) ----------------------------------------------- */
 .coach-headline {
   border: 1px solid var(--line); border-left: 3px solid var(--accent);

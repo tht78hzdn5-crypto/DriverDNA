@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v2"
+ONTOLOGY_VERSION = "coach-onto-v3"
 
 
 @dataclass(frozen=True)
@@ -81,6 +81,10 @@ class CoachingPrinciple:
     band_phase: str | None  # phase to band via cumulative_loss; None = band by CV
     coaching_expression: str | None = None  # measured/proxy only
     drill: str | None = None  # measured/proxy only
+    #: What to say when the driver is CLEARING this principle's gate on real
+    #: evidence (A51). measured/proxy only — a no_signal principle can never
+    #: become a strength, because nothing was measured to be good at.
+    strength_expression: str | None = None
     self_check: SelfCheck | None = None  # no_signal only
     evidence_binding: tuple[str, ...] = field(default_factory=tuple)
 
@@ -109,6 +113,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "full brake release ~0.2 s into the corner. Ignore lap "
                 "time. Feel the car keep pointing at the apex."
             ),
+            strength_expression=(
+                "Your brake release is doing its job — the fronts stay "
+                "loaded into the corner instead of being dropped at turn-in."
+            ),
             evidence_binding=("brake-release-taper", "entry cumulative_loss"),
         ),
         CoachingPrinciple(
@@ -132,6 +140,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "brake before any throttle. Widen that gap if it's "
                 "currently negative."
             ),
+            strength_expression=(
+                "Clean handoff — you're off the brake before you're on the "
+                "throttle, so the car always knows which axle it's working."
+            ),
             evidence_binding=("throttle-brake-overlap", "entry cumulative_loss"),
         ),
         CoachingPrinciple(
@@ -152,6 +164,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "Next session: pick your turn-in point before the corner "
                 "and commit to a single steering input. Ignore lap time; "
                 "count your own corrections."
+            ),
+            strength_expression=(
+                "You're committing to the line — turn-in to apex on one "
+                "input, with no mid-corner renegotiation."
             ),
             evidence_binding=("one-steering-input", "mid cumulative_loss"),
         ),
@@ -175,6 +191,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "it as one continuous build to full throttle — no stabs, "
                 "no lifts."
             ),
+            strength_expression=(
+                "Your throttle pickup is committed — once you open it, it "
+                "stays open, so the rear never has to give grip back."
+            ),
             evidence_binding=("throttle-monotonic", "exit cumulative_loss"),
         ),
         CoachingPrinciple(
@@ -196,6 +216,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "Next session: find where you're on neither pedal "
                 "mid-corner and close that gap by a fraction — brake a "
                 "touch later or pick up throttle a touch sooner."
+            ),
+            strength_expression=(
+                "Almost no coasting here — the car is braking, turning or "
+                "driving nearly all the way through."
             ),
             evidence_binding=("coast-window", "mid cumulative_loss"),
         ),
@@ -223,6 +247,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "entirely. Only chase the number on the speedo at the "
                 "apex."
             ),
+            strength_expression=(
+                "Your mid-corner speed holds up — there's no repeatable gap "
+                "between your quicker and slower laps through the middle."
+            ),
             evidence_binding=("vs-self mid-phase finding",),
         ),
         CoachingPrinciple(
@@ -246,6 +274,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "same way three laps in a row. Ignore lap time; judge "
                 "yourself only on how close the three felt."
             ),
+            strength_expression=(
+                "You're repeating yourself — your inputs land in the same "
+                "place lap after lap, which is what makes pace reproducible."
+            ),
             evidence_binding=("pooled measured-metric coefficient of variation",),
         ),
         CoachingPrinciple(
@@ -268,6 +300,11 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             drill=(
                 "Worth testing: hold your entry line half a beat longer "
                 "and see if the exit actually gets worse."
+            ),
+            strength_expression=(
+                "Your braking points are settled lap to lap — which reads "
+                "as entry commitment, though this one is inferred from brake "
+                "point rather than measured directly."
             ),
             evidence_binding=("brake_point_dist_pct coefficient of variation",),
         ),
