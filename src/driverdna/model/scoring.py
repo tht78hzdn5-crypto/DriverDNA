@@ -371,7 +371,8 @@ def _basis_reason(
         return None
 
     fundamental = FUNDAMENTALS[fundamental_id]
-    structural, pending = [], []
+    structural: list[str] = []
+    pending: list[str] = []
     for name in absent:
         no_detectors = name == "adherence" and not fundamental_detectors(fundamental_id)
         no_phases = name == "opportunity" and not fundamental.phases
