@@ -72,6 +72,116 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
+### BUG-028 — A cold deployment had no browser-only path to its first account
+- **Status**: fixed (2026-08-16) · **Severity**: breaks · **Found**: 2026-08-16,
+  during a manual E2E walkthrough of "new user signs up, imports via Garage61,
+  views their Driver Model" against a fresh local instance (no pre-existing
+  SQLite file).
+- **Symptom**: `POST /api/auth/register` — listed in `PUBLIC_API_PATHS`, so
+  reachable without a session — 404'd with `no DB at <path> — run
+  \`driverdna import\` first` on a deployment where the SQLite file had never
+  been created. Reproduced by pointing `driverdna ui --db <path>` at a path
+  that had never existed and registering through the browser: 404, no
+  account, no way forward from the UI. Login has the same shape but isn't a
+  real gap by itself — an account can only exist once the DB does, so a
+  successful login already implies the DB exists.
+- **Root cause**: `register`'s handler called the shared `open_db(request)`
+  helper, which 404s via `missing_reason(db_path)` whenever the SQLite file
+  is absent — correct for every *read* endpoint, wrong for the one endpoint
+  meant to be reachable before anything exists. `/api/laps/upload` is the
+  only other endpoint that creates the store fresh (`Database.open` creates
+  + migrates on connect), and it requires an authenticated session — which a
+  brand-new driver, on a brand-new deployment, cannot yet have. Register
+  needed the DB; only login-gated upload could create it; nothing could log
+  in without an account. A closed loop with no browser-only entry point.
+- **Blast radius**: only a genuinely cold deployment (no DB file yet) — the
+  owner's own instance already has one, so this never fired there. But it is
+  exactly the failure mode a new-user-signup review would hit first, and the
+  one this repo's multi-user auth code (`ui/src/views/login.jsx`,
+  `src/driverdna/ui/auth.py`) exists to serve.
+- **Fix**: `open_db()` gained a `create_if_missing` flag that skips the
+  `missing_reason` check (Postgres was already unaffected — `missing_reason`
+  returns `None` for a `postgresql://` URL unconditionally, since a hosted
+  store creates its schema on connect); `register` passes it, mirroring how
+  `/api/laps/upload` already bypasses the check by calling `Database.open`
+  directly. Pinned by three tests in the new
+  `tests/test_register_cold_start.py`
+  (`test_register_creates_the_db_when_it_does_not_exist_yet`,
+  `test_registered_user_can_then_log_in`,
+  `test_duplicate_registration_is_still_refused_on_a_cold_db` — the last one
+  guards against the fix accidentally weakening the existing duplicate-email
+  check). All three fail against the pre-fix code (confirmed by reverting the
+  fix and re-running) and pass with it. Confirmed live: registering against a
+  path that had never held a file returned 200 and created the file.
+- **How it was caught**: not by a test — `/api/auth/register` had zero prior
+  test coverage of any kind, cold-start or otherwise. Caught by actually
+  running the signup flow against a genuinely fresh deployment instead of the
+  suite's pre-populated fixture DBs, the same discipline BUG-001 and
+  BUG-025 already established for this repo: a mocked or pre-seeded path
+  proves the code runs, not that a real first-time user can get through it.
+
+### BUG-030 — Import tab's Garage61 Sync section stayed hidden on a token-only deployment
+- **Status**: fixed (2026-08-16) · **Severity**: breaks · **Found**: 2026-08-16,
+  during a manual E2E walkthrough (signup → import → Garage61 sync → Driver
+  Model → cohort/corner drill) run against a real Garage61 account.
+- **Symptom**: on a deployment configured with a bare `GARAGE61_TOKEN` (no
+  `GARAGE61_CLIENT_ID`/`GARAGE61_CLIENT_SECRET` OAuth app registered — the
+  shape `docs/garage61-api.md`'s `sync` documentation describes), the Import
+  tab's entire "Garage61 Sync" panel never rendered, and driver home's `Sync`
+  button was separately unreachable (BUG-028). Combined, a fresh user had **no
+  UI path to their first sync at all** on this deployment shape — only manual
+  CSV upload.
+- **Root cause**: `ui/src/views/upload.jsx` gated the whole Garage61 Sync
+  section on `garage61Enabled` (`/api/auth/status`'s `garage61_enabled`,
+  `garage61_client_id is not None`) — a flag about whether the *OAuth login
+  button* has anything to call. But `runSync()` posts to `/api/sync`, which
+  works off a bare env token with no OAuth app involved
+  (`Garage61Client(token=stored_token) if stored_token else Garage61Client()`,
+  the latter reading `GARAGE61_TOKEN` from the environment). `garage61_linked`
+  (the other flag passed in) also only checked the per-user
+  `garage61_tokens` OAuth table, never the env fallback — so it couldn't
+  compensate.
+- **Fix**: `/api/auth/status`'s `garage61_linked` now also reports `true` when
+  `GARAGE61_TOKEN` is set and no per-user OAuth token is stored — the same
+  fallback `/api/garage61/status` already implemented independently.
+  `upload.jsx`'s gate changed from `garage61Enabled` to
+  `(garage61Enabled || garage61Linked)`, so the section shows whenever sync is
+  actually usable, offering "Sync from Garage61" directly when there's no
+  OAuth app to link. Pinned by
+  `test_garage61_linked_reflects_the_env_token_fallback`
+  (`tests/test_register_cold_start.py`), and confirmed live: `Sync from
+  Garage61` renders on a clean instance with `GARAGE61_TOKEN` set and no
+  OAuth client configured.
+- **How it was caught**: not by a test — nothing exercised this endpoint
+  combination. Caught by actually registering a fresh account and walking the
+  browser flow end to end against a real Garage61 token, the same discipline
+  `docs/LAP-ANALYSIS-PROTOCOL.md` and the Spa blind acceptance test (BUG-001)
+  already established for this repo: run it for real before trusting it.
+
+### BUG-029 — Driver home's Sync button was unreachable until a cohort already existed
+- **Status**: fixed (2026-08-16) · **Severity**: breaks · **Found**: 2026-08-16,
+  same E2E walkthrough as BUG-030.
+- **Symptom**: a signed-in driver with zero laps sees only an "Import laps"
+  link on driver home — no way to trigger a Garage61 sync. The button exists
+  (`SyncPanel` in `ui/src/views/driver.jsx`) but was never reached: the
+  zero-cohort empty state returned early, before `<SyncPanel>` in the render
+  tree.
+- **Root cause**: `driver.jsx`'s `if (coldStart || (cohorts.data &&
+  cohorts.data.length === 0)) { return <empty panel>; }` covered two different
+  situations with one early return — an unreachable store (`coldStart`, where
+  a sync attempt really would 404) and a reachable, merely-empty store (where
+  it would work fine) — and neither branch rendered `SyncPanel`.
+- **Fix**: split the two cases. `coldStart` keeps the plain "Import laps"
+  panel (a sync attempt against a store that doesn't exist would just surface
+  a confusing 404). A reachable store with zero cohorts now also renders
+  `<SyncPanel>`, so a first-time driver can sync before importing anything
+  manually. Confirmed live end-to-end: registered a fresh account on a truly
+  cold DB (via BUG-028's register fix), synced 24 real laps from a real
+  Garage61 account via this exact button on the first visit to driver home.
+- **How it was caught**: same as BUG-028/BUG-030 — a real, browser-driven
+  signup → import → sync walkthrough, not a unit test. No test previously
+  asserted what driver home renders at zero cohorts.
+
 ### BUG-022 — A towed lap's trace duration is used as if it were a lap time
 - **Status**: fixed (2026-08-14, A50) · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
   **scope corrected the same day** after owner input — see "The first filing was

@@ -143,7 +143,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
         <div className="sub">Garage61 CSV exports — the same import as the CLI, from the browser.</div>
       </section>
 
-      {garage61Enabled && (
+      {(garage61Enabled || garage61Linked) && (
         <section className="panel">
           <p className="eyebrow">Garage61 Sync</p>
           {!garage61Linked ? (
