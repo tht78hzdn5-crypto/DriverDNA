@@ -1,5 +1,39 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-16 (BUG-028/029/030 fixed — first-time-signup dead
+ends in the multi-user auth path).**
+
+- **BUG-028/029/030 fixed:** a manual browser E2E walkthrough of "new user
+  signs up, imports via Garage61, views their Driver Model" against a fresh
+  local instance and a real Garage61 account found three real gaps, none
+  previously exercised by any test: (028) `/api/auth/register` 404'd on a
+  genuinely cold deployment because it routed through the same DB-must-exist
+  check every read endpoint uses — `open_db` gained `create_if_missing`,
+  used only by register; (029) driver home's `Sync` button was unreachable
+  until a cohort already existed, because the zero-cohort empty state
+  returned before `<SyncPanel>` rendered; (030) the Import tab's whole
+  "Garage61 Sync" section was gated on `GARAGE61_CLIENT_ID` being configured,
+  hiding it on a token-only deployment even though sync itself only needs
+  `GARAGE61_TOKEN` — `/api/auth/status`'s `garage61_linked` now also reflects
+  that env-token fallback. All three confirmed live: registered a fresh
+  account against a path that had never held a database file, synced 24 real
+  laps from a real Garage61 account through the exact UI button a first-time
+  driver would use, and drilled into both a real 36-lap cohort and a
+  correctly-gated 1-lap cohort. New `tests/test_register_cold_start.py` (4
+  tests, each confirmed to fail against the pre-fix code). Zero
+  engine/scoring code touched. Full record: `docs/BUG-LOG.md`.
+- **Verified counts:** `python3 -m pytest` → 0 failed, exit 0. Progress-mark
+  count: 975 passed, 42 skipped (16 Postgres-absent — expected, no
+  `DRIVERDNA_TEST_DATABASE_URL` in this environment; 26 browser —
+  Playwright 1.62.0 in this fresh environment resolves Chromium revision
+  1234, the image ships 1194, so the suite's own skip guard fires, same
+  shape as BUG-025. Manually re-verified the touched views with Playwright
+  driven directly at `/opt/pw-browsers/chromium` instead, outside the
+  suite). `ruff check .`: clean. `npm run lint`: 0 errors, pre-existing
+  warnings only. `npm run build`: clean.
+
+---
+
 **Snapshot date: 2026-08-15 (BUG-018 closed-undiagnosed, BUG-027 fixed,
 persistent journald for future crash diagnosis).**
 

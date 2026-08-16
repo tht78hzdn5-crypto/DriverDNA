@@ -253,6 +253,11 @@ export default function DriverHome() {
           <p>No laps yet — this instrument has nothing to measure until real laps exist.</p>
           <a className="btn-primary" href="#/upload">Import laps</a>
         </section>
+        {/* coldStart means the store itself isn't reachable yet (SQLite file
+            absent) — Sync would just 404 against it. A zero-cohort store that
+            *is* reachable can still take a first sync, so this is the only
+            place a first-time driver can reach it before any cohort exists. */}
+        {!coldStart && <SyncPanel onSynced={() => setReload((n) => n + 1)} />}
       </div>
     );
   }

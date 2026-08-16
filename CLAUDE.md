@@ -750,6 +750,32 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   850 → 879 passed, 0 failed (+29 tests). Full record: `docs/SPEC.md` A39,
   `docs/STATUS.md`'s 2026-08-03 snapshot.
 
+- **First-time-signup dead ends fixed (2026-08-16, BUG-028/029/030)** — a
+  manual browser E2E walkthrough of "new user signs up, imports via Garage61,
+  views their Driver Model" (against a fresh local instance and a real
+  Garage61 account) found three real gaps in the multi-user auth path that no
+  test had exercised: `/api/auth/register` 404'd on a genuinely cold
+  deployment (no SQLite file yet) because it routed through the same
+  DB-must-exist check every read endpoint uses, leaving no browser-only path
+  to a deployment's first account (`open_db` gained `create_if_missing`,
+  mirroring how `/api/laps/upload` already bypasses the check); driver home's
+  `Sync` button was unreachable until a cohort already existed (an early
+  return in the zero-cohort empty state skipped past `<SyncPanel>` entirely);
+  and the Import tab's whole "Garage61 Sync" section was gated on
+  `GARAGE61_CLIENT_ID` being configured, hiding it on a token-only deployment
+  (bare `GARAGE61_TOKEN`, no OAuth app registered) even though sync itself
+  needs no OAuth client (`/api/auth/status`'s `garage61_linked` now also
+  reflects the env-token fallback, the same one `/api/garage61/status`
+  already had). All three confirmed live end-to-end, not just by test:
+  registered a fresh account against a path that had never held a database
+  file, synced 24 real laps from a real Garage61 account through the exact
+  UI button a first-time driver would use, and drilled into both a real
+  36-lap cohort and a correctly-gated 1-lap cohort. New
+  `tests/test_register_cold_start.py` (4 tests, each confirmed to fail
+  against the pre-fix code). Zero engine/scoring code touched — auth and SPA
+  plumbing only, no `PAYLOAD_VERSION` or model-version bump. Full record:
+  `docs/BUG-LOG.md` BUG-028/029/030.
+
 Update this section as milestones complete.
 
 ## UI layer (docs/UI-SPEC.md)
