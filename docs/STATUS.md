@@ -1,5 +1,65 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-16 (A52 — CV bands recalibrated, any band can
+headline; BUG-029 and BUG-030 fixed). A51 merged as PR #30.**
+
+- **What prompted it:** the two items A51 deferred. They turned out to share a
+  root cause, plus a second instance of it nobody had noticed.
+- **BUG-029 — A42 changed the unit and left every threshold behind.** A42
+  moved `same_lap_twice`'s gate from a **raw** CV to a **per-unit normalized**
+  one, rewrote the config descriptions to say so, and never converted the
+  numbers. `git log -L` shows `d588921` editing `cv_band_major`'s description
+  from "coefficient-of-variation floor" to "normalized-CV floor" while
+  `default=0.50` on the line above went untouched. On the normalized scale
+  `1.0` is exactly unit-typical, so an average driver banded **major** at twice
+  the threshold: all 16 fixture corners banded major and the band carried no
+  information. Second instance in the same commit: `consistency_cv_floor=0.15`,
+  described as "15% above typical", actually meant 85% *better* than typical —
+  the eligibility gate filtered nothing.
+- **Recalibrated to the scale's own anchors**, not fitted to the corpus:
+  floor/moderate `1.15` (the floor's own stated intent), notable `1.50`
+  (midway typical→ceiling), major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so coaching and dm-v2 agree on "as bad as it
+  gets"). `commitment_cv_floor` stays `0.15` — single metric, raw-CV path,
+  always correct.
+- **BUG-030 — the weakest fundamental could never be coached.**
+  `headline_eligible` required seconds-banding, so `same_lap_twice` was
+  excluded from the headline pool permanently. The Driver Model named
+  `consistency` the driver's weakness (34.3, 16 corners) while coaching was
+  structurally incapable of saying so. Now band-only, ranked by a private
+  unit-free `_severity` (magnitude ÷ its own kind's major floor). Ranking on
+  raw magnitude would have compared 0.591 s against CV 2.724 and taken the CV
+  every time — bigger number, not worse problem. `_severity` is test-pinned
+  never to reach the payload.
+- **Effect on the real corpus:** secondary 26 → 20; bands 16/16-major →
+  15 moderate / 3 notable / 2 major; `repeatability` 16 major → 9 moderate plus
+  the one genuine C02 outlier; strengths 7 → 8 principles, because the six
+  corners that fell below the floor were the driver's *most repeatable* and now
+  read as strengths. `same_lap_twice` enters the headline pool and ranks third
+  on severity (1.36 vs 1.69) — eligible at last, correctly just short.
+- **One artifact change that is not a band effect:** the fixture headline moved
+  `cp.turn_in.one_commitment` → `cp.coasting.always_working`. They are exactly
+  tied (same corner C14, same 0.5906, same band, same severity — both band on
+  that corner's `mid` loss); the old `max()` kept declaration order, the new
+  sort breaks ties on `principle_id`. Both deterministic; incidental tiebreak
+  → explicit one.
+- **Versions:** `ONTOLOGY_VERSION` → `coach-onto-v4`. `PAYLOAD_VERSION`
+  unchanged at 9, `SCORING_MODEL_VERSION` unchanged at `dm-v2` — and dm-v2
+  **structurally cannot** move, since it reads `config.model.*` while these are
+  `config.coaching.*`. Verified by a test asserting `scoring.py` contains no
+  `config.coaching` reference, and empirically:
+  `docs/driver-model-report.md` and `docs/census-report.md` regenerate
+  byte-identical.
+- **One brittle test of my own, fixed:** A51's
+  `test_ontology_version_bumped_for_the_new_field` pinned the literal
+  `"coach-onto-v3"`, so it failed on the very next bump. It now pins the
+  guarantee (`!= "coach-onto-v2"`) rather than a version string.
+- **Verified counts:** `python3 -m pytest` → **1062 passed, 16 skipped, 0
+  failed** (SQLite backend, 8m00s). All 16 skips are Postgres-absent; zero
+  browser skips. `ruff check .`: clean.
+
+---
+
 **Snapshot date: 2026-08-16 (A51 — strengths, score decomposition, and
 driver-level coaching; BUG-028 filed).**
 

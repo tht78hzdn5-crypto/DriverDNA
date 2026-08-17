@@ -95,14 +95,28 @@ def _mid_weakness_cohort(db, n_fast=6, n_slow=6, warp_s=0.4):
 
 
 def _braking_cv_cohort(db, n=8):
+    """A genuinely INCONSISTENT cohort: brake point, peak pressure and
+    duration all vary lap to lap.
+
+    Recalibrated for A52. The old fixture varied only the brake point, by
+    `i * 8` samples, and produced a normalized pooled CV of **0.388** — on
+    the corrected scale (1.0 = exactly unit-typical) that is a driver 61%
+    MORE repeatable than typical. It cleared the old 0.15 floor only because
+    that floor was a raw-CV number the A42 normalization left behind, so
+    every corner in existence cleared it. Varying three properties instead
+    of one reaches ~1.22, genuinely above unit-typical, which is what these
+    tests were always meant to describe.
+    """
     for i in range(n):
         lap = one_corner_lap()
         lap.source_path = lap.source_path.with_name(f"brake{i}.csv")
-        shift = i * 8  # bigger shift than test_scoring's, for a real CV
+        shift = i * 40
+        peak = 0.8 - (i % 4) * 0.2
+        duration = 60 + (i % 4) * 80
         lap.brake[:] = 0.0
-        ramp(lap.brake, 600 + shift, 630 + shift, 0.0, 0.8)
-        lap.brake[630 + shift:690 + shift] = 0.8
-        ramp(lap.brake, 690 + shift, 720 + shift, 0.8, 0.0)
+        ramp(lap.brake, 600 + shift, 630 + shift, 0.0, peak)
+        lap.brake[630 + shift:630 + shift + duration] = peak
+        ramp(lap.brake, 630 + shift + duration, 660 + shift + duration, peak, 0.0)
         run_synthetic_lap(db, lap, session_key=f"s{i % 2}")
 
 

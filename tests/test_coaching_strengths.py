@@ -79,7 +79,11 @@ def test_no_signal_principle_never_carries_a_strength_expression():
 
 
 def test_ontology_version_bumped_for_the_new_field():
-    assert ONTOLOGY_VERSION == "coach-onto-v3"
+    """Pins the guarantee ("`strength_expression` did not arrive without a
+    bump"), not a literal. The first draft asserted `== "coach-onto-v3"`,
+    which made every LATER bump fail here for no reason — A52 tripped it one
+    change after it was written."""
+    assert ONTOLOGY_VERSION != "coach-onto-v2"
 
 
 # --- the engine half -------------------------------------------------------

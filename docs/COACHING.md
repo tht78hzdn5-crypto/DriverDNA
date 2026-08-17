@@ -488,3 +488,45 @@ Three rules keep a strength as honest as a finding:
   follows, so the two can never disagree about what "no effect" means.
 
 `silent_count` is untouched. A51 explains that pile; it does not repurpose it.
+
+## Gap bands live on the normalized scale (2026-08-16, SPEC.md A52)
+
+`same_lap_twice` bands on a **per-unit normalized** pooled CV, not a raw one.
+That scale has fixed anchors, and every threshold compared against it must be
+read in those terms:
+
+| value | meaning |
+|---|---|
+| `0.0` | perfectly repeatable |
+| `1.0` | **exactly unit-typical** — dm-v2 scores this component 50 |
+| `2.0` | `consistency_cv_ceiling` — dm-v2 scores it 0 |
+
+So `1.15` means "15% above typical", and `0.15` means "85% *better* than
+typical". A42 changed the quantity from raw to normalized CV, updated these
+descriptions, and left the numbers at their raw-CV values — which is how a
+driver with exactly average consistency came to be told, at every corner,
+that their repeatability was a "major" problem (BUG-029).
+
+**If you touch a CV threshold, state which anchor it sits against.** The
+`major` band is deliberately *equal to* `consistency_cv_ceiling` so the
+coaching layer and the Driver Model agree on what "as bad as it gets" means;
+breaking that equality is a decision, not a tuning.
+
+`commitment_cv_floor` is **not** on this scale. `trust_the_proxy` gates on a
+single metric, so `_corner_candidate` takes the raw-CV path and never
+normalizes. Its `0.15` is a raw CV and is correct as written.
+
+### Any band can headline
+
+`headline_eligible` used to require `magnitude_kind == "seconds_lost"`, which
+permanently excluded `same_lap_twice` — so the Driver Model could name
+`consistency` the driver's weakest fundamental while coaching could never tell
+them to work on it (BUG-030). It now depends on band alone.
+
+Ranking across kinds needs `_severity`: each magnitude as a multiple of the
+`major` floor **for its own kind**, which is unit-free and therefore
+comparable. Ranking on raw `magnitude` would compare seconds against a
+coefficient of variation and always pick the CV, purely because CVs are bigger
+numbers. `_severity` is a private sort key and must stay one — a number with
+no unit has no business in the payload, where the grounding validator would
+let the AI cite it.

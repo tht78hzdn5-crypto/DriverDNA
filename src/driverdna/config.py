@@ -580,22 +580,30 @@ class CoachingConfig(_Section):
         "principle's tone rises to major (loud, headline-eligible).",
     )
     cv_band_moderate: float = Field(
-        default=0.15,
+        default=1.15,
         description="same_lap_twice's normalized-CV floor for moderate tone "
-        "(coach-onto-v2). The CV for each metric is first divided by its "
+        "(coach-onto-v4, SPEC.md A52). Each metric's CV is divided by its "
         "unit's typical scale (config.model.consistency_unit_reference_cv) "
-        "before pooling, so 0.15 means '15% above typical variability for "
-        "that unit' — not a raw CV threshold.",
+        "before pooling, so the scale runs: 0 = perfectly repeatable, 1.0 = "
+        "exactly unit-typical, consistency_cv_ceiling (2.0) = maximally "
+        "inconsistent. 1.15 is therefore '15% above typical' — which is what "
+        "this field's description claimed while the value still said 0.15, a "
+        "raw-CV number A42 never converted when it changed the quantity "
+        "being measured.",
     )
     cv_band_notable: float = Field(
-        default=0.30,
+        default=1.50,
         description="same_lap_twice's normalized-CV floor for notable tone "
-        "(coach-onto-v2); see cv_band_moderate.",
+        "(coach-onto-v4); midway from unit-typical (1.0) to the ceiling "
+        "(2.0). See cv_band_moderate for the scale.",
     )
     cv_band_major: float = Field(
-        default=0.50,
+        default=2.00,
         description="same_lap_twice's normalized-CV floor for major tone "
-        "(coach-onto-v2); see cv_band_moderate.",
+        "(coach-onto-v4). Deliberately equal to "
+        "config.model.consistency_cv_ceiling: that is the point dm-v2 already "
+        "scores this component zero, so the two layers agree on what 'as bad "
+        "as it gets' means. See cv_band_moderate for the scale.",
     )
     commitment_cv_floor: float = Field(
         default=0.15,
@@ -605,15 +613,18 @@ class CoachingConfig(_Section):
         "metric — no unit normalization needed.",
     )
     consistency_cv_floor: float = Field(
-        default=0.15,
-        description="same_lap_twice's trigger (coach-onto-v2): a corner's "
-        "per-unit normalized pooled CV must reach this floor before the "
-        "principle is eligible. Each metric's raw CV is first divided by its "
-        "unit's typical scale (config.model.consistency_unit_reference_cv), "
+        default=1.15,
+        description="same_lap_twice's trigger (coach-onto-v4, SPEC.md A52): a "
+        "corner's per-unit normalized pooled CV must reach this floor before "
+        "the principle is eligible. Each metric's raw CV is first divided by "
+        "its unit's typical scale (config.model.consistency_unit_reference_cv), "
         "then pooled two levels — mean within each unit, then mean across "
-        "units — so no unit dominates purely by metric count. 0.15 = '15% "
-        "above typical variability for any unit' (analogous to dm-v2's fix "
-        "for the identical cross-metric-type bias in SPEC.md A21).",
+        "units — so no unit dominates purely by metric count. On that scale "
+        "1.0 is exactly unit-typical, so 1.15 = '15% above typical "
+        "variability' — the reading this description always claimed while the "
+        "value was still 0.15, i.e. 85% BETTER than typical, which let every "
+        "corner through the gate. Equal to cv_band_moderate: a CV candidate "
+        "that exists is at least moderate.",
     )
     thin_evidence_floor_n: int = Field(
         default=8,

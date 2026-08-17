@@ -85,7 +85,7 @@ def coaching_section(
 ) -> dict[str, Any]:
     candidates = eligible_principles(db, driver=driver, car=car, track=track, config=config)
     strengths = eligible_strengths(db, driver=driver, car=car, track=track, config=config)
-    selection = select_coaching(candidates, strengths)
+    selection = select_coaching(candidates, strengths, config=config)
     return {
         "ontology_version": ONTOLOGY_VERSION,
         "headline": _candidate_dict(selection["headline"]) if selection["headline"] else None,
