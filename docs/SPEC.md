@@ -2742,3 +2742,82 @@ Accepted at owner plan review; rationale recorded in the review:
   requires seconds-banding, so `consistency` — the lowest-scoring fundamental,
   firing at 16 corners — can never be the headline). Both change engine numbers
   and need their own amendment and model version bump.
+
+- **A52** (2026-08-16): **The consistency coaching path's thresholds match the
+  quantity they measure again, and a CV-banded principle can headline.** Both
+  halves were flagged as deferred in A51 and are the same underlying defect.
+
+  **The defect.** A42 (`coach-onto-v2`) changed `same_lap_twice`'s gate from a
+  **raw** coefficient of variation to a **per-unit normalized** one and rewrote
+  the config descriptions to say so — but left every threshold at its raw-CV
+  value. `git log -L` on `config.py` shows commit `d588921` editing the
+  description of `cv_band_major` from "coefficient-of-variation floor" to
+  "normalized-CV floor" while the `default=0.50` beside it never moved. The
+  scale had shifted underneath the numbers:
+
+      0.0  perfectly repeatable
+      1.0  exactly unit-typical      (dm-v2 already scores this component 50)
+      2.0  consistency_cv_ceiling    (dm-v2 scores it 0)
+
+  Against that scale both settings were wrong by roughly an order of magnitude:
+
+  - `consistency_cv_floor = 0.15`, whose own description claimed "15% above
+    typical variability", actually meant 85% *better* than typical — so the
+    eligibility gate filtered **nothing**. All 16 fixture corners cleared it,
+    including the driver's six most repeatable.
+  - `cv_band_major = 0.5` meant a driver with *exactly typical* consistency
+    banded "major" at twice the threshold. All 16 corners banded "major", so
+    the band carried no information and the loudest tone in the vocabulary was
+    the only one it could produce.
+
+  **The fix.** Floor/moderate `1.15` (the floor's own stated intent), notable
+  `1.50` (midway from typical to the ceiling), major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so the coaching layer and dm-v2 agree on what "as
+  bad as it gets" means). The values are anchored to the scale's own semantics
+  and were deliberately **not** fitted to the fixture corpus — 16 corners from
+  one driver is far too thin to calibrate on, and the resulting empty `notable`
+  band on that corpus is an honest property of this driver's data, not a flaw.
+  `commitment_cv_floor` stays at `0.15`: `trust_the_proxy` gates on a single
+  metric, so `_corner_candidate` takes the raw-CV path and never normalizes —
+  that number was always correct and must not be swept along.
+
+  **Headline eligibility.** `headline_eligible` required `magnitude_kind ==
+  "seconds_lost"`, so a CV-banded principle was excluded from the headline pool
+  by construction, permanently. The Driver Model could name `consistency` the
+  driver's weakest fundamental (34.3, lowest measured, firing at 16 corners)
+  while the coaching layer was structurally incapable of ever telling them to
+  work on it. Lifting it exposed why it existed: the ranker took
+  `max(..., key=magnitude)`, comparing 0.591 seconds against a CV of 2.724 and
+  taking the CV every time — not because it was worse, but because CVs are
+  bigger numbers than seconds. Ranking is now band first, then `_severity` —
+  each magnitude as a multiple of the `major` floor **for its own kind**, which
+  is unit-free by construction. `_severity` is a private sort key and
+  deliberately never a payload field: it has no unit, so surfacing it would put
+  a meaningless number in front of the driver and into the grounding
+  validator's number pool where the AI could cite it (test-pinned).
+
+  **Effect on the real fixture corpus.** Secondary items 26 → 20; the six
+  corners that dropped below the floor were the driver's *most repeatable* and
+  now surface as strengths instead (strength principles 7 → 8, `repeatability`
+  among them for the first time). Bands went from 16/16 "major" to 15 moderate
+  / 3 notable / 2 major; `repeatability` alone from 16 "major" to 9 moderate
+  plus the one genuine outlier at C02. `same_lap_twice` now enters the headline
+  pool and ranks third on severity (1.36 vs 1.69) — eligible at last, and
+  correctly just short.
+
+  **One artifact change that is not a band effect, stated so it is not
+  mistaken for one:** the fixture cohort's headline moved from
+  `cp.turn_in.one_commitment` to `cp.coasting.always_working`. They are exactly
+  tied — same corner C14, same magnitude 0.5906, same band, same severity,
+  because both band on that corner's `mid` cumulative loss. The old `max()`
+  kept whichever came first in `PRINCIPLES` declaration order; the new sort
+  breaks ties on `principle_id`. Both are deterministic; the change is from an
+  incidental tiebreak to an explicit one.
+
+  `ONTOLOGY_VERSION` `coach-onto-v3`→`coach-onto-v4`. `PAYLOAD_VERSION`
+  unchanged at 9 (no field added or removed). `SCORING_MODEL_VERSION`
+  unchanged at `dm-v2`, and **structurally cannot** change: dm-v2 reads
+  `config.model.*` only while these are `config.coaching.*` — verified both by
+  a test asserting `scoring.py` contains no `config.coaching` reference and
+  empirically, in that `docs/driver-model-report.md` and
+  `docs/census-report.md` regenerate byte-identical.

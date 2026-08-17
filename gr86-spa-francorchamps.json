@@ -4,18 +4,23 @@
  ],
  "coaching": {
   "headline": {
-   "coaching_expression": "Settle the entry, then one committed input to the apex.",
-   "coaching_principle_id": "cp.turn_in.one_commitment",
+   "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+   "coaching_principle_id": "cp.coasting.always_working",
    "corner_id": "C14",
-   "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
-   "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+   "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+   "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
    "evidence_ids": [
     "obs:24",
     "obs:39",
     "obs:53",
     "obs:66",
     "obs:82",
-    "obs:97"
+    "obs:97",
+    "obs:110",
+    "obs:125",
+    "obs:139",
+    "obs:154",
+    "obs:168"
    ],
    "fundamental": "rotation",
    "gap_band": "major",
@@ -23,11 +28,11 @@
    "magnitude_kind": "seconds_lost",
    "n": 11,
    "signal_status": "measured",
-   "technique": "turn_in",
+   "technique": "coasting",
    "thin_evidence": false
   },
   "headline_reason": null,
-  "ontology_version": "coach-onto-v3",
+  "ontology_version": "coach-onto-v4",
   "secondary": [
    {
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
@@ -75,7 +80,7 @@
      "obs:162"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.4278,
     "magnitude_kind": "coefficient_of_variation",
     "n": 120,
@@ -103,7 +108,7 @@
      "obs:155"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.4001,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -127,7 +132,7 @@
      "obs:167"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3954,
     "magnitude_kind": "coefficient_of_variation",
     "n": 63,
@@ -153,7 +158,7 @@
      "obs:165"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3857,
     "magnitude_kind": "coefficient_of_variation",
     "n": 89,
@@ -179,7 +184,7 @@
      "obs:144"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3686,
     "magnitude_kind": "coefficient_of_variation",
     "n": 148,
@@ -207,7 +212,7 @@
      "obs:157"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.361,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -235,7 +240,7 @@
      "obs:168"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3518,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -263,7 +268,7 @@
      "obs:159"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.2627,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -291,7 +296,7 @@
      "obs:164"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.2358,
     "magnitude_kind": "coefficient_of_variation",
     "n": 197,
@@ -300,164 +305,18 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C06",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:16",
-     "obs:30",
-     "obs:45",
-     "obs:72",
-     "obs:90",
-     "obs:103",
-     "obs:131",
-     "obs:146",
-     "obs:160"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 1.1312,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 162,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C09",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:19",
-     "obs:48",
-     "obs:76",
-     "obs:92",
-     "obs:118",
-     "obs:133",
-     "obs:149",
-     "obs:163"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9821,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 128,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C15",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:63",
-     "obs:121",
-     "obs:136"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9587,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 18,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C07",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:17",
-     "obs:32",
-     "obs:104",
-     "obs:116",
-     "obs:161"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9461,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 78,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C16",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:81",
-     "obs:96",
-     "obs:138",
-     "obs:153"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.8984,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 59,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C12",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:22",
-     "obs:37",
-     "obs:51",
-     "obs:64",
-     "obs:80",
-     "obs:108",
-     "obs:123",
-     "obs:137",
-     "obs:152",
-     "obs:166"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.8488,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 59,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
-    "coaching_principle_id": "cp.coasting.always_working",
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C14",
-    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
-    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
     "evidence_ids": [
      "obs:24",
      "obs:39",
      "obs:53",
      "obs:66",
      "obs:82",
-     "obs:97",
-     "obs:110",
-     "obs:125",
-     "obs:139",
-     "obs:154",
-     "obs:168"
+     "obs:97"
     ],
     "fundamental": "rotation",
     "gap_band": "major",
@@ -465,7 +324,7 @@
     "magnitude_kind": "seconds_lost",
     "n": 11,
     "signal_status": "measured",
-    "technique": "coasting",
+    "technique": "turn_in",
     "thin_evidence": false
    },
    {
@@ -1001,6 +860,104 @@
     "signal_status": "proxy",
     "strength_expression": "Your braking points are settled lap to lap \u2014 which reads as entry commitment, though this one is inferred from brake point rather than measured directly.",
     "technique": "entry_commitment"
+   },
+   {
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "fundamental": "consistency",
+    "instances": [
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 162,
+      "observed": 1.1312,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C07",
+      "evidence_ids": [
+       "obs:17",
+       "obs:32",
+       "obs:104",
+       "obs:116",
+       "obs:161"
+      ],
+      "n": 78,
+      "observed": 0.9461,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C09",
+      "evidence_ids": [
+       "obs:19",
+       "obs:48",
+       "obs:76",
+       "obs:92",
+       "obs:118",
+       "obs:133",
+       "obs:149",
+       "obs:163"
+      ],
+      "n": 128,
+      "observed": 0.9821,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C12",
+      "evidence_ids": [
+       "obs:22",
+       "obs:37",
+       "obs:51",
+       "obs:64",
+       "obs:80",
+       "obs:108",
+       "obs:123",
+       "obs:137",
+       "obs:152",
+       "obs:166"
+      ],
+      "n": 59,
+      "observed": 0.8488,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C15",
+      "evidence_ids": [
+       "obs:63",
+       "obs:121",
+       "obs:136"
+      ],
+      "n": 18,
+      "observed": 0.9587,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C16",
+      "evidence_ids": [
+       "obs:81",
+       "obs:96",
+       "obs:138",
+       "obs:153"
+      ],
+      "n": 59,
+      "observed": 0.8984,
+      "observed_kind": "coefficient_of_variation"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
+    "technique": "repeatability"
    },
    {
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",

@@ -616,6 +616,31 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   Deferred with reasons stated: CV band saturation and headline eligibility
   (both move engine numbers). BUG-028 filed (six `explain.py` texts written,
   none referenced; the cross-reference test only checked JSX→engine).
+- **CV bands recalibrated; any band can headline (2026-08-16, SPEC.md A52)** —
+  the two items A51 deferred, and one defect underneath both. A42 changed
+  `same_lap_twice`'s gate from a **raw** CV to a **per-unit normalized** one,
+  rewrote the config descriptions to say so, and left every threshold at its
+  raw-CV value (`git log -L` shows `d588921` editing `cv_band_major`'s
+  description while `default=0.50` beside it never moved). On the normalized
+  scale `1.0` is exactly unit-typical, so `cv_band_major=0.5` banded an average
+  driver "major" at twice the threshold — all 16 fixture corners banded major,
+  the band carried zero information — and `consistency_cv_floor=0.15`, whose
+  description claimed "15% above typical", actually meant 85% *better* than
+  typical, so the gate filtered nothing (BUG-029). Recalibrated to the scale's
+  own anchors: floor/moderate `1.15`, notable `1.50`, major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so coaching and dm-v2 agree on "as bad as it gets").
+  Anchored to the scale, deliberately **not** fitted to the 16-corner fixture.
+  `commitment_cv_floor` stays `0.15` — single metric, raw-CV path, always
+  correct. Separately, `headline_eligible` required seconds-banding, so the
+  driver's weakest fundamental could never be coached (BUG-030); it now depends
+  on band alone, ranked by a private unit-free `_severity` (magnitude ÷ its own
+  kind's major floor) that is test-pinned never to reach the payload. Real
+  corpus: secondary 26→20, bands 16/16-major → 15 moderate/3 notable/2 major,
+  strengths 7→8 principles (the six most repeatable corners became strengths),
+  and `same_lap_twice` enters the headline pool ranking third. `ONTOLOGY_VERSION`
+  →`coach-onto-v4`; `PAYLOAD_VERSION` and `SCORING_MODEL_VERSION` unchanged —
+  dm-v2 reads `config.model.*` only, proven by test and by
+  `driver-model-report.md`/`census-report.md` regenerating byte-identical.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)

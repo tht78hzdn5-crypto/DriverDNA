@@ -13,11 +13,11 @@ Laps: 11 · sessions: 3 · payload v9. Grouped by racing fundamental; sources ar
 
 ### Rotation
 
-> **Settle the entry, then one committed input to the apex.**
+> **Shrink the coast — the car should always be braking, turning, or driving.**
 >
-> Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to — each one scrubs speed the corner didn't need to lose.
+> Neither pedal working means neither axle is doing anything useful — the car coasts through time that braking, turning, or driving could have used.
 >
-> _Try this:_ Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.
+> _Try this:_ Next session: find where you're on neither pedal mid-corner and close that gap by a fraction — brake a touch later or pick up throttle a touch sooner.
 
 | source | finding | s | n | spread | evidence |
 |---|---|---|---|---|---|

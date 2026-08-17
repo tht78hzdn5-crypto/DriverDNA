@@ -178,7 +178,7 @@
  "coaching_rollup": {
   "min_tracks": 2,
   "n_cohorts": 2,
-  "ontology_version": "coach-onto-v3",
+  "ontology_version": "coach-onto-v4",
   "patterns": [
    {
     "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
@@ -520,7 +520,7 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C01",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.4001,
       "magnitude_kind": "coefficient_of_variation",
       "n": 198,
@@ -540,7 +540,7 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C03",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.361,
       "magnitude_kind": "coefficient_of_variation",
       "n": 198,
@@ -550,7 +550,7 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C04",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.3686,
       "magnitude_kind": "coefficient_of_variation",
       "n": 148,
@@ -560,7 +560,7 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C05",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.2627,
       "magnitude_kind": "coefficient_of_variation",
       "n": 198,
@@ -569,28 +569,8 @@
      {
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C06",
-      "gap_band": "major",
-      "magnitude": 1.1312,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 162,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C07",
-      "gap_band": "major",
-      "magnitude": 0.9461,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 78,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C08",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.4278,
       "magnitude_kind": "coefficient_of_variation",
       "n": 120,
@@ -599,18 +579,8 @@
      {
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C09",
-      "gap_band": "major",
-      "magnitude": 0.9821,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 128,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C10",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.2358,
       "magnitude_kind": "coefficient_of_variation",
       "n": 197,
@@ -620,7 +590,7 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C11",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.3857,
       "magnitude_kind": "coefficient_of_variation",
       "n": 89,
@@ -629,18 +599,8 @@
      {
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C12",
-      "gap_band": "major",
-      "magnitude": 0.8488,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 59,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C13",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.3954,
       "magnitude_kind": "coefficient_of_variation",
       "n": 63,
@@ -650,35 +610,15 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C14",
-      "gap_band": "major",
+      "gap_band": "moderate",
       "magnitude": 1.3518,
       "magnitude_kind": "coefficient_of_variation",
       "n": 198,
       "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C15",
-      "gap_band": "major",
-      "magnitude": 0.9587,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 18,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C16",
-      "gap_band": "major",
-      "magnitude": 0.8984,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 59,
-      "track": "Spa-Francorchamps"
      }
     ],
     "n_cohorts": 1,
-    "n_instances": 16,
+    "n_instances": 10,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
@@ -1043,6 +983,77 @@
     "signal_status": "measured",
     "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
     "technique": "pedal_overlap"
+   },
+   {
+    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "fundamental": "consistency",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C06",
+      "n": 162,
+      "observed": 1.1312,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C07",
+      "n": 78,
+      "observed": 0.9461,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C09",
+      "n": 128,
+      "observed": 0.9821,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C12",
+      "n": 59,
+      "observed": 0.8488,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C15",
+      "n": 18,
+      "observed": 0.9587,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C16",
+      "n": 59,
+      "observed": 0.8984,
+      "observed_kind": "coefficient_of_variation",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
+    "technique": "repeatability"
    },
    {
     "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",

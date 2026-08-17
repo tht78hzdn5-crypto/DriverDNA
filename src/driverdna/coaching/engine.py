@@ -302,7 +302,12 @@ def _corner_candidate(
         corner_id=corner_id, gap_band=band, magnitude=round(magnitude, 4),
         magnitude_kind=magnitude_kind, n=n, thin_evidence=n < cfg.thin_evidence_floor_n,
         evidence_ids=evidence_ids,
-        headline_eligible=(magnitude_kind == "seconds_lost" and band in ("notable", "major")),
+        # A52: no longer restricted to seconds-banded principles. The old
+        # rule made `same_lap_twice` permanently incapable of headlining, so
+        # the Driver Model could name `consistency` the driver's weakest
+        # fundamental while the coaching layer structurally could not tell
+        # them to work on it. Comparing the two units is `_severity`'s job.
+        headline_eligible=band in ("notable", "major"),
     )
 
 
@@ -443,18 +448,58 @@ def eligible_strengths(
     return strengths
 
 
+#: Louder band always outranks a more severe instance of a quieter one.
+_BAND_RANK = {"major": 2, "notable": 1, "moderate": 0, "negligible": -1}
+
+
+def _severity(candidate: CoachingCandidate, cfg) -> float:
+    """How far into its OWN scale this candidate sits — its magnitude as a
+    multiple of the `major` floor for its own `magnitude_kind`.
+
+    Unit-free by construction, which is the only way seconds and a
+    coefficient of variation can share one ranking. Deliberately a private
+    sort key and never a payload field: it has no unit, so surfacing it would
+    put a meaningless number in front of the driver and — worse — into the
+    grounding validator's number pool, where the AI could cite it.
+    """
+    if candidate.magnitude is None:
+        return 0.0
+    if candidate.magnitude_kind == "seconds_lost":
+        ceiling = cfg.gap_band_major_s
+    else:
+        ceiling = cfg.cv_band_major
+    return candidate.magnitude / ceiling if ceiling > 0 else 0.0
+
+
 def select_coaching(
     candidates: list[CoachingCandidate],
     strengths: list[CoachingStrength] | None = None,
+    *,
+    config: DriverDNAConfig | None = None,
 ) -> dict:
     """Group candidates into headline / secondary / silent(count) / self_checks
     — the delivery-tone grouping docs/COACHING.md describes. Deterministic:
     ties broken by (principle_id, corner_id) for reproducibility."""
-    headline_pool = [c for c in candidates if c.headline_eligible]
-    headline = max(
-        headline_pool, key=lambda c: (c.magnitude, c.principle_id, c.corner_id or ""),
-        default=None,
+    cfg = (config or DriverDNAConfig()).coaching
+    # Band first, then severity within it (A52). Ranking on raw `magnitude`
+    # across kinds would compare seconds against a coefficient of variation
+    # and always pick the CV — not because it is worse, but because CVs are
+    # bigger numbers than seconds. Sorted rather than `max` so ties break on
+    # ids the same way `secondary` below already does: deterministic, and
+    # independent of input order.
+    headline_pool = sorted(
+        (c for c in candidates if c.headline_eligible),
+        key=lambda c: (
+            # `gap_band` is None only for no_signal candidates, which are
+            # never headline_eligible and so never reach here — `or ""` keeps
+            # that unreachable case ranking last instead of raising.
+            -_BAND_RANK.get(c.gap_band or "", 0),
+            -_severity(c, cfg),
+            c.principle_id,
+            c.corner_id or "",
+        ),
     )
+    headline = headline_pool[0] if headline_pool else None
     secondary = sorted(
         (
             c for c in candidates
