@@ -437,20 +437,30 @@ def create_app(
 
     @app.post("/api/auth/login")
     def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
-        """Exchange credentials for a signed, expiring session cookie."""
+        """Exchange credentials for a signed, expiring session cookie.
+
+        BUG-034 (SPEC.md A53): the lookup normalizes the typed email the
+        same way `register` does (`strip().lower()`). Text columns are
+        `COLLATE "C"` (A23), so Postgres does not case-fold either — a
+        user who registered as `User@Example.com` was permanently locked
+        out because the stored row was `user@example.com` and login
+        queried the raw string. Reset had the same bug (BUG-034 covers
+        `forgot-password` and the Google callback lookup too).
+        """
         if session_secret is None:
             raise HTTPException(400, detail=f"auth not configured - set {auth.SESSION_SECRET_ENV}")
-        
+
         key = _client_key(request)
         locked = throttle.locked_for(key)
         if locked:
             raise HTTPException(429, detail=f"too many failed attempts — try again in {locked}s")
-            
+
         from datetime import datetime
         session_epoch = datetime.utcnow().isoformat()
-        
+        email = (body.email or "").strip().lower()
+
         with open_db(request) as db:
-            row = db.conn.execute("SELECT user_pk, password_hash FROM users WHERE email=?", (body.email,)).fetchone()
+            row = db.conn.execute("SELECT user_pk, password_hash FROM users WHERE email=?", (email,)).fetchone()
             if not row or not auth.verify_password(body.password, row["password_hash"]):
                 throttle.record_failure(key)
                 raise HTTPException(401, detail="incorrect email or password")
@@ -480,17 +490,22 @@ def create_app(
     def forgot_password(body: ForgotPasswordBody, request: Request) -> dict[str, str]:
         if not all([smtp_host, smtp_port, smtp_user, smtp_password]):
             raise HTTPException(400, detail="SMTP is not configured")
-        
+
         import secrets
         import hashlib
         from datetime import datetime, timedelta
-        
+
         token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         expires_at = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
-        
+        # BUG-034: normalize before both the lookup and the outgoing
+        # email. Sending to the caller's original spelling would leak
+        # the anti-enumeration property when normalization changed the
+        # match — and would let a mistyped-case entry bounce.
+        email = (body.email or "").strip().lower()
+
         with open_db(request) as db:
-            row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (body.email,)).fetchone()
+            row = db.conn.execute("SELECT user_pk FROM users WHERE email=?", (email,)).fetchone()
             if row:
                 user_pk = row["user_pk"]
                 with db.conn:
@@ -498,10 +513,10 @@ def create_app(
                         "INSERT INTO password_resets (user_pk, reset_token_hash, expires_at) VALUES (?, ?, ?)",
                         (user_pk, token_hash, expires_at)
                     )
-        
+
                 from driverdna.ui.email import send_reset_email
                 reset_link = f"{str(request.base_url).rstrip('/')}/reset-password?token={token}"
-                send_reset_email(smtp_host, int(smtp_port), smtp_user, smtp_password, body.email, reset_link)
+                send_reset_email(smtp_host, int(smtp_port), smtp_user, smtp_password, email, reset_link)
 
         # Always return 200 to prevent email enumeration
         return {"status": "ok"}
