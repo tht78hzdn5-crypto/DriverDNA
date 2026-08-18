@@ -777,8 +777,12 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   decisions adopted in A51: registration closes to first-user-only behind the
   Cloudflare Access allowlist, and config becomes **fully per-user**, which
   refines a non-negotiable and therefore ships only with a config fingerprint
-  stored beside every measurement. Open: cross-user comparability of reference
-  laps under per-user thresholds. Full record: `docs/SPEC.md` A51,
+  stored beside every measurement. Five more decisions the same day:
+  reference-derived numbers pin to the reference lap rather than the importing
+  user (referent still to settle); `sync.max_cohorts` 10 → 40 with retention
+  unchanged and tiers rejected; pre-A32 rows reassigned to the live account;
+  finding IDs keep their shape; database snapshots move off the VM. Full
+  record: `docs/SPEC.md` A51,
   `docs/BUG-LOG.md` BUG-028..032, `docs/STATUS.md`'s 2026-08-18 snapshot.
 
 Update this section as milestones complete.

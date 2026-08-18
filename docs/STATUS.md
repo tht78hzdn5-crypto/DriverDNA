@@ -38,8 +38,15 @@ A51). Docs-only change: no code touched, no committed artifact moved.**
   non-negotiable, so it ships only with a fingerprint of the user's effective
   `config_snapshot()` stored beside every measurement — without that,
   "deterministic, versioned, confidence-qualified" stops being verifiable.
-  Left open deliberately: whether reference-derived numbers pin to the
-  reference owner's config or the importing user's.
+  Five further decisions taken the same day: **reference-derived numbers pin to
+  the reference lap, not the importing user** (the most expensive of three
+  options, chosen deliberately — it still needs its referent settled, see A51);
+  **`sync.max_cohorts` 10 → 40** with `raw_laps_per_cohort` staying 100 and
+  audience tiers rejected (the two knobs have opposite audiences, and retention
+  is a ceiling rather than a reservation); **pre-A32 rows reassigned** to the
+  live account, live row wins on collision; **finding IDs keep their shape**,
+  with a guard test instead; and **database snapshots move off the VM** while
+  blob loss is accepted as recoverable.
 - **Capacity, estimated** (867 KB blob + 32-52 KB rows per lap, measured
   2026-07-27; ~153 GB usable after the 47 GB boot volume): roughly **25
   veteran accounts** (40 cohorts at the 100-lap retention cap, ~5.2 GB each

@@ -2763,10 +2763,66 @@ Accepted at owner plan review; rationale recorded in the review:
     fingerprint this change would make "deterministic, versioned,
     confidence-qualified" unverifiable, and must not ship.
 
-  **Open, and deliberately not decided here:** whether reference-derived numbers
-  pin to the reference owner's config or the importing user's, now that two
-  accounts can legitimately disagree about the same shared lap. This question did
-  not exist before per-user thresholds and has no default answer.
+  - **Reference-derived numbers pin to the reference lap, not to the importing
+    user.** With per-user thresholds, two accounts holding the same coach's lap
+    would otherwise disagree about it — there would stop being *the* gap to that
+    lap. The cheaper options were offered and **rejected**: letting the importing
+    user's config win (self-consistent per cockpit, but not comparable) and
+    computing vs-reference findings under instance defaults. Recorded because
+    this is the most expensive of the three and was chosen deliberately.
+
+    **One sub-question must be settled before this can be built, and is named
+    here rather than picked silently:** a reference lap has no account —
+    `laps.driver` is the name on the lap, `owner_user_pk` is the importing
+    account — so "the reference's config" needs a referent. Two readings, and
+    they are not equivalent:
+    (i) **freeze at import** — the lap row carries the effective measurement
+    config it was imported under. Deterministic and simple, but two accounts
+    importing the same lap under different configs still disagree, which does
+    not deliver the comparability this decision was made for;
+    (ii) **canonical reference config** — reference measurement resolves through
+    one instance-level config keyed to the lap's identity (`content_hash` is the
+    existing global handle), so every account computes the same gap.
+    Only (ii) actually satisfies the decision. It is close to the rejected
+    "instance defaults" option, scoped to reference measurement alone — which is
+    worth stating plainly so the choice is made with that in view.
+
+  - **`sync.max_cohorts` default 10 → 40.** A veteran's cohorts past the cap
+    never arrive: A49 orders newest-driven-first and names what it skipped, so it
+    degrades honestly, but an older cohort does not sync unless it is driven
+    again. **Not a model version bump:** `SyncConfig` is ingest scope, and says
+    so — "nothing here changes how a lap is scored", only which laps are offered
+    to the pipeline. `retention.raw_laps_per_cohort` **stays 100**: it is a
+    ceiling, not a reservation, so lowering it saves nothing for the light
+    accounts it was proposed for and only ever bites users past 100 laps in one
+    cohort. **Audience tiers were considered and rejected** — the two knobs have
+    opposite audiences, and one default change does what a tier system would.
+
+  - **Pre-A32 rows are reassigned to the live account** (BUG-032), not stranded.
+    Owner's instruction, with the collision rule stated: where a unique
+    constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
+    real case — **the live account's row wins and `user_pk=1`'s is discarded.**
+    No merge heuristic; the owner explicitly does not want that data preserved
+    at the cost of complexity.
+
+  - **Finding IDs keep their shape** (BUG-028). Partitioning the table closes the
+    defect completely; changing `_finding_id` would orphan every stored citation
+    in annotations, `evidence_cited` and coach outputs for no additional
+    security, and their determinism is a feature. A test asserting **no table is
+    keyed on a bare `finding_id`** is the cheap guard against the next table
+    repeating this.
+
+  - **Database snapshots move off the VM**; blob loss is accepted as recoverable.
+    `deploy/driverdna-backup.service` writes its seven snapshots to the same
+    block volume as the database, which defends against corruption but not
+    against losing the volume — and the database holds the rows that service's
+    own comment calls irreplaceable. Blobs are deliberately *not* backed up:
+    `backfill-blobs` reconstructs them from source CSVs, Garage61 still holds
+    synced laps, the derived phase times survive in the database independently,
+    and retention already evicts blobs by design. To be stated in the runbook so
+    it reads as a decision rather than an omission.
 
   **Nothing in this amendment changes a measurement.** It is documentation plus
-  recorded decisions; no committed artifact moves.
+  recorded decisions; no committed artifact moves. The `max_cohorts` default
+  change above is adopted here and applied in the build pass, not in this
+  docs-only commit.

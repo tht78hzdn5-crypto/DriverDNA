@@ -62,10 +62,13 @@ Writing that down is the point.
   proof was the specified `tests/test_tenancy.py`, which was never written
   (BUG-033). The pattern is BUG-013's: the guarantee was documented, and pinned
   one layer above where it broke.
-- **Fix shape**: add `owner_user_pk`, migrate existing rows to the owner, move
-  the conflict target to `(owner_user_pk, finding_id)`, filter both readers.
-  Whether `finding_id` itself gains a tenant term is a separate owner decision —
-  the grounding validator treats those IDs as load-bearing identities.
+- **Fix shape** (decided, A51): add `owner_user_pk`, migrate existing rows to
+  the owner, move the conflict target to `(owner_user_pk, finding_id)`, filter
+  both readers. **`finding_id` keeps its shape** — partitioning the table closes
+  the defect completely, and changing the ID would orphan every stored citation
+  in annotations, `evidence_cited` and coach outputs for no extra security. Add
+  a test asserting **no table is keyed on a bare `finding_id`**, so the next
+  table to use one cannot repeat this.
 
 ### BUG-029 — Config is instance-wide, and any user can revert another's change
 - **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
@@ -143,9 +146,14 @@ Writing that down is the point.
   situation in a comment and works around it by overwriting the seed row's hash
   in the fixture — so the tests never experience the state a real deployment is
   in.
-- **Fix shape**: owner decision (A51) — reassign `owner_user_pk=1` rows to the
-  owner's real account, or leave them stranded deliberately. Either way the
-  runbook should say which.
+- **Fix shape** (decided, A51): **reassign** `owner_user_pk=1` rows to the live
+  account, in one transaction across every partitioned table. Where a unique
+  constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
+  real case — **the live account's row wins and `user_pk=1`'s is discarded**; no
+  merge heuristic, the owner does not want that data preserved at the cost of
+  complexity. Check the actual scope first (`SELECT owner_user_pk, COUNT(*) FROM
+  laps GROUP BY owner_user_pk`): if registration preceded any import, user 1
+  holds nothing and this is moot. The runbook should state the outcome.
 
 ### BUG-033 — The tenancy test gate was specified and never written
 - **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
