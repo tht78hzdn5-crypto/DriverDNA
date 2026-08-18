@@ -4,18 +4,23 @@
  ],
  "coaching": {
   "headline": {
-   "coaching_expression": "Settle the entry, then one committed input to the apex.",
-   "coaching_principle_id": "cp.turn_in.one_commitment",
+   "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+   "coaching_principle_id": "cp.coasting.always_working",
    "corner_id": "C14",
-   "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
-   "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+   "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+   "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
    "evidence_ids": [
     "obs:24",
     "obs:39",
     "obs:53",
     "obs:66",
     "obs:82",
-    "obs:97"
+    "obs:97",
+    "obs:110",
+    "obs:125",
+    "obs:139",
+    "obs:154",
+    "obs:168"
    ],
    "fundamental": "rotation",
    "gap_band": "major",
@@ -23,11 +28,11 @@
    "magnitude_kind": "seconds_lost",
    "n": 11,
    "signal_status": "measured",
-   "technique": "turn_in",
+   "technique": "coasting",
    "thin_evidence": false
   },
   "headline_reason": null,
-  "ontology_version": "coach-onto-v2",
+  "ontology_version": "coach-onto-v4",
   "secondary": [
    {
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
@@ -75,7 +80,7 @@
      "obs:162"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.4278,
     "magnitude_kind": "coefficient_of_variation",
     "n": 120,
@@ -103,7 +108,7 @@
      "obs:155"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.4001,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -127,7 +132,7 @@
      "obs:167"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3954,
     "magnitude_kind": "coefficient_of_variation",
     "n": 63,
@@ -153,7 +158,7 @@
      "obs:165"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3857,
     "magnitude_kind": "coefficient_of_variation",
     "n": 89,
@@ -179,7 +184,7 @@
      "obs:144"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3686,
     "magnitude_kind": "coefficient_of_variation",
     "n": 148,
@@ -207,7 +212,7 @@
      "obs:157"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.361,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -235,7 +240,7 @@
      "obs:168"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.3518,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -263,7 +268,7 @@
      "obs:159"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.2627,
     "magnitude_kind": "coefficient_of_variation",
     "n": 198,
@@ -291,7 +296,7 @@
      "obs:164"
     ],
     "fundamental": "consistency",
-    "gap_band": "major",
+    "gap_band": "moderate",
     "magnitude": 1.2358,
     "magnitude_kind": "coefficient_of_variation",
     "n": 197,
@@ -300,164 +305,18 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C06",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:16",
-     "obs:30",
-     "obs:45",
-     "obs:72",
-     "obs:90",
-     "obs:103",
-     "obs:131",
-     "obs:146",
-     "obs:160"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 1.1312,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 162,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C09",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:19",
-     "obs:48",
-     "obs:76",
-     "obs:92",
-     "obs:118",
-     "obs:133",
-     "obs:149",
-     "obs:163"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9821,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 128,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C15",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:63",
-     "obs:121",
-     "obs:136"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9587,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 18,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C07",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:17",
-     "obs:32",
-     "obs:104",
-     "obs:116",
-     "obs:161"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.9461,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 78,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C16",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:81",
-     "obs:96",
-     "obs:138",
-     "obs:153"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.8984,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 59,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
-    "coaching_principle_id": "cp.repeatability.same_lap_twice",
-    "corner_id": "C12",
-    "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
-    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
-    "evidence_ids": [
-     "obs:22",
-     "obs:37",
-     "obs:51",
-     "obs:64",
-     "obs:80",
-     "obs:108",
-     "obs:123",
-     "obs:137",
-     "obs:152",
-     "obs:166"
-    ],
-    "fundamental": "consistency",
-    "gap_band": "major",
-    "magnitude": 0.8488,
-    "magnitude_kind": "coefficient_of_variation",
-    "n": 59,
-    "signal_status": "measured",
-    "technique": "repeatability",
-    "thin_evidence": false
-   },
-   {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
-    "coaching_principle_id": "cp.coasting.always_working",
+    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C14",
-    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
-    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
     "evidence_ids": [
      "obs:24",
      "obs:39",
      "obs:53",
      "obs:66",
      "obs:82",
-     "obs:97",
-     "obs:110",
-     "obs:125",
-     "obs:139",
-     "obs:154",
-     "obs:168"
+     "obs:97"
     ],
     "fundamental": "rotation",
     "gap_band": "major",
@@ -465,7 +324,7 @@
     "magnitude_kind": "seconds_lost",
     "n": 11,
     "signal_status": "measured",
-    "technique": "coasting",
+    "technique": "turn_in",
     "thin_evidence": false
    },
    {
@@ -715,7 +574,671 @@
     "thin_evidence": false
    }
   ],
-  "silent_count": 5
+  "silent_count": 5,
+  "strengths": [
+   {
+    "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "fundamental": "braking",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:84"
+      ],
+      "n": 11,
+      "observed": 0.0909,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C02",
+      "evidence_ids": [],
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:69"
+      ],
+      "n": 11,
+      "observed": 0.0909,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C04",
+      "evidence_ids": [],
+      "n": 9,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:72"
+      ],
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C08",
+      "evidence_ids": [],
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C09",
+      "evidence_ids": [],
+      "n": 8,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C11",
+      "evidence_ids": [
+       "obs:135"
+      ],
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C12",
+      "evidence_ids": [],
+      "n": 10,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:154"
+      ],
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate"
+     }
+    ],
+    "n_corners": 12,
+    "signal_status": "measured",
+    "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
+    "technique": "pedal_overlap"
+   },
+   {
+    "coaching_principle_id": "cp.brake_release.finish_the_front",
+    "driving_principle": "Front tires can't both decelerate and steer at the limit. Releasing brake pressure well before turn-in unloads the front axle before it has finished slowing the car, so there's no grip left to rotate.",
+    "fundamental": "braking",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [],
+      "n": 9,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [],
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "trigger_rate"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "Your brake release is doing its job \u2014 the fronts stay loaded into the corner instead of being dropped at turn-in.",
+    "technique": "brake_release"
+   },
+   {
+    "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
+    "driving_principle": "Brake-point timing is an indirect stand-in for entry commitment, not a direct measurement of it \u2014 a moving brake point can mean the driver is protecting margin rather than driving to the corner's actual limit.",
+    "fundamental": "commitment",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:11",
+       "obs:25",
+       "obs:40",
+       "obs:54",
+       "obs:67",
+       "obs:84",
+       "obs:98",
+       "obs:111",
+       "obs:126",
+       "obs:140",
+       "obs:155"
+      ],
+      "n": 11,
+      "observed": 0.0416,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:56",
+       "obs:69",
+       "obs:87",
+       "obs:100",
+       "obs:113",
+       "obs:128",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": 0.0116,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:29",
+       "obs:44",
+       "obs:58",
+       "obs:71",
+       "obs:89",
+       "obs:102",
+       "obs:115",
+       "obs:130",
+       "obs:145",
+       "obs:159"
+      ],
+      "n": 11,
+      "observed": 0.0039,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 9,
+      "observed": 0.0033,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:20",
+       "obs:35",
+       "obs:49",
+       "obs:61",
+       "obs:77",
+       "obs:93",
+       "obs:106",
+       "obs:119",
+       "obs:134",
+       "obs:150",
+       "obs:164"
+      ],
+      "n": 11,
+      "observed": 0.002,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:39",
+       "obs:53",
+       "obs:66",
+       "obs:82",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:139",
+       "obs:154",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": 0.0032,
+      "observed_kind": "coefficient_of_variation"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "proxy",
+    "strength_expression": "Your braking points are settled lap to lap \u2014 which reads as entry commitment, though this one is inferred from brake point rather than measured directly.",
+    "technique": "entry_commitment"
+   },
+   {
+    "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "fundamental": "consistency",
+    "instances": [
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 162,
+      "observed": 1.1312,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C07",
+      "evidence_ids": [
+       "obs:17",
+       "obs:32",
+       "obs:104",
+       "obs:116",
+       "obs:161"
+      ],
+      "n": 78,
+      "observed": 0.9461,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C09",
+      "evidence_ids": [
+       "obs:19",
+       "obs:48",
+       "obs:76",
+       "obs:92",
+       "obs:118",
+       "obs:133",
+       "obs:149",
+       "obs:163"
+      ],
+      "n": 128,
+      "observed": 0.9821,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C12",
+      "evidence_ids": [
+       "obs:22",
+       "obs:37",
+       "obs:51",
+       "obs:64",
+       "obs:80",
+       "obs:108",
+       "obs:123",
+       "obs:137",
+       "obs:152",
+       "obs:166"
+      ],
+      "n": 59,
+      "observed": 0.8488,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C15",
+      "evidence_ids": [
+       "obs:63",
+       "obs:121",
+       "obs:136"
+      ],
+      "n": 18,
+      "observed": 0.9587,
+      "observed_kind": "coefficient_of_variation"
+     },
+     {
+      "corner_id": "C16",
+      "evidence_ids": [
+       "obs:81",
+       "obs:96",
+       "obs:138",
+       "obs:153"
+      ],
+      "n": 59,
+      "observed": 0.8984,
+      "observed_kind": "coefficient_of_variation"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
+    "technique": "repeatability"
+   },
+   {
+    "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
+    "fundamental": "corner_exit",
+    "instances": [
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:128"
+      ],
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C04",
+      "evidence_ids": [
+       "obs:28",
+       "obs:88",
+       "obs:129",
+       "obs:144"
+      ],
+      "n": 9,
+      "observed": 0.4444,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:44",
+       "obs:89",
+       "obs:159"
+      ],
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:90",
+       "obs:160"
+      ],
+      "n": 9,
+      "observed": 0.2222,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C09",
+      "evidence_ids": [
+       "obs:19",
+       "obs:133",
+       "obs:163"
+      ],
+      "n": 8,
+      "observed": 0.375,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:39",
+       "obs:97",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": 0.2727,
+      "observed_kind": "trigger_rate"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
+    "technique": "throttle_pickup"
+   },
+   {
+    "coaching_principle_id": "cp.coasting.always_working",
+    "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "fundamental": "rotation",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:11",
+       "obs:67",
+       "obs:111",
+       "obs:126",
+       "obs:140"
+      ],
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:42",
+       "obs:56",
+       "obs:87",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:30",
+       "obs:72",
+       "obs:103"
+      ],
+      "n": 9,
+      "observed": 0.3333,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:35",
+       "obs:77",
+       "obs:106",
+       "obs:119",
+       "obs:150"
+      ],
+      "n": 11,
+      "observed": 0.4545,
+      "observed_kind": "trigger_rate"
+     }
+    ],
+    "n_corners": 4,
+    "signal_status": "measured",
+    "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
+    "technique": "coasting"
+   },
+   {
+    "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "fundamental": "rotation",
+    "instances": [
+     {
+      "corner_id": "C02",
+      "evidence_ids": [
+       "obs:12",
+       "obs:26",
+       "obs:41",
+       "obs:55",
+       "obs:68",
+       "obs:99",
+       "obs:112",
+       "obs:127",
+       "obs:142",
+       "obs:156"
+      ],
+      "n": 10,
+      "observed": 0.006,
+      "observed_kind": "seconds_lost"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:56",
+       "obs:69",
+       "obs:87",
+       "obs:100",
+       "obs:113",
+       "obs:128",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": -0.1778,
+      "observed_kind": "seconds_lost"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:20",
+       "obs:35",
+       "obs:49",
+       "obs:61",
+       "obs:77",
+       "obs:93",
+       "obs:106",
+       "obs:119",
+       "obs:134",
+       "obs:150",
+       "obs:164"
+      ],
+      "n": 11,
+      "observed": 0.0215,
+      "observed_kind": "seconds_lost"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:39",
+       "obs:53",
+       "obs:66",
+       "obs:82",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:139",
+       "obs:154",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": -0.3342,
+      "observed_kind": "seconds_lost"
+     }
+    ],
+    "n_corners": 4,
+    "signal_status": "measured",
+    "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
+    "technique": "rotation_efficiency"
+   },
+   {
+    "coaching_principle_id": "cp.turn_in.one_commitment",
+    "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "fundamental": "rotation",
+    "instances": [
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:56",
+       "obs:69",
+       "obs:113",
+       "obs:128"
+      ],
+      "n": 11,
+      "observed": 0.3636,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C04",
+      "evidence_ids": [
+       "obs:70"
+      ],
+      "n": 9,
+      "observed": 0.1111,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:44",
+       "obs:145"
+      ],
+      "n": 11,
+      "observed": 0.2727,
+      "observed_kind": "trigger_rate"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:119",
+       "obs:150"
+      ],
+      "n": 11,
+      "observed": 0.1818,
+      "observed_kind": "trigger_rate"
+     }
+    ],
+    "n_corners": 4,
+    "signal_status": "measured",
+    "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
+    "technique": "turn_in"
+   }
+  ]
  },
  "cohort": {
   "car": "GR86",
@@ -1121,6 +1644,24 @@
  "driver_model": {
   "beliefs": {
    "braking": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 253,
+      "value": 0.9565,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 596,
+      "value": 0.344,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1130,6 +1671,24 @@
     "trend": "unavailable"
    },
    "commitment": {
+    "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 94,
+      "value": 0.0,
+      "weight": 0.4167
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.5833
+     }
+    },
     "confidence": 0.5,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1139,6 +1698,24 @@
     "trend": "unavailable"
    },
    "consistency": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 2017,
+      "value": 0.3431,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1148,6 +1725,24 @@
     "trend": "unavailable"
    },
    "corner_exit": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 122,
+      "value": 0.6967,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 472,
+      "value": 0.1635,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9497,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1157,6 +1752,24 @@
     "trend": "unavailable"
    },
    "rotation": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 224,
+      "value": 0.4777,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 866,
+      "value": 0.3552,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9196,
+      "weight": 0.35
+     }
+    },
     "confidence": 0.6017,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1166,6 +1779,24 @@
     "trend": "unavailable"
    },
    "vehicle_management": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 83,
+      "value": 0.0,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
     "confidence": 0.5,
     "evidence_count": 12,
     "insufficient_reason": null,
@@ -1175,6 +1806,8 @@
     "trend": "unavailable"
    },
    "vision": {
+    "basis_reason": null,
+    "components": {},
     "confidence": 0.0,
     "evidence_count": 0,
     "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
@@ -1186,6 +1819,83 @@
   },
   "driver": "owner",
   "note": "model estimate, not a measurement of truth \u2014 confidence and evidence count say how much to trust it; more laps (more sessions, tracks, cars) sharpen it",
+  "reading": {
+   "basis": "rank_within_driver",
+   "excluded_proxy": [
+    "commitment",
+    "vehicle_management"
+   ],
+   "min_confidence": 0.6017,
+   "ordering": [
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "braking",
+     "score": 80.52,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "corner_exit",
+     "score": 65.19,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 60.17,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "commitment",
+     "score": 56.1,
+     "signal_status": "proxy"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "consistency",
+     "score": 34.31,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "vehicle_management",
+     "score": 0.0,
+     "signal_status": "proxy"
+    }
+   ],
+   "reading_version": "read-v1",
+   "separation_points": 46.21,
+   "strongest": {
+    "basis_reason": null,
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "braking",
+    "score": 80.52,
+    "signal_status": "measured"
+   },
+   "verdict_reason": null,
+   "weakest": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "consistency",
+    "score": 34.31,
+    "signal_status": "measured"
+   }
+  },
   "scoring_model_version": "dm-v2",
   "taxonomy_version": "pyramid-v1"
  },
@@ -5991,7 +6701,7 @@
    }
   }
  },
- "payload_version": 8,
+ "payload_version": 9,
  "phase_baselines": {
   "C01": {
    "entry": {

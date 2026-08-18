@@ -58,7 +58,7 @@ def build_coaching_report(db: Database, config: DriverDNAConfig) -> str:
         candidates = eligible_principles(
             db, driver=driver, car=car, track=track, config=config
         )
-        selection = select_coaching(candidates)
+        selection = select_coaching(candidates, config=config)
         lines += [f"## {driver} — {car} @ {track}", ""]
 
         lines.append("### Headline")

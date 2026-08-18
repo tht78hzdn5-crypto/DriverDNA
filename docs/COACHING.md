@@ -451,3 +451,82 @@ engine's verdict *exactly*, not merely be "an eligible principle" — the
 mapping is 1:1, so there's nothing for the AI to choose. `unclassified`/
 `external` incidents map to no principle and cannot be explained at all,
 mirroring a `no_signal` fundamental one level down.
+
+## The strength half of the ontology (2026-08-16, SPEC.md A51)
+
+Everything above describes finding what is *wrong*. That is half a coaching
+layer, and it was the half that shipped: all nine seed principles were phrased
+as error modes, and nothing in the engine could say a driver was good at
+anything. `CoachingPrinciple` now also carries `strength_expression`.
+
+**Where the signal comes from — and the trap.** It is tempting to read the
+`negligible` gap band as "does this well". It is not. A `CoachingCandidate`
+exists **only where a gate cleared** — the detector triggers above
+`min_trigger_rate`, the CV sits above its floor. `negligible` therefore means
+*the fault pattern is present and costs almost no time*. Reading it as a
+strength would praise a driver for the exact thing they are worst at.
+
+The real signal is the strict inverse: corners where there **is** evidence and
+the gate stayed shut. That produced no record at all until `eligible_strengths`,
+which walks the same tables, with the same thresholds, for the opposite
+outcome. Because both passes read one gate, a strength and a fault can never be
+claimed for the same (principle, corner) — a test pins exactly that.
+
+Three rules keep a strength as honest as a finding:
+
+- **`no_signal` never becomes a strength.** A self-check exists precisely
+  because nothing was measured; there is nothing to be good at. Enforced by the
+  same rule that stops a confidence value laundering an unmeasured inference.
+- **Thin evidence yields no strength at all** — not a flagged one. A candidate
+  merely sets `thin_evidence`, because "this cost you time" survives being
+  hedged. "You do this well" is a positive claim about the driver and is
+  withheld below `thin_evidence_floor_n` entirely.
+- **`FindingGate` reads the ranker's own words.** Its strength signal is the
+  suppression reason `"no effect: faster and slower laps do not differ here"` —
+  the one gate string that means competence rather than ignorance. Read off the
+  string rather than re-deriving the test, the same discipline `census.py`
+  follows, so the two can never disagree about what "no effect" means.
+
+`silent_count` is untouched. A51 explains that pile; it does not repurpose it.
+
+## Gap bands live on the normalized scale (2026-08-16, SPEC.md A52)
+
+`same_lap_twice` bands on a **per-unit normalized** pooled CV, not a raw one.
+That scale has fixed anchors, and every threshold compared against it must be
+read in those terms:
+
+| value | meaning |
+|---|---|
+| `0.0` | perfectly repeatable |
+| `1.0` | **exactly unit-typical** — dm-v2 scores this component 50 |
+| `2.0` | `consistency_cv_ceiling` — dm-v2 scores it 0 |
+
+So `1.15` means "15% above typical", and `0.15` means "85% *better* than
+typical". A42 changed the quantity from raw to normalized CV, updated these
+descriptions, and left the numbers at their raw-CV values — which is how a
+driver with exactly average consistency came to be told, at every corner,
+that their repeatability was a "major" problem (BUG-029).
+
+**If you touch a CV threshold, state which anchor it sits against.** The
+`major` band is deliberately *equal to* `consistency_cv_ceiling` so the
+coaching layer and the Driver Model agree on what "as bad as it gets" means;
+breaking that equality is a decision, not a tuning.
+
+`commitment_cv_floor` is **not** on this scale. `trust_the_proxy` gates on a
+single metric, so `_corner_candidate` takes the raw-CV path and never
+normalizes. Its `0.15` is a raw CV and is correct as written.
+
+### Any band can headline
+
+`headline_eligible` used to require `magnitude_kind == "seconds_lost"`, which
+permanently excluded `same_lap_twice` — so the Driver Model could name
+`consistency` the driver's weakest fundamental while coaching could never tell
+them to work on it (BUG-030). It now depends on band alone.
+
+Ranking across kinds needs `_severity`: each magnitude as a multiple of the
+`major` floor **for its own kind**, which is unit-free and therefore
+comparable. Ranking on raw `magnitude` would compare seconds against a
+coefficient of variation and always pick the CV, purely because CVs are bigger
+numbers. `_severity` is a private sort key and must stay one — a number with
+no unit has no business in the payload, where the grounding validator would
+let the AI cite it.

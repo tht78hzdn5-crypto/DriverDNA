@@ -15,8 +15,10 @@ from driverdna.model.scoring import (
     SCORING_MODEL_VERSION,
     _Component,
     _CohortCache,
+    _basis_reason,
     _bucket_score,
     _consistency_component,
+    _effective_weights,
     _weighted_score,
     compute_all_beliefs,
     compute_belief,
@@ -314,6 +316,119 @@ def test_braking_full_three_component_score(db):
     assert belief.insufficient_reason is None
     assert 0.0 <= belief.score <= 100.0
     assert 0.0 < belief.confidence <= 1.0
+
+
+def test_belief_exposes_the_three_components_behind_its_score(db):
+    """A14: a composite score is "always decomposable to the sources". The
+    three components were computed and discarded until A51 — a bare 80.5 the
+    driver could not open up."""
+    _braking_cohort(db)
+    belief = compute_belief(db, driver="owner", fundamental_id="braking", config=CONFIG)
+    assert set(belief.components) == {"adherence", "opportunity", "consistency"}
+    for c in belief.components.values():
+        assert c.value is None or 0.0 <= c.value <= 1.0
+
+
+@pytest.mark.parametrize("components", [
+    {"adherence": _Component(0.9, 10), "opportunity": _Component(0.8, 10),
+     "consistency": _Component(0.3, 10)},
+    {"adherence": _Component(None, 0), "opportunity": _Component(0.96, 88),
+     "consistency": _Component(0.0, 94)},
+    {"adherence": _Component(None, 0), "opportunity": _Component(None, 0),
+     "consistency": _Component(0.34, 2017)},
+])
+def test_effective_weights_agree_with_weighted_score(components):
+    """`_effective_weights` restates `_weighted_score`'s redistribution rather
+    than refactoring it (that function's arithmetic order produces every
+    committed number). This is what stops the two drifting apart."""
+    effective = _effective_weights(components, CONFIG)
+    restated = sum(
+        c.value * effective[k] for k, c in components.items() if c.value is not None
+    ) * 100.0
+    assert restated == pytest.approx(_weighted_score(components, CONFIG))
+
+
+def test_effective_weights_show_the_redistribution(db):
+    """The weight exposed is the share the component ACTUALLY carried after
+    redistribution, not the configured one — that is what explains the score.
+    A component with no value carried nothing."""
+    weights = _effective_weights(
+        {
+            "adherence": _Component(None, 0),
+            "opportunity": _Component(0.9, 10),
+            "consistency": _Component(0.5, 10),
+        },
+        CONFIG,
+    )
+    assert weights["adherence"] == 0.0
+    assert weights["opportunity"] + weights["consistency"] == pytest.approx(1.0)
+
+
+# --- basis_reason: a narrow basis is disclosed, and never mis-explained -----
+# The reason a component is absent has two structurally different causes and
+# conflating them would lie to the driver: a fundamental that owns no
+# detectors/phases can NEVER grow that component (more laps change nothing),
+# while one whose detectors simply have no rows yet will.
+
+
+def test_basis_reason_is_none_when_all_three_components_carry_a_value():
+    assert _basis_reason("braking", {
+        "adherence": _Component(0.9, 10),
+        "opportunity": _Component(0.9, 10),
+        "consistency": _Component(0.3, 10),
+    }) is None
+
+
+def test_basis_reason_calls_a_structural_gap_structural_not_pending():
+    """`consistency` is cross-cutting by design — no detectors, no phase
+    windows of its own. Saying "no evidence yet" would promise a widening
+    that can never happen."""
+    reason = _basis_reason("consistency", {
+        "adherence": _Component(None, 0),
+        "opportunity": _Component(None, 0),
+        "consistency": _Component(0.34, 2017),
+    })
+    assert reason is not None
+    assert "yet" not in reason.lower()
+    assert "no detectors" in reason.lower() or "no phase" in reason.lower()
+
+
+def test_basis_reason_calls_a_missing_evidence_gap_pending():
+    """braking DOES own detectors — an empty adherence component there is a
+    real evidence gap that more laps close, and must read that way."""
+    reason = _basis_reason("braking", {
+        "adherence": _Component(None, 0),
+        "opportunity": _Component(0.9, 10),
+        "consistency": _Component(0.3, 10),
+    })
+    assert reason is not None
+    assert "yet" in reason.lower()
+
+
+def test_vehicle_management_basis_reason_names_its_unmeasurable_techniques(db):
+    """Its 0.0 rests on ONE metric (abs_active_ratio) — three of its four
+    techniques are no_signal. The bare number reads as total failure; the
+    reason is what makes it honest."""
+    reason = _basis_reason("vehicle_management", {
+        "adherence": _Component(None, 0),
+        "opportunity": _Component(None, 0),
+        "consistency": _Component(0.0, 83),
+    })
+    assert reason is not None
+    assert "1 of its 4" in reason or "1 of 4" in reason
+
+
+def test_basis_reason_does_not_call_a_proxy_technique_unobservable():
+    """A proxy technique IS observed, just indirectly. Counting it as blind
+    made `commitment` — which scores off real opportunity evidence — report
+    "0 of its 1 techniques carries a telemetry signal"."""
+    reason = _basis_reason("commitment", {
+        "adherence": _Component(None, 0),
+        "opportunity": _Component(0.96, 88),
+        "consistency": _Component(0.0, 94),
+    })
+    assert "cannot be observed" not in reason
+    assert "0 of its" not in reason
 
 
 def test_commitment_confidence_is_capped_as_proxy(db):

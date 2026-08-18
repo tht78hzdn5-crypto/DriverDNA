@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { streamGet } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading } from "../app.jsx";
-import { FundamentalMark, Methodology, fundamentalLabels } from "./shared.jsx";
+import { FundamentalMark, Methodology, ReadingPanel, fundamentalLabels } from "./shared.jsx";
 import { FUNDAMENTAL_ORDER } from "./order.js";
 import { GAP, STEP, Y_BASE, tierPoints } from "./pyramid.js";
 
@@ -66,6 +66,53 @@ function Pyramid({ beliefs }) {
   );
 }
 
+// The score, opened up (A51). Every figure is straight from the payload's
+// own components block — value, the share it actually carried after
+// redistribution, and its observation count. The explain ids used here were
+// written for exactly these three components and had been referenced by no
+// view at all until now.
+const COMPONENT_EXPLAIN = {
+  adherence: "model.adherence",
+  opportunity: "model.opportunity",
+  consistency: "model.consistency",
+};
+
+function ComponentBreakdown({ components, basisReason }) {
+  const names = Object.keys(components || {});
+  if (!names.length) return null;
+  return (
+    <details className="disclosure">
+      <summary>
+        <span className="chev" aria-hidden="true">▸</span> What this score is made of
+      </summary>
+      <div className="disclosure-body">
+        {basisReason && <div className="reason" style={{ marginBottom: "0.5rem" }}>{basisReason}</div>}
+        {names.map((name) => {
+          const c = components[name];
+          return (
+            <div key={name} className="cbar">
+              <div className="cbar-head">
+                <span className="cbar-name">{name}</span>
+                <span className="num cbar-val">
+                  {c.value == null ? "—" : fmt(c.value, 2)}
+                </span>
+              </div>
+              <div className="track">
+                <i style={{ width: `${c.value == null ? 0 : c.value * 100}%` }} />
+              </div>
+              <div className="cbar-meta">
+                carries <span className="num">{fmt(c.weight, 2)}</span> of the score ·
+                <span className="num"> {c.n}</span> observations
+              </div>
+              <Methodology id={COMPONENT_EXPLAIN[name]} label={`How is ${name} measured?`} />
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 function Meter({ id, b }) {
   const noSignal = b.signal_status === "no_signal";
   const t = TREND[b.trend] || TREND.unavailable;
@@ -90,6 +137,7 @@ function Meter({ id, b }) {
             <span className="num"> {b.evidence_count}</span> laps ·
             <span className={t.strong ? "" : "dim"}> {t.mark} {b.trend}</span>
           </div>
+          <ComponentBreakdown components={b.components} basisReason={b.basis_reason} />
         </>
       )}
     </div>
@@ -345,6 +393,14 @@ export default function DriverModel() {
             </div>
           </div>
         </details>
+      </section>
+
+      {/* A51: the reading leads, because "which is my strength" is the
+          question the page is opened to answer — the pyramid shows the
+          shape, but it never said which end of it was good. */}
+      <section className="panel">
+        <p className="eyebrow">Where you stand</p>
+        <ReadingPanel reading={model.reading} labels={fundamentalLabels(model)} />
       </section>
 
       <section className="panel pyramid-panel">

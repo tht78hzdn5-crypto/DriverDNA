@@ -590,6 +590,58 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   CLI exits 2. `deploy/journald-driverdna.conf` (`Storage=persistent`,
   `SystemMaxUse=200M`) + runbook Part G make future outages diagnosable.
   Suite 993 → 997 passed / 16 skipped / 0 failed.
+- **Strengths, score decomposition and driver-level coaching (2026-08-16,
+  SPEC.md A51)** — an audit against the product's own goal ("make it obvious
+  what your strengths and weaknesses are") found the strengths half missing
+  entirely: zero occurrences of "strength" in `src/` or `ui/src/`, all nine
+  principles error-framed, `#/model` showing seven bare uninterpretable
+  scores, and **driver home carrying no coaching content at all** because
+  coaching was per-(car, track) only. Five additive changes: `Belief` now
+  exposes the three components it was computing and discarding (closes a
+  standing A14 decomposability gap); `basis_reason` explains a narrow basis
+  and **distinguishes structural from pending** (a fundamental with no
+  detectors can never gain adherence — saying "not yet" would be a lie; this
+  is what makes `vehicle_management`'s bare `0.0` honest); `model/reading.py`
+  (`read-v1`) names a strongest/weakest, **rank-only** (scores aren't
+  calibrated to any population) and **measured-only** (a proxy at 0.0 would
+  otherwise headline as "your greatest weakness"); `strength_expression` on
+  every measured/proxy principle plus `eligible_strengths`; and
+  `coaching/rollup.py`, whose organising idea is *a principle firing at more
+  than one track is the driver, not the track*, gated on the existing
+  `min_tracks_for_rollup`. On the real corpus: strongest braking 80.5,
+  weakest consistency 34.3, and coasting as a genuine cross-track habit.
+  `PAYLOAD_VERSION` 8→9, `ONTOLOGY_VERSION` →`coach-onto-v3`,
+  `SCORING_MODEL_VERSION` unchanged. **Number-neutrality proven against a
+  clean `main` regeneration, not against the committed files**: zero numbers
+  lost in any payload; `payload_version` is the only value that moved.
+  Deferred with reasons stated: CV band saturation and headline eligibility
+  (both move engine numbers). BUG-028 filed (six `explain.py` texts written,
+  none referenced; the cross-reference test only checked JSX→engine).
+- **CV bands recalibrated; any band can headline (2026-08-16, SPEC.md A52)** —
+  the two items A51 deferred, and one defect underneath both. A42 changed
+  `same_lap_twice`'s gate from a **raw** CV to a **per-unit normalized** one,
+  rewrote the config descriptions to say so, and left every threshold at its
+  raw-CV value (`git log -L` shows `d588921` editing `cv_band_major`'s
+  description while `default=0.50` beside it never moved). On the normalized
+  scale `1.0` is exactly unit-typical, so `cv_band_major=0.5` banded an average
+  driver "major" at twice the threshold — all 16 fixture corners banded major,
+  the band carried zero information — and `consistency_cv_floor=0.15`, whose
+  description claimed "15% above typical", actually meant 85% *better* than
+  typical, so the gate filtered nothing (BUG-029). Recalibrated to the scale's
+  own anchors: floor/moderate `1.15`, notable `1.50`, major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so coaching and dm-v2 agree on "as bad as it gets").
+  Anchored to the scale, deliberately **not** fitted to the 16-corner fixture.
+  `commitment_cv_floor` stays `0.15` — single metric, raw-CV path, always
+  correct. Separately, `headline_eligible` required seconds-banding, so the
+  driver's weakest fundamental could never be coached (BUG-030); it now depends
+  on band alone, ranked by a private unit-free `_severity` (magnitude ÷ its own
+  kind's major floor) that is test-pinned never to reach the payload. Real
+  corpus: secondary 26→20, bands 16/16-major → 15 moderate/3 notable/2 major,
+  strengths 7→8 principles (the six most repeatable corners became strengths),
+  and `same_lap_twice` enters the headline pool ranking third. `ONTOLOGY_VERSION`
+  →`coach-onto-v4`; `PAYLOAD_VERSION` and `SCORING_MODEL_VERSION` unchanged —
+  dm-v2 reads `config.model.*` only, proven by test and by
+  `driver-model-report.md`/`census-report.md` regenerating byte-identical.
 - **Reference laps: surveyed + planned, nothing new built (2026-07-22)** —
   `docs/REFERENCE-LAPS.md` is the source of truth: the machinery exists and
   is tested (role column, query-surface isolation, shared (car,track)
@@ -818,6 +870,9 @@ map, which is a drift waiting to happen, and A46 deleted it.
 | To change… | Edit | Notes |
 |---|---|---|
 | the racing voice — "shrink the coast", the *why*, the drill | `coaching/ontology.py` | versioned (`ONTOLOGY_VERSION`); a principle is data, not code |
+| what to say when the driver is doing it *right* | `coaching/ontology.py` `strength_expression` | measured/proxy only — `no_signal` must stay `None` (A51) |
+| the strongest/weakest wording and its gates | `model/reading.py` | rank-only, measured-only; changing either is a SPEC decision, not copy |
+| how a cross-track pattern is phrased | `coaching/rollup.py` + `explain.py` `coaching.cross_track` | gate is `min_tracks_for_rollup`, reused — never a second threshold |
 | a finding's measurement sentence | `attribution/ranker.py` (+ `PHASE_LABELS`) | changes committed artifacts — see below |
 | a detector's driver-facing name | `metrics/detectors.py` `DETECTOR_LABELS` | **never rename the slug** |
 | "how is this measured" disclosure text | `explain.py` `METHODOLOGY` | id must exist before a view names it |
@@ -869,6 +924,13 @@ Renaming a slug silently orphans stored annotations.
    racing voice) and findings (the measurement) were restating each other in
    two registers. Before adding a sentence, check whether
    `coaching/ontology.py` already says it.
+6b. **A `negligible` band is not a strength** (A51). A candidate only exists
+   where a gate *cleared*, so `negligible` means "the fault is present but
+   costs little". The strength signal is the inverse pass
+   (`eligible_strengths`). Reading the band as praise would congratulate a
+   driver for their worst habit. Likewise: a strength needs the full
+   `thin_evidence_floor_n`, never a `thin_evidence` flag — hedging works for
+   "this cost you time" and not for "you do this well".
 7. **Rules of hooks apply.** `useMethodologyText` is a hook; calling it in a
    `.map()` is a violation even when the list is a module constant. See
    `SourceLegend`'s four fixed calls.

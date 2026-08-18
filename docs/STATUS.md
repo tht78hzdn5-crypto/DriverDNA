@@ -69,6 +69,127 @@ A53). Docs-only change: no code touched, no committed artifact moved.**
 
 ---
 
+**Snapshot date: 2026-08-16 (A52 — CV bands recalibrated, any band can
+headline; BUG-029 and BUG-030 fixed). A51 merged as PR #30.**
+
+- **What prompted it:** the two items A51 deferred. They turned out to share a
+  root cause, plus a second instance of it nobody had noticed.
+- **BUG-029 — A42 changed the unit and left every threshold behind.** A42
+  moved `same_lap_twice`'s gate from a **raw** CV to a **per-unit normalized**
+  one, rewrote the config descriptions to say so, and never converted the
+  numbers. `git log -L` shows `d588921` editing `cv_band_major`'s description
+  from "coefficient-of-variation floor" to "normalized-CV floor" while
+  `default=0.50` on the line above went untouched. On the normalized scale
+  `1.0` is exactly unit-typical, so an average driver banded **major** at twice
+  the threshold: all 16 fixture corners banded major and the band carried no
+  information. Second instance in the same commit: `consistency_cv_floor=0.15`,
+  described as "15% above typical", actually meant 85% *better* than typical —
+  the eligibility gate filtered nothing.
+- **Recalibrated to the scale's own anchors**, not fitted to the corpus:
+  floor/moderate `1.15` (the floor's own stated intent), notable `1.50`
+  (midway typical→ceiling), major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so coaching and dm-v2 agree on "as bad as it
+  gets"). `commitment_cv_floor` stays `0.15` — single metric, raw-CV path,
+  always correct.
+- **BUG-030 — the weakest fundamental could never be coached.**
+  `headline_eligible` required seconds-banding, so `same_lap_twice` was
+  excluded from the headline pool permanently. The Driver Model named
+  `consistency` the driver's weakness (34.3, 16 corners) while coaching was
+  structurally incapable of saying so. Now band-only, ranked by a private
+  unit-free `_severity` (magnitude ÷ its own kind's major floor). Ranking on
+  raw magnitude would have compared 0.591 s against CV 2.724 and taken the CV
+  every time — bigger number, not worse problem. `_severity` is test-pinned
+  never to reach the payload.
+- **Effect on the real corpus:** secondary 26 → 20; bands 16/16-major →
+  15 moderate / 3 notable / 2 major; `repeatability` 16 major → 9 moderate plus
+  the one genuine C02 outlier; strengths 7 → 8 principles, because the six
+  corners that fell below the floor were the driver's *most repeatable* and now
+  read as strengths. `same_lap_twice` enters the headline pool and ranks third
+  on severity (1.36 vs 1.69) — eligible at last, correctly just short.
+- **One artifact change that is not a band effect:** the fixture headline moved
+  `cp.turn_in.one_commitment` → `cp.coasting.always_working`. They are exactly
+  tied (same corner C14, same 0.5906, same band, same severity — both band on
+  that corner's `mid` loss); the old `max()` kept declaration order, the new
+  sort breaks ties on `principle_id`. Both deterministic; incidental tiebreak
+  → explicit one.
+- **Versions:** `ONTOLOGY_VERSION` → `coach-onto-v4`. `PAYLOAD_VERSION`
+  unchanged at 9, `SCORING_MODEL_VERSION` unchanged at `dm-v2` — and dm-v2
+  **structurally cannot** move, since it reads `config.model.*` while these are
+  `config.coaching.*`. Verified by a test asserting `scoring.py` contains no
+  `config.coaching` reference, and empirically:
+  `docs/driver-model-report.md` and `docs/census-report.md` regenerate
+  byte-identical.
+- **One brittle test of my own, fixed:** A51's
+  `test_ontology_version_bumped_for_the_new_field` pinned the literal
+  `"coach-onto-v3"`, so it failed on the very next bump. It now pins the
+  guarantee (`!= "coach-onto-v2"`) rather than a version string.
+- **Verified counts:** `python3 -m pytest` → **1062 passed, 16 skipped, 0
+  failed** (SQLite backend, 8m00s). All 16 skips are Postgres-absent; zero
+  browser skips. `ruff check .`: clean.
+
+---
+
+**Snapshot date: 2026-08-16 (A51 — strengths, score decomposition, and
+driver-level coaching; BUG-028 filed).**
+
+- **What prompted it:** an audit of the build against its own stated goal —
+  "make it obvious what your strengths and weaknesses are, in coaching
+  language". Scored 0/10 on strengths (the word occurred **zero** times in
+  `src/` and `ui/src/`; all nine principles error-framed), 4/10 on weaknesses
+  (scores rendered with no ordering, no anchor, no decomposition), 7/10 on
+  what-to-work-on (excellent per cohort, nonexistent driver-wide).
+- **Score decomposition (A14 gap closed):** `Belief` now carries the three
+  components it was computing and discarding, each with value, `n`, and the
+  share it carried after redistribution.
+- **`basis_reason`:** explains a narrow basis and distinguishes **structural**
+  from **pending**. A fundamental owning no detectors can never gain adherence;
+  saying "not yet" would be a lie. This is what makes `vehicle_management`'s
+  bare `0.0` honest — it now reads "scored on one component; only 1 of its 4
+  techniques carries a telemetry signal".
+- **`model/reading.py` (`read-v1`):** names a strongest and weakest.
+  **Rank-only** (these scores are calibrated against no driver population, so
+  an absolute band would be asserted, not earned) and **measured-only** (a
+  proxy at 0.0 would otherwise become "your greatest weakness", headlining the
+  least-supported number in the system). Gated on `reading_min_scored` (3) and
+  `reading_min_separation` (10.0), each stating its reason.
+- **Coaching strengths:** `strength_expression` on all eight measured/proxy
+  principles + `eligible_strengths`. **A `negligible` band is not a strength** —
+  a candidate exists only where a gate *cleared*, so `negligible` means the
+  fault is present but cheap; the signal is the inverse pass, which produced no
+  record before. Strengths require the full `thin_evidence_floor_n`, stricter
+  than a candidate's flag.
+- **`coaching/rollup.py`:** driver-level coaching. *A principle firing at more
+  than one track is the driver, not the track.* Reuses
+  `gates.min_tracks_for_rollup`; single-track patterns are suppressed **with
+  reason**, never dropped; no magnitude is ever combined across cohorts.
+- **On the real corpus:** strongest braking 80.5, weakest consistency 34.3
+  (46.2 points apart), and coasting confirmed as a genuine cross-track habit
+  (2 tracks, 9 corners) with its drill on driver home.
+- **Versions:** `PAYLOAD_VERSION` 8→9, `ONTOLOGY_VERSION` →`coach-onto-v3`,
+  `READING_VERSION` `read-v1` new. `SCORING_MODEL_VERSION` **unchanged**
+  (`dm-v2`) — no score moved.
+- **Number-neutrality proven, not asserted:** both payloads regenerated on a
+  clean `main` worktree and diffed as numeric multisets — **zero numbers lost**
+  in any of the three payloads; `payload_version` is the only value that moved
+  anywhere.
+- **BUG-028 filed:** six `explain.py` texts written and referenced by no view
+  (`test_explain.py` checks JSX→engine only). The three component texts are now
+  live; the other three remain open deliberately.
+- **Environment fix (not a repo change):** the 26 browser tests had been
+  skipping here on BUG-025's mismatch (image ships Chromium 1194, this
+  Playwright resolves 1234) plus an unbuilt SPA. Bridged the path and built the
+  SPA; the render-parity crawler is running again, which this change needed.
+- **Deferred, with reasons stated in A51:** CV band saturation
+  (`cv_band_major` 0.5 vs observed 0.849–2.724 → all 16 repeatability items
+  band "major") and headline eligibility (`consistency` can never headline).
+  Both move engine numbers.
+- **Verified counts:** `python3 -m pytest` → **1035 passed, 16 skipped, 0
+  failed** (SQLite backend, 8m39s). All 16 skips are Postgres-absent; **zero
+  browser skips** — the 26 browser tests ran. `ruff check .`: clean.
+  `npm run lint`: 0 errors, 6 pre-existing warnings. `npm run build`: clean.
+
+---
+
 **Snapshot date: 2026-08-15 (BUG-018 closed-undiagnosed, BUG-027 fixed,
 persistent journald for future crash diagnosis).**
 

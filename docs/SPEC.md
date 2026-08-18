@@ -2670,6 +2670,166 @@ Accepted at owner plan review; rationale recorded in the review:
   references in `api.py` comments cleaned up (A40 retired it). BUG-026 (SSE
   heartbeat) separately fixed and merged.
 
+- **A51** (2026-08-16): **The reading, the strength layer, and driver-level
+  coaching — half the product's stated purpose, built.** The goal DriverDNA
+  exists to serve is "make it obvious what your strengths and weaknesses are,
+  in coaching language". An audit against the bundled 12-lap corpus found the
+  strengths half entirely absent — the word did not occur once in `src/` or
+  `ui/src/`, all nine coaching principles were phrased as error modes, and
+  `#/model` rendered seven bare scores with no ordering, no anchor and no
+  decomposition. Driver home, the page opened first, carried **no coaching
+  content whatever**, because coaching was computed per (car, track) and had no
+  driver-level form. Five changes, all additive:
+
+  1. **Scores are decomposable.** `Belief` now carries the three components
+     (`adherence`/`opportunity`/`consistency`) it was already computing and
+     discarding, each with its value, its observation count, and the share it
+     actually carried *after* redistribution. Closes a standing A14 gap
+     ("always decomposable to the sources; never opaque") and wires up three
+     `explain.py` texts that had been written for exactly these components and
+     referenced by no view at all (see BUG-028).
+
+  2. **`basis_reason` explains a narrow basis, and distinguishes two causes.**
+     A component is absent either structurally (the fundamental owns no
+     detectors, or no phase windows — no quantity of laps will change it) or
+     because evidence has not arrived yet. Conflating them would tell a driver
+     more laps will widen a basis that can never widen. This is what turns
+     `vehicle_management`'s bare `0.0` — which reads as total failure — into
+     "scored on one component, and only 1 of its 4 techniques carries a
+     telemetry signal at all".
+
+  3. **`model/reading.py` (`read-v1`) names a strongest and weakest.**
+     Rank-only and **measured-only**. Rank-only because these 0-100 scores are
+     not calibrated against any driver population, so an absolute band would be
+     asserted rather than earned (owner decision; revisit only if a calibration
+     corpus exists). Measured-only because `vehicle_management` scores 0.0 off a
+     single proxy component and, ranked naively, becomes "your greatest
+     weakness" — headlining the least-supported number in the system. Proxies
+     stay in the ordering, marked, never in a verdict slot. Gated on
+     `model.reading_min_scored` (3) and `model.reading_min_separation` (10.0
+     points), each stating its reason when it declines.
+
+  4. **Coaching gained a strength half.** `CoachingPrinciple` gains
+     `strength_expression` (measured/proxy only — a `no_signal` self-check can
+     never become a strength), and `eligible_strengths` walks the same tables
+     and thresholds as `eligible_principles` for the opposite outcome.
+     **The mechanism matters:** a `negligible` gap band is *not* a strength —
+     a candidate only exists where a gate CLEARED, so `negligible` means "the
+     fault is present but costs little". The real signal is the inverse, which
+     produced no record at all before this. `silent_count` is unchanged; it is
+     explained, not repurposed. A strength requires the full
+     `thin_evidence_floor_n`, stricter than a candidate, which merely flags
+     thin evidence — a positive claim about the driver deserves more support
+     than a note that something cost time. For `FindingGate` principles the
+     signal is the ranker's own `"no effect: faster and slower laps do not
+     differ here"`, the one suppression reason meaning competence rather than
+     ignorance, read off its string rather than re-derived.
+
+  5. **`coaching/rollup.py` aggregates coaching to driver level.** Organising
+     idea: **a principle that fires at more than one track is the driver, not
+     the track.** Gated on the existing `gates.min_tracks_for_rollup` rather
+     than a second threshold; below it a pattern is listed and suppressed with
+     its reason, exactly as `cross_track_rollups` does. **No magnitude is ever
+     combined across cohorts** — seconds, trigger rates and CVs are different
+     units and a total over them would be a number the engine invented; every
+     instance keeps its own car, track, corner and value.
+
+  Surfaced on `#/model` (the reading above the pyramid; components behind each
+  meter's existing disclosure), on driver home (the reading, the top
+  cross-track pattern with its drill, and any cross-track strength), and
+  mirrored into `driver.md`/`driver.html` and `docs/driver-model-report.md`.
+  `PAYLOAD_VERSION` 8→9, `ONTOLOGY_VERSION` `coach-onto-v2`→`coach-onto-v3`.
+  `SCORING_MODEL_VERSION` deliberately **unchanged** at `dm-v2`: no score
+  moves. **Proven, not asserted** — both payloads regenerated on a clean `main`
+  checkout and diffed as numeric multisets: zero numbers lost anywhere, and the
+  only value that moved in any of the three payloads is `payload_version`
+  itself.
+
+  Deferred, and still open: the CV band saturation (`cv_band_major` is 0.5
+  against observed 0.849–2.724, so all 16 repeatability items band "major" and
+  the band carries no information) and headline eligibility (`headline_eligible`
+  requires seconds-banding, so `consistency` — the lowest-scoring fundamental,
+  firing at 16 corners — can never be the headline). Both change engine numbers
+  and need their own amendment and model version bump.
+
+- **A52** (2026-08-16): **The consistency coaching path's thresholds match the
+  quantity they measure again, and a CV-banded principle can headline.** Both
+  halves were flagged as deferred in A51 and are the same underlying defect.
+
+  **The defect.** A42 (`coach-onto-v2`) changed `same_lap_twice`'s gate from a
+  **raw** coefficient of variation to a **per-unit normalized** one and rewrote
+  the config descriptions to say so — but left every threshold at its raw-CV
+  value. `git log -L` on `config.py` shows commit `d588921` editing the
+  description of `cv_band_major` from "coefficient-of-variation floor" to
+  "normalized-CV floor" while the `default=0.50` beside it never moved. The
+  scale had shifted underneath the numbers:
+
+      0.0  perfectly repeatable
+      1.0  exactly unit-typical      (dm-v2 already scores this component 50)
+      2.0  consistency_cv_ceiling    (dm-v2 scores it 0)
+
+  Against that scale both settings were wrong by roughly an order of magnitude:
+
+  - `consistency_cv_floor = 0.15`, whose own description claimed "15% above
+    typical variability", actually meant 85% *better* than typical — so the
+    eligibility gate filtered **nothing**. All 16 fixture corners cleared it,
+    including the driver's six most repeatable.
+  - `cv_band_major = 0.5` meant a driver with *exactly typical* consistency
+    banded "major" at twice the threshold. All 16 corners banded "major", so
+    the band carried no information and the loudest tone in the vocabulary was
+    the only one it could produce.
+
+  **The fix.** Floor/moderate `1.15` (the floor's own stated intent), notable
+  `1.50` (midway from typical to the ceiling), major `2.00` (**equal to**
+  `consistency_cv_ceiling`, so the coaching layer and dm-v2 agree on what "as
+  bad as it gets" means). The values are anchored to the scale's own semantics
+  and were deliberately **not** fitted to the fixture corpus — 16 corners from
+  one driver is far too thin to calibrate on, and the resulting empty `notable`
+  band on that corpus is an honest property of this driver's data, not a flaw.
+  `commitment_cv_floor` stays at `0.15`: `trust_the_proxy` gates on a single
+  metric, so `_corner_candidate` takes the raw-CV path and never normalizes —
+  that number was always correct and must not be swept along.
+
+  **Headline eligibility.** `headline_eligible` required `magnitude_kind ==
+  "seconds_lost"`, so a CV-banded principle was excluded from the headline pool
+  by construction, permanently. The Driver Model could name `consistency` the
+  driver's weakest fundamental (34.3, lowest measured, firing at 16 corners)
+  while the coaching layer was structurally incapable of ever telling them to
+  work on it. Lifting it exposed why it existed: the ranker took
+  `max(..., key=magnitude)`, comparing 0.591 seconds against a CV of 2.724 and
+  taking the CV every time — not because it was worse, but because CVs are
+  bigger numbers than seconds. Ranking is now band first, then `_severity` —
+  each magnitude as a multiple of the `major` floor **for its own kind**, which
+  is unit-free by construction. `_severity` is a private sort key and
+  deliberately never a payload field: it has no unit, so surfacing it would put
+  a meaningless number in front of the driver and into the grounding
+  validator's number pool where the AI could cite it (test-pinned).
+
+  **Effect on the real fixture corpus.** Secondary items 26 → 20; the six
+  corners that dropped below the floor were the driver's *most repeatable* and
+  now surface as strengths instead (strength principles 7 → 8, `repeatability`
+  among them for the first time). Bands went from 16/16 "major" to 15 moderate
+  / 3 notable / 2 major; `repeatability` alone from 16 "major" to 9 moderate
+  plus the one genuine outlier at C02. `same_lap_twice` now enters the headline
+  pool and ranks third on severity (1.36 vs 1.69) — eligible at last, and
+  correctly just short.
+
+  **One artifact change that is not a band effect, stated so it is not
+  mistaken for one:** the fixture cohort's headline moved from
+  `cp.turn_in.one_commitment` to `cp.coasting.always_working`. They are exactly
+  tied — same corner C14, same magnitude 0.5906, same band, same severity,
+  because both band on that corner's `mid` cumulative loss. The old `max()`
+  kept whichever came first in `PRINCIPLES` declaration order; the new sort
+  breaks ties on `principle_id`. Both are deterministic; the change is from an
+  incidental tiebreak to an explicit one.
+
+  `ONTOLOGY_VERSION` `coach-onto-v3`→`coach-onto-v4`. `PAYLOAD_VERSION`
+  unchanged at 9 (no field added or removed). `SCORING_MODEL_VERSION`
+  unchanged at `dm-v2`, and **structurally cannot** change: dm-v2 reads
+  `config.model.*` only while these are `config.coaching.*` — verified both by
+  a test asserting `scoring.py` contains no `config.coaching` reference and
+  empirically, in that `docs/driver-model-report.md` and
+  `docs/census-report.md` regenerate byte-identical.
 - **A53** (2026-08-18): **A32 reconciled against reality; closed-beta direction
   adopted.** A32 (2026-07-28) recorded multi-tenancy as built and merged, and the
   repository then spent three weeks contradicting it: `docs/DEPLOY-SPEC.md` still

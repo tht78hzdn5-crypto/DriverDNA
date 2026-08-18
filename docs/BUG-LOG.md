@@ -759,6 +759,108 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Lesson**: this is the entry that justifies the whole practice of running
   the instrument blind against real laps.
 
+### BUG-028 — Six methodology texts written, none reachable; the guard only checked one direction
+- **Status**: fixed 2026-08-16 · **Severity**: dead-weight · **SPEC**: A51 (found during)
+- **Symptom**: `explain.py` defined `model.adherence`, `model.opportunity`,
+  `model.consistency`, `model.evidence_count`, `baseline.spread` and
+  `baseline.outliers_screened`. Grepping the SPA for each returned **zero**
+  references. Six carefully written driver-facing explanations shipped in the
+  package and could not be reached from any route.
+- **Root cause**: `tests/test_explain.py` checks JSX -> engine (every id a view
+  names must exist in the dict) and nothing checks engine -> JSX. A typo'd id
+  fails loudly; an unused id is silent forever. The three component texts were
+  the most costly case: they explain exactly the decomposition that A14
+  requires a composite score to expose, and the payload was not carrying the
+  components at all, so the texts had nothing to attach to even if a view had
+  wanted them.
+- **Blast radius**: no wrong number and no wrong claim — purely absent
+  explanation. But it is the direct cause of `#/model` reading as seven
+  uninterpretable scores, which is half of what A51 exists to fix.
+- **How it was caught**: an audit of the product against its own stated goal,
+  not by a test. Grepping each defined id against `ui/src/` took one command
+  and nothing had ever run it.
+- **Fix**: the three component texts are now rendered behind each meter's
+  disclosure on `#/model` (A51 work item 1). The remaining three
+  (`model.evidence_count`, `baseline.spread`, `baseline.outliers_screened`)
+  are **still unreferenced** and left open deliberately — they belong to
+  surfaces this change did not touch, and inventing a home for them to clear a
+  grep would be worse than leaving them listed here.
+- **Lesson**: a cross-reference test has two directions and checking one of
+  them feels like checking both. Same shape as BUG-013 — the guard was pinned
+  where the failure was loud, not where it was silent.
+
+### BUG-029 — A42 changed the unit and left every threshold behind
+- **Status**: fixed 2026-08-16 · **Severity**: breaks · **SPEC**: A52
+- **Symptom**: every one of the 16 fixture corners banded `major` on
+  `same_lap_twice`, and every one cleared the eligibility gate. The loudest
+  tone in the coaching vocabulary was the only tone it could produce, so the
+  band carried no information at all — a driver saw sixteen identical maximum
+  alarms and could not tell which corner was actually the problem.
+- **Root cause**: A42 changed the gated quantity from a **raw** coefficient of
+  variation to a **per-unit normalized** one. On the new scale `1.0` is exactly
+  unit-typical and `consistency_cv_ceiling` (2.0) is the worst dm-v2 will
+  score. The thresholds were never converted: `cv_band_major` stayed `0.50`, so
+  a perfectly average driver banded "major" at twice the threshold. `git log -L`
+  shows commit `d588921` **editing the description** of that very field from
+  "coefficient-of-variation floor" to "normalized-CV floor" while the
+  `default=0.50` on the line above it went untouched.
+- **Second instance, same commit**: `consistency_cv_floor = 0.15` with a
+  description reading "0.15 = '15% above typical variability'". On the
+  normalized scale that value means 85% *better* than typical, so the
+  eligibility gate filtered nothing. The description described the intended
+  reading; the number never got it.
+- **Blast radius**: coaching tone and eligibility only. `dm-v2` reads
+  `config.model.*` and these are `config.coaching.*`, so no Driver Model score
+  was ever affected — confirmed empirically when
+  `docs/driver-model-report.md` and `docs/census-report.md` regenerated
+  byte-identical across the fix.
+- **How it was missed**: no test asserted a *relationship* between the
+  thresholds and the scale they sit on — only that banding used CV rather than
+  seconds, which stayed true throughout. The synthetic fixture behind that test
+  produced a normalized CV of **0.388** (i.e. a driver 61% more repeatable than
+  typical) and "triggered the inconsistency principle" purely because the floor
+  was broken, so the test passed for the wrong reason and its own fixture
+  hid the defect. The committed `coaching-report.md` showed the sixteen
+  identical `major` rows on every regeneration and was read past for weeks.
+- **Fix**: thresholds recalibrated to the scale's own anchors; a test now pins
+  that exactly-unit-typical is not `major`, that the major band equals
+  `consistency_cv_ceiling`, and that the old values would have called all
+  sixteen observed corners `major`. The fixture was rebuilt to vary three
+  properties instead of one so it is genuinely inconsistent.
+- **Lesson**: when a change redefines what a number *means*, the thresholds
+  compared against it are part of the change. Editing the docstring to describe
+  the new unit — and stopping there — is the most convincing possible way to
+  look done. Same family as BUG-003/BUG-009: a recorded description got trusted
+  in place of the value it described.
+
+### BUG-030 — The weakest fundamental could never be coached
+- **Status**: fixed 2026-08-16 · **Severity**: breaks · **SPEC**: A52
+- **Symptom**: `consistency` was the driver's lowest measured fundamental
+  (34.3) and fired at 16 corners, and the coaching layer was structurally
+  incapable of ever making it the headline.
+- **Root cause**: `headline_eligible` was
+  `magnitude_kind == "seconds_lost" and band in (notable, major)`.
+  `same_lap_twice` bands on a coefficient of variation, so it failed the first
+  clause permanently — no quantity of evidence could change it. The two halves
+  of the product therefore disagreed by construction: the Driver Model named
+  consistency the weakness while coaching could only ever talk about something
+  else.
+- **Why the restriction existed**: removing it alone would have introduced a
+  worse bug. The ranker picked `max(..., key=magnitude)`, which compares 0.591
+  **seconds** against a CV of **2.724** and takes the CV every time — not
+  because it is worse but because CVs are bigger numbers. Fixed with a
+  unit-free `_severity` (magnitude as a multiple of the `major` floor for its
+  own kind), kept private so a number with no unit never reaches the payload
+  or the grounding validator's citable pool.
+- **How it was caught**: an audit against the product's stated goal, and only
+  because A51 had just built the reading that named consistency the weakness —
+  the contradiction was invisible until two layers stated the same thing in
+  different words.
+- **Lesson**: a hard `and` in an eligibility predicate is a permanent
+  exclusion, not a threshold. It deserves the same scrutiny as a magic number,
+  and none of the tests around it had ever asked "can this branch be reached
+  at all?"
+
 ---
 
 ## Patterns worth not repeating
