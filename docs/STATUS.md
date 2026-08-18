@@ -40,7 +40,10 @@ A51). Docs-only change: no code touched, no committed artifact moved.**
   "deterministic, versioned, confidence-qualified" stops being verifiable.
   Five further decisions taken the same day: **reference-derived numbers pin to
   the reference lap, not the importing user** (the most expensive of three
-  options, chosen deliberately — it still needs its referent settled, see A51);
+  options, chosen deliberately), resolved through a **canonical config keyed
+  to the lap's `content_hash`** — a knowing carve-out from "config is fully
+  per-user", since vs-reference findings cannot be comparable across cockpits
+  and per-driver at once;
   **`sync.max_cohorts` 10 → 40** with `raw_laps_per_cohort` staying 100 and
   audience tiers rejected (the two knobs have opposite audiences, and retention
   is a ceiling rather than a reservation); **pre-A32 rows reassigned** to the

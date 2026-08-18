@@ -779,7 +779,9 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   refines a non-negotiable and therefore ships only with a config fingerprint
   stored beside every measurement. Five more decisions the same day:
   reference-derived numbers pin to the reference lap rather than the importing
-  user (referent still to settle); `sync.max_cohorts` 10 → 40 with retention
+  user, through a canonical config keyed to `content_hash` — a deliberate
+  carve-out from per-user config, since vs-reference findings cannot be both
+  comparable across cockpits and per-driver; `sync.max_cohorts` 10 → 40 with retention
   unchanged and tiers rejected; pre-A32 rows reassigned to the live account;
   finding IDs keep their shape; database snapshots move off the VM. Full
   record: `docs/SPEC.md` A51,

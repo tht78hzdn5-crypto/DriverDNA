@@ -2771,21 +2771,28 @@ Accepted at owner plan review; rationale recorded in the review:
     computing vs-reference findings under instance defaults. Recorded because
     this is the most expensive of the three and was chosen deliberately.
 
-    **One sub-question must be settled before this can be built, and is named
-    here rather than picked silently:** a reference lap has no account —
-    `laps.driver` is the name on the lap, `owner_user_pk` is the importing
-    account — so "the reference's config" needs a referent. Two readings, and
-    they are not equivalent:
-    (i) **freeze at import** — the lap row carries the effective measurement
-    config it was imported under. Deterministic and simple, but two accounts
-    importing the same lap under different configs still disagree, which does
-    not deliver the comparability this decision was made for;
-    (ii) **canonical reference config** — reference measurement resolves through
-    one instance-level config keyed to the lap's identity (`content_hash` is the
-    existing global handle), so every account computes the same gap.
-    Only (ii) actually satisfies the decision. It is close to the rejected
-    "instance defaults" option, scoped to reference measurement alone — which is
-    worth stating plainly so the choice is made with that in view.
+    **The referent is the canonical reference config** (owner decision, same
+    day). A reference lap has no account — `laps.driver` is the name on the lap,
+    `owner_user_pk` is the importing account — so "the reference's config"
+    needed one, and the alternative was rejected on the merits: freezing the
+    config at import is simpler and deterministic, but two accounts importing
+    the same lap under different configs would still disagree, which is the
+    comparability this decision exists to buy. So **reference measurement
+    resolves through one instance-level config keyed to the lap's identity**
+    (`content_hash` is the existing global handle, already unique per lap
+    content and already the dedup key), and every account computes the same gap.
+
+    Stated plainly so it is not discovered later: this is deliberately a
+    **carve-out from "config is fully per-user"**. Vs-self findings use the
+    driver's own thresholds; vs-reference findings do not, and cannot, if the
+    same lap is to mean the same thing in two cockpits. It is the rejected
+    "instance defaults" option scoped to reference measurement alone, adopted
+    knowingly rather than by drift. Consequences to carry into the build:
+    a driver who retunes a measurement threshold sees vs-self findings move and
+    vs-reference findings hold still, which the UI must not present as
+    inconsistency; and the config fingerprint stored beside a vs-reference
+    measurement is the **canonical** one, not the user's, or the audit trail
+    would name a config that did not produce the number.
 
   - **`sync.max_cohorts` default 10 → 40.** A veteran's cohorts past the cap
     never arrive: A49 orders newest-driven-first and names what it skipped, so it
