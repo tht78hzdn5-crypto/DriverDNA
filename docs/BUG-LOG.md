@@ -89,29 +89,6 @@ Writing that down is the point.
 - **Fix shape**: per-user override rows + `user_pk` on `ConfigStore`, and an
   owner filter on `revert` (needed regardless of the per-user work).
 
-### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: a second account that has never connected Garage61 clicks **Sync**
-  and imports **the owner's laps** into its own cockpit. The UI encourages it:
-  `/api/garage61/status` reports `connected: true` to that user beforehand.
-- **Root cause**: `_resolve_garage61_token` returns `None` when the user has no
-  stored token (`ui/api.py:1777`), and the caller then constructs a bare
-  `Garage61Client()` (`ui/api.py:1824`), which reads the process-wide
-  `GARAGE61_TOKEN` (`garage61/client.py:167`) — a variable
-  `deploy/driverdna.service` sets on the live VM. `/api/garage61/status:1796`
-  reports the same env var as the user's own connection state.
-- **Blast radius**: cross-account telemetry disclosure, owner → any other
-  account, through a supported button. Not reachable today (one real account);
-  reachable on day one of a beta. The per-user half is correct and already
-  built — `garage61_tokens` is keyed `owner_user_pk` and encrypted at rest
-  (migration 016) — so only the fallback is wrong.
-- **How it was missed**: the fallback is deliberate and correct for the
-  single-user loopback case it was written for (A31-era), and no test exercises
-  a second account against `/api/sync`.
-- **Fix shape**: when auth is configured, a user with no stored token gets
-  "connect your Garage61 account", never the env token; keep the env fallback
-  only for the no-auth loopback mode, and fix `status` to stop reporting it.
-
 ### BUG-034 — Registering with a capital letter locks you out permanently
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A53)
 - **Symptom**: register as `User@Example.com`, then no password on earth logs
@@ -207,6 +184,39 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
+- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: a second account that had never connected Garage61 clicked
+  **Sync** and imported **the owner's laps** into its own cockpit.
+  `/api/garage61/status` compounded it by reporting `connected: true` to that
+  user from the same env var — a misleading state that actively invited the
+  action.
+- **Root cause**: `_resolve_garage61_token` correctly returned `None` for a
+  user with no stored token, but the caller in `/api/sync` then built a bare
+  `Garage61Client()` regardless — which reads the process-wide
+  `GARAGE61_TOKEN` (`garage61/client.py:167`), set on the VM by
+  `deploy/driverdna.service`. The status endpoint fell back to the same var.
+- **Blast radius**: cross-account telemetry disclosure, owner → any other
+  account, through a supported button. Never triggered on the live instance
+  because it has one real account; would have fired on day one of a beta.
+- **Fix**: when auth is configured, `/api/sync` returns HTTP 400 with a
+  directive to connect Garage61 — never constructs a `Garage61Client()`
+  from the env — and `/api/garage61/status` reports `connected: false` for
+  a user with no stored token of their own. The env fallback stays for the
+  no-auth loopback mode, which is what it was written for.
+- **Pinned by**: `test_cockpit_api.py::test_sync_with_auth_configured_never_falls_back_to_env_token`
+  (the RED test written first: seeds a second user, sets `GARAGE61_TOKEN`,
+  posts `/api/sync`, asserts 400 and zero rows imported into the beta
+  tenant); `::test_garage61_status_with_auth_never_reports_env_token_as_users_connection`
+  (status endpoint pin); `::test_garage61_status_without_auth_still_uses_env_fallback`
+  (no-auth loopback path pinned so a future tightening cannot silently break
+  the single-user local cockpit).
+- **Not fixed here** (deliberate; separate bug per plan): the finding
+  annotations tenancy hole (BUG-031), the config revert IDOR (BUG-032), and
+  the missing route-enumerated tenancy gate (BUG-036). The comprehensive
+  gate lands next; this fix ships now because the exposure is a supported
+  button on the live topology.
 
 > **BUG-037 and BUG-038 are filed late.** Both were found and fixed on
 > 2026-08-16 in `e196c2d` and merged without a BUG-LOG entry, contrary to
