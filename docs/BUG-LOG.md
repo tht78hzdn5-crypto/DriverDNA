@@ -37,39 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: with two accounts on the same car/track, one driver annotating a
-  finding changes what the *other* driver sees, and either can delete the
-  other's annotation. The annotating driver's free-text note also enters the
-  other's chat bundle.
-- **Root cause**: two independent gaps that only bite together. The table is
-  from migration 001 (`db.py:157`) and migration 009 **skipped it** while
-  partitioning everything else — though `docs/ACCOUNTS-SPEC.md:143-148`
-  explicitly listed it. So `annotations()` (`db.py:1830`) selects with no owner
-  filter, `clear_annotation` (`db.py:1838`) deletes by `finding_id` alone, and
-  the upsert conflicts on `finding_id` only (`db.py:1822`). Separately,
-  `_finding_id(source, car, track, corner, phase, kind)`
-  (`attribution/ranker.py:70`) contains **no user and no driver term**, so two
-  accounts on GR86/Spa generate byte-identical IDs. Neither is harmful alone;
-  together they make one row serve two tenants.
-- **Blast radius**: every annotated finding, on any car/track two accounts
-  share. Reaches rendered output via `report/payload.py:259` and the chat
-  context via `chat/session.py:311`. Zero impact today — the live instance has
-  one real account — which is exactly why it would first appear in the beta.
-- **How it was missed**: `docs/ACCOUNTS-SPEC.md:257-259` named this precise risk
-  as hazard 4 and said Phase 2 "must *prove* uniqueness, not assume it". The
-  proof was the specified `tests/test_tenancy.py`, which was never written
-  (BUG-036). The pattern is BUG-013's: the guarantee was documented, and pinned
-  one layer above where it broke.
-- **Fix shape** (decided, A53): add `owner_user_pk`, migrate existing rows to
-  the owner, move the conflict target to `(owner_user_pk, finding_id)`, filter
-  both readers. **`finding_id` keeps its shape** — partitioning the table closes
-  the defect completely, and changing the ID would orphan every stored citation
-  in annotations, `evidence_cited` and coach outputs for no extra security. Add
-  a test asserting **no table is keyed on a bare `finding_id`**, so the next
-  table to use one cannot repeat this.
-
 ### BUG-032 — Config is instance-wide, and any user can revert another's change
 - **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
 - **Symptom**: one beta user changing a threshold changes it for **every**
@@ -184,6 +151,45 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
+- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: with two accounts on the same car/track, one driver annotating
+  a finding changed what the *other* driver saw, and either could delete the
+  other's annotation. The annotating driver's free-text note also entered the
+  other's chat bundle via `chat/session.py:311` and the rendered payload via
+  `report/payload.py:259`.
+- **Root cause**: two independent gaps that only bit together. The table was
+  from migration 001 (`db.py:157`); migration 009 skipped it though
+  `docs/ACCOUNTS-SPEC.md:143-148` explicitly listed it, so
+  `finding_annotations` had `UNIQUE(finding_id)` and no owner column.
+  Separately, `_finding_id(source, car, track, corner, phase, kind)`
+  (`attribution/ranker.py:70`) contains no user and no driver term by design,
+  so two accounts on GR86/Spa generate byte-identical IDs. Neither is
+  harmful alone; together they made one row serve two tenants — the exact
+  "evidence-ID collisions across tenants … must *prove* uniqueness, not
+  assume it" hazard `ACCOUNTS-SPEC.md:257-259` named.
+- **Blast radius**: every annotated finding on any car/track two accounts
+  shared. Zero impact on the live instance — one real account — which is
+  exactly why it would first appear in the beta.
+- **Fix**: migration 017 partitions the table (`owner_user_pk` column,
+  `UNIQUE(owner_user_pk, finding_id)`, existing rows backfilled to
+  `user_pk=1`, mirroring migration 009's rewrite shape).
+  `annotate_finding`/`annotations()`/`clear_annotation` all filter and
+  scope by `self.user_pk`. `finding_id` itself keeps its shape (A53
+  decision) — changing it would orphan every stored citation in
+  annotations, chat transcripts' `evidence_cited` and coach outputs.
+- **Pinned by**: `test_finding_annotations_tenancy.py` — three cross-user
+  tests (parallel annotations, cross-user clear, upsert isolation) plus a
+  fourth **guard** test `test_no_table_declares_a_bare_unique_on_finding_id`
+  that parses `MIGRATIONS` and asserts no future table may key on a bare
+  `finding_id` without an `owner_user_pk` companion. That guard is the
+  substitute A53 named for changing `finding_id`'s shape: the next table
+  to store an identity per finding_id cannot repeat this defect.
+- **Not fixed here** (separate follow-ups): the config revert IDOR
+  (BUG-032, part a — same class of missing-owner-filter defect), the
+  route-enumerated tenancy gate (BUG-036), and the login email
+  normalization (BUG-034).
 
 ### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
 - **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
