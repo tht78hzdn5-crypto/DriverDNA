@@ -719,7 +719,7 @@ class SyncConfig(_Section):
     """
 
     max_cohorts: int = Field(
-        default=10,
+        default=40,
         ge=0,
         description="How many cohorts one sync pulls, most recently driven "
         "first. An account accumulates a cohort per (car, track) ever driven, "
@@ -727,7 +727,11 @@ class SyncConfig(_Section):
         "on combos that are finished. 0 syncs every cohort. Cohorts past the "
         "limit are reported by name with their last-driven date, never "
         "silently dropped — and a cohort re-enters the window as soon as it "
-        "is driven again.",
+        "is driven again. Raised from 10 to 40 in A53: the audit found a "
+        "veteran with 25-40 accumulated cohorts hit the cap on day one, and "
+        "an older cohort past the window does not sync unless re-driven. "
+        "The knob's other tenant (a light user with 1-3 cohorts) is "
+        "unaffected — they never reach either limit.",
     )
     skip_pitlane_laps: bool = Field(
         default=False,

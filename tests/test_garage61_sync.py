@@ -406,6 +406,17 @@ def _cfg(**sync_kwargs) -> DriverDNAConfig:
     return DriverDNAConfig.model_validate({"sync": sync_kwargs})
 
 
+def test_sync_max_cohorts_default_is_40():
+    """SPEC.md A53 (adopted 2026-08-18, applied here): the default was
+    raised from 10 to 40 because a veteran with 25-40 accumulated cohorts
+    hit the cap on day one, and an older cohort past the window does not
+    sync unless re-driven (A49 skips it by name, does not backfill).
+    Pinned so a future change is deliberate — this is not a threshold
+    that should drift silently. Not a model version bump: SyncConfig is
+    ingest scope and says so."""
+    assert DriverDNAConfig().sync.max_cohorts == 40
+
+
 def test_discover_cohorts_orders_newest_driven_first():
     """The cap takes a prefix of this list, so the order is load-bearing."""
     transport = FakeTransport(
