@@ -83,20 +83,46 @@ Writing that down is the point.
 - **Fix shape**: write it, route-enumerated. `tests/test_byok_api.py:28-58`
   already has the two-user fixture to build on.
 
-### BUG-019 — Test suite fails on ARM64, passes on x86
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
-- **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
-  31% and 38% of the run. Same commit is green on x86.
-- **Root cause**: unknown — tracebacks were never captured.
-- **Blast radius**: unknown, and that is the problem. Until the failures are
-  read, it is not known whether this is an environment artifact or a real
-  architecture-dependent defect in float/collation/ordering behaviour. This
-  product's numbers are float-sensitive (see BUG-006), so it must not be
-  assumed cosmetic.
-- **How it was caught**: running the suite on the target platform — something
-  x86 CI cannot do.
-- **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
-  on the VM. Do not theorise before reading it.
+### BUG-040 — The production VM cannot run its own test suite without going down
+- **Status**: open · **Severity**: breaks · **Found**: 2026-08-16 (BUG-019 diagnostic)
+- **Symptom**: running `python3 -m pytest` on the Oracle VM exhausts memory and
+  takes the machine with it — SSH and ping stop responding and it needs a hard
+  reboot from the OCI console. The deployed DriverDNA service goes down with it.
+- **Root cause**: the VM has **~960 MB RAM and no swap**. The suite peaks well
+  above that. Nothing about this is a code defect — the box is simply too small
+  to host the service and run the suite at the same time.
+- **Blast radius**: the deployed instrument, every time anyone tests on the VM.
+  This is the leading hypothesis for BUG-018's Cloudflare 1033 outage and for
+  BUG-019's original scattered failures — same machine, same day, same session.
+- **Workaround in use**: run the suite in batches (~10-13 files), never in one
+  shot. Recorded in DEPLOY-RUNBOOK.md Part H so the next agent does not
+  rediscover it by crashing production.
+- **Mitigated 2026-08-18** (does not close it): the blast radius is now bounded
+  at both ends. `deploy/driverdna.service` sets `MemoryHigh=300M` /
+  `MemoryMax=450M`, so a runaway DriverDNA is killed and restarted by the
+  existing `Restart=always` rather than taking the machine down; and Part H
+  documents a 2 GB swapfile, so pressure degrades instead of being instantly
+  fatal. Sized from measurement, not guesswork — peak RSS across import,
+  `census`, `report` and `rebuild-map` is flat at **116-135 MB**, the footprint
+  being numpy/scipy/FastAPI at import rather than telemetry (raw traces live on
+  disk since A23). `build_driver_payload` does hold every cohort payload
+  simultaneously, but one is ~5 KB serialized / ~0.15 MB held, so 25 cohorts add
+  ~4 MB. **The service fits this VM with ~500 MB to spare; the test suite does
+  not.** Those are different workloads and only the suite has ever crashed it.
+- **Why it stays open anyway**: the cap contains the symptom, it does not give
+  the machine more memory. Running the suite on the VM will still fail — now by
+  OOM-killing the batch instead of the box, which is the point. The real fixes
+  remain a larger instance, or simply never testing on the production host (CI
+  covers it, and since BUG-039 it actually runs).
+- **How it was caught**: by crashing the VM twice — once on 2026-08-08 (undiagnosed
+  at the time, misfiled as an ARM64 divergence) and again on 2026-08-16 while
+  running the diagnostic for that misfiling.
+- **Why still open**: the workaround avoids the crash but does not fix the cause.
+  The real fixes are a larger instance (Oracle's Always Free A1 offers
+  substantially more memory — note that moving to A1 *would* make BUG-019's
+  original ARM64 question a real question for the first time), adding swap, or
+  not testing on the production host at all. That is an owner decision about
+  infrastructure, not a code change.
 
 ### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
 - **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
@@ -295,6 +321,90 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Fixed in**: `e196c2d` — `user_pk` stored at session creation and checked on
   every access, returning 404 (not 403) so the ID is not confirmed to exist.
 
+### BUG-039 — Every CI gate silently stopped running for ~30 hours
+- **Status**: fixed 2026-08-18 · **Severity**: breaks · **Found**: 2026-08-18
+- **Symptom**: every job on every push and PR reported `failure` within 3-5
+  seconds. It looked like a normal red build. It was not: no runner was ever
+  assigned (`runner_id: 0`, no runner name), no step executed, and the log
+  download 404s because no log was ever produced.
+- **Root cause**: GitHub Actions minutes for the private repository were
+  exhausted. GitHub accepts the job, declines to schedule it, and surfaces that
+  as a plain job failure — indistinguishable at a glance from a real one.
+- **Window**: green with real runners on 2026-08-16 21:48 (`7fb54f1`, 6/6 jobs,
+  pytest running a real 4m38s). Dead by 2026-08-17 18:46. Every run in between
+  and after failed instantly.
+- **Blast radius**: all five merge gates — `pytest (3.11)`, `pytest (3.12)`,
+  `lint`, `browser-tests`, `secrets` — plus advisory `mypy`. **A52 (PR #31)
+  merged to `main` with zero CI verification.** Verified after the fact by
+  running the suite locally against `3a63508`: 1036 passed / 16 skipped
+  (Postgres-absent) non-browser, plus 26 browser passed = **1062 passed, 0
+  failed**, which matches A52's own claimed count exactly. So nothing broken
+  landed — but nothing checked, either.
+- **Fix**: the repository was made public (owner decision, 2026-08-18), which
+  restores unlimited Actions minutes on standard runners. Confirmed live: the
+  next run took 8m16s with real runners instead of failing in 4 seconds.
+- **Contributing waste, fixed here**: `tests.yml` triggered on `push:` with no
+  branch filter *and* `pull_request:`, so every push to a branch with an open PR
+  ran the entire ~19-billed-minute suite **twice** on the same commit. Ten of the
+  last thirty runs were exact duplicates. There was also no `concurrency:` group,
+  so rapid successive pushes queued full runs instead of superseding each other.
+  Both corrected: `push:` is scoped to `main`, and a concurrency group cancels
+  superseded in-progress runs. PR coverage is unchanged — every PR still runs all
+  six jobs.
+- **How it was missed**: nothing distinguishes "the gate failed" from "the gate
+  never ran". This is the third time this exact shape has cost something —
+  BUG-024 (`ruff` permanently red, so red read as normal) and BUG-025 (browser
+  tests silently skipping for two commits) are the same failure mode: a gate that
+  is not working looks like a gate that is working and unhappy. AGENTS.md's
+  "never assume a failure is synthetic" rule existed and was not applied — `main`
+  going red on 2026-08-17 was not investigated by anyone for a day.
+- **Test**: none possible. A test cannot detect that its own CI did not run;
+  the check has to be external to the thing being checked.
+
+### BUG-019 — Test failures on the Oracle VM (originally filed as ARM64 divergence)
+- **Status**: closed-premise-falsified (2026-08-17) · **Severity**: was "breaks" · **Found**: 2026-08-08
+- **Original symptom**: `pytest` on the Oracle VM showed `F` markers at roughly
+  15%, 31% and 38% of the run. Same commit green on x86 CI. Tracebacks were
+  never captured. The VM was recorded as "Ampere A1 ARM64" (STATUS.md, commit
+  152f291), and the bug was filed as an architecture-dependent float/collation
+  divergence.
+- **What the 2026-08-16 diagnostic found**: the Oracle VM is **x86_64** with
+  **~960 MB RAM and no swap**, not ARM64. `uname -m` returns `x86_64`. The
+  ARM64 premise was never verified and is false. Note what is *measured* here
+  and what is not: architecture and memory were read off the machine; the
+  **instance shape was not**. ~1 GB on x86 is consistent with
+  `VM.Standard.E2.1.Micro`, but naming that shape as fact would repeat this
+  bug one size smaller, so it is recorded as an inference until someone reads
+  it from the OCI console or instance metadata.
+- **Re-run results** (commit `216df3b`, 7 batches, all 70 test files): **944
+  passed, 42 skipped, 1 failed.** The single failure
+  (`test_auth_api::test_status_reports_whether_auth_is_required_and_met`) is a
+  code-test mismatch from PR #21 (BUG-023, already fixed on main) — not
+  platform-specific. The 42 skips are Postgres (16) and Chromium (26), expected
+  per AGENTS.md.
+- **Leading hypothesis for the original failures**: OOM. The VM has ~960 MB
+  total, no swap. Running the full suite in one shot (as the original session
+  did) crashed the VM — SSH and ping became unreachable, requiring a hard reboot
+  from the Oracle Cloud console. An OOM crash mid-run would produce scattered
+  failures at arbitrary positions. A deterministic float or collation divergence
+  does not heal on its own; OOM is exactly the kind of thing that appears once
+  and not the next time. The journal (`journalctl -k | grep -i "out of memory"`)
+  showed no records, but the VM was hard-rebooted and journald may have been
+  volatile at the time (persistent storage was added by PR #26, after the
+  original 2026-08-08 session).
+- **Bearing on BUG-018**: same date, same machine, same session. If pytest OOMs
+  the VM, the DriverDNA service goes unreachable and Cloudflare returns 1033 —
+  matching BUG-018's symptom exactly. This may be the reproduction BUG-018's
+  entry said it needed, though the evidence is circumstantial (no journal
+  survived).
+- **How it was caught**: running the suite on the deployed machine.
+- **How it was missed**: the architecture claim was written as fact (STATUS.md)
+  without verification, then read as fact for a week. A diagnostic guide
+  (BUG-019-ARM64-GUIDE.md) with five failure categories and 80-bit-x87 reasoning
+  was merged to main (PR #27) built entirely on that unverified claim.
+- **Artifacts superseded**: `docs/BUG-019-ARM64-GUIDE.md` is marked superseded
+  — its categories, reasoning, and commands assume ARM64 and do not apply.
+
 ### BUG-022 — A towed lap's trace duration is used as if it were a lap time
 - **Status**: fixed (2026-08-14, A50) · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
   **scope corrected the same day** after owner input — see "The first filing was
@@ -371,6 +481,16 @@ Newest first. The amendment named in each entry carries the full narrative.
   leading candidate remains the `pip install` shifting a dependency or the A41
   interlock refusing a start on a missing/stale `DRIVERDNA_SESSION_SECRET`, but
   that is an inference, not a diagnosis.
+- **2026-08-17 update (BUG-019 diagnostic)**: a third candidate emerged. The VM
+  has ~960 MB RAM and no swap (not the multi-GB Ampere A1 it was recorded as;
+  exact shape unverified — see BUG-019). Running the full test suite on this machine in the BUG-019
+  diagnostic session crashed it — SSH and ping became unreachable, requiring a
+  hard reboot from the Oracle Cloud console. Same date, same machine, same
+  session as BUG-018: if `pip install .[dev]` plus `pytest` exhausted memory, the
+  DriverDNA service would go down and Cloudflare would return 1033. This is
+  consistent but circumstantial — `journalctl -k | grep -i "out of memory"`
+  returned nothing, likely because the journal was volatile at the time
+  (persistent storage shipped in PR #26, after the 2026-08-08 session).
 - **Blast radius**: the deployed instrument was down. Local and test paths
   unaffected. The outage was transient — the service recovered, likely on the
   next `Restart=always` cycle or the next reboot.
@@ -577,7 +697,8 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Verified, not assumed, before adopting a strict byte-compare**: all
   fourteen regenerate byte-identical under both CI matrix versions (3.11 and
   3.12) and across two numpy majors. If it ever fails for a platform reason
-  — a numpy release moving a last decimal, or BUG-019's ARM64 divergence —
+  — a numpy release moving a last decimal, or a platform divergence (BUG-019's
+  ARM64 premise was falsified; the VM is x86_64) —
   that is a finding, not noise. Investigate; never loosen it to go green.
 - **Found while building the guard**: `driverdna corners` prints the
   fixtures directory it was handed into its own report header, so

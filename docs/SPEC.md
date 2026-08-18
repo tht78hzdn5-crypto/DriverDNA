@@ -2993,3 +2993,36 @@ Accepted at owner plan review; rationale recorded in the review:
   recorded decisions; no committed artifact moves. The `max_cohorts` default
   change above is adopted here and applied in the build pass, not in this
   docs-only commit.
+
+- **A54** (2026-08-18): **CI's `push:` trigger is scoped to `main`, a
+  concurrency group supersedes in-flight runs, and the repository is public.**
+  Recorded because the first half narrows a rule this file's A47 stated
+  deliberately ("the suite has to run on every push"), and a narrowing that is
+  not written down reads later as drift.
+  *Why:* Actions minutes for the private repository ran out, and every gate
+  then failed in 3-5 seconds without a runner ever being assigned — visually
+  identical to a real red build (BUG-039). Two contributing defects were found
+  in `tests.yml`: an unscoped `push:` alongside `pull_request:` ran the whole
+  ~19-billed-minute suite **twice** against the identical commit whenever the
+  branch had an open PR (ten of thirty sampled runs were exact duplicates), and
+  the absence of a `concurrency:` group let superseded runs burn to completion.
+  *What is unchanged:* coverage. AGENTS.md requires every change to reach
+  `main` through a PR (A47), so `pull_request` already gates everything that
+  can land, and all six jobs still run on every PR. The one behavioural change:
+  a branch with **no** open PR now gets no CI — open the PR, draft if
+  necessary, to arm the gates.
+  *Owner decision, same date:* the repository was made **public**, which
+  restores unlimited Actions minutes on standard runners and is the durable fix
+  for the outage itself. Verified live: runs went from failing in 4 seconds to
+  completing in 8m16s with real runners. A full secret audit over all 130
+  commits and every ref preceded the change — no private keys, no `.env`/`.pem`
+  files, and no real API keys have ever been committed; every match was an
+  explicit test fake or a documentation placeholder. The deployed VM's public
+  IP was removed from `docs/STATUS.md` as part of the same pass, though it
+  remains in git history and cannot be unpublished — the durable mitigation is
+  the VM's firewall, not the doc.
+  *Not changed:* `license = { file = "LICENSE" }` in `pyproject.toml` stays as
+  it is rather than moving to a PEP 639 SPDX string, because that form requires
+  `setuptools>=77` and the build pins `>=68`. Copyright is now asserted (Ben
+  Richards, 2026) in `README.md` and `pyproject.toml`'s `authors`; `LICENSE`
+  itself stays byte-for-byte the FSF text, whose own terms forbid altering it.

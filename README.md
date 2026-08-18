@@ -54,3 +54,20 @@ one driver's data. No blended scores, no guessing — "insufficient data" is a
 valid answer. Storage is SQLite by default and optionally a private,
 single-tenant Postgres; see `docs/SPEC.md` amendment A23 for exactly what that
 does and does not change.
+
+## License
+
+Copyright (C) 2026 Ben Richards
+
+DriverDNA is free software: you may redistribute it and/or modify it under the
+terms of the **GNU Affero General Public License, version 3 or later**, as
+published by the Free Software Foundation. It is distributed in the hope that
+it will be useful, but WITHOUT ANY WARRANTY — without even the implied warranty
+of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the full text in
+[`LICENSE`](LICENSE), or <https://www.gnu.org/licenses/>.
+
+AGPL rather than GPL because DriverDNA is network server software: if you run a
+modified version as a service, §13 requires you to offer that service's users
+the corresponding source. Running an unmodified copy for yourself carries no
+such obligation.
+

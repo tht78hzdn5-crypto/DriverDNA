@@ -254,3 +254,143 @@ curl -s http://127.0.0.1:8710/health >> ~/driverdna-journal.txt 2>&1
 
 This captures the journal, the unit status, and the health probe in one file.
 **Never include `/etc/driverdna/driverdna.env`** — it contains secrets.
+
+---
+
+## Part H — Operating the live VM (learned the hard way)
+
+Facts established by running work on the deployed machine, recorded so the next
+agent does not rediscover them by taking production down. Part B above is
+*prescriptive* — what to provision. This part is *descriptive* — what the
+machine actually is, and where the two disagree.
+
+### The deployed VM does not match Part B
+
+| | Part B prescribes | The VM actually is |
+|---|---|---|
+| Architecture | Ampere A1, ARM64/aarch64 | **x86_64** |
+| Memory | (A1 shapes offer several GB) | **~960 MB, no swap** |
+| Python | `python3.12` | **3.11.0rc1** (a release candidate) |
+
+The architecture line was recorded as "Ampere A1 ARM64" on 2026-08-08 without
+being checked, and a whole diagnostic track was built on it before anyone ran
+`uname -m` (BUG-019). The exact instance shape is still unverified — ~1 GB on
+x86 is consistent with `VM.Standard.E2.1.Micro`, but confirm it from the OCI
+console or instance metadata rather than inferring it from RAM:
+
+```bash
+curl -sH "Authorization: Bearer Oracle" http://169.254.169.254/opc/v2/instance/ | grep -i shape
+```
+
+Provisioning a replacement per Part B would produce an **ARM64** host, which is
+a different platform from the one running today. That is fine — but it makes
+BUG-019's original float-divergence question a real question for the first
+time, rather than the false premise it turned out to be here.
+
+### Never run the full test suite on this machine
+
+`python3 -m pytest` in one shot exhausts the ~960 MB and takes the whole VM
+down — SSH and ping stop answering, and it needs a hard reboot from the OCI
+console. The DriverDNA service goes down with it. This has happened twice
+(BUG-040), and is the leading explanation for BUG-018's outage.
+
+Batch it instead — roughly 10-13 test files at a time:
+
+```bash
+sudo -u driverdna /opt/driverdna/venv/bin/python -m pytest \
+  tests/test_parser.py tests/test_schema_lock.py tests/test_segmenter.py \
+  tests/test_metrics.py tests/test_scoring.py --tb=short
+```
+
+A full batched pass takes ~17 minutes across ~7 batches. Note that a batched
+pass is **weaker** than a single run: it does not exercise cross-file
+interference or ordering-dependence, so treat it as a smoke check of the
+deployed environment, not as a substitute for CI.
+
+### Give the machine swap, and cap the service
+
+Two guards, both cheap, both worth doing before anything else (BUG-040). The
+VM has ~960 MB and **no swap**, which is why memory pressure here is instantly
+fatal rather than merely slow: the kernel has nowhere to spill, so the OOM
+killer takes whatever it likes — including sshd.
+
+**1. Add swap.** A 2 GB swapfile on the durable volume turns "the VM dies and
+needs a console reboot" into "the VM gets slow for a minute":
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h        # confirm a Swap row with 2.0Gi
+```
+
+**2. Cap the service.** `deploy/driverdna.service` now sets `MemoryHigh=300M`
+and `MemoryMax=450M`, so a runaway DriverDNA is killed and restarted by
+`Restart=always` instead of taking the machine with it. These are ~2x and ~3x
+the **measured** peak — every real path (import, `census`, `report`,
+`rebuild-map`) sits flat at 116-135 MB, since the footprint is numpy/scipy/
+FastAPI at import rather than telemetry. After copying the unit:
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl restart driverdna
+systemctl show driverdna -p MemoryMax -p MemoryHigh     # confirm applied
+systemctl show driverdna -p MemoryCurrent               # watch actual usage
+```
+
+If `MemoryCurrent` ever approaches `MemoryHigh` in normal use, raise **both**
+values together — never one alone, or the soft throttle stops preceding the
+hard kill and you lose the graceful step.
+
+**The service fits this machine comfortably.** With ~150-250 MB for the OS,
+~30-50 MB for `cloudflared` and ~135-150 MB for DriverDNA, roughly 500 MB stays
+free. What does not fit is the **test suite** — see the section above. Those are
+different workloads and only one of them ever crashed this box.
+
+### What is not installed on the VM
+
+- **No Postgres** — the dual-backend tests skip (~16). Expected; this is a
+  SQLite deployment.
+- **No Chromium/Playwright** — every `-m browser` test skips (26). Also
+  expected, but remember AGENTS.md's rule: a skip is not a pass. The browser
+  tests are covered by CI, not by the VM.
+
+### `pip install` on the live venv can half-succeed
+
+`pip install -e ".[dev]"` can fail late — a distro-owned package it wants to
+replace (e.g. Debian's `cryptography`, which has no `RECORD` file) aborts the
+install **after** other packages are already staged, leaving some dependencies
+missing while the command still looks like it finished. Always check the tail
+of the output for `ERROR:`, and verify imports afterwards rather than trusting
+the exit:
+
+```bash
+/opt/driverdna/venv/bin/python -c "import driverdna, fastapi, typer; print('ok')"
+```
+
+BUG-018's outage began immediately after a `pip install .[dev]` against the
+live venv. That was never proven to be the cause, but a half-installed venv is
+a plausible mechanism and costs nothing to rule out.
+
+### Keeping the machine current
+
+The VM pulls over SSH with a read-only deploy key (`/opt/driverdna/.ssh/`,
+generated on the machine — the private half has never left it). If `git pull`
+starts asking for credentials, the remote has reverted to HTTPS:
+
+```bash
+sudo -u driverdna git -C /opt/driverdna remote set-url origin git@github.com:tht78hzdn5-crypto/DriverDNA.git
+```
+
+The repo lives at `/opt/driverdna`, not `/opt/driverdna/DriverDNA`.
+
+### Persistent journald
+
+`deploy/journald-driverdna.conf` sets `Storage=persistent` so a crash survives
+the reboot that follows it. Verify it is actually applied — BUG-018 could not
+be diagnosed at all because journald was still on its volatile default and
+every log from the outage was lost:
+
+```bash
+journalctl --disk-usage          # a persistent journal reports real on-disk bytes
+grep -r Storage /etc/systemd/journald.conf.d/ 2>/dev/null
+```

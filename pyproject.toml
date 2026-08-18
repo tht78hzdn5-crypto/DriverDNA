@@ -8,6 +8,7 @@ version = "0.1.0.dev0"
 description = "Personal racing-telemetry instrument: deterministic technique analysis over Garage61 exports, with grounded AI coaching"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [{ name = "Ben Richards" }]
 license = { file = "LICENSE" }
 dependencies = [
     "numpy>=1.26",
