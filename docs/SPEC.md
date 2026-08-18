@@ -1575,12 +1575,12 @@ Accepted at owner plan review; rationale recorded in the review:
   from trusted domains. Data remains fully isolated per user, and deterministic
   measurements remain strictly independent per account.
 
-  > **Corrected by A51 (2026-08-18) — read that before relying on this entry.**
+  > **Corrected by A53 (2026-08-18) — read that before relying on this entry.**
   > Two things above are not accurate as written. (1) "Principle *refined*"
   > should read **reversed by owner decision**, per ACCOUNTS-SPEC:37-41.
   > (2) "Data remains fully isolated per user" was not true when written and is
   > not true now: `finding_annotations` was never partitioned, config is
-  > instance-wide, and `/api/sync` can serve one user the owner's laps. A51
+  > instance-wide, and `/api/sync` can serve one user the owner's laps. A53
   > carries the audit, with file:line evidence, and the beta direction adopted
   > in response.
 
@@ -2670,7 +2670,7 @@ Accepted at owner plan review; rationale recorded in the review:
   references in `api.py` comments cleaned up (A40 retired it). BUG-026 (SSE
   heartbeat) separately fixed and merged.
 
-- **A51** (2026-08-18): **A32 reconciled against reality; closed-beta direction
+- **A53** (2026-08-18): **A32 reconciled against reality; closed-beta direction
   adopted.** A32 (2026-07-28) recorded multi-tenancy as built and merged, and the
   repository then spent three weeks contradicting it: `docs/DEPLOY-SPEC.md` still
   said "no user table, no registration, no tenant column", `AGENTS.md` and
@@ -2699,7 +2699,7 @@ Accepted at owner plan review; rationale recorded in the review:
   reference exclusions and BYOK keys are all filtered at the read surface.
 
   **Four things were specified and never built**, each now an open defect:
-  1. **`finding_annotations` was never partitioned** (BUG-028). Migration 009
+  1. **`finding_annotations` was never partitioned** (BUG-031). Migration 009
      skipped it though ACCOUNTS-SPEC:143-148 listed it. `db.py:1830` selects with
      no owner filter, `db.py:1838` deletes by `finding_id` alone, and the upsert
      conflicts on `finding_id` only. Finding IDs carry no tenant term
@@ -2708,12 +2708,12 @@ Accepted at owner plan review; rationale recorded in the review:
      free-text note enters the other's chat bundle (`chat/session.py:311`). This
      is ACCOUNTS-SPEC hazard 4 — "must *prove* uniqueness, not assume it" —
      assumed.
-  2. **Config is instance-wide with a cross-tenant revert** (BUG-029).
+  2. **Config is instance-wide with a cross-tenant revert** (BUG-032).
      `ConfigStore` holds one TOML path; `config_history` carries `owner_user_pk`,
      so the audit trail looks per-user while the effect is global.
      `config.py:834` reverts by `change_pk` with no owner filter, reachable from
      `ui/api.py:1716`.
-  3. **`/api/sync` falls back to the owner's Garage61 token** (BUG-030).
+  3. **`/api/sync` falls back to the owner's Garage61 token** (BUG-033).
      `ui/api.py:1824` falls through to `Garage61Client()`, which reads the
      process `GARAGE61_TOKEN` that `deploy/driverdna.service` sets — so a beta
      user who clicks Sync without connecting their own account imports **the
@@ -2737,12 +2737,12 @@ Accepted at owner plan review; rationale recorded in the review:
   **Also found:** Google OAuth links accounts by email with no `email_verified`
   check and no `google_sub` column (ACCOUNTS-SPEC:88-91 specified one); login
   does not normalize email while register does, permanently locking out anyone
-  who registers with a capital letter (BUG-031); `sync_driver` is called with
+  who registers with a capital letter (BUG-034); `sync_driver` is called with
   `driver="owner"` hardcoded (`ui/api.py:1854`, the BUG-012 defect class); the
   CLI is permanently `user_pk=1`; and the migration-seeded `owner@example.com`
   at `user_pk=1` has a `'placeholder'` hash no password can match, while
   migration 009 backfilled **every pre-A32 row to it** — so all data predating
-  A32 belongs to an account nobody can log into (BUG-032).
+  A32 belongs to an account nobody can log into (BUG-035).
 
   **Direction adopted (owner decision, 2026-08-18).** A small invite-only closed
   beta, mixed newcomers and experienced iRacers, with a commercial multi-user
@@ -2805,14 +2805,14 @@ Accepted at owner plan review; rationale recorded in the review:
     cohort. **Audience tiers were considered and rejected** — the two knobs have
     opposite audiences, and one default change does what a tier system would.
 
-  - **Pre-A32 rows are reassigned to the live account** (BUG-032), not stranded.
+  - **Pre-A32 rows are reassigned to the live account** (BUG-035), not stranded.
     Owner's instruction, with the collision rule stated: where a unique
     constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
     real case — **the live account's row wins and `user_pk=1`'s is discarded.**
     No merge heuristic; the owner explicitly does not want that data preserved
     at the cost of complexity.
 
-  - **Finding IDs keep their shape** (BUG-028). Partitioning the table closes the
+  - **Finding IDs keep their shape** (BUG-031). Partitioning the table closes the
     defect completely; changing `_finding_id` would orphan every stored citation
     in annotations, `evidence_cited` and coach outputs for no additional
     security, and their determinism is a feature. A test asserting **no table is

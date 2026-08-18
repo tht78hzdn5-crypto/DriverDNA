@@ -7,7 +7,7 @@ imports it; `.agents/rules/driverdna.md` mirrors its non-negotiables;
 copies against drift.
 
 Racing-telemetry instrument, **multi-user since A32** (2026-07-28; philosophy
-#8 reversed by owner decision, real status in A51). The constitution (the
+#8 reversed by owner decision, real status in A53). The constitution (the
 *why*) is **docs/ARCHITECTURE_VISION.md**: DriverDNA measures the driver, not
 the lap — the persistent Driver Model is the product. The engine spec (the
 *how*) is **docs/SPEC.md** — read both before changing anything. The philosophy

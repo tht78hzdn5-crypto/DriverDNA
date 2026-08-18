@@ -423,11 +423,11 @@ outbound-only tunnel), and a **mobile app** (a PWA over this same SPA — read
 + chat subset). Tauri/Electron packaging stays deferred; a native shell is
 excluded outright for the mobile track. The permanent list above is intact.
 
-**Multi-user is BUILT, not deferred (A32, 2026-07-28; status audited in A51,
+**Multi-user is BUILT, not deferred (A32, 2026-07-28; status audited in A53,
 2026-08-18).** The parenthetical above understated this and is corrected here:
 philosophy #8 was *reversed by owner decision*, not refined, and a `users`
 table, `owner_user_pk` partitioning, registration, Google/Garage61 OAuth and
-SMTP password reset all shipped. Read A51 before treating anything in this
+SMTP password reset all shipped. Read A53 before treating anything in this
 section as current — it carries the three isolation defects still open, and
 the closed-beta direction (first-user-only registration; fully per-user
 config, which is why a per-user config fingerprint now travels with every

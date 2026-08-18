@@ -2,20 +2,20 @@
 
 **Status: SUPERSEDED as a status doc, still authoritative as the design.**
 Adopted by SPEC.md **A32** (2026-07-28) and largely built; audited 2026-08-18
-by **A51**, which is the current status of record.
+by **A53**, which is the current status of record.
 
 - **Built:** Phase 0 (constitution), Phase 1 (identity core), Phase 2 (data
   partitioning), Phase 3 (Google OAuth), Phase 4 (SMTP password reset).
 - **Not built, still open:** the **Phase 2 test gate** (`tests/test_tenancy.py`,
   specified below and never written); **invite-only registration** after the
-  first account (specified below, registration shipped fully open — A51 adopts
+  first account (specified below, registration shipped fully open — A53 adopts
   first-user-only); `GcsBlobStore` (Phase 2b — moot, A40 returned the deploy to
   a single VM with local-disk blobs); the dedicated `DRIVERDNA_SECRET_KEY`
   (sessions still sign off the passphrase); `google_sub` and username columns.
 - **Built but broken:** `finding_annotations` was named in Phase 2's table list
   and never partitioned; hazard 4 below ("evidence-ID collisions across tenants
   … must *prove* uniqueness, not assume it") describes a defect that is now
-  real. See A51 and BUG-028.
+  real. See A53 and BUG-031.
 
 The original text is kept unedited below — the measurements, the architectural
 crux and the hazards are still the best record of *why* this was built this

@@ -41,7 +41,7 @@ If a future change needs a second real user, that is productization and it
 goes back to the owner as its own decision, with its own amendment. This
 spec must not be cited as precedent for it.
 
-> ### ⚠️ SUPERSEDED 2026-07-28 by SPEC.md **A32**, reconciled by **A51**
+> ### ⚠️ SUPERSEDED 2026-07-28 by SPEC.md **A32**, reconciled by **A53**
 > (2026-08-18). The block above is kept because the reversal has to stay
 > legible — deleting it would hide that this was ever the rule.
 >
@@ -59,7 +59,7 @@ spec must not be cited as precedent for it.
 > (`docs/ACCOUNTS-SPEC.md:73-82`).
 >
 > Current real status, including three isolation defects and the missing
-> tenancy test gate, is in **A51**. Do not read this document as evidence
+> tenancy test gate, is in **A53**. Do not read this document as evidence
 > that DriverDNA is single-tenant.
 
 ## Owner decisions (2026-07-26)
@@ -446,7 +446,7 @@ H1's done-criteria pass.
    guards every route except the login endpoint and the static shell. No
    user table, no registration, no password reset — see the single-tenant
    framing above.
-   **Superseded (A32, 2026-07-28; see A51):** a `users` table, registration
+   **Superseded (A32, 2026-07-28; see A53):** a `users` table, registration
    and an SMTP password reset all exist today. H1's guard-every-route design
    is unchanged and still correct — only the "no user table" clause is dead.
 3. **Write-path hardening.** The write endpoints (`/api/laps/upload`,

@@ -1,7 +1,7 @@
 # DriverDNA - Status & Decision Log
 
 **Snapshot date: 2026-08-18 (multi-tenancy audited, docs reconciled — SPEC.md
-A51). Docs-only change: no code touched, no committed artifact moved.**
+A53). Docs-only change: no code touched, no committed artifact moved.**
 
 - **What prompted it:** A32 (2026-07-28) recorded multi-user as built and
   merged. `docs/DEPLOY-SPEC.md` then went on saying "no user table, no
@@ -16,23 +16,23 @@ A51). Docs-only change: no code touched, no committed artifact moved.**
   genuinely thorough — 76 `owner_user_pk` sites in `db.py`, and `corner_maps
   UNIQUE(car, track, owner_user_pk)` (`db.py:320`), the crux
   `docs/ACCOUNTS-SPEC.md:60-71` identified.
-- **Six defects filed** (`docs/BUG-LOG.md` BUG-028..033, all open):
+- **Six defects filed** (`docs/BUG-LOG.md` BUG-031..033, all open):
   `finding_annotations` never partitioned and finding IDs carrying no tenant
-  term, so two accounts on one car/track collide exactly (BUG-028); config
-  instance-wide with a cross-tenant revert (BUG-029); `/api/sync` falling back
+  term, so two accounts on one car/track collide exactly (BUG-031); config
+  instance-wide with a cross-tenant revert (BUG-032); `/api/sync` falling back
   to the owner's `GARAGE61_TOKEN`, so a beta user who never connected Garage61
-  imports the owner's laps (BUG-030); login not normalizing email while
-  register does, a permanent lockout (BUG-031); all pre-A32 rows owned by a
-  seeded account with a `'placeholder'` hash no password can match (BUG-032);
+  imports the owner's laps (BUG-033); login not normalizing email while
+  register does, a permanent lockout (BUG-034); all pre-A32 rows owned by a
+  seeded account with a `'placeholder'` hash no password can match (BUG-035);
   and the tenancy test gate ACCOUNTS-SPEC specified never being written
-  (BUG-033). BUG-034/035 backfill the two `e196c2d` security fixes that merged
+  (BUG-036). BUG-037/035 backfill the two `e196c2d` security fixes that merged
   without entries.
 - **Not a hole, but pinned too high:** the blob store is shared rather than
   per-user (`blobs.py:114-125`). No leak is reachable — `lap_pk` is globally
   unique and every API path resolves the lap through an owner-filtered query
   first — but `load_lap_arrays` and `has_raw` take a bare `lap_pk` and never
   check ownership, while the legacy fallback beside them does. The A34 shape.
-- **Owner decisions adopted (A51):** registration closes to first-user-only,
+- **Owner decisions adopted (A53):** registration closes to first-user-only,
   with the Cloudflare Access email allowlist as the invite mechanism; and
   config becomes **fully per-user, every threshold**. The second refines a
   non-negotiable, so it ships only with a fingerprint of the user's effective

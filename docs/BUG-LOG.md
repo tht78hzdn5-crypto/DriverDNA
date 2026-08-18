@@ -37,8 +37,8 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-028 — `finding_annotations` was never partitioned; annotations cross tenants
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
+### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
+- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
 - **Symptom**: with two accounts on the same car/track, one driver annotating a
   finding changes what the *other* driver sees, and either can delete the
   other's annotation. The annotating driver's free-text note also enters the
@@ -60,9 +60,9 @@ Writing that down is the point.
 - **How it was missed**: `docs/ACCOUNTS-SPEC.md:257-259` named this precise risk
   as hazard 4 and said Phase 2 "must *prove* uniqueness, not assume it". The
   proof was the specified `tests/test_tenancy.py`, which was never written
-  (BUG-033). The pattern is BUG-013's: the guarantee was documented, and pinned
+  (BUG-036). The pattern is BUG-013's: the guarantee was documented, and pinned
   one layer above where it broke.
-- **Fix shape** (decided, A51): add `owner_user_pk`, migrate existing rows to
+- **Fix shape** (decided, A53): add `owner_user_pk`, migrate existing rows to
   the owner, move the conflict target to `(owner_user_pk, finding_id)`, filter
   both readers. **`finding_id` keeps its shape** — partitioning the table closes
   the defect completely, and changing the ID would orphan every stored citation
@@ -70,8 +70,8 @@ Writing that down is the point.
   a test asserting **no table is keyed on a bare `finding_id`**, so the next
   table to use one cannot repeat this.
 
-### BUG-029 — Config is instance-wide, and any user can revert another's change
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
+### BUG-032 — Config is instance-wide, and any user can revert another's change
+- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
 - **Symptom**: one beta user changing a threshold changes it for **every**
   account, and `POST /api/config/revert/{change_pk}` will revert a change
   belonging to someone else given a guessed integer.
@@ -82,15 +82,15 @@ Writing that down is the point.
   looks isolated. `ConfigStore.revert` (`config.py:834`) selects by `change_pk`
   with no owner filter, reachable straight from `ui/api.py:1716`.
 - **Blast radius**: every threshold, including measurement thresholds. Under
-  A51's adopted per-user config this gets sharper, not milder: the revert path
+  A53's adopted per-user config this gets sharper, not milder: the revert path
   becomes a way to rewrite another account's measurement thresholds.
 - **How it was missed**: no cross-user config test exists; `test_api.py` covers
   propose/apply/revert with a single account, where the bug is invisible.
 - **Fix shape**: per-user override rows + `user_pk` on `ConfigStore`, and an
   owner filter on `revert` (needed regardless of the per-user work).
 
-### BUG-030 — `/api/sync` falls back to the owner's Garage61 token
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
+### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
+- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
 - **Symptom**: a second account that has never connected Garage61 clicks **Sync**
   and imports **the owner's laps** into its own cockpit. The UI encourages it:
   `/api/garage61/status` reports `connected: true` to that user beforehand.
@@ -112,8 +112,8 @@ Writing that down is the point.
   "connect your Garage61 account", never the env token; keep the env fallback
   only for the no-auth loopback mode, and fix `status` to stop reporting it.
 
-### BUG-031 — Registering with a capital letter locks you out permanently
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A51)
+### BUG-034 — Registering with a capital letter locks you out permanently
+- **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A53)
 - **Symptom**: register as `User@Example.com`, then no password on earth logs
   that account in. The error is the generic "incorrect email or password".
 - **Root cause**: `register` normalizes (`ui/api.py:407`,
@@ -123,12 +123,12 @@ Writing that down is the point.
   it either — the storage layer is doing exactly what it was told.
 - **Blast radius**: any user whose typed email is not already lowercase, and
   password reset cannot rescue them: the reset lookup has the same bug.
-- **How it was caught**: reading register and login side by side during A51's
+- **How it was caught**: reading register and login side by side during A53's
   audit, not by a test — `test_auth_api.py` uses a lowercase literal throughout.
 - **Fix shape**: normalize at every lookup, not just the write.
 
-### BUG-032 — All pre-A32 data belongs to an account nobody can log into
-- **Status**: open · **Severity**: data-loss · **Found**: 2026-08-18 (A51)
+### BUG-035 — All pre-A32 data belongs to an account nobody can log into
+- **Status**: open · **Severity**: data-loss · **Found**: 2026-08-18 (A53)
 - **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and
   transcript predating 2026-07-28 is owned by `user_pk=1` and invisible to them.
 - **Root cause**: migration 008 seeds `owner@example.com` with the literal string
@@ -146,7 +146,7 @@ Writing that down is the point.
   situation in a comment and works around it by overwriting the seed row's hash
   in the fixture — so the tests never experience the state a real deployment is
   in.
-- **Fix shape** (decided, A51): **reassign** `owner_user_pk=1` rows to the live
+- **Fix shape** (decided, A53): **reassign** `owner_user_pk=1` rows to the live
   account, in one transaction across every partitioned table. Where a unique
   constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
   real case — **the live account's row wins and `user_pk=1`'s is discarded**; no
@@ -155,10 +155,10 @@ Writing that down is the point.
   laps GROUP BY owner_user_pk`): if registration preceded any import, user 1
   holds nothing and this is moot. The runbook should state the outcome.
 
-### BUG-033 — The tenancy test gate was specified and never written
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A51)
-- **Symptom**: not a defect in itself — the absence that let BUG-028, BUG-029
-  and BUG-030 all ship unnoticed.
+### BUG-036 — The tenancy test gate was specified and never written
+- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
+- **Symptom**: not a defect in itself — the absence that let BUG-031, BUG-032
+  and BUG-033 all ship unnoticed.
 - **Root cause**: `docs/ACCOUNTS-SPEC.md:150-157` made `tests/test_tenancy.py`
   the **gate** for Phase 2: "seed two users with overlapping car/track, then
   enumerate every read endpoint and assert user A never sees a row, a count, an
@@ -169,7 +169,7 @@ Writing that down is the point.
   only cross-user isolation tests are `tests/test_byok_api.py:125` and `:131`,
   covering AI keys alone — and they are green, which is what made the rest look
   covered.
-- **How it was caught**: looking for the file A51's audit expected to find.
+- **How it was caught**: looking for the file A53's audit expected to find.
 - **Fix shape**: write it, route-enumerated. `tests/test_byok_api.py:28-58`
   already has the two-user fixture to build on.
 
@@ -208,13 +208,13 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
-> **BUG-034 and BUG-035 are filed late.** Both were found and fixed on
+> **BUG-037 and BUG-038 are filed late.** Both were found and fixed on
 > 2026-08-16 in `e196c2d` and merged without a BUG-LOG entry, contrary to
 > AGENTS.md's decision discipline. Their IDs follow discovery-order convention
 > as closely as the already-assigned range allows; the **Found** dates are the
-> real ones. Recorded during A51's audit (2026-08-18).
+> real ones. Recorded during A53's audit (2026-08-18).
 
-### BUG-034 — Google OAuth callback had no CSRF state parameter
+### BUG-037 — Google OAuth callback had no CSRF state parameter
 - **Status**: fixed · **Severity**: security · **Found**: 2026-08-16
 - **Symptom**: an attacker who got a victim to load a crafted callback URL could
   link the attacker's Google account to the victim's session.
@@ -228,12 +228,12 @@ Newest first. The amendment named in each entry carries the full narrative.
   cookie set on `/login`, compared constant-time on `/callback`, mirroring
   Garage61's flow.
 - **Note**: two related weaknesses in the same callback are still open and are
-  recorded in A51, not here, because they are design gaps rather than
+  recorded in A53, not here, because they are design gaps rather than
   regressions: there is no `email_verified` check and no `google_sub` column
   (`ui/api.py:626-650`), so accounts are linked by email string alone —
   `docs/ACCOUNTS-SPEC.md:88-91` specified `google_sub`.
 
-### BUG-035 — Chat sessions were addressable by ID with no ownership check
+### BUG-038 — Chat sessions were addressable by ID with no ownership check
 - **Status**: fixed · **Severity**: security · **Found**: 2026-08-16
 - **Symptom**: any authenticated user who learned another user's 12-hex-char
   chat session ID could post messages to it and confirm its staged config
@@ -777,15 +777,15 @@ Read as a set, the entries above cluster:
 4. **A symptom's location is not the bug's location** (BUG-014). Four sessions
    edited auth code for a database-configuration bug.
 5. **Adopted-but-not-built is a live exposure** (BUG-010, BUG-020, and the
-   whole BUG-028..033 cluster). A decision in a spec does not defend anything.
-6. **A spec's own gate is not a gate until someone writes it** (BUG-033, and
-   therefore BUG-028/029/030). `docs/ACCOUNTS-SPEC.md` named the test that
+   whole BUG-031..033 cluster). A decision in a spec does not defend anything.
+6. **A spec's own gate is not a gate until someone writes it** (BUG-036, and
+   therefore BUG-031/029/030). `docs/ACCOUNTS-SPEC.md` named the test that
    would have caught all three, named the hazard one of them realises, and was
    right about both. The design work was done and the verification work was
    not — so the partitioning *looked* finished, and the suite stayed green
    because nothing asked it the question. When a spec names a gate, the gate is
    part of the deliverable, not a follow-up.
-7. **Documentation drift is a defect, with a blast radius** (BUG-028..033, all
+7. **Documentation drift is a defect, with a blast radius** (BUG-031..033, all
    found in one audit). Three weeks of documents contradicted A32 while the
    code moved on, so each new session re-derived the wrong mental model —
    "personal instrument for one driver" — and none of them looked for tenant
