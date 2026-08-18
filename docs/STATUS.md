@@ -1,5 +1,43 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-18 (CI outage found and closed; VM reality corrected; repo public).**
+
+- **Verified counts** (commit `3a63508` + this branch, this environment):
+  `python3 -m pytest -m "not browser"` → **1036 passed, 16 skipped, 26
+  deselected** (330s); `python3 -m pytest -m browser` → **26 passed** (135s);
+  `python3 -m ruff check .` → clean. **1062 passed, 16 skipped, 0 failed.**
+  The 16 skips are Postgres-absent only (`DRIVERDNA_TEST_DATABASE_URL` unset) —
+  **zero browser skips**, which required working around a container-local
+  Playwright/Chromium build mismatch (wants 1234, image ships 1194; same shape
+  as BUG-025). Nothing in the repo was changed for that.
+- **BUG-031 (fixed): every CI gate silently stopped running for ~30 hours.**
+  Actions minutes for the private repo were exhausted; jobs failed in 3-5
+  seconds with no runner assigned and no logs, looking exactly like a normal red
+  build. **A52 (PR #31) merged to `main` with zero CI verification** — re-run
+  locally here and confirmed sound, matching its claimed 1062 exactly. Fixed by
+  the repo going public (unlimited minutes; verified live, runs now take 8m16s).
+  `tests.yml` also had two real defects, both corrected: an unscoped `push:`
+  double-ran the suite against identical commits, and no `concurrency:` group
+  meant superseded runs burned to completion. See SPEC.md A53.
+- **BUG-032 (open): the production VM cannot run its own test suite.** ~960 MB
+  RAM, no swap; a single-shot `pytest` exhausts it and takes the machine and the
+  service down. Batching is the workaround (DEPLOY-RUNBOOK Part H); a bigger
+  instance or swap is the fix, and that is an owner infrastructure decision.
+- **BUG-019 closed, premise falsified.** The VM is x86_64, not the "Ampere A1
+  ARM64" recorded on 2026-08-08 — an unverified claim that shaped a week of
+  work and a merged diagnostic guide. The instance *shape* is still unverified
+  and is now labelled as an inference rather than restated as fact.
+- **Repository made public** (owner decision) after a secret audit over all 130
+  commits and every ref: no private keys, no `.env`/`.pem`/`.key` files, no real
+  API keys ever committed. The VM's public IP was removed from this document; it
+  remains in git history and cannot be unpublished, so the firewall is the real
+  mitigation.
+- **Copyright asserted**: Ben Richards, 2026 (`README.md`, `pyproject.toml`).
+  Licence stays **AGPL-3.0** — correct for network server software; `LICENSE`
+  is unmodified FSF text.
+
+---
+
 **Snapshot date: 2026-08-16 (A52 — CV bands recalibrated, any band can
 headline; BUG-029 and BUG-030 fixed). A51 merged as PR #30.**
 
@@ -434,7 +472,7 @@ gap that let A42/A43 leave three of them stale.
 
 **Snapshot date: 2026-08-08 (Antigravity deployment handoff — OCI VM live, two blockers open).**
 
-- **Oracle Cloud VM deployed:** DriverDNA running on an **E2.1.Micro x86_64** instance (~960 MB RAM, no swap) at `147.5.99.21`. *(Originally recorded as "Ampere A1 ARM64" on 2026-08-08 but verified 2026-08-16 as x86_64 via `uname -m`; see BUG-019 correction.)* Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
+- **Oracle Cloud VM deployed:** DriverDNA running on an **x86_64** instance with **~960 MB RAM and no swap**. *(Originally recorded as "Ampere A1 ARM64" on 2026-08-08; corrected 2026-08-16 — `uname -m` returns `x86_64` and `free` reports ~960 MB. The **instance shape is not verified**: ~1 GB on x86 is consistent with `VM.Standard.E2.1.Micro`, but that is an inference from RAM and architecture, not a reading of the shape. Confirm from the OCI console or instance metadata before recording a shape name — writing an inferred one as fact is the exact error this entry corrects. The public IP is deliberately not recorded here; see BUG-031.)* Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
 - **Cloudflare Tunnel + Access:** `cloudflared` routes `driver-dna.com` → port 8710; Cloudflare Access gate uses Google SSO. Internal app-level Google OAuth wired via `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `/etc/driverdna/env`.
 - **SSH keypair rotated:** Private key was exposed in chat; `vm_key` replaced, `authorized_keys` locked to the new key.
 - **Blocker 1 — service unreachable (Cloudflare 1033):** Service was restarted after `pip install .[dev]` ran against the live venv. Still returning 1033. Needs `journalctl -u driverdna -n 100 --no-pager` to diagnose.

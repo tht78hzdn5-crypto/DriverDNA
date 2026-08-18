@@ -4,13 +4,29 @@ name: Tests
 # and every invariant this project has — determinism, the source contract,
 # reference-lap isolation, the grounding validator — is enforced by pytest;
 # `ruff check` (correctness rules only, no formatter — SPEC.md A47) catches
-# what pytest structurally can't. So the suite has to run on every push, not
-# just when someone remembers.
-
+# what pytest structurally can't. So the suite runs on every proposed change,
+# not just when someone remembers.
+#
+# `push:` is scoped to `main` deliberately (BUG-031). It used to be unscoped,
+# which meant a push to a branch with an open PR matched BOTH triggers and ran
+# the entire suite twice against the identical commit — ten of thirty sampled
+# runs were exact duplicates, at ~19 billed minutes each. Coverage is unchanged:
+# AGENTS.md requires every change to reach `main` through a PR, so
+# `pull_request` already gates everything that can land. The one behaviour
+# change worth knowing: a branch with no open PR gets no CI, so open the PR
+# (draft is fine) to get the gates running.
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
+
+# Supersede an in-flight run when new commits land on the same ref. Without
+# this, pushing three times in quick succession queued three full runs and let
+# the two stale ones burn to completion (BUG-031).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
