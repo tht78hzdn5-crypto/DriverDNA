@@ -305,6 +305,122 @@ def test_sync_auth_expired_returns_structured_error(tmp_path, monkeypatch):
     assert "sign-in expired" in errors[0]["detail"]
 
 
+# --- BUG-033: env-token fallback must not cross tenants ------------------
+#
+# When auth is configured, /api/sync used to fall back to `GARAGE61_TOKEN`
+# from the process environment for any authenticated user who had not
+# connected Garage61 themselves — importing the owner's laps into a beta
+# user's cockpit through a supported button (docs/BUG-LOG.md BUG-033,
+# SPEC.md A53). And /api/garage61/status compounded it by reporting
+# `connected: true` from the same env var, so the user was actively told
+# they had a connection they did not have. Fixed in the same change:
+#
+# - `/api/sync`, auth on, no stored token → HTTP 400 telling the user to
+#   connect their own account; no `Garage61Client()` construction at all.
+# - `/api/garage61/status`, auth on, no stored token → `connected: false`,
+#   full stop; the env var is invisible to authenticated callers.
+#
+# The no-auth loopback mode is unchanged — env fallback is correct for the
+# single-user local cockpit, and the two existing "missing token" tests at
+# the top of this file continue to cover it.
+
+_TENANCY_SECRET = "a-very-long-tenancy-test-secret-passphrase"
+_BETA_PASSWORD = "beta-user-password-not-owner"
+_BETA_EMAIL = "beta-user@driverdna.com"
+
+
+def _seed_beta_user(db_path: Path) -> None:
+    from driverdna.ui.auth import hash_password
+    _fresh_db(db_path)
+    with Database.open(db_path) as db:
+        with db.conn:
+            db.conn.execute(
+                "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+                (_BETA_EMAIL, hash_password(_BETA_PASSWORD)),
+            )
+
+
+def _login_beta(client: TestClient) -> None:
+    r = client.post("/api/auth/login",
+                    json={"email": _BETA_EMAIL, "password": _BETA_PASSWORD})
+    assert r.status_code == 200, r.text
+
+
+def test_sync_with_auth_configured_never_falls_back_to_env_token(tmp_path, monkeypatch):
+    """The BUG-033 pinning test. With auth on and a user who has not
+    connected Garage61, /api/sync must NOT construct `Garage61Client()`
+    from `GARAGE61_TOKEN`. Doing so would import the owner's laps into
+    the beta user's account — the exact reason a per-user OAuth store
+    exists in the first place."""
+    monkeypatch.setenv("GARAGE61_TOKEN", "owner-env-token-that-must-not-be-used")
+
+    db_path = tmp_path / "sync.db"
+    _seed_beta_user(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml", session_secret=_TENANCY_SECRET)
+    c = TestClient(app)
+    _login_beta(c)
+
+    # If the env-fallback path is still live, this call succeeds (200 SSE)
+    # and eventually writes rows. The fix returns a directive 4xx before
+    # any Garage61Client construction.
+    r = c.post("/api/sync")
+    assert 400 <= r.status_code < 500, (
+        f"expected a directive error refusing to run without a per-user "
+        f"token, got {r.status_code}: {r.text}"
+    )
+    detail = r.json()["detail"]
+    # The message must direct the user at Garage61, not surface the env var
+    # (which would leak the fallback design and hint at the exploit).
+    assert "GARAGE61_TOKEN" not in detail, detail
+    assert "garage61" in detail.lower() or "sign in" in detail.lower(), detail
+
+    # And no lap made it through — the beta user's tenant stays empty.
+    with Database.open(db_path) as db:
+        n = db.conn.execute(
+            "SELECT COUNT(*) AS n FROM laps WHERE owner_user_pk="
+            "(SELECT user_pk FROM users WHERE email=?)", (_BETA_EMAIL,),
+        ).fetchone()["n"]
+        assert n == 0
+
+
+def test_garage61_status_with_auth_never_reports_env_token_as_users_connection(
+    tmp_path, monkeypatch,
+):
+    """The BUG-033 status half. /api/garage61/status must never tell an
+    authenticated user they are connected via the process env — that
+    misleading state is what invited the sync leak. The env fallback
+    only stays for the no-auth loopback mode."""
+    monkeypatch.setenv("GARAGE61_TOKEN", "owner-env-token")
+
+    db_path = tmp_path / "sync.db"
+    _seed_beta_user(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml", session_secret=_TENANCY_SECRET)
+    c = TestClient(app)
+    _login_beta(c)
+
+    r = c.get("/api/garage61/status")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("connected") is False, (
+        f"env token must be invisible to authenticated callers; got {body}"
+    )
+
+
+def test_garage61_status_without_auth_still_uses_env_fallback(tmp_path, monkeypatch):
+    """The no-auth loopback path is deliberately unchanged (BUG-033).
+    Pinning this so a future tightening does not silently break the
+    local single-user cockpit the env var was written for."""
+    monkeypatch.setenv("GARAGE61_TOKEN", "local-env-token")
+
+    db_path = tmp_path / "sync.db"
+    _fresh_db(db_path)
+    app = create_app(db_path, tmp_path / "cfg.toml")  # no session_secret
+
+    r = TestClient(app).get("/api/garage61/status")
+    assert r.status_code == 200, r.text
+    assert r.json() == {"connected": True}
+
+
 # --- POST /api/cohorts/{slug}/rebuild-map --------------------------------
 
 

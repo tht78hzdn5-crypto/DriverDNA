@@ -1778,7 +1778,15 @@ def create_app(
 
     @app.get("/api/garage61/status")
     def garage61_token_status(request: Request) -> dict[str, Any]:
-        """Whether the current user has a stored Garage61 OAuth token."""
+        """Whether the current user has a stored Garage61 OAuth token.
+
+        BUG-033 (SPEC.md A53): the env `GARAGE61_TOKEN` is invisible to
+        authenticated callers here. Reporting it as `connected: true` used to
+        tell a beta user they had a Garage61 connection when they did not,
+        which is precisely the misleading state that invited `/api/sync`'s
+        env-fallback leak. The env fallback stays only for the no-auth
+        loopback mode — the single-user local cockpit it was written for.
+        """
         if session_secret is None:
             import os
             return {"connected": bool(os.environ.get("GARAGE61_TOKEN", "").strip())}
@@ -1792,8 +1800,7 @@ def create_app(
             ).fetchone()
         if row:
             return {"connected": True, "garage61_user_id": row["garage61_user_id"], "since": row["created_at"]}
-        import os
-        return {"connected": bool(os.environ.get("GARAGE61_TOKEN", "").strip())}
+        return {"connected": False}
 
     @app.delete("/api/garage61/disconnect")
     def garage61_disconnect(request: Request) -> dict[str, Any]:
@@ -1808,9 +1815,21 @@ def create_app(
 
     @app.post("/api/sync")
     def sync(request: Request, body: SyncBody | None = None) -> StreamingResponse:
-        """Wraps `sync_driver` (UI-SPEC U6 condition 1). Tries the stored
-        Garage61 OAuth token first, then falls back to `GARAGE61_TOKEN` env
-        var. This endpoint never reads a token out of the request body.
+        """Wraps `sync_driver` (UI-SPEC U6 condition 1).
+
+        Token resolution — critical since BUG-033 (SPEC.md A53):
+
+        - **Auth on**: only the user's stored OAuth token is used. If they
+          have none, this returns HTTP 400 telling them to connect their
+          Garage61 account. Falling back to `GARAGE61_TOKEN` here would
+          import the owner's laps into a beta user's tenant — the env var
+          belongs to the process (set by `deploy/driverdna.service`), not
+          to the requesting user.
+        - **Auth off (local loopback)**: the env fallback stays. That is
+          the single-user cockpit the flag was written for, and the two
+          existing "missing token" tests in this file cover it.
+
+        This endpoint never reads a token out of the request body.
 
         Returns SSE: progress events as cohorts are discovered and laps
         imported, then a terminal ``complete`` event with the full result
@@ -1820,6 +1839,13 @@ def create_app(
         from driverdna.garage61.sync import sync_driver
 
         stored_token = _resolve_garage61_token(request)
+        if session_secret is not None and stored_token is None:
+            # BUG-033: no cross-tenant env fallback for authenticated users.
+            raise HTTPException(
+                400,
+                detail="Garage61 not connected — sign in with Garage61 first. "
+                "The sync endpoint never uses a shared token.",
+            )
         try:
             client = Garage61Client(token=stored_token) if stored_token else Garage61Client()
         except RuntimeError as e:
