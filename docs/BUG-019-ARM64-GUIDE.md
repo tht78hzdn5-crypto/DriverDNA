@@ -1,5 +1,15 @@
 # BUG-019 — ARM64 Test Failures: Diagnostic Guide
 
+> **⚠️ SUPERSEDED (2026-08-17)** — This guide's premise is false. The Oracle VM
+> at `147.5.99.21` is **x86_64** (E2.1.Micro, ~960 MB RAM), not ARM64 (Ampere
+> A1). The architecture claim was written as fact on 2026-08-08 (STATUS.md,
+> commit 152f291) but never verified. A full diagnostic run on 2026-08-16
+> confirmed x86_64 via `uname -m` and found 944 passed / 1 failed (a known
+> code-test mismatch, BUG-023, already fixed). The five failure categories
+> below, and their x87-vs-IEEE-754 reasoning, do not apply. See BUG-019's
+> corrected entry in `docs/BUG-LOG.md` for the actual findings. The leading
+> hypothesis for the original 2026-08-08 failures is OOM on the ~960 MB machine.
+
 **For**: Antigravity (or any agent on the Oracle VM)
 **Bug**: `pytest` fails on the Ampere A1 (aarch64) VM at roughly 15%, 31%, and
 38% of the run. Same commit is green on x86. Tracebacks were never captured
