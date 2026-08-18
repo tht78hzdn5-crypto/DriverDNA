@@ -511,6 +511,36 @@ MIGRATIONS: tuple[str, ...] = (
         created_at TEXT NOT NULL
     );
     """,
+    # 017 - partition finding_annotations (BUG-031, SPEC.md A53). The table
+    # is from migration 001 and 009 skipped it though ACCOUNTS-SPEC:143-148
+    # listed it, so on any car/track two accounts share the deterministic
+    # finding_id collides exactly — one driver's annotation suppressed the
+    # other's finding and leaked its note into their chat bundle. Same
+    # rewrite shape 009 used for every other table: add owner_user_pk,
+    # backfill existing rows to user_pk=1 (the only owner that could have
+    # written a row before this migration), replace UNIQUE(finding_id)
+    # with UNIQUE(owner_user_pk, finding_id). finding_id itself keeps its
+    # shape — the grounding validator treats it as a load-bearing identity
+    # (A53 decision), and the tests/test_finding_annotations_tenancy.py
+    # guard test pins the substitute: no new table may key on a bare
+    # finding_id.
+    """
+    PRAGMA foreign_keys=OFF;
+    CREATE TABLE finding_annotations_new (
+        annotation_pk INTEGER PRIMARY KEY,
+        owner_user_pk INTEGER NOT NULL,
+        finding_id TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('acknowledged', 'intentional')),
+        note TEXT,
+        created_at TEXT,
+        UNIQUE(owner_user_pk, finding_id)
+    );
+    INSERT INTO finding_annotations_new (annotation_pk, owner_user_pk, finding_id, status, note, created_at)
+    SELECT annotation_pk, 1, finding_id, status, note, created_at FROM finding_annotations;
+    DROP TABLE finding_annotations;
+    ALTER TABLE finding_annotations_new RENAME TO finding_annotations;
+    PRAGMA foreign_keys=ON;
+    """,
 )
 
 
@@ -1807,39 +1837,61 @@ class Database:
         self, *, finding_id: str, status: str, note: str | None = None,
         created_at: str | None = None,
     ) -> int:
-        """Record driver intent about a finding. Suppresses it from priority
-        framing; the underlying measurement is never deleted.
+        """Record this driver's intent about a finding. Suppresses it from
+        priority framing; the underlying measurement is never deleted.
 
-        Re-annotating a finding updates the existing row in place. The older
-        `INSERT OR REPLACE` deleted and reinserted it, silently renumbering
-        `annotation_pk`; keeping the pk stable is both portable and closer to
-        what "the measurement is never deleted" already promises.
+        Re-annotating a finding updates the caller's existing row in place.
+        The older `INSERT OR REPLACE` deleted and reinserted it, silently
+        renumbering `annotation_pk`; keeping the pk stable is both portable
+        and closer to what "the measurement is never deleted" already
+        promises.
+
+        BUG-031 (SPEC.md A53): the conflict target is
+        `(owner_user_pk, finding_id)`, not `finding_id` alone. Before
+        migration 017 this table had `UNIQUE(finding_id)` and no owner
+        column, so two accounts sharing a car/track (finding IDs carry no
+        tenant term by design — A53 decision) collided on every row: one
+        driver's upsert would overwrite the other's, and the note would
+        leak into their chat bundle. `self.user_pk` scopes the write to
+        the caller's tenant.
         """
         with self.conn:
             return self._insert_returning(
                 """INSERT INTO finding_annotations
-                   (finding_id, status, note, created_at) VALUES (?, ?, ?, ?)
-                   ON CONFLICT (finding_id) DO UPDATE SET
+                   (owner_user_pk, finding_id, status, note, created_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT (owner_user_pk, finding_id) DO UPDATE SET
                        status     = excluded.status,
                        note       = excluded.note,
                        created_at = excluded.created_at""",
-                (finding_id, status, note, created_at),
+                (self.user_pk, finding_id, status, note, created_at),
                 "annotation_pk",
             )
 
     def annotations(self) -> dict[str, dict[str, Any]]:
+        """This driver's annotations only (BUG-031). Reaches into the
+        payload builder and the chat bundle, so a missing owner filter
+        here is a cross-tenant note leak, not just a UI curiosity."""
         return {
             r["finding_id"]: {"status": r["status"], "note": r["note"]}
             for r in self.conn.execute(
-                "SELECT * FROM finding_annotations ORDER BY finding_id"
+                "SELECT * FROM finding_annotations WHERE owner_user_pk=? "
+                "ORDER BY finding_id",
+                (self.user_pk,),
             )
         }
 
     def clear_annotation(self, finding_id: str) -> None:
-        """Remove a finding's annotation (never touches the measurement)."""
+        """Remove *this driver's* annotation on `finding_id` (never touches
+        the measurement, never touches another user's row). BUG-031: the
+        old delete had no owner filter, so any authenticated caller could
+        destroy any other user's annotation by knowing (or guessing) the
+        deterministic `finding_id`."""
         with self.conn:
             self.conn.execute(
-                "DELETE FROM finding_annotations WHERE finding_id = ?", (finding_id,)
+                "DELETE FROM finding_annotations "
+                "WHERE owner_user_pk=? AND finding_id = ?",
+                (self.user_pk, finding_id),
             )
 
     # --- reference-lap curation (R3, SPEC.md A39) ---------------------------
