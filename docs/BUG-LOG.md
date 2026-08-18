@@ -65,24 +65,6 @@ Writing that down is the point.
   laps GROUP BY owner_user_pk`): if registration preceded any import, user 1
   holds nothing and this is moot. The runbook should state the outcome.
 
-### BUG-036 — The tenancy test gate was specified and never written
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: not a defect in itself — the absence that let BUG-031, BUG-032
-  and BUG-033 all ship unnoticed.
-- **Root cause**: `docs/ACCOUNTS-SPEC.md:150-157` made `tests/test_tenancy.py`
-  the **gate** for Phase 2: "seed two users with overlapping car/track, then
-  enumerate every read endpoint and assert user A never sees a row, a count, an
-  evidence ID or a corner map belonging to user B", modelled on the route
-  enumeration test for the stated reason that a hand-written endpoint list will
-  miss one. The partitioning shipped; the gate did not.
-- **Blast radius**: the whole multi-tenant surface. Across 74 test files the
-  only cross-user isolation tests are `tests/test_byok_api.py:125` and `:131`,
-  covering AI keys alone — and they are green, which is what made the rest look
-  covered.
-- **How it was caught**: looking for the file A53's audit expected to find.
-- **Fix shape**: write it, route-enumerated. `tests/test_byok_api.py:28-58`
-  already has the two-user fixture to build on.
-
 ### BUG-019 — Test suite fails on ARM64, passes on x86
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
 - **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
@@ -117,6 +99,46 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-036 — The tenancy test gate was specified and never written
+- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: not a defect in itself — the absence that let BUG-031, BUG-032
+  and BUG-033 all ship unnoticed.
+- **Root cause**: `docs/ACCOUNTS-SPEC.md:150-157` made `tests/test_tenancy.py`
+  the **gate** for Phase 2 — "seed two users with overlapping car/track, then
+  enumerate every read endpoint and assert user A never sees a row, a count,
+  an evidence ID or a corner map belonging to user B", modelled on the
+  route-enumeration test for the stated reason that a hand-written endpoint
+  list will miss one. The partitioning shipped; the gate did not.
+- **Blast radius**: the whole multi-tenant surface. Across 74 test files, the
+  only cross-user isolation tests were `tests/test_byok_api.py:125` and
+  `:131`, covering AI keys alone — and they were green, which is what made
+  the rest look covered.
+- **Fix**: `tests/test_tenancy.py` — the route-enumerated gate. Walks
+  `app.routes` and classifies every non-public `/api/*` route into exactly
+  one of three buckets:
+  - **TENANT_SCOPED_READS** — 11 endpoints. Bob's request must return an
+    empty result, a 404, or otherwise none of Alice's data. Per-endpoint
+    assertions (parametrized so a leak on one endpoint doesn't hide leaks
+    on others). Includes SSE payloads (`/api/driver`,
+    `/api/driver/score-history`) and JSON reads.
+  - **WRITES_INDIRECTLY_TESTED** — 16 endpoints, each naming the focused
+    test file that pins its cross-tenant behaviour (BUG-031, BUG-032a,
+    BUG-033 pinning tests; `test_byok_api.py` for AI keys;
+    `test_reference_curation.py` for lap exclusion; the e196c2d chat
+    session ownership fix).
+  - **INSTANCE_WIDE_TODAY** — 2 endpoints (`/api/config`, `/api/explain`)
+    whose current design is deliberately not tenant-scoped; when BUG-032b
+    lands, `/api/config` moves to TENANT_SCOPED_READS.
+  An unclassified route fails `test_every_api_route_is_classified_for_tenancy`
+  — the exact enumeration property ACCOUNTS-SPEC required, so a future
+  endpoint has to be classified before it can ship.
+- **Pinned by**: itself (17 tests). Includes a positive-control test
+  (`test_owner_still_sees_their_own_data_positive_control`) that guards
+  against a fix "closing the leak" by returning empty to every user, and
+  a sanity check (`test_owner_data_is_actually_seeded`) so the 404
+  assertions can't pass vacuously against a cohort that didn't exist for
+  anyone.
 
 ### BUG-034 — Registering with a capital letter locks you out permanently
 - **Status**: fixed 2026-08-18 · **Severity**: breaks · **SPEC**: A53 (found), fix landed same day
