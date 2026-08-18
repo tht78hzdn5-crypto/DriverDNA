@@ -43,10 +43,12 @@ never only here.
 - "Insufficient data" over guessing, always. Every finding carries N, spread,
   source tag, and evidence IDs.
 - Reference laps never enter self history, trends, or consistency statistics.
+- Multi-user since A32: every query on a partitioned table filters
+  `owner_user_pk`, and `laps.driver` is a data label, never the tenant key.
 - Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`, `DRIVERDNA_DATABASE_URL`,
   `GEMINI_API_KEY`) are env-only: never persisted, printed, or logged. The
   database URL carries a password, so it is redacted before any connection error
-  reaches a message, a log, or an HTTP body — and there is deliberately no bare
+  reaches a log or an HTTP body — and there is deliberately no bare
   `DATABASE_URL` fallback.
 - Every threshold lives in config with a documented default; all parameter changes
   flow through ConfigStore, versioned and reversible.
@@ -56,7 +58,7 @@ never only here.
 - The UI renders what the engine computed and never computes a measurement:
   every on-screen number must exist in the JSON payload or a DB read endpoint.
 - Secure by default: Never bypass auth/security requirements to unblock a deployment/test. Flag it instead.
-- Driver-facing words live in the engine (`coaching/ontology.py`, `explain.py`, `DETECTOR_LABELS`, `Fundamental.label`), never hardcoded in the SPA. Internal slugs (`coast-window`, `cp.*`, finding IDs) are stable identities that evidence IDs and annotations key off — never rename one to improve wording; add or edit its label. Editing how coaching/feedback appear: see CLAUDE.md's "Editing the coaching and feedback layer".
+- Driver-facing words live in the engine (`coaching/ontology.py`, `explain.py`, `DETECTOR_LABELS`, `Fundamental.label`), never hardcoded in the SPA. Internal slugs (`coast-window`, `cp.*`, finding IDs) are stable identities that evidence IDs and annotations key off — never rename one to improve wording; add or edit its label. Editing how coaching/feedback appear: see CLAUDE.md's coaching/feedback section.
 
 - Verification discipline:
   1. A skipped test is not a pass. Check/report why tests skipped (missing Postgres/Chromium/SPA are gaps, not green results).

@@ -1,7 +1,8 @@
 # DriverDNA — build rules
 
-Personal racing-telemetry instrument for one driver. The binding build rules for
-every agent — non-negotiables, decision discipline, build order, commands,
+Racing-telemetry instrument, **multi-user since A32** (2026-07-28 — philosophy
+#8 reversed by owner decision; audited and reconciled by A53, 2026-08-18). The
+binding build rules for every agent — non-negotiables, decision discipline, build order, commands,
 testing rules, and the multi-agent working agreement — live in `AGENTS.md` and
 are imported here rather than restated:
 
@@ -801,6 +802,42 @@ is the cross-agent dated snapshot; where the two disagree, STATUS.md wins.
   remains untouched, its own separate owner-go still pending. Suite
   850 → 879 passed, 0 failed (+29 tests). Full record: `docs/SPEC.md` A39,
   `docs/STATUS.md`'s 2026-08-03 snapshot.
+
+- **Multi-tenancy audited and the docs reconciled (2026-08-18, SPEC.md A53)** —
+  A32 said multi-user was built and merged; every later doc said the opposite,
+  and this status log itself never mentioned A32 again after 2026-07-28.
+  `docs/ACCOUNTS-SPEC.md:37-56` had predicted exactly that and required the
+  reconciling edits *in the same change as A32*; they never happened. Audited
+  read-only against `main` at `e196c2d`. **A32 is live, not dead code** — the
+  deploy runbook makes `/api/auth/register` the documented way the owner creates
+  their account — and partitioning is genuinely thorough (76 `owner_user_pk`
+  sites in `db.py`, `corner_maps UNIQUE(car, track, owner_user_pk)`). But four
+  specified things were never built, all now open: **`finding_annotations` was
+  never partitioned** (BUG-031 — finding IDs carry no tenant term, so two users
+  on one car/track collide exactly, and one driver's annotation suppresses
+  another's finding and leaks its note into their chat bundle); **config is
+  instance-wide with a cross-tenant revert** (BUG-032); **`/api/sync` falls back
+  to the owner's `GARAGE61_TOKEN`**, so a beta user who never connected Garage61
+  imports the owner's laps (BUG-033); and **`tests/test_tenancy.py`, the gate
+  ACCOUNTS-SPEC named for this work, does not exist** — the only cross-user
+  isolation tests in 74 files are two covering AI keys. The blob store is shared
+  but not currently leaky (`lap_pk` is globally unique and every API path
+  resolves through an owner-filtered query first); its primitives are unguarded
+  though, which is the A34 shape. Suite unchanged and green: **975 passed, 42
+  skipped, 0 failed** (SQLite; 26 browser skips are a gap, 16 Postgres-absent).
+  **Docs-only change — no code touched, no committed artifact moved.** Owner
+  decisions adopted in A53: registration closes to first-user-only behind the
+  Cloudflare Access allowlist, and config becomes **fully per-user**, which
+  refines a non-negotiable and therefore ships only with a config fingerprint
+  stored beside every measurement. Five more decisions the same day:
+  reference-derived numbers pin to the reference lap rather than the importing
+  user, through a canonical config keyed to `content_hash` — a deliberate
+  carve-out from per-user config, since vs-reference findings cannot be both
+  comparable across cockpits and per-driver; `sync.max_cohorts` 10 → 40 with retention
+  unchanged and tiers rejected; pre-A32 rows reassigned to the live account;
+  finding IDs keep their shape; database snapshots move off the VM. Full
+  record: `docs/SPEC.md` A53,
+  `docs/BUG-LOG.md` BUG-031..032, `docs/STATUS.md`'s 2026-08-18 snapshot.
 
 Update this section as milestones complete.
 
