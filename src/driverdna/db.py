@@ -2169,3 +2169,134 @@ class Database:
                 (driver, self.user_pk),
             )
         ]
+
+    # --- BUG-035 (SPEC.md A53): reassignment of pre-A32 orphaned data --
+
+    def partitioned_tables(self) -> list[str]:
+        """Every table with an `owner_user_pk` column, discovered at
+        runtime rather than hardcoded — so a future partitioning
+        migration is picked up automatically by `reassign_owner`.
+
+        Returned sorted so the reassignment order is deterministic (the
+        CLI prints per-table counts against it, and a reproducible order
+        makes the runbook output diffable). Parents-before-children is
+        not required here: only `owner_user_pk` moves, no FKs re-target.
+        """
+        if self.dialect.name == "sqlite":
+            rows = self.conn.execute(
+                "SELECT DISTINCT m.name AS name FROM sqlite_master m, "
+                "pragma_table_info(m.name) p "
+                "WHERE m.type='table' AND p.name='owner_user_pk' "
+                "ORDER BY m.name"
+            ).fetchall()
+            return [r["name"] for r in rows]
+        # Postgres: schema is `driverdna` (see `_namespace_postgres`).
+        rows = self.conn.execute(
+            "SELECT DISTINCT table_name AS name FROM information_schema.columns "
+            "WHERE column_name='owner_user_pk' AND table_schema='driverdna' "
+            "ORDER BY table_name"
+        ).fetchall()
+        return [r["name"] for r in rows]
+
+    def reassign_owner(
+        self, *, from_pk: int, to_pk: int, commit: bool = True,
+    ) -> dict[str, dict[str, int]]:
+        """Move every row with `owner_user_pk=from_pk` to `to_pk`, per
+        SPEC.md A53's BUG-035 decision. Returns `{table: {reassigned, discarded}}`.
+
+        On a unique-constraint collision under any partitioned table
+        (e.g. `corner_maps UNIQUE(car, track, owner_user_pk)`,
+        `laps UNIQUE(content_hash, source_file, owner_user_pk)`,
+        `finding_annotations UNIQUE(owner_user_pk, finding_id)`,
+        `garage61_tokens UNIQUE(owner_user_pk)`) the source row is
+        DELETEd — the live row wins, per A53's "no merge heuristic"
+        rule. Existing FK cascades from `laps` and `corner_maps` clean
+        up dependent measurements without any extra code here; that is
+        the point of the no-heuristic rule.
+
+        Owner-side guards (`from == to`, unknown `to_pk`, unknown
+        `from_pk`) are the CLI's responsibility — this method trusts
+        its arguments so a test can drive whichever collision shape it
+        needs to exercise.
+
+        SQLite-only today. The Postgres branch of `partitioned_tables`
+        exists, but the row-by-row transfer uses `ROWID` (SQLite-specific).
+        A53's deployment target is SQLite on the Oracle VM (A40), so this
+        is the shape that has to work; Postgres reassignment is deferred
+        until it has a real caller.
+        """
+        if self.dialect.name != "sqlite":
+            raise NotImplementedError(
+                "reassign_owner is SQLite-only today; the Postgres "
+                "backend needs a CTID-based iteration path"
+            )
+        import sqlite3
+
+        # One implicit transaction covers the whole run — never per-row
+        # `with self.conn:`, or the caller could not run this in dry-run
+        # mode (each `with` block commits, so a caller-side ROLLBACK
+        # would have nothing left to undo). The caller commits or
+        # rolls back after this returns.
+        counts: dict[str, dict[str, int]] = {}
+        for table in self.partitioned_tables():
+            reassigned = 0
+            discarded = 0
+            # ROWID gives every SQLite row a stable handle regardless of
+            # the table's declared PK shape. Snapshot it before iterating
+            # so an in-place update never revisits a row.
+            rowids = [
+                r["_rid"] for r in self.conn.execute(
+                    f"SELECT ROWID AS _rid FROM {table} "
+                    f"WHERE owner_user_pk=?",
+                    (from_pk,),
+                )
+            ]
+            for rid in rowids:
+                try:
+                    self.conn.execute(
+                        f"UPDATE {table} SET owner_user_pk=? WHERE ROWID=?",
+                        (to_pk, rid),
+                    )
+                    reassigned += 1
+                except sqlite3.IntegrityError:
+                    # A53: on collision, the live (target) row wins;
+                    # the source row is discarded. FK cascades handle
+                    # most dependent rows automatically. IntegrityError
+                    # is a per-statement failure in SQLite; the
+                    # surrounding transaction stays open.
+                    #
+                    # `corner_observations.corner_pk` has no ON DELETE
+                    # clause (defaults to NO ACTION), so the cascade
+                    # from `corner_maps → corners` cannot reach it and
+                    # DELETE would fail with a FK constraint error.
+                    # Null the reference first; the observation stays
+                    # attached to its lap as a "pending candidate", the
+                    # same state `admit_pending_candidates` already
+                    # treats as valid. Nothing else in the codebase
+                    # DELETEs corners or corner_maps, so this behaviour
+                    # is only reachable through reassign_owner.
+                    if table == "corner_maps":
+                        self.conn.execute(
+                            "UPDATE corner_observations SET corner_pk=NULL "
+                            "WHERE corner_pk IN ("
+                            "  SELECT corner_pk FROM corners WHERE map_pk=("
+                            "    SELECT map_pk FROM corner_maps WHERE ROWID=?"
+                            "  )"
+                            ")",
+                            (rid,),
+                        )
+                    self.conn.execute(
+                        f"DELETE FROM {table} WHERE ROWID=?", (rid,)
+                    )
+                    discarded += 1
+            counts[table] = {"reassigned": reassigned, "discarded": discarded}
+        # Commit at the end so the whole run is atomic — a partial
+        # reassignment would leave the database mid-migration and is
+        # exactly what "no merge heuristic" was written to avoid.
+        # `commit=False` is for dry-run: caller rolls back to leave
+        # the store untouched.
+        if commit:
+            self.conn.commit()
+        else:
+            self.conn.rollback()
+        return counts

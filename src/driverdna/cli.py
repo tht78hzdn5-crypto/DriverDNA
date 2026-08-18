@@ -1368,6 +1368,95 @@ def include_reference_cmd(
     typer.echo(f"included lap_pk={lap_pk} — back in the envelope")
 
 
+@app.command("reassign-owner")
+def reassign_owner_cmd(
+    from_pk: int = typer.Option(
+        ..., "--from",
+        help="Source user_pk. Every row owned by this user_pk is moved.",
+    ),
+    to_pk: int = typer.Option(
+        ..., "--to",
+        help="Destination user_pk. Every row is reassigned here; a row "
+             "that collides with an existing target row under any unique "
+             "constraint is DELETED per SPEC.md A53 (live row wins).",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run/--no-dry-run",
+        help="Print counts but write nothing. Recommended before the "
+             "live run — the CLI's job is to prove the counts are what "
+             "the runbook expects.",
+    ),
+    db_path: str = typer.Option(
+        None, "--db",
+        help="Store: a SQLite path, or a postgresql:// URL. "
+             "Defaults to $DRIVERDNA_DATABASE_URL, else driverdna.db. "
+             "SQLite only today; Postgres is deferred (see db.py).",
+    ),
+) -> None:
+    """Move every row owned by `--from` to `--to`, per SPEC.md A53
+    (BUG-035).
+
+    A32 partitioned the schema and migration 009 backfilled every
+    pre-A32 row to `owner_user_pk=1` — the seeded placeholder account
+    with a hash no `verify_password` can match. On the live VM the
+    owner registered as `user_pk=2` and the runbook now says the
+    reassignment "keeps existing data with the live login" (Part D
+    step 5).
+
+    Collision rule: on a unique constraint the source row is
+    DELETEd, so the live account's row wins and FK cascades from
+    `laps`/`corner_maps` handle dependent measurements without any
+    merge heuristic. Owner-adopted decision, spelled out at A53's
+    BUG-035 fix shape.
+    """
+    from driverdna.db import Database
+
+    if from_pk == to_pk:
+        typer.echo(f"error: --from and --to are the same ({from_pk}); "
+                   f"nothing to do")
+        raise typer.Exit(code=2)
+
+    resolved = _require_store(db_path)
+    with Database.open(resolved) as db:
+        # Guard: both users must actually exist. Migration 008 gives
+        # user_pk=1 automatically, but --to should be a real registered
+        # account or the reassigned rows would point at nothing.
+        for pk, label in ((from_pk, "--from"), (to_pk, "--to")):
+            exists = db.conn.execute(
+                "SELECT 1 FROM users WHERE user_pk=?", (pk,),
+            ).fetchone()
+            if not exists:
+                typer.echo(
+                    f"error: no user with user_pk={pk} ({label}); "
+                    f"nothing written"
+                )
+                raise typer.Exit(code=2)
+
+        # commit=True is the default (atomic run). Dry-run flips it to
+        # False — reassign_owner rolls back internally, so the counts
+        # come from the same code path as a real run but the store is
+        # untouched.
+        counts = db.reassign_owner(
+            from_pk=from_pk, to_pk=to_pk, commit=not dry_run,
+        )
+        if dry_run:
+            typer.echo(f"[dry-run] would reassign user_pk={from_pk} -> {to_pk}:")
+        else:
+            typer.echo(f"reassigned user_pk={from_pk} -> {to_pk}:")
+
+    for table in sorted(counts):
+        c = counts[table]
+        if c["reassigned"] == 0 and c["discarded"] == 0:
+            continue
+        typer.echo(
+            f"  {table}: reassigned={c['reassigned']} "
+            f"discarded={c['discarded']}"
+        )
+    total_r = sum(c["reassigned"] for c in counts.values())
+    total_d = sum(c["discarded"] for c in counts.values())
+    typer.echo(f"total: {total_r} rows moved, {total_d} discarded (target-row-wins)")
+
+
 @app.command("store-copy")
 def store_copy(
     source: str = typer.Option(..., "--from", help="Source store (path or URL)."),

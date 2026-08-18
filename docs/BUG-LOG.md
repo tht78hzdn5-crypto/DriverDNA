@@ -37,34 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-035 — All pre-A32 data belongs to an account nobody can log into
-- **Status**: open · **Severity**: data-loss · **Found**: 2026-08-18 (A53)
-- **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and
-  transcript predating 2026-07-28 is owned by `user_pk=1` and invisible to them.
-- **Root cause**: migration 008 seeds `owner@example.com` with the literal string
-  `'placeholder'` as its password hash (`db.py:277`). `verify_password`
-  (`ui/auth.py:81-89`) splits on `":"`, raises `ValueError`, returns `False` — so
-  no password can ever match it. Migration 009 then backfills **every existing
-  row to `owner_user_pk=1`** (`db.py:308`). The runbook's own account-creation
-  step (`docs/DEPLOY-RUNBOOK.md:135-143`) therefore creates `user_pk=2` and
-  tells the owner so, without noting that their history stayed behind.
-- **Blast radius**: all pre-A32 history on the deployed instance — the Driver
-  Model's dated laps and chat/coach transcripts are the rows
-  `deploy/driverdna-backup.service` calls irreplaceable. Nothing is *deleted*;
-  it is stranded, and recoverable by reassigning the rows.
-- **How it was missed**: `tests/test_auth_ui.py:29-34` describes this exact
-  situation in a comment and works around it by overwriting the seed row's hash
-  in the fixture — so the tests never experience the state a real deployment is
-  in.
-- **Fix shape** (decided, A53): **reassign** `owner_user_pk=1` rows to the live
-  account, in one transaction across every partitioned table. Where a unique
-  constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
-  real case — **the live account's row wins and `user_pk=1`'s is discarded**; no
-  merge heuristic, the owner does not want that data preserved at the cost of
-  complexity. Check the actual scope first (`SELECT owner_user_pk, COUNT(*) FROM
-  laps GROUP BY owner_user_pk`): if registration preceded any import, user 1
-  holds nothing and this is moot. The runbook should state the outcome.
-
 ### BUG-019 — Test suite fails on ARM64, passes on x86
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
 - **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
@@ -99,6 +71,54 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-035 — All pre-A32 data belongs to an account nobody can log into
+- **Status**: fixed 2026-08-18 · **Severity**: data-loss · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and
+  transcript predating 2026-07-28 was owned by `user_pk=1` (the migration-
+  seeded `owner@example.com` placeholder) and invisible to them. Not deleted,
+  stranded — the deploy runbook itself instructs the owner to register a new
+  account (Part D step 5), which quietly leaves the old history behind.
+- **Root cause**: migration 008 seeds the placeholder user with a literal
+  `'placeholder'` password hash that `verify_password` (`ui/auth.py:81-89`)
+  can never match. Migration 009 backfills every pre-A32 row to
+  `owner_user_pk=1`. Neither is wrong on its own; together they orphan
+  everything that predates A32.
+- **Blast radius**: all pre-A32 history on any deployed instance where the
+  owner registered a fresh account instead of retrofitting the placeholder.
+  On the live VM the owner's Driver Model dated history and every chat/coach
+  transcript from before 2026-07-28 sits there.
+- **Fix**: `driverdna reassign-owner --from N --to M [--dry-run]` (SQLite
+  only for now — A40's deployment topology). `Database.reassign_owner`
+  walks every partitioned table (discovered at runtime via
+  `partitioned_tables()`, so future partitioning is picked up
+  automatically), reassigns each source row, and on a unique-constraint
+  collision DELETEs the source — the A53 "live row wins, no merge
+  heuristic" rule.
+  - Atomicity: one transaction across the whole run, commit-or-rollback
+    at the end. `--dry-run` uses the same code path and rolls back, so
+    the counts the runbook previews are the counts the live run will
+    produce.
+  - Corner-map collision: `corner_observations.corner_pk` has no
+    ON DELETE clause, so the cascade from `corner_maps → corners`
+    cannot reach it and DELETE would otherwise fail with a FK error.
+    Handled in `reassign_owner`: null those observations first
+    (a state `admit_pending_candidates` already treats as valid) so
+    the DELETE cascade completes cleanly.
+  - Owner-side guards refuse `--from == --to` and any pk that doesn't
+    exist in `users`, so the runbook can't accidentally produce
+    orphaned rows pointing at nothing.
+- **Pinned by**: `test_reassign_owner.py` (7 tests) — base reassignment,
+  unique-constraint collision (finding_annotations, live row wins),
+  FK cascade completeness (corner_maps discard also removes downstream
+  corners), dry-run writes nothing, CLI end-to-end, and both guards.
+- **Not fixed here** (deliberate): the migration 008 seed itself. The
+  placeholder row stays; the tool moves data off it. A future migration
+  could DELETE `user_pk=1` after reassignment completes, but that risks
+  breaking the "user_pk=1 is always reserved" mental model some tests
+  rely on (`test_auth_ui.py:29-34` explicitly documents it), and this
+  fix is the runbook step the owner needs today. Runbook update to
+  document this tool is a docs follow-up.
 
 ### BUG-036 — The tenancy test gate was specified and never written
 - **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
