@@ -1545,11 +1545,21 @@ def create_app(
 
     @app.get("/api/config/history")
     def config_history(request: Request) -> list[dict[str, Any]]:
+        """This user's config history only (BUG-032a, SPEC.md A53).
+
+        `config_history` has carried `owner_user_pk` since migration 009,
+        so the audit trail *looked* per-user while this read returned
+        every user's rows — worse than plainly global, because it
+        contradicted the guarantee the write side spelled out. Now
+        matches: the row this caller wrote is the row this caller reads.
+        """
         with open_db(request) as db:
             return [
                 dict(r)
                 for r in db.conn.execute(
-                    "SELECT * FROM config_history ORDER BY change_pk"
+                    "SELECT * FROM config_history WHERE owner_user_pk=? "
+                    "ORDER BY change_pk",
+                    (db.user_pk,),
                 )
             ]
 

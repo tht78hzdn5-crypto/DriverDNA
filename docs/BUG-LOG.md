@@ -37,25 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-032 — Config is instance-wide, and any user can revert another's change
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: one beta user changing a threshold changes it for **every**
-  account, and `POST /api/config/revert/{change_pk}` will revert a change
-  belonging to someone else given a guessed integer.
-- **Root cause**: `ConfigStore` holds a single TOML path (`config.py:794-830`);
-  `load_config` reads one file and `_write_toml` writes one. `config_history`
-  *does* carry `owner_user_pk` (`db.py:419`), so the audit trail reads as
-  per-user while the effect is global — worse than plainly global, because it
-  looks isolated. `ConfigStore.revert` (`config.py:834`) selects by `change_pk`
-  with no owner filter, reachable straight from `ui/api.py:1716`.
-- **Blast radius**: every threshold, including measurement thresholds. Under
-  A53's adopted per-user config this gets sharper, not milder: the revert path
-  becomes a way to rewrite another account's measurement thresholds.
-- **How it was missed**: no cross-user config test exists; `test_api.py` covers
-  propose/apply/revert with a single account, where the bug is invisible.
-- **Fix shape**: per-user override rows + `user_pk` on `ConfigStore`, and an
-  owner filter on `revert` (needed regardless of the per-user work).
-
 ### BUG-034 — Registering with a capital letter locks you out permanently
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A53)
 - **Symptom**: register as `User@Example.com`, then no password on earth logs
@@ -151,6 +132,41 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-032 — Config is instance-wide, and any user can revert another's change
+- **Status**: mitigated 2026-08-18 · **Severity**: security · **SPEC**: A53 (found)
+- **Symptom**: (a) any authenticated user posting `POST /api/config/revert/{change_pk}`
+  with a small integer could revert *another* user's change and rewrite the
+  instance's TOML; and (b) `GET /api/config/history` returned every user's
+  rows to every user, exposing keys/values/notes across tenants.
+- **Root cause (both halves)**: `config_history` had carried `owner_user_pk`
+  since migration 009, so the audit trail *looked* per-user while the read
+  paths did not filter on it — worse than plainly global, because it
+  contradicted the guarantee the write side spelled out.
+  `ConfigStore.revert` (`config.py:855`) selected by `change_pk` alone;
+  `/api/config/history` (`ui/api.py:1547`) selected without any owner term
+  at all.
+- **Blast radius**: every threshold, including measurement thresholds. Zero
+  impact on the live instance (one real account); reachable on day one of a
+  beta.
+- **What's fixed here (part a — the IDOR halves)**: `ConfigStore.revert` now
+  filters on `(change_pk, owner_user_pk)` and raises `KeyError` for another
+  user's `change_pk` — same shape as an unknown pk, so the endpoint does not
+  confirm the change exists (translated to HTTP 404 by the handler).
+  `GET /api/config/history` filters on `owner_user_pk`.
+- **What remains open (part b — the design redesign)**: config is still
+  instance-wide. `ConfigStore` holds a single TOML path and `load_config`
+  reads one file — so one user's `apply()` still writes for the whole
+  instance. A53 adopted "config becomes fully per-user, every threshold"
+  with a mandatory config-fingerprint mitigation stored beside every
+  measurement; that is the separate bigger build ahead. Part a is a proper
+  fix of a distinct defect, not a placeholder for part b — even with
+  per-user config in place, the revert lookup would still need the
+  owner filter, and the history endpoint would still need to scope by user.
+- **Pinned by**: `test_config_tenancy.py::test_bob_cannot_revert_alices_config_change`
+  (the revert IDOR), `::test_bob_cannot_read_alices_config_history` (the
+  history endpoint), plus `::test_alice_can_revert_her_own_change_and_it_writes_the_toml_back`
+  (regression guard on the legitimate path).
 
 ### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
 - **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
