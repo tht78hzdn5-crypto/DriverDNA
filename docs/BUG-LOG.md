@@ -37,21 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-034 — Registering with a capital letter locks you out permanently
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A53)
-- **Symptom**: register as `User@Example.com`, then no password on earth logs
-  that account in. The error is the generic "incorrect email or password".
-- **Root cause**: `register` normalizes (`ui/api.py:407`,
-  `email.strip().lower()`); `login` does not (`ui/api.py:453`, raw `body.email`).
-  Same omission at `forgot-password:493` and the Google callback lookup at
-  `:635`. Text columns are `COLLATE "C"` (A23), so Postgres will not case-fold
-  it either — the storage layer is doing exactly what it was told.
-- **Blast radius**: any user whose typed email is not already lowercase, and
-  password reset cannot rescue them: the reset lookup has the same bug.
-- **How it was caught**: reading register and login side by side during A53's
-  audit, not by a test — `test_auth_api.py` uses a lowercase literal throughout.
-- **Fix shape**: normalize at every lookup, not just the write.
-
 ### BUG-035 — All pre-A32 data belongs to an account nobody can log into
 - **Status**: open · **Severity**: data-loss · **Found**: 2026-08-18 (A53)
 - **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and
@@ -132,6 +117,36 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-034 — Registering with a capital letter locks you out permanently
+- **Status**: fixed 2026-08-18 · **Severity**: breaks · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: register as `User@Example.com`, then no password on earth
+  logs that account in. The error was the generic "incorrect email or
+  password", so the driver had no way to diagnose it — and password reset
+  had the same bug, so the reset flow could not rescue them.
+- **Root cause**: `register` normalized (`ui/api.py:407`,
+  `email.strip().lower()`); `login` (`:453`), `forgot-password` (`:493`),
+  and the outgoing SMTP address in `forgot-password` (`:504`) all used
+  `body.email` unchanged. Text columns are `COLLATE "C"` (A23), so
+  Postgres does not case-fold either — the storage layer was doing
+  exactly what it was told. The Google callback lookup at `:635` had
+  already been normalized (`:629`) so it stayed passing.
+- **Blast radius**: any user who typed a capital letter or a leading
+  space at register. Silent until the driver tried to log in and
+  couldn't, then silent again through reset. Not reachable on the live
+  instance today because the owner registered lowercase, but a real
+  hazard for a beta.
+- **Fix**: all three sites now normalize the same way `register` does.
+  `forgot-password` normalizes before the SMTP `to_email` argument too —
+  a partial fix would find the account but still send the mail to the
+  attacker-supplied casing, which is both a bounce risk and a subtle
+  anti-enumeration break.
+- **Pinned by**: `test_auth_email_normalization.py` — four cases across
+  login (register mixed, log in mixed; register lower, log in
+  UPPER/PADDED via `parametrize`) and two on forgot-password (mismatched
+  case finds the account and sends to the normalized address; genuinely
+  unknown address still stays silent). The parametrized guard against a
+  strip-only or lower-only partial fix is deliberate.
 
 ### BUG-032 — Config is instance-wide, and any user can revert another's change
 - **Status**: mitigated 2026-08-18 · **Severity**: security · **SPEC**: A53 (found)
