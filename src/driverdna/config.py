@@ -853,9 +853,25 @@ class ConfigStore:
         )
 
     def revert(self, change_pk: int, *, note: str | None = None) -> int:
-        """Apply a recorded change's old value back (as a new change)."""
+        """Apply a recorded change's old value back (as a new change).
+
+        BUG-032a (SPEC.md A53): the lookup filters on
+        `(change_pk, owner_user_pk)` — without the owner term any
+        authenticated caller could revert any other user's change by
+        guessing (or being given) a small integer, and would rewrite the
+        instance's TOML in the process. `config_history` has carried
+        `owner_user_pk` since migration 009; the write path always set
+        it, only the read paths did not filter on it.
+
+        A change belonging to another user is reported as absent (same
+        `KeyError` shape as an unknown `change_pk`) so the endpoint does
+        not confirm the change exists. The `handler at ui/api.py`
+        translates that to HTTP 404, matching the shape a genuine unknown
+        `change_pk` already used.
+        """
         row = self.db.conn.execute(
-            "SELECT * FROM config_history WHERE change_pk=?", (change_pk,)
+            "SELECT * FROM config_history WHERE change_pk=? AND owner_user_pk=?",
+            (change_pk, self.db.user_pk),
         ).fetchone()
         if row is None:
             raise KeyError(f"no config change #{change_pk}")

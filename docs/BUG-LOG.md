@@ -37,58 +37,6 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: with two accounts on the same car/track, one driver annotating a
-  finding changes what the *other* driver sees, and either can delete the
-  other's annotation. The annotating driver's free-text note also enters the
-  other's chat bundle.
-- **Root cause**: two independent gaps that only bite together. The table is
-  from migration 001 (`db.py:157`) and migration 009 **skipped it** while
-  partitioning everything else — though `docs/ACCOUNTS-SPEC.md:143-148`
-  explicitly listed it. So `annotations()` (`db.py:1830`) selects with no owner
-  filter, `clear_annotation` (`db.py:1838`) deletes by `finding_id` alone, and
-  the upsert conflicts on `finding_id` only (`db.py:1822`). Separately,
-  `_finding_id(source, car, track, corner, phase, kind)`
-  (`attribution/ranker.py:70`) contains **no user and no driver term**, so two
-  accounts on GR86/Spa generate byte-identical IDs. Neither is harmful alone;
-  together they make one row serve two tenants.
-- **Blast radius**: every annotated finding, on any car/track two accounts
-  share. Reaches rendered output via `report/payload.py:259` and the chat
-  context via `chat/session.py:311`. Zero impact today — the live instance has
-  one real account — which is exactly why it would first appear in the beta.
-- **How it was missed**: `docs/ACCOUNTS-SPEC.md:257-259` named this precise risk
-  as hazard 4 and said Phase 2 "must *prove* uniqueness, not assume it". The
-  proof was the specified `tests/test_tenancy.py`, which was never written
-  (BUG-036). The pattern is BUG-013's: the guarantee was documented, and pinned
-  one layer above where it broke.
-- **Fix shape** (decided, A53): add `owner_user_pk`, migrate existing rows to
-  the owner, move the conflict target to `(owner_user_pk, finding_id)`, filter
-  both readers. **`finding_id` keeps its shape** — partitioning the table closes
-  the defect completely, and changing the ID would orphan every stored citation
-  in annotations, `evidence_cited` and coach outputs for no extra security. Add
-  a test asserting **no table is keyed on a bare `finding_id`**, so the next
-  table to use one cannot repeat this.
-
-### BUG-032 — Config is instance-wide, and any user can revert another's change
-- **Status**: open · **Severity**: security · **Found**: 2026-08-18 (A53)
-- **Symptom**: one beta user changing a threshold changes it for **every**
-  account, and `POST /api/config/revert/{change_pk}` will revert a change
-  belonging to someone else given a guessed integer.
-- **Root cause**: `ConfigStore` holds a single TOML path (`config.py:794-830`);
-  `load_config` reads one file and `_write_toml` writes one. `config_history`
-  *does* carry `owner_user_pk` (`db.py:419`), so the audit trail reads as
-  per-user while the effect is global — worse than plainly global, because it
-  looks isolated. `ConfigStore.revert` (`config.py:834`) selects by `change_pk`
-  with no owner filter, reachable straight from `ui/api.py:1716`.
-- **Blast radius**: every threshold, including measurement thresholds. Under
-  A53's adopted per-user config this gets sharper, not milder: the revert path
-  becomes a way to rewrite another account's measurement thresholds.
-- **How it was missed**: no cross-user config test exists; `test_api.py` covers
-  propose/apply/revert with a single account, where the bug is invisible.
-- **Fix shape**: per-user override rows + `user_pk` on `ConfigStore`, and an
-  owner filter on `revert` (needed regardless of the per-user work).
-
 ### BUG-034 — Registering with a capital letter locks you out permanently
 - **Status**: open · **Severity**: breaks · **Found**: 2026-08-18 (A53)
 - **Symptom**: register as `User@Example.com`, then no password on earth logs
@@ -210,6 +158,80 @@ Writing that down is the point.
 ## Fixed
 
 Newest first. The amendment named in each entry carries the full narrative.
+
+### BUG-032 — Config is instance-wide, and any user can revert another's change
+- **Status**: mitigated 2026-08-18 · **Severity**: security · **SPEC**: A53 (found)
+- **Symptom**: (a) any authenticated user posting `POST /api/config/revert/{change_pk}`
+  with a small integer could revert *another* user's change and rewrite the
+  instance's TOML; and (b) `GET /api/config/history` returned every user's
+  rows to every user, exposing keys/values/notes across tenants.
+- **Root cause (both halves)**: `config_history` had carried `owner_user_pk`
+  since migration 009, so the audit trail *looked* per-user while the read
+  paths did not filter on it — worse than plainly global, because it
+  contradicted the guarantee the write side spelled out.
+  `ConfigStore.revert` (`config.py:855`) selected by `change_pk` alone;
+  `/api/config/history` (`ui/api.py:1547`) selected without any owner term
+  at all.
+- **Blast radius**: every threshold, including measurement thresholds. Zero
+  impact on the live instance (one real account); reachable on day one of a
+  beta.
+- **What's fixed here (part a — the IDOR halves)**: `ConfigStore.revert` now
+  filters on `(change_pk, owner_user_pk)` and raises `KeyError` for another
+  user's `change_pk` — same shape as an unknown pk, so the endpoint does not
+  confirm the change exists (translated to HTTP 404 by the handler).
+  `GET /api/config/history` filters on `owner_user_pk`.
+- **What remains open (part b — the design redesign)**: config is still
+  instance-wide. `ConfigStore` holds a single TOML path and `load_config`
+  reads one file — so one user's `apply()` still writes for the whole
+  instance. A53 adopted "config becomes fully per-user, every threshold"
+  with a mandatory config-fingerprint mitigation stored beside every
+  measurement; that is the separate bigger build ahead. Part a is a proper
+  fix of a distinct defect, not a placeholder for part b — even with
+  per-user config in place, the revert lookup would still need the
+  owner filter, and the history endpoint would still need to scope by user.
+- **Pinned by**: `test_config_tenancy.py::test_bob_cannot_revert_alices_config_change`
+  (the revert IDOR), `::test_bob_cannot_read_alices_config_history` (the
+  history endpoint), plus `::test_alice_can_revert_her_own_change_and_it_writes_the_toml_back`
+  (regression guard on the legitimate path).
+
+### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
+- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+- **Symptom**: with two accounts on the same car/track, one driver annotating
+  a finding changed what the *other* driver saw, and either could delete the
+  other's annotation. The annotating driver's free-text note also entered the
+  other's chat bundle via `chat/session.py:311` and the rendered payload via
+  `report/payload.py:259`.
+- **Root cause**: two independent gaps that only bit together. The table was
+  from migration 001 (`db.py:157`); migration 009 skipped it though
+  `docs/ACCOUNTS-SPEC.md:143-148` explicitly listed it, so
+  `finding_annotations` had `UNIQUE(finding_id)` and no owner column.
+  Separately, `_finding_id(source, car, track, corner, phase, kind)`
+  (`attribution/ranker.py:70`) contains no user and no driver term by design,
+  so two accounts on GR86/Spa generate byte-identical IDs. Neither is
+  harmful alone; together they made one row serve two tenants — the exact
+  "evidence-ID collisions across tenants … must *prove* uniqueness, not
+  assume it" hazard `ACCOUNTS-SPEC.md:257-259` named.
+- **Blast radius**: every annotated finding on any car/track two accounts
+  shared. Zero impact on the live instance — one real account — which is
+  exactly why it would first appear in the beta.
+- **Fix**: migration 017 partitions the table (`owner_user_pk` column,
+  `UNIQUE(owner_user_pk, finding_id)`, existing rows backfilled to
+  `user_pk=1`, mirroring migration 009's rewrite shape).
+  `annotate_finding`/`annotations()`/`clear_annotation` all filter and
+  scope by `self.user_pk`. `finding_id` itself keeps its shape (A53
+  decision) — changing it would orphan every stored citation in
+  annotations, chat transcripts' `evidence_cited` and coach outputs.
+- **Pinned by**: `test_finding_annotations_tenancy.py` — three cross-user
+  tests (parallel annotations, cross-user clear, upsert isolation) plus a
+  fourth **guard** test `test_no_table_declares_a_bare_unique_on_finding_id`
+  that parses `MIGRATIONS` and asserts no future table may key on a bare
+  `finding_id` without an `owner_user_pk` companion. That guard is the
+  substitute A53 named for changing `finding_id`'s shape: the next table
+  to store an identity per finding_id cannot repeat this defect.
+- **Not fixed here** (separate follow-ups): the config revert IDOR
+  (BUG-032, part a — same class of missing-owner-filter defect), the
+  route-enumerated tenancy gate (BUG-036), and the login email
+  normalization (BUG-034).
 
 ### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
 - **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
