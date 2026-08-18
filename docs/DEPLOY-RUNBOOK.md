@@ -142,6 +142,34 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
    set up Google OAuth and prefer that path, click the Google button instead —
    it creates the account automatically on first sign-in.
 
+6. **Reassign pre-A32 history to your account (SPEC.md A53, BUG-035).**
+   Migration 009 backfilled every row that predated 2026-07-28 to
+   `owner_user_pk=1` (the placeholder from step 5). Your real login is
+   `user_pk=2`, so that old history sits invisible to you until you move
+   it over. Skip this step only if the deployment is a fresh store with
+   nothing from before 2026-07-28.
+
+   ```powershell
+   # From the VM (as the driverdna service account):
+   /opt/driverdna/venv/bin/driverdna reassign-owner `
+       --db /var/lib/driverdna/driverdna.db `
+       --from 1 --to 2 --dry-run
+   # Review the per-table counts. Then re-run without --dry-run:
+   /opt/driverdna/venv/bin/driverdna reassign-owner `
+       --db /var/lib/driverdna/driverdna.db `
+       --from 1 --to 2
+   ```
+
+   The tool is atomic (one transaction, per-table `reassigned=N discarded=M`
+   counts). Unique-constraint collisions — the case where you happen to
+   have already re-driven a (car, track) that user 1 also has — are
+   resolved by keeping *your* row (`user_pk=2` wins), which cascades
+   through downstream measurements. That is the A53 "live row wins, no
+   merge heuristic" rule, and the owner explicitly accepted losing the
+   older data on collision. Take a backup snapshot
+   (`deploy/driverdna-backup.service` runs one daily) before the live run
+   if you want the pre-reassignment state recoverable.
+
 ---
 
 ## Part E — Verify (H done-criteria)
