@@ -48,6 +48,23 @@ ExecStart=/opt/driverdna/venv/bin/driverdna ui \
 Restart=always
 RestartSec=3
 
+# Memory ceiling (BUG-032). The VM has ~960 MB and no swap, so an unbounded
+# process here does not just die — it takes the whole machine down, SSH and
+# all, needing a console reboot. With a cap, the cgroup kills only DriverDNA
+# and `Restart=always` above brings it straight back.
+#
+# The numbers are measured, not guessed. Peak RSS across every real path —
+# idle-with-app-imported 127 MB, corpus import 135 MB, `census` 121 MB,
+# `report` 122 MB, `rebuild-map` 117 MB — sits flat around 116-135 MB, because
+# the footprint is numpy/scipy/FastAPI at import, not telemetry (raw traces are
+# on disk since A23). `build_driver_payload` does hold every cohort's payload
+# at once, but a payload is ~5 KB serialized / ~0.15 MB held, so 25 cohorts add
+# roughly 4 MB. MemoryHigh throttles with reclaim pressure first (~2x peak);
+# MemoryMax is the hard stop (~3x). Raise both together if the corpus ever
+# genuinely outgrows them — do not raise one alone.
+MemoryHigh=300M
+MemoryMax=450M
+
 # Hardening (DEPLOY-SPEC H3): least privilege, read-only system, no home.
 NoNewPrivileges=yes
 PrivateTmp=yes

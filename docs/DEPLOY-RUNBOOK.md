@@ -307,6 +307,45 @@ pass is **weaker** than a single run: it does not exercise cross-file
 interference or ordering-dependence, so treat it as a smoke check of the
 deployed environment, not as a substitute for CI.
 
+### Give the machine swap, and cap the service
+
+Two guards, both cheap, both worth doing before anything else (BUG-032). The
+VM has ~960 MB and **no swap**, which is why memory pressure here is instantly
+fatal rather than merely slow: the kernel has nowhere to spill, so the OOM
+killer takes whatever it likes — including sshd.
+
+**1. Add swap.** A 2 GB swapfile on the durable volume turns "the VM dies and
+needs a console reboot" into "the VM gets slow for a minute":
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h        # confirm a Swap row with 2.0Gi
+```
+
+**2. Cap the service.** `deploy/driverdna.service` now sets `MemoryHigh=300M`
+and `MemoryMax=450M`, so a runaway DriverDNA is killed and restarted by
+`Restart=always` instead of taking the machine with it. These are ~2x and ~3x
+the **measured** peak — every real path (import, `census`, `report`,
+`rebuild-map`) sits flat at 116-135 MB, since the footprint is numpy/scipy/
+FastAPI at import rather than telemetry. After copying the unit:
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl restart driverdna
+systemctl show driverdna -p MemoryMax -p MemoryHigh     # confirm applied
+systemctl show driverdna -p MemoryCurrent               # watch actual usage
+```
+
+If `MemoryCurrent` ever approaches `MemoryHigh` in normal use, raise **both**
+values together — never one alone, or the soft throttle stops preceding the
+hard kill and you lose the graceful step.
+
+**The service fits this machine comfortably.** With ~150-250 MB for the OS,
+~30-50 MB for `cloudflared` and ~135-150 MB for DriverDNA, roughly 500 MB stays
+free. What does not fit is the **test suite** — see the section above. Those are
+different workloads and only one of them ever crashed this box.
+
 ### What is not installed on the VM
 
 - **No Postgres** — the dual-backend tests skip (~16). Expected; this is a

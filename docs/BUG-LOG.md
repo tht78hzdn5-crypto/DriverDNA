@@ -51,6 +51,23 @@ Writing that down is the point.
 - **Workaround in use**: run the suite in batches (~10-13 files), never in one
   shot. Recorded in DEPLOY-RUNBOOK.md Part H so the next agent does not
   rediscover it by crashing production.
+- **Mitigated 2026-08-18** (does not close it): the blast radius is now bounded
+  at both ends. `deploy/driverdna.service` sets `MemoryHigh=300M` /
+  `MemoryMax=450M`, so a runaway DriverDNA is killed and restarted by the
+  existing `Restart=always` rather than taking the machine down; and Part H
+  documents a 2 GB swapfile, so pressure degrades instead of being instantly
+  fatal. Sized from measurement, not guesswork — peak RSS across import,
+  `census`, `report` and `rebuild-map` is flat at **116-135 MB**, the footprint
+  being numpy/scipy/FastAPI at import rather than telemetry (raw traces live on
+  disk since A23). `build_driver_payload` does hold every cohort payload
+  simultaneously, but one is ~5 KB serialized / ~0.15 MB held, so 25 cohorts add
+  ~4 MB. **The service fits this VM with ~500 MB to spare; the test suite does
+  not.** Those are different workloads and only the suite has ever crashed it.
+- **Why it stays open anyway**: the cap contains the symptom, it does not give
+  the machine more memory. Running the suite on the VM will still fail — now by
+  OOM-killing the batch instead of the box, which is the point. The real fixes
+  remain a larger instance, or simply never testing on the production host (CI
+  covers it, and since BUG-031 it actually runs).
 - **How it was caught**: by crashing the VM twice — once on 2026-08-08 (undiagnosed
   at the time, misfiled as an ARM64 divergence) and again on 2026-08-16 while
   running the diagnostic for that misfiling.
