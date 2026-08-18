@@ -41,6 +41,27 @@ If a future change needs a second real user, that is productization and it
 goes back to the owner as its own decision, with its own amendment. This
 spec must not be cited as precedent for it.
 
+> ### ⚠️ SUPERSEDED 2026-07-28 by SPEC.md **A32**, reconciled by **A51**
+> (2026-08-18). The block above is kept because the reversal has to stay
+> legible — deleting it would hide that this was ever the rule.
+>
+> **All five negatives are now false.** There is a `users` table (migration
+> 008), a `owner_user_pk` tenant column on every partitioned table (009),
+> open registration at `POST /api/auth/register`, per-user data
+> partitioning, and second identities via Google and Garage61 OAuth.
+> The process this paragraph demanded was followed: it went back to the
+> owner, and the answer was yes.
+>
+> **One sentence above survives intact and still binds:** `laps.driver` is a
+> data label, *not* the tenant key. `owner_user_pk` is the tenant key.
+> Reference laps carry someone else's name in `driver`, which is the whole
+> point of them — collapsing the two would break reference laps
+> (`docs/ACCOUNTS-SPEC.md:73-82`).
+>
+> Current real status, including three isolation defects and the missing
+> tenancy test gate, is in **A51**. Do not read this document as evidence
+> that DriverDNA is single-tenant.
+
 ## Owner decisions (2026-07-26)
 
 Four forks were surfaced before any design work; all four were answered by
@@ -425,6 +446,9 @@ H1's done-criteria pass.
    guards every route except the login endpoint and the static shell. No
    user table, no registration, no password reset — see the single-tenant
    framing above.
+   **Superseded (A32, 2026-07-28; see A51):** a `users` table, registration
+   and an SMTP password reset all exist today. H1's guard-every-route design
+   is unchanged and still correct — only the "no user table" clause is dead.
 3. **Write-path hardening.** The write endpoints (`/api/laps/upload`,
    `/api/findings/{id}/annotate`, `/api/config/*`, `/api/chat/*`) get, in
    addition to auth: an upload size cap and content-type check, a rate limit

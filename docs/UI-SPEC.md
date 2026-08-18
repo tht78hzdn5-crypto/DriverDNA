@@ -423,6 +423,24 @@ outbound-only tunnel), and a **mobile app** (a PWA over this same SPA — read
 + chat subset). Tauri/Electron packaging stays deferred; a native shell is
 excluded outright for the mobile track. The permanent list above is intact.
 
+**Multi-user is BUILT, not deferred (A32, 2026-07-28; status audited in A51,
+2026-08-18).** The parenthetical above understated this and is corrected here:
+philosophy #8 was *reversed by owner decision*, not refined, and a `users`
+table, `owner_user_pk` partitioning, registration, Google/Garage61 OAuth and
+SMTP password reset all shipped. Read A51 before treating anything in this
+section as current — it carries the three isolation defects still open, and
+the closed-beta direction (first-user-only registration; fully per-user
+config, which is why a per-user config fingerprint now travels with every
+stored measurement).
+
+**The permanent exclusions are untouched by all of this**, exactly as A17
+required of any revisit: measurements are still never edited, no figure is
+computed client-side, no score is blended, and no setup advice is given.
+Multi-user changed who logs in and whose rows they see. It changed nothing
+about how a number is produced or what may be rendered — the render-parity
+rule (every on-screen number exists in the payload or a read endpoint) binds
+identically for every account.
+
 Principle 8 and trust gate 5 are restated by the same amendment: the
 guarantee is **same-origin only** — the SPA makes zero third-party requests,
 every asset and every byte of data coming from the app's own origin. CDNs,

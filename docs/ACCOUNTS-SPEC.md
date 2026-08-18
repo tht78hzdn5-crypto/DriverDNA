@@ -1,10 +1,26 @@
 # DriverDNA — Accounts, Multi-User & Blob Storage Spec (design stage)
 
-**Status: design stage, owner-directed 2026-07-27. Not adopted into the
-constitution, not built.** No code in this document exists yet. It is the
-reference for a decision the owner has made in principle — that DriverDNA gains
-real user accounts and per-user data — recorded now so the reasoning, the
-measurements and the hazards survive the session they were produced in.
+**Status: SUPERSEDED as a status doc, still authoritative as the design.**
+Adopted by SPEC.md **A32** (2026-07-28) and largely built; audited 2026-08-18
+by **A51**, which is the current status of record.
+
+- **Built:** Phase 0 (constitution), Phase 1 (identity core), Phase 2 (data
+  partitioning), Phase 3 (Google OAuth), Phase 4 (SMTP password reset).
+- **Not built, still open:** the **Phase 2 test gate** (`tests/test_tenancy.py`,
+  specified below and never written); **invite-only registration** after the
+  first account (specified below, registration shipped fully open — A51 adopts
+  first-user-only); `GcsBlobStore` (Phase 2b — moot, A40 returned the deploy to
+  a single VM with local-disk blobs); the dedicated `DRIVERDNA_SECRET_KEY`
+  (sessions still sign off the passphrase); `google_sub` and username columns.
+- **Built but broken:** `finding_annotations` was named in Phase 2's table list
+  and never partitioned; hazard 4 below ("evidence-ID collisions across tenants
+  … must *prove* uniqueness, not assume it") describes a defect that is now
+  real. See A51 and BUG-028.
+
+The original text is kept unedited below — the measurements, the architectural
+crux and the hazards are still the best record of *why* this was built this
+way, and three of its hazards came true. Read it as design rationale, not as a
+statement of what exists.
 
 Nothing here overrides `docs/SPEC.md` (engine), `docs/ARCHITECTURE_VISION.md`
 (constitution) or `docs/UI-SPEC.md` (interface) **until SPEC.md A32 is written**.
