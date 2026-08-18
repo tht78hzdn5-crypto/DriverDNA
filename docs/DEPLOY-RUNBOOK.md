@@ -292,7 +292,7 @@ time, rather than the false premise it turned out to be here.
 `python3 -m pytest` in one shot exhausts the ~960 MB and takes the whole VM
 down — SSH and ping stop answering, and it needs a hard reboot from the OCI
 console. The DriverDNA service goes down with it. This has happened twice
-(BUG-032), and is the leading explanation for BUG-018's outage.
+(BUG-040), and is the leading explanation for BUG-018's outage.
 
 Batch it instead — roughly 10-13 test files at a time:
 
@@ -309,7 +309,7 @@ deployed environment, not as a substitute for CI.
 
 ### Give the machine swap, and cap the service
 
-Two guards, both cheap, both worth doing before anything else (BUG-032). The
+Two guards, both cheap, both worth doing before anything else (BUG-040). The
 VM has ~960 MB and **no swap**, which is why memory pressure here is instantly
 fatal rather than merely slow: the kernel has nowhere to spill, so the OOM
 killer takes whatever it likes — including sshd.

@@ -10,7 +10,7 @@
   **zero browser skips**, which required working around a container-local
   Playwright/Chromium build mismatch (wants 1234, image ships 1194; same shape
   as BUG-025). Nothing in the repo was changed for that.
-- **BUG-031 (fixed): every CI gate silently stopped running for ~30 hours.**
+- **BUG-039 (fixed): every CI gate silently stopped running for ~30 hours.**
   Actions minutes for the private repo were exhausted; jobs failed in 3-5
   seconds with no runner assigned and no logs, looking exactly like a normal red
   build. **A52 (PR #31) merged to `main` with zero CI verification** — re-run
@@ -18,8 +18,8 @@
   the repo going public (unlimited minutes; verified live, runs now take 8m16s).
   `tests.yml` also had two real defects, both corrected: an unscoped `push:`
   double-ran the suite against identical commits, and no `concurrency:` group
-  meant superseded runs burned to completion. See SPEC.md A53.
-- **BUG-032 (open): the production VM cannot run its own test suite.** ~960 MB
+  meant superseded runs burned to completion. See SPEC.md A54.
+- **BUG-040 (open): the production VM cannot run its own test suite.** ~960 MB
   RAM, no swap; a single-shot `pytest` exhausts it and takes the machine and the
   service down. Batching is the workaround (DEPLOY-RUNBOOK Part H); a bigger
   instance or swap is the fix, and that is an owner infrastructure decision.
@@ -35,6 +35,75 @@
 - **Copyright asserted**: Ben Richards, 2026 (`README.md`, `pyproject.toml`).
   Licence stays **AGPL-3.0** — correct for network server software; `LICENSE`
   is unmodified FSF text.
+
+---
+
+**Snapshot date: 2026-08-18 (multi-tenancy audited, docs reconciled — SPEC.md
+A53). Docs-only change: no code touched, no committed artifact moved.**
+
+- **What prompted it:** A32 (2026-07-28) recorded multi-user as built and
+  merged. `docs/DEPLOY-SPEC.md` then went on saying "no user table, no
+  registration, no tenant column"; `AGENTS.md` and `CLAUDE.md` kept opening
+  "personal instrument for one driver"; this log ran from 2026-07-28 to
+  2026-08-15 without naming A32 again. `docs/ACCOUNTS-SPEC.md:37-56` predicted
+  that failure and required the reconciling edits *in the same change as A32*.
+  They never happened.
+- **A32 is live, not dead code.** `docs/DEPLOY-RUNBOOK.md` Part D step 5 makes
+  `POST /api/auth/register` the documented way the owner creates their account
+  on the VM, and registration ships in the built SPA bundle. Partitioning is
+  genuinely thorough — 76 `owner_user_pk` sites in `db.py`, and `corner_maps
+  UNIQUE(car, track, owner_user_pk)` (`db.py:320`), the crux
+  `docs/ACCOUNTS-SPEC.md:60-71` identified.
+- **Six defects filed** (`docs/BUG-LOG.md` BUG-031..033, all open):
+  `finding_annotations` never partitioned and finding IDs carrying no tenant
+  term, so two accounts on one car/track collide exactly (BUG-031); config
+  instance-wide with a cross-tenant revert (BUG-032); `/api/sync` falling back
+  to the owner's `GARAGE61_TOKEN`, so a beta user who never connected Garage61
+  imports the owner's laps (BUG-033); login not normalizing email while
+  register does, a permanent lockout (BUG-034); all pre-A32 rows owned by a
+  seeded account with a `'placeholder'` hash no password can match (BUG-035);
+  and the tenancy test gate ACCOUNTS-SPEC specified never being written
+  (BUG-036). BUG-037/035 backfill the two `e196c2d` security fixes that merged
+  without entries.
+- **Not a hole, but pinned too high:** the blob store is shared rather than
+  per-user (`blobs.py:114-125`). No leak is reachable — `lap_pk` is globally
+  unique and every API path resolves the lap through an owner-filtered query
+  first — but `load_lap_arrays` and `has_raw` take a bare `lap_pk` and never
+  check ownership, while the legacy fallback beside them does. The A34 shape.
+- **Owner decisions adopted (A53):** registration closes to first-user-only,
+  with the Cloudflare Access email allowlist as the invite mechanism; and
+  config becomes **fully per-user, every threshold**. The second refines a
+  non-negotiable, so it ships only with a fingerprint of the user's effective
+  `config_snapshot()` stored beside every measurement — without that,
+  "deterministic, versioned, confidence-qualified" stops being verifiable.
+  Five further decisions taken the same day: **reference-derived numbers pin to
+  the reference lap, not the importing user** (the most expensive of three
+  options, chosen deliberately), resolved through a **canonical config keyed
+  to the lap's `content_hash`** — a knowing carve-out from "config is fully
+  per-user", since vs-reference findings cannot be comparable across cockpits
+  and per-driver at once;
+  **`sync.max_cohorts` 10 → 40** with `raw_laps_per_cohort` staying 100 and
+  audience tiers rejected (the two knobs have opposite audiences, and retention
+  is a ceiling rather than a reservation); **pre-A32 rows reassigned** to the
+  live account, live row wins on collision; **finding IDs keep their shape**,
+  with a guard test instead; and **database snapshots move off the VM** while
+  blob loss is accepted as recoverable.
+- **Capacity, estimated** (867 KB blob + 32-52 KB rows per lap, measured
+  2026-07-27; ~153 GB usable after the 47 GB boot volume): roughly **25
+  veteran accounts** (40 cohorts at the 100-lap retention cap, ~5.2 GB each
+  with backups) or **~1,100 newbie accounts** (~0.12 GB each). Disk is not the
+  binding constraint at beta scale — `MAX_CHAT_SESSIONS = 8` is instance-wide
+  (`ui/api.py:149`), the service runs one uvicorn worker by construction, and
+  SQLite is single-writer. Size the beta on concurrent activity, not disk.
+- **Verified counts:** `python3 -m pytest` → **975 passed, 42 skipped, 0
+  failed** (SQLite backend, Python 3.11, clean venv from `pip install -e
+  ".[dev]"`, 434 s). Unchanged by this work, which touches no code. The 42
+  skips are **26 browser** (`Chromium binary or built SPA not present` — the
+  built SPA is present, Chromium is not in this container) and **16
+  Postgres-absent**. Per AGENTS.md the browser skips are a **gap, not a pass**:
+  BUG-025 is exactly that hiding a real defect, and this environment cannot
+  close it. `tests/test_agent_contract.py` re-run green after the AGENTS.md
+  edits (9 passed); AGENTS.md is 10,914 chars against the 11,000 budget.
 
 ---
 

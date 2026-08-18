@@ -1575,6 +1575,15 @@ Accepted at owner plan review; rationale recorded in the review:
   from trusted domains. Data remains fully isolated per user, and deterministic
   measurements remain strictly independent per account.
 
+  > **Corrected by A53 (2026-08-18) — read that before relying on this entry.**
+  > Two things above are not accurate as written. (1) "Principle *refined*"
+  > should read **reversed by owner decision**, per ACCOUNTS-SPEC:37-41.
+  > (2) "Data remains fully isolated per user" was not true when written and is
+  > not true now: `finding_annotations` was never partitioned, config is
+  > instance-wide, and `/api/sync` can serve one user the owner's laps. A53
+  > carries the audit, with file:line evidence, and the beta direction adopted
+  > in response.
+
 - **A33** (2026-08-02): **`driverdna census` — the corpus answers "do I need
   more laps?" itself.** Asked whether more lap data would help validate the
   engine, answering it meant hand-reading `reports_hosted/driver.json` and
@@ -2821,15 +2830,178 @@ Accepted at owner plan review; rationale recorded in the review:
   a test asserting `scoring.py` contains no `config.coaching` reference and
   empirically, in that `docs/driver-model-report.md` and
   `docs/census-report.md` regenerate byte-identical.
+- **A53** (2026-08-18): **A32 reconciled against reality; closed-beta direction
+  adopted.** A32 (2026-07-28) recorded multi-tenancy as built and merged, and the
+  repository then spent three weeks contradicting it: `docs/DEPLOY-SPEC.md` still
+  said "no user table, no registration, no tenant column", `AGENTS.md` and
+  `CLAUDE.md` still opened "personal instrument for one driver", and the dated
+  status log never named A32 again. `docs/ACCOUNTS-SPEC.md` (lines 37-56)
+  predicted this exact failure and required those documents to change **in the
+  same edit as A32**. They did not. This amendment closes that gap and states
+  what an audit of the running code actually found.
 
-- **A53** (2026-08-18): **CI's `push:` trigger is scoped to `main`, a
+  **A32's own wording is corrected, not rewritten.** A32 says "**Principle
+  refined:** philosophy #8". ACCOUNTS-SPEC:37-41 required the word **reversed** —
+  "the amendment must say *reversed by owner decision*, not 'refined'" — because
+  a reversal recorded as a refinement makes the amendment log understate its own
+  history. Read A32 as: **philosophy #8 was reversed by owner decision on
+  2026-07-28, overriding A31.** A32's text stands; this is the correction of
+  record.
+
+  **What the audit found (2026-08-18, read-only, against `main` at `e196c2d`).**
+  A32 is **live and load-bearing**, not dead code: `docs/DEPLOY-RUNBOOK.md`
+  Part D step 5 makes `/api/auth/register` the documented way the owner creates
+  their account on the VM. Partitioning is real and thorough — migration 008
+  creates `users`, 009 adds `owner_user_pk` and rewrites the unique keys,
+  including `corner_maps UNIQUE(car, track, owner_user_pk)` (`db.py:320`), the
+  crux ACCOUNTS-SPEC:60-71 identified. Laps, corner maps, corners, observations,
+  incidents, driver beliefs, coach outputs, sync state, chat transcripts,
+  reference exclusions and BYOK keys are all filtered at the read surface.
+
+  **Four things were specified and never built**, each now an open defect:
+  1. **`finding_annotations` was never partitioned** (BUG-031). Migration 009
+     skipped it though ACCOUNTS-SPEC:143-148 listed it. `db.py:1830` selects with
+     no owner filter, `db.py:1838` deletes by `finding_id` alone, and the upsert
+     conflicts on `finding_id` only. Finding IDs carry no tenant term
+     (`attribution/ranker.py:70`), so two users on the same car/track collide
+     exactly. One driver's annotation suppresses another's finding, and their
+     free-text note enters the other's chat bundle (`chat/session.py:311`). This
+     is ACCOUNTS-SPEC hazard 4 — "must *prove* uniqueness, not assume it" —
+     assumed.
+  2. **Config is instance-wide with a cross-tenant revert** (BUG-032).
+     `ConfigStore` holds one TOML path; `config_history` carries `owner_user_pk`,
+     so the audit trail looks per-user while the effect is global.
+     `config.py:834` reverts by `change_pk` with no owner filter, reachable from
+     `ui/api.py:1716`.
+  3. **`/api/sync` falls back to the owner's Garage61 token** (BUG-033).
+     `ui/api.py:1824` falls through to `Garage61Client()`, which reads the
+     process `GARAGE61_TOKEN` that `deploy/driverdna.service` sets — so a beta
+     user who clicks Sync without connecting their own account imports **the
+     owner's laps**. `/api/garage61/status` compounds it by reporting
+     `connected: true` to everyone whenever the env var is set.
+  4. **`tests/test_tenancy.py` does not exist.** ACCOUNTS-SPEC:150-157 named it
+     as the *gate* for Phase 2 — two users, overlapping car/track, every read
+     endpoint enumerated. The only cross-user isolation tests in 74 test files
+     are two in `tests/test_byok_api.py`, covering AI keys. Nothing was deleted
+     when A40 moved off Cloud Run; the suite is green (975 passed, 42 skipped)
+     and has simply never tested this.
+
+  **Not a hole, but pinned one layer too high.** The blob store is shared, not
+  per-user (`blobs.py:114-125`, keyed `<lap_pk>.npz`, rooted per *database*). No
+  leak is reachable today because `lap_pk` is globally unique and every API path
+  resolves the lap through an owner-filtered query first — but `load_lap_arrays`
+  and `has_raw` take a bare `lap_pk` and never check ownership, while the legacy
+  fallback beside them does. That is the A34 shape, and A34 is the reason it is
+  written down here rather than left to be rediscovered.
+
+  **Also found:** Google OAuth links accounts by email with no `email_verified`
+  check and no `google_sub` column (ACCOUNTS-SPEC:88-91 specified one); login
+  does not normalize email while register does, permanently locking out anyone
+  who registers with a capital letter (BUG-034); `sync_driver` is called with
+  `driver="owner"` hardcoded (`ui/api.py:1854`, the BUG-012 defect class); the
+  CLI is permanently `user_pk=1`; and the migration-seeded `owner@example.com`
+  at `user_pk=1` has a `'placeholder'` hash no password can match, while
+  migration 009 backfilled **every pre-A32 row to it** — so all data predating
+  A32 belongs to an account nobody can log into (BUG-035).
+
+  **Direction adopted (owner decision, 2026-08-18).** A small invite-only closed
+  beta, mixed newcomers and experienced iRacers, with a commercial multi-user
+  product as the eventual path:
+  - **Registration closes to first-user-only**, with the Cloudflare Access email
+    allowlist as the invite mechanism (`deploy/cloudflared/README.md:37-39`) —
+    the rule ACCOUNTS-SPEC:105-109 specified and never got. Defence in depth: a
+    shared Access session can no longer mint accounts.
+  - **Config becomes fully per-user — every threshold, not an allowlist.** This
+    **refines philosophy #1 and the AGENTS.md non-negotiable** that "every
+    threshold lives in config with a documented default", and it is named here
+    rather than slipped in: with per-user measurement thresholds, two accounts
+    can produce differently-computed numbers under the same
+    `scoring_model_version`. **Mandatory mitigation, not optional:** every stored
+    measurement records a fingerprint of the user's effective
+    `config_snapshot()` alongside its model version, so a number stays
+    reproducible and decomposable exactly as A14 requires. Without that
+    fingerprint this change would make "deterministic, versioned,
+    confidence-qualified" unverifiable, and must not ship.
+
+  - **Reference-derived numbers pin to the reference lap, not to the importing
+    user.** With per-user thresholds, two accounts holding the same coach's lap
+    would otherwise disagree about it — there would stop being *the* gap to that
+    lap. The cheaper options were offered and **rejected**: letting the importing
+    user's config win (self-consistent per cockpit, but not comparable) and
+    computing vs-reference findings under instance defaults. Recorded because
+    this is the most expensive of the three and was chosen deliberately.
+
+    **The referent is the canonical reference config** (owner decision, same
+    day). A reference lap has no account — `laps.driver` is the name on the lap,
+    `owner_user_pk` is the importing account — so "the reference's config"
+    needed one, and the alternative was rejected on the merits: freezing the
+    config at import is simpler and deterministic, but two accounts importing
+    the same lap under different configs would still disagree, which is the
+    comparability this decision exists to buy. So **reference measurement
+    resolves through one instance-level config keyed to the lap's identity**
+    (`content_hash` is the existing global handle, already unique per lap
+    content and already the dedup key), and every account computes the same gap.
+
+    Stated plainly so it is not discovered later: this is deliberately a
+    **carve-out from "config is fully per-user"**. Vs-self findings use the
+    driver's own thresholds; vs-reference findings do not, and cannot, if the
+    same lap is to mean the same thing in two cockpits. It is the rejected
+    "instance defaults" option scoped to reference measurement alone, adopted
+    knowingly rather than by drift. Consequences to carry into the build:
+    a driver who retunes a measurement threshold sees vs-self findings move and
+    vs-reference findings hold still, which the UI must not present as
+    inconsistency; and the config fingerprint stored beside a vs-reference
+    measurement is the **canonical** one, not the user's, or the audit trail
+    would name a config that did not produce the number.
+
+  - **`sync.max_cohorts` default 10 → 40.** A veteran's cohorts past the cap
+    never arrive: A49 orders newest-driven-first and names what it skipped, so it
+    degrades honestly, but an older cohort does not sync unless it is driven
+    again. **Not a model version bump:** `SyncConfig` is ingest scope, and says
+    so — "nothing here changes how a lap is scored", only which laps are offered
+    to the pipeline. `retention.raw_laps_per_cohort` **stays 100**: it is a
+    ceiling, not a reservation, so lowering it saves nothing for the light
+    accounts it was proposed for and only ever bites users past 100 laps in one
+    cohort. **Audience tiers were considered and rejected** — the two knobs have
+    opposite audiences, and one default change does what a tier system would.
+
+  - **Pre-A32 rows are reassigned to the live account** (BUG-035), not stranded.
+    Owner's instruction, with the collision rule stated: where a unique
+    constraint collides — `corner_maps UNIQUE(car, track, owner_user_pk)` is the
+    real case — **the live account's row wins and `user_pk=1`'s is discarded.**
+    No merge heuristic; the owner explicitly does not want that data preserved
+    at the cost of complexity.
+
+  - **Finding IDs keep their shape** (BUG-031). Partitioning the table closes the
+    defect completely; changing `_finding_id` would orphan every stored citation
+    in annotations, `evidence_cited` and coach outputs for no additional
+    security, and their determinism is a feature. A test asserting **no table is
+    keyed on a bare `finding_id`** is the cheap guard against the next table
+    repeating this.
+
+  - **Database snapshots move off the VM**; blob loss is accepted as recoverable.
+    `deploy/driverdna-backup.service` writes its seven snapshots to the same
+    block volume as the database, which defends against corruption but not
+    against losing the volume — and the database holds the rows that service's
+    own comment calls irreplaceable. Blobs are deliberately *not* backed up:
+    `backfill-blobs` reconstructs them from source CSVs, Garage61 still holds
+    synced laps, the derived phase times survive in the database independently,
+    and retention already evicts blobs by design. To be stated in the runbook so
+    it reads as a decision rather than an omission.
+
+  **Nothing in this amendment changes a measurement.** It is documentation plus
+  recorded decisions; no committed artifact moves. The `max_cohorts` default
+  change above is adopted here and applied in the build pass, not in this
+  docs-only commit.
+
+- **A54** (2026-08-18): **CI's `push:` trigger is scoped to `main`, a
   concurrency group supersedes in-flight runs, and the repository is public.**
   Recorded because the first half narrows a rule this file's A47 stated
   deliberately ("the suite has to run on every push"), and a narrowing that is
   not written down reads later as drift.
   *Why:* Actions minutes for the private repository ran out, and every gate
   then failed in 3-5 seconds without a runner ever being assigned — visually
-  identical to a real red build (BUG-031). Two contributing defects were found
+  identical to a real red build (BUG-039). Two contributing defects were found
   in `tests.yml`: an unscoped `push:` alongside `pull_request:` ran the whole
   ~19-billed-minute suite **twice** against the identical commit whenever the
   branch had an open PR (ten of thirty sampled runs were exact duplicates), and

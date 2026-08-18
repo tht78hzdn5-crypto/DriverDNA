@@ -7,7 +7,7 @@ name: Tests
 # what pytest structurally can't. So the suite runs on every proposed change,
 # not just when someone remembers.
 #
-# `push:` is scoped to `main` deliberately (BUG-031). It used to be unscoped,
+# `push:` is scoped to `main` deliberately (BUG-039). It used to be unscoped,
 # which meant a push to a branch with an open PR matched BOTH triggers and ran
 # the entire suite twice against the identical commit — ten of thirty sampled
 # runs were exact duplicates, at ~19 billed minutes each. Coverage is unchanged:
@@ -23,7 +23,7 @@ on:
 
 # Supersede an in-flight run when new commits land on the same ref. Without
 # this, pushing three times in quick succession queued three full runs and let
-# the two stale ones burn to completion (BUG-031).
+# the two stale ones burn to completion (BUG-039).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
