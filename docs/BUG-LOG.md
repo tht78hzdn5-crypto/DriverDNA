@@ -37,20 +37,44 @@ Writing that down is the point.
 
 ## Open
 
-### BUG-019 — Test suite fails on ARM64, passes on x86
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
-- **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
-  31% and 38% of the run. Same commit is green on x86.
-- **Root cause**: unknown — tracebacks were never captured.
-- **Blast radius**: unknown, and that is the problem. Until the failures are
-  read, it is not known whether this is an environment artifact or a real
-  architecture-dependent defect in float/collation/ordering behaviour. This
-  product's numbers are float-sensitive (see BUG-006), so it must not be
-  assumed cosmetic.
-- **How it was caught**: running the suite on the target platform — something
-  x86 CI cannot do.
-- **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
-  on the VM. Do not theorise before reading it.
+### BUG-019 — Test failures on the Oracle VM (originally filed as ARM64 divergence)
+- **Status**: closed-premise-falsified (2026-08-17) · **Severity**: was "breaks" · **Found**: 2026-08-08
+- **Original symptom**: `pytest` on the Oracle VM showed `F` markers at roughly
+  15%, 31% and 38% of the run. Same commit green on x86 CI. Tracebacks were
+  never captured. The VM was recorded as "Ampere A1 ARM64" (STATUS.md, commit
+  152f291), and the bug was filed as an architecture-dependent float/collation
+  divergence.
+- **What the 2026-08-16 diagnostic found**: the VM at `147.5.99.21` is
+  **x86_64** (E2.1.Micro, ~960 MB RAM, no swap), not ARM64. `uname -m` returns
+  `x86_64`. The ARM64 premise was never verified and is false.
+- **Re-run results** (commit `216df3b`, 7 batches, all 70 test files): **944
+  passed, 42 skipped, 1 failed.** The single failure
+  (`test_auth_api::test_status_reports_whether_auth_is_required_and_met`) is a
+  code-test mismatch from PR #21 (BUG-023, already fixed on main) — not
+  platform-specific. The 42 skips are Postgres (16) and Chromium (26), expected
+  per AGENTS.md.
+- **Leading hypothesis for the original failures**: OOM. The VM has ~960 MB
+  total, no swap. Running the full suite in one shot (as the original session
+  did) crashed the VM — SSH and ping became unreachable, requiring a hard reboot
+  from the Oracle Cloud console. An OOM crash mid-run would produce scattered
+  failures at arbitrary positions. A deterministic float or collation divergence
+  does not heal on its own; OOM is exactly the kind of thing that appears once
+  and not the next time. The journal (`journalctl -k | grep -i "out of memory"`)
+  showed no records, but the VM was hard-rebooted and journald may have been
+  volatile at the time (persistent storage was added by PR #26, after the
+  original 2026-08-08 session).
+- **Bearing on BUG-018**: same date, same machine, same session. If pytest OOMs
+  the VM, the DriverDNA service goes unreachable and Cloudflare returns 1033 —
+  matching BUG-018's symptom exactly. This may be the reproduction BUG-018's
+  entry said it needed, though the evidence is circumstantial (no journal
+  survived).
+- **How it was caught**: running the suite on the deployed machine.
+- **How it was missed**: the architecture claim was written as fact (STATUS.md)
+  without verification, then read as fact for a week. A diagnostic guide
+  (BUG-019-ARM64-GUIDE.md) with five failure categories and 80-bit-x87 reasoning
+  was merged to main (PR #27) built entirely on that unverified claim.
+- **Artifacts superseded**: `docs/BUG-019-ARM64-GUIDE.md` is marked superseded
+  — its categories, reasoning, and commands assume ARM64 and do not apply.
 
 ### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
 - **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
@@ -148,6 +172,16 @@ Newest first. The amendment named in each entry carries the full narrative.
   leading candidate remains the `pip install` shifting a dependency or the A41
   interlock refusing a start on a missing/stale `DRIVERDNA_SESSION_SECRET`, but
   that is an inference, not a diagnosis.
+- **2026-08-17 update (BUG-019 diagnostic)**: a third candidate emerged. The VM
+  is an E2.1.Micro with ~960 MB RAM and no swap (not the 12 GB Ampere A1 it was
+  recorded as). Running the full test suite on this machine in the BUG-019
+  diagnostic session crashed it — SSH and ping became unreachable, requiring a
+  hard reboot from the Oracle Cloud console. Same date, same machine, same
+  session as BUG-018: if `pip install .[dev]` plus `pytest` exhausted memory, the
+  DriverDNA service would go down and Cloudflare would return 1033. This is
+  consistent but circumstantial — `journalctl -k | grep -i "out of memory"`
+  returned nothing, likely because the journal was volatile at the time
+  (persistent storage shipped in PR #26, after the 2026-08-08 session).
 - **Blast radius**: the deployed instrument was down. Local and test paths
   unaffected. The outage was transient — the service recovered, likely on the
   next `Restart=always` cycle or the next reboot.
@@ -354,7 +388,8 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Verified, not assumed, before adopting a strict byte-compare**: all
   fourteen regenerate byte-identical under both CI matrix versions (3.11 and
   3.12) and across two numpy majors. If it ever fails for a platform reason
-  — a numpy release moving a last decimal, or BUG-019's ARM64 divergence —
+  — a numpy release moving a last decimal, or a platform divergence (BUG-019's
+  ARM64 premise was falsified; the VM is x86_64) —
   that is a finding, not noise. Investigate; never loosen it to go green.
 - **Found while building the guard**: `driverdna corners` prints the
   fixtures directory it was handed into its own report header, so

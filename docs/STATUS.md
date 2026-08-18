@@ -434,11 +434,11 @@ gap that let A42/A43 leave three of them stale.
 
 **Snapshot date: 2026-08-08 (Antigravity deployment handoff — OCI VM live, two blockers open).**
 
-- **Oracle Cloud VM deployed:** DriverDNA running on Ampere A1 ARM64 (`147.5.99.21`). Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
+- **Oracle Cloud VM deployed:** DriverDNA running on an **E2.1.Micro x86_64** instance (~960 MB RAM, no swap) at `147.5.99.21`. *(Originally recorded as "Ampere A1 ARM64" on 2026-08-08 but verified 2026-08-16 as x86_64 via `uname -m`; see BUG-019 correction.)* Dedicated `driverdna` service user, venv, and three systemd units (`driverdna`, `driverdna-sync.timer`, `driverdna-backup.timer`).
 - **Cloudflare Tunnel + Access:** `cloudflared` routes `driver-dna.com` → port 8710; Cloudflare Access gate uses Google SSO. Internal app-level Google OAuth wired via `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `/etc/driverdna/env`.
 - **SSH keypair rotated:** Private key was exposed in chat; `vm_key` replaced, `authorized_keys` locked to the new key.
 - **Blocker 1 — service unreachable (Cloudflare 1033):** Service was restarted after `pip install .[dev]` ran against the live venv. Still returning 1033. Needs `journalctl -u driverdna -n 100 --no-pager` to diagnose.
-- **Blocker 2 — ARM64 test failures:** `pytest` on the VM produced multiple `F` markers at ~15%, ~31%, ~38% of the suite. Tracebacks not captured. On x86 the suite is 924 passed / 0 failed. Needs `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt` on the VM to get the actual errors.
+- **Blocker 2 — VM test failures:** `pytest` on the VM produced multiple `F` markers at ~15%, ~31%, ~38% of the suite. Tracebacks not captured. *(Originally attributed to ARM64 float divergence; the VM is x86_64. See BUG-019 correction in BUG-LOG.md — leading hypothesis is OOM on the ~960 MB machine.)*
 - **Next step agreed:** Garage61 OAuth ("Login with Garage61 and sync your laps"), callback URI `https://driver-dna.com/api/auth/garage61/callback`. Needs a design decision before building — no SPEC.md amendment exists yet.
 
 ---
