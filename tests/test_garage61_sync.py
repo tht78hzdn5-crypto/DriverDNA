@@ -577,3 +577,25 @@ def test_pitlane_laps_are_skipped_before_any_fetch_when_enabled(db):
     assert s.laps_new == 1
     assert ("L-pit", "pit-lane start") in s.laps_skipped
     assert "L-pit" not in transport.csv_calls
+
+
+def test_sync_driver_cleans_up_memory_between_cohorts(db, monkeypatch):
+    """Memory guard (BUG-037): sync_driver triggers explicit garbage collection
+    at the end of each cohort to prevent memory exhaustion on constrained hosts."""
+    import gc
+    gc_calls = 0
+    real_collect = gc.collect
+
+    def _mock_collect(*args, **kwargs):
+        nonlocal gc_calls
+        gc_calls += 1
+        return real_collect(*args, **kwargs)
+
+    monkeypatch.setattr(gc, "collect", _mock_collect)
+
+    client = Garage61Client(transport=_three_cohort_transport())
+    summaries = sync_driver(db, client, driver="owner", config=_cfg(max_cohorts=3))
+    assert len(summaries) == 3
+    # Called at least once per cohort
+    assert gc_calls >= 3
+
