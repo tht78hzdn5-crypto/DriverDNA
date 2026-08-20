@@ -19,6 +19,7 @@ export function invalidateDriverCache() {
     generation: _cache.generation + 1,
     controller: null
   };
+  window.dispatchEvent(new CustomEvent("driverdna:driver_invalidated"));
 }
 
 export function useDriverPayload() {
@@ -31,10 +32,18 @@ export function useDriverPayload() {
 
   // Track cache generation changes
   useEffect(() => {
+    const handleInvalidate = () => {
+      setGeneration(_cache.generation);
+    };
+    window.addEventListener("driverdna:driver_invalidated", handleInvalidate);
+    
+    // Also check on mount/update just in case
     if (generation !== _cache.generation) {
       setGeneration(_cache.generation);
     }
-  }, [generation]); // Fix deps by including generation
+    
+    return () => window.removeEventListener("driverdna:driver_invalidated", handleInvalidate);
+  }, [generation]);
 
   useEffect(() => {
     let alive = true;
