@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { get, send, streamChat } from "../api.js";
 import { Loading, useFetch } from "../app.jsx";
 
@@ -11,18 +11,29 @@ import { Loading, useFetch } from "../app.jsx";
 // render as plain evidence text rather than a link to nowhere).
 const ID_TOKEN =
   /(obs:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.-]+|cp\.[A-Za-z_]+\.[A-Za-z_]+)/;
+const GUESS_FLAG =
+  /(This is a guess for entertainment purposes - additional data is needed for concrete grounding\.)/i;
 
 function linkifyEvidence(text, slug) {
-  return text.split(ID_TOKEN).map((part, i) => {
-    if (i % 2 === 0) return part || null;
-    if (/^(vs-self|vs-principle|vs-reference):/.test(part)) {
+  return text.split(GUESS_FLAG).map((chunk, j) => {
+    if (j % 2 === 1) {
       return (
-        <a key={i} className="num" href={`#/finding/${slug}/${encodeURIComponent(part)}`}>
-          {part}
-        </a>
+        <div key={`g${j}`} className="entertainment-flag" style={{ background: "#ffebee", color: "#c62828", padding: "0.4rem 0.6rem", borderRadius: "4px", borderLeft: "4px solid #ef5350", fontWeight: "bold", fontSize: "0.85rem", margin: "0.5rem 0" }}>
+          WARNING: {chunk}
+        </div>
       );
     }
-    return <code key={i} className="num">{part}</code>;
+    return chunk.split(ID_TOKEN).map((part, i) => {
+      if (i % 2 === 0) return part || null;
+      if (/^(vs-self|vs-principle|vs-reference):/.test(part)) {
+        return (
+          <a key={`${j}-${i}`} className="num" href={`#/finding/${slug}/${encodeURIComponent(part)}`}>
+            {part}
+          </a>
+        );
+      }
+      return <code key={`${j}-${i}`} className="num">{part}</code>;
+    });
   });
 }
 

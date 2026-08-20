@@ -101,25 +101,30 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
         principle = PRINCIPLES.get(principle_id)
         if principle is not None and principle.signal_status is SignalStatus.NO_SIGNAL:
             percent_claims = [c for c in numeric_claims(text) if c[1] == "%"]
-            if percent_claims:
+            if percent_claims and "guess for entertainment purposes" not in text:
                 violations.append(
                     f"{where}: no_signal principle {principle_id!r} carries "
                     f"confidence/percentage language {percent_claims!r} — "
                     "forbidden, a confidence value never launders an "
-                    "unmeasured inference"
+                    "unmeasured inference unless it is explicitly flagged for entertainment."
                 )
 
     incident_principles = eligible_incident_principles(report)
+    GUESS_FLAG = "guess for entertainment purposes"
     for i, ie in enumerate(output["incident_explanations"]):
         where = f"incident_explanations[{i}]"
         incident_id = ie.get("incident_id")
         required_principle = incident_principles.get(incident_id)
+        explanation_text = str(ie.get("explanation", ""))
+        is_entertainment_guess = GUESS_FLAG in explanation_text
+        
         if required_principle is None:
-            violations.append(
-                f"{where}: incident {incident_id!r} is not eligible for "
-                "explanation (unknown, or the engine did not classify it "
-                "clearly enough to name a cause)"
-            )
+            if not is_entertainment_guess:
+                violations.append(
+                    f"{where}: incident {incident_id!r} is not eligible for "
+                    "explanation (unknown, or the engine did not classify it "
+                    "clearly enough to name a cause) and no entertainment flag was provided"
+                )
         elif ie.get("coaching_principle_id") != required_principle:
             violations.append(
                 f"{where}: coaching_principle_id {ie.get('coaching_principle_id')!r} "

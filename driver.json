@@ -181,7 +181,7 @@
   "ontology_version": "coach-onto-v4",
   "patterns": [
    {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
     "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
@@ -288,7 +288,7 @@
     "technique": "coasting"
    },
    {
-    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
     "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
@@ -345,7 +345,7 @@
     "technique": "throttle_pickup"
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
     "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
@@ -472,7 +472,7 @@
     "technique": "turn_in"
    },
    {
-    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
     "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
     "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
     "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
@@ -665,7 +665,7 @@
   ],
   "strengths": [
    {
-    "coaching_expression": "Let the fronts finish their work before you ask them to steer \u2014 trail the brake in, don't drop it.",
+    "coaching_expression": "Your brake release is too abrupt. Trail the brake in gracefully; let the fronts bite and finish decelerating before you ask them to steer.",
     "coaching_principle_id": "cp.brake_release.finish_the_front",
     "drill": "Next session: on medium-speed corners, deliberately delay full brake release ~0.2 s into the corner. Ignore lap time. Feel the car keep pointing at the apex.",
     "driving_principle": "Front tires can't both decelerate and steer at the limit. Releasing brake pressure well before turn-in unloads the front axle before it has finished slowing the car, so there's no grip left to rotate.",
@@ -736,7 +736,7 @@
     "technique": "brake_release"
    },
    {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
     "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
@@ -860,7 +860,7 @@
     "technique": "entry_commitment"
    },
    {
-    "coaching_expression": "One pedal at a time \u2014 hand the car cleanly from brake to throttle.",
+    "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
     "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
     "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
     "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
@@ -1109,7 +1109,7 @@
     "technique": "rotation_efficiency"
    },
    {
-    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
     "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
@@ -1180,7 +1180,7 @@
     "technique": "throttle_pickup"
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
     "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",

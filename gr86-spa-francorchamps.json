@@ -4,7 +4,7 @@
  ],
  "coaching": {
   "headline": {
-   "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+   "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
    "coaching_principle_id": "cp.coasting.always_working",
    "corner_id": "C14",
    "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
@@ -305,7 +305,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C14",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
@@ -356,7 +356,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C01",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
@@ -379,7 +379,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
     "corner_id": "C10",
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
@@ -402,7 +402,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
     "corner_id": "C09",
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
@@ -426,7 +426,7 @@
     "thin_evidence": true
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C09",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
@@ -447,7 +447,7 @@
     "thin_evidence": true
    },
    {
-    "coaching_expression": "Pick up later but build smoothly; if you have to lift, you opened it too early.",
+    "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
     "corner_id": "C01",
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
@@ -471,7 +471,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Settle the entry, then one committed input to the apex.",
+    "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "corner_id": "C02",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
@@ -497,7 +497,7 @@
     "thin_evidence": false
    },
    {
-    "coaching_expression": "Shrink the coast \u2014 the car should always be braking, turning, or driving.",
+    "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
     "corner_id": "C05",
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
@@ -4953,7 +4953,7 @@
    },
    {
     "classification": "trail_brake_oversteer",
-    "coaching_expression": "Let the fronts finish their work before you ask them to steer \u2014 trail the brake in, don't drop it.",
+    "coaching_expression": "Your brake release is too abrupt. Trail the brake in gracefully; let the fronts bite and finish decelerating before you ask them to steer.",
     "coaching_principle_id": "cp.brake_release.finish_the_front",
     "confidence": "high",
     "corner_id": "C14",

@@ -14,11 +14,11 @@ _46.2 points apart. Ranked within this driver only — never against other drive
 
 ## Work on this everywhere (cross-track patterns)
 
-- **Shrink the coast — the car should always be braking, turning, or driving.** — rotation, 2 tracks, 9 corners
+- **You're a passenger in the coasting zone. The car must always be working—either braking, turning, or driving.** — rotation, 2 tracks, 9 corners
     - _Try this:_ Next session: find where you're on neither pedal mid-corner and close that gap by a fraction — brake a touch later or pick up throttle a touch sooner.
-- **Pick up later but build smoothly; if you have to lift, you opened it too early.** — corner exit, 2 tracks, 4 corners
+- **You're stabbing the throttle and lifting. Roll it on smoothly and progressively—if you have to lift, you got greedy too early.** — corner exit, 2 tracks, 4 corners
     - _Try this:_ Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle — no stabs, no lifts.
-- **Settle the entry, then one committed input to the apex.** — rotation, 2 tracks, 11 corners
+- **You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.** — rotation, 2 tracks, 11 corners
     - _Try this:_ Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.
 
 3 pattern(s) seen at one track only:
