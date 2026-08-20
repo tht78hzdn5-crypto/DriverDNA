@@ -4949,7 +4949,8 @@
     "lap_pk": 12,
     "min_speed_kmh": 48.210498,
     "peak_yaw_rate": 0.816093,
-    "rationale": "This lap: off_track at corner C01, min speed 48 km/h, peak yaw 0.82 rad/s. the input picture at onset is not clean enough to name a cause."
+    "rationale": "This lap: off_track at corner C01, min speed 48 km/h, peak yaw 0.82 rad/s. the input picture at onset is not clean enough to name a cause.",
+    "speculative_guess": null
    },
    {
     "classification": "trail_brake_oversteer",
@@ -4973,7 +4974,8 @@
     "lap_pk": 11,
     "min_speed_kmh": 21.206254,
     "peak_yaw_rate": 0.979638,
-    "rationale": "This lap: near_stop+spin at corner C14, min speed 21 km/h, peak yaw 0.98 rad/s. still braking (1.00) as the car snapped \u2014 the rear stepped out under trailing brake into the corner."
+    "rationale": "This lap: near_stop+spin at corner C14, min speed 21 km/h, peak yaw 0.98 rad/s. still braking (1.00) as the car snapped \u2014 the rear stepped out under trailing brake into the corner.",
+    "speculative_guess": null
    }
   ],
   "n": 2,
