@@ -1106,6 +1106,15 @@ def create_app(
 
         def _driver_events():
             q: queue.Queue[dict[str, Any]] = queue.Queue()
+            
+            with Database.open(db_path, user_pk=user_pk) as db:
+                from driverdna.report.payload import PAYLOAD_VERSION
+                cached_json = db.get_driver_payload_cache(PAYLOAD_VERSION)
+                if cached_json is not None:
+                    import json
+                    payload = json.loads(cached_json)
+                    yield f"data: {json.dumps({'type': 'complete', 'payload': payload})}\n\n"
+                    return
 
             def run() -> None:
                 try:
@@ -1113,6 +1122,14 @@ def create_app(
                         def on_progress(evt: dict[str, Any]) -> None:
                             q.put(evt)
                         payload = build_driver_payload(db, config, on_progress=on_progress)
+                        from driverdna.report.payload import PAYLOAD_VERSION
+                        import json
+                        import datetime
+                        db.set_driver_payload_cache(
+                            PAYLOAD_VERSION,
+                            json.dumps(payload),
+                            datetime.datetime.now(datetime.UTC).isoformat()
+                        )
                         q.put({"type": "complete", "payload": payload})
                 except Exception as exc:
                     q.put({"type": "error", "detail": str(exc)})
@@ -1910,6 +1927,7 @@ def create_app(
                         )
                         if summaries:
                             db.enforce_retention(config.retention.raw_laps_per_cohort)
+                        db.invalidate_driver_payload_cache()
                         gc.collect()
                         q.put({
                             "type": "complete",
