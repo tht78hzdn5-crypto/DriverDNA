@@ -1,8 +1,9 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-08-20 (BUG-039 fixed: Logging out no longer hides third-party login options).**
+**Snapshot date: 2026-08-20 (BUG-040 fixed: Driver model N² query explosion).**
 
-- **What prompted it:** User reported missing third-party login options after logging out. Fixed `signOut()` in `app.jsx` to preserve `session` configuration flags.
+- **What prompted it:** User reported the UI hanging at "computing driver model" and eventually showing a "load failed" / "stream worker stopped without completing" error while fetching the driver payload.
+- **What was fixed:** The `cumulative_loss` logic executed `db.phase_history` per-corner and per-phase, resulting in nearly 7,000 Postgres network roundtrips for a full driver. Fixed by replacing with a bulk fetch method (`all_self_phase_times`) in `db.py`, reducing the phase to a single query per cohort and keeping the payload SSE stream well within Cloudflare timeout limits. Also fixed `useDriverPayload.js` text assignment logic so the progress bar accurately displays "computing driver coaching" when inside the `coaching_rollup` phase.
 - **A32 is live, not dead code.** `docs/DEPLOY-RUNBOOK.md` Part D step 5 makes
   `POST /api/auth/register` the documented way the owner creates their account
   on the VM, and registration ships in the built SPA bundle. Partitioning is
