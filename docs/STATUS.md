@@ -1,5 +1,10 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-08-20 (BUG-041 fixed: Chat grounding rejects finding IDs with parentheses and unclassified incidents).**
+
+- **What prompted it:** User reported the AI chat hanging at "thinking..." and eventually failing with a "response rejected by the grounding contract" error.
+- **What was fixed:** The AI chat validation (grounding contract) was rejecting valid citations and hanging in a retry loop. I fixed this by updating the `_ID_TOKEN` regex in `src/driverdna/chat/session.py` to correctly parse finding IDs with parentheses `()`, and explicitly instructing the AI prompt not to cite unclassified incident IDs. The chat test suite now passes successfully.
+
 **Snapshot date: 2026-08-20 (BUG-040 fixed: Driver model N² query explosion).**
 
 - **What prompted it:** User reported the UI hanging at "computing driver model" and eventually showing a "load failed" / "stream worker stopped without completing" error while fetching the driver payload.

@@ -53,6 +53,7 @@ Hard rules:
   may analyze the surrounding metrics and provide a "Speculative Classification"
   or guess the cause FOR ENTERTAINMENT PURPOSES. You MUST prominently flag this
   guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
+  CRITICAL: Never cite the incident:<id> in your response for unclassified incidents, as it will fail grounding validation.
   When an incident IS citable, explain the engine's own classification
   and what it suggests practicing — you narrate its verdict, you never
   pick or override it. Every incident is one lap's event (N=1), never a
@@ -69,7 +70,7 @@ Hard rules:
 """
 
 _ID_TOKEN = re.compile(
-    r"\b(?:obs:\d+|incident:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-]+"
+    r"\b(?:obs:\d+|incident:\d+|(?:vs-self|vs-principle|vs-reference):[A-Za-z0-9_:.\-()]+"
     r"|cp\.[A-Za-z_]+\.[A-Za-z_]+)"
 )
 
