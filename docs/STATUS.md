@@ -1,11 +1,8 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-08-20 (BUG-037 fixed: VM 2GB swap persisted + Garage61 sync memory optimizations).**
+**Snapshot date: 2026-08-20 (BUG-038 fixed: Driver payload N² query explosion & frontend caching resolved).**
 
-- **What prompted it:** Live outage during initial Garage61 account sync on the
-  1GB Oracle VM (Cloudflare error 1033). Resolved with persistent 2GB swap
-  allocation on the VM and per-cohort / per-lap memory cleanups (`gc.collect()`,
-  unreferencing raw CSVs/laps).
+- **What prompted it:** User reported the Driver home screen freezing on "27 of 27 — computing driver model" and eventual "load failed" on multi-cohort accounts (BUG-038). Fixed the N² payload query explosion (~500K queries) and rewrote frontend driver caching via `useDriverPayload` with proper ref-counting and abort logic.
 - **A32 is live, not dead code.** `docs/DEPLOY-RUNBOOK.md` Part D step 5 makes
   `POST /api/auth/register` the documented way the owner creates their account
   on the VM, and registration ships in the built SPA bundle. Partitioning is
