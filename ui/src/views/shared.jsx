@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { get } from "../api.js";
 import { fmt } from "../format.js";
 import { FUNDAMENTAL_ORDER } from "./order.js";
@@ -526,14 +526,14 @@ export function IncidentCard({ event, slug }) {
       </div>
       <div className="meta">single event, not a trait</div>
 
-      {!named && (
+      {!named && event.speculative_guess && (
         <div className="entertainment-flag" style={{ background: "#ffebee", color: "#c62828", padding: "0.4rem 0.6rem", borderRadius: "4px", borderLeft: "4px solid #ef5350", fontWeight: "bold", fontSize: "0.85rem", margin: "0.5rem 0" }}>
-          WARNING: <strong>AI Speculation:</strong> {event.speculative_guess || "You likely trail-braked too deep and unloaded the rear. This is a guess for entertainment purposes - additional data is needed for concrete grounding."}
+          WARNING: <strong>AI Speculation:</strong> {event.speculative_guess}
         </div>
       )}
 
       <details className="disclosure">
-        <summary><span className="chev" aria-hidden="true">▸</span> What happened, and what to practise</summary>
+        <summary><span className="chev" aria-hidden="true">▸</span> What happened, and what to practice</summary>
         <div className="disclosure-body">
           {empathy && <p style={{ margin: "0 0 0.5rem" }}>{empathy}</p>}
           {mechanism && <p style={{ margin: "0 0 0.5rem" }}>{mechanism}</p>}

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { streamGet } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading } from "../app.jsx";
@@ -131,9 +131,11 @@ function Meter({ id, b }) {
       {noSignal ? (
           <>
             <div className="reason">{b.insufficient_reason || "no telemetry channel — never inferred"}</div>
-            <div className="entertainment-flag" style={{ background: "#ffebee", color: "#c62828", padding: "0.4rem 0.6rem", borderRadius: "4px", borderLeft: "4px solid #ef5350", fontWeight: "bold", fontSize: "0.85rem", margin: "0.5rem 0" }}>
-              WARNING: <strong>AI Speculation: {b.speculative_guess || Math.floor(Math.random() * 40) + 40}</strong>. This is a guess for entertainment purposes - additional data is needed for concrete grounding.
-            </div>
+            {b.speculative_guess && (
+              <div className="entertainment-flag" style={{ background: "#ffebee", color: "#c62828", padding: "0.4rem 0.6rem", borderRadius: "4px", borderLeft: "4px solid #ef5350", fontWeight: "bold", fontSize: "0.85rem", margin: "0.5rem 0" }}>
+                WARNING: <strong>AI Speculation: {b.speculative_guess}</strong>. This is a guess for entertainment purposes - additional data is needed for concrete grounding.
+              </div>
+            )}
           </>
         ) : (
         <>

@@ -136,8 +136,23 @@ def incidents_section(
     would need N and go through the finding gates like everything else."""
     from driverdna.coaching.ontology import PRINCIPLES
     from driverdna.incidents.coaching import eligible_principle_for
+    import json
 
     events = db.incidents_for_cohort(driver=driver, car=car, track=track)
+    
+    # Load latest AI speculation if available
+    history = db.coach_history(driver=driver, car=car, track=track)
+    speculative_explanations = {}
+    if history:
+        latest = history[-1]
+        try:
+            out = json.loads(latest["output_json"])
+            for ie in out.get("incident_explanations", []):
+                if ie.get("incident_id") and ie.get("explanation"):
+                    speculative_explanations[ie["incident_id"]] = ie["explanation"]
+        except Exception:
+            pass
+
     for e in events:
         # Deterministic: the engine decides eligibility, never the AI.
         principle_id = eligible_principle_for(e["classification"])
@@ -153,6 +168,9 @@ def incidents_section(
         e["coaching_expression"] = principle.coaching_expression if principle else None
         e["drill"] = principle.drill if principle else None
         e["driving_principle"] = principle.driving_principle if principle else None
+        
+        # Attach speculative guess if the AI provided one
+        e["speculative_guess"] = speculative_explanations.get(e["incident_id"])
     return {
         "n": len(events),
         "events": events,
