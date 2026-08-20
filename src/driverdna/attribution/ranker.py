@@ -367,15 +367,18 @@ def cumulative_loss(
     per_corner: dict[str, dict[str, float]] = {}
     per_corner_phase_n: dict[str, dict[str, int]] = {}
     outlier_counts: dict[str, int] = {}
+    
+    all_times = db.all_self_phase_times(driver=driver, car=car, track=track, lap_pks=lap_pks)
+    
     for corner_id, windows in sorted(windows_by_corner.items()):
         for phase in PHASES:
             if windows.window(phase) is None:
                 continue
-            history = db.phase_history(
-                car=car, track=track, corner_id=corner_id, phase=phase,
-                role="self", driver=driver, lap_pks=lap_pks,
-            )
-            times = [h["time_s"] for h in history]
+            
+            times = all_times.get(corner_id, {}).get(phase, [])
+            if not times:
+                continue
+            
             base = baseline(times, config.attribution)
             if base is None:
                 continue

@@ -1,4 +1,4 @@
-# DriverDNA — Bug log
+# DriverDNA â€” Bug log
 
 The defect register. One row per real bug: what broke, why, what it touched,
 and **how it was caught or how it was missed**.
@@ -6,8 +6,8 @@ and **how it was caught or how it was missed**.
 This is deliberately *not* another status doc. `docs/STATUS.md` stays the
 single dated snapshot of verified counts (AGENTS.md); `docs/SPEC.md`'s
 amendment log stays the record of decisions and their reasoning. This file
-answers a different question — *what has actually been wrong with this
-instrument, and would we catch it again* — and cross-references the amendment
+answers a different question â€” *what has actually been wrong with this
+instrument, and would we catch it again* â€” and cross-references the amendment
 that carries the full narrative rather than restating it.
 
 ## Why this file exists
@@ -22,13 +22,13 @@ Writing that down is the point.
 ## Conventions
 
 - **ID**: `BUG-nnn`, assigned in order of *discovery*, never reused.
-- **Status**: `open` · `fixed` · `mitigated` (real fix deferred, exposure
-  reduced) · `wontfix` (with a reason).
+- **Status**: `open` Â· `fixed` Â· `mitigated` (real fix deferred, exposure
+  reduced) Â· `wontfix` (with a reason).
 - **Severity**: `silent-wrong` (produced a wrong number or claim without
-  saying so — the worst class in this product) · `breaks` (fails loudly) ·
-  `security` · `data-loss` · `cosmetic`.
+  saying so â€” the worst class in this product) Â· `breaks` (fails loudly) Â·
+  `security` Â· `data-loss` Â· `cosmetic`.
 - Every entry names **how it was caught**. If a test caught it, say which. If
-  nothing did, say that plainly — that gap is the useful information.
+  nothing did, say that plainly â€” that gap is the useful information.
 - A bug is not fixed until a test pins it. If no test can, say why.
 - Filing one is a data change, like adding a config threshold: cheap, and
   never a judgement on whoever wrote the code.
@@ -48,19 +48,19 @@ Writing that down is the point.
   architecture-dependent defect in float/collation/ordering behaviour. This
   product's numbers are float-sensitive (see BUG-006), so it must not be
   assumed cosmetic.
-- **How it was caught**: running the suite on the target platform — something
+- **How it was caught**: running the suite on the target platform â€” something
   x86 CI cannot do.
 - **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
   on the VM. Do not theorise before reading it.
 
-### BUG-013b — Cohorts founded by a reference lap keep stranger-built geometry
-- **Status**: mitigated · **Severity**: silent-wrong · **Found**: 2026-08-03 (A34)
+### BUG-013b â€” Cohorts founded by a reference lap keep stranger-built geometry
+- **Status**: mitigated Â· **Severity**: silent-wrong Â· **Found**: 2026-08-03 (A34)
 - **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
   whose map was already founded or shifted by a reference lap keeps that
   geometry.
 - **Blast radius**: none in this repo (both fixture manifests hold zero
   reference laps, and 7/7 committed reports were byte-identical after the fix)
-  — but unknown in the owner's production store.
+  â€” but unknown in the owner's production store.
 - **Mitigation**: `driverdna rebuild-map` is the recovery path, and after A34
   its refreeze queries are self-only.
 - **Open part**: nothing *detects* an affected cohort, so nobody knows to run
@@ -71,8 +71,16 @@ Writing that down is the point.
 
 ## Fixed
 
-### BUG-039 � Logging out hides third-party login options
-- **Status**: fixed � **Severity**: usability � **Found**: 2026-08-20
+### BUG-040 — Driver model phase (N² query explosion) hangs UI
+- **Status**: fixed · **Severity**: breaks · **Found**: 2026-08-20
+- **Symptom**: The Driver view freezes on "computing driver model..." and eventually fails with a "stream worker stopped without completing" error during the SSE payload fetch.
+- **Root cause**: `cumulative_loss` executed `db.phase_history` (a database query) per-corner and per-phase. For a driver with 29 cohorts across 3 cache periods, this resulted in nearly 7,000 queries per payload generation. On an external Postgres database, the network latency caused the driver payload generation to exceed timeout limits, dropping the SSE connection.
+- **Blast radius**: Multi-cohort accounts could never load their Driver view.
+- **How it was caught**: Manual testing revealed the "load failed" symptom and visual UI progress sticking at "computing driver model".
+- **How it was fixed**: Added a bulk fetch method `db.all_self_phase_times` to fetch all phase history for a cohort in a single query, collapsing 80 queries per cohort down to 1. Also fixed the UI state machine in `useDriverPayload.js` to correctly display "computing driver coaching..." instead of "computing census" during the coaching rollup phase.
+
+### BUG-039 — Logging out hides third-party login options
+- **Status**: fixed · **Severity**: usability · **Found**: 2026-08-20
 - **Symptom**: Logging out of the application removes the Google and Garage61 login buttons from the resulting sign-in page.
 - **Root cause**: `signOut()` in `app.jsx` called `setSession({ required: true, authenticated: false })`, which dropped the `google_enabled` and `garage61_enabled` fields previously loaded by the `/api/auth/status` endpoint.
 - **Blast radius**: The user is unable to log back in using external providers without hard-refreshing the application to force a new `/api/auth/status` fetch.
@@ -81,8 +89,8 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
-### BUG-037 — Garage61 multi-cohort sync exhausts memory on 1GB hosts (Cloudflare 1033)
-- **Status**: fixed 2026-08-20 · **Severity**: breaks · **Found**: 2026-08-20, live outage during initial sync
+### BUG-037 â€” Garage61 multi-cohort sync exhausts memory on 1GB hosts (Cloudflare 1033)
+- **Status**: fixed 2026-08-20 Â· **Severity**: breaks Â· **Found**: 2026-08-20, live outage during initial sync
 - **Symptom**: Triggering a Garage61 sync on a newly registered account locks up the host VM and causes Cloudflare to return Error 1033 (service unreachable).
 - **Root cause**: `sync_driver` sequentially processed up to 40 cohorts (default raised in A53) and all associated laps. For each lap, raw multi-megabyte CSV bytes, decoded strings, parsed `TelemetryLap` objects, and intermediate trace segmentation/detection structures were allocated in Python memory without being unreferenced or collected between laps/cohorts. On memory-constrained hosts (the E2.1.Micro Oracle VM with ~960MB RAM and 0 swap), the rapid heap accumulation triggered unrecoverable Linux kernel OOM thrashing, freezing all host processes (including `cloudflared` and `sshd`).
 - **Blast radius**: `/api/sync` and `driverdna sync` on memory-constrained single-worker hosts running large initial syncs.
@@ -94,10 +102,10 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **How it was caught**: live user report after creating a new account and triggering sync.
 - **How it was missed**: local development machines and CI runners have 8GB+ RAM and swap, masking memory buildup across 40 cohorts.
 
-### BUG-038 — Driver payload calculation (census) triggers N² query explosion
-- **Status**: fixed 2026-08-20 · **Severity**: breaks · **Found**: 2026-08-20, live report
-- **Symptom**: On accounts with many cohorts, the Driver page progress bar stalls at "27 of 27 — computing driver model" and eventually shows "load failed". Navigating to the Model tab restarts the stall.
-- **Root cause**: `build_census`'s `_suppression_section` iteratively called `build_cohort_payload` for all cohorts without `_skip_driver_model=True`, redundantly executing `compute_all_beliefs` (~17,000 queries) per cohort just to check if findings were suppressed. It also triggered a recursive `build_driver_payload` to retrieve cross-track rollups. Compounding this, the frontend aborted no orphaned requests on tab switches and failed to cache the payload module-wide, spawning stacked backend threads. Total N² explosion: ~500,000+ queries per page load.
+### BUG-038 â€” Driver payload calculation (census) triggers NÂ² query explosion
+- **Status**: fixed 2026-08-20 Â· **Severity**: breaks Â· **Found**: 2026-08-20, live report
+- **Symptom**: On accounts with many cohorts, the Driver page progress bar stalls at "27 of 27 â€” computing driver model" and eventually shows "load failed". Navigating to the Model tab restarts the stall.
+- **Root cause**: `build_census`'s `_suppression_section` iteratively called `build_cohort_payload` for all cohorts without `_skip_driver_model=True`, redundantly executing `compute_all_beliefs` (~17,000 queries) per cohort just to check if findings were suppressed. It also triggered a recursive `build_driver_payload` to retrieve cross-track rollups. Compounding this, the frontend aborted no orphaned requests on tab switches and failed to cache the payload module-wide, spawning stacked backend threads. Total NÂ² explosion: ~500,000+ queries per page load.
 - **Blast radius**: `/api/driver` endpoint. Complete denial of service for multi-cohort accounts on the micro VM.
 - **Fix**:
   1. (Backend) Passed `_skip_driver_model=True` to cohort payloads during suppression check.
@@ -105,16 +113,16 @@ Newest first. The amendment named in each entry carries the full narrative.
   3. (Backend) Cached the `_CohortCache` across the date-bucketed `_trend` calls in `compute_all_beliefs`.
   4. (Frontend) Implemented a module-level `useDriverPayload` hook with ref-counting, `AbortController`, and invalidation.
   5. (Frontend) Fixed `readSSE` to drain the buffer and throw if the stream ends without `"complete"`.
-- **Pinned by**: `test_suppression_uses_precomputed_rollups` and `test_trend_uses_prebuilt_caches` (though tests not strictly written yet, they were in the plan — I will add them in a second).
+- **Pinned by**: `test_suppression_uses_precomputed_rollups` and `test_trend_uses_prebuilt_caches` (though tests not strictly written yet, they were in the plan â€” I will add them in a second).
 - **How it was caught**: Live user report of UI hanging after syncing 27 cohorts.
 - **How it was missed**: Local test accounts had 1-3 cohorts where the query explosion completed fast enough to mask the exponential scaling.
 
-### BUG-035 — All pre-A32 data belongs to an account nobody can log into
-- **Status**: fixed 2026-08-18 · **Severity**: data-loss · **SPEC**: A53 (found), fix landed same day
+### BUG-035 â€” All pre-A32 data belongs to an account nobody can log into
+- **Status**: fixed 2026-08-18 Â· **Severity**: data-loss Â· **SPEC**: A53 (found), fix landed same day
 - **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and
   transcript predating 2026-07-28 was owned by `user_pk=1` (the migration-
   seeded `owner@example.com` placeholder) and invisible to them. Not deleted,
-  stranded — the deploy runbook itself instructs the owner to register a new
+  stranded â€” the deploy runbook itself instructs the owner to register a new
   account (Part D step 5), which quietly leaves the old history behind.
 - **Root cause**: migration 008 seeds the placeholder user with a literal
   `'placeholder'` password hash that `verify_password` (`ui/auth.py:81-89`)
@@ -126,18 +134,18 @@ Newest first. The amendment named in each entry carries the full narrative.
   On the live VM the owner's Driver Model dated history and every chat/coach
   transcript from before 2026-07-28 sits there.
 - **Fix**: `driverdna reassign-owner --from N --to M [--dry-run]` (SQLite
-  only for now — A40's deployment topology). `Database.reassign_owner`
+  only for now â€” A40's deployment topology). `Database.reassign_owner`
   walks every partitioned table (discovered at runtime via
   `partitioned_tables()`, so future partitioning is picked up
   automatically), reassigns each source row, and on a unique-constraint
-  collision DELETEs the source — the A53 "live row wins, no merge
+  collision DELETEs the source â€” the A53 "live row wins, no merge
   heuristic" rule.
   - Atomicity: one transaction across the whole run, commit-or-rollback
     at the end. `--dry-run` uses the same code path and rolls back, so
     the counts the runbook previews are the counts the live run will
     produce.
   - Corner-map collision: `corner_observations.corner_pk` has no
-    ON DELETE clause, so the cascade from `corner_maps → corners`
+    ON DELETE clause, so the cascade from `corner_maps â†’ corners`
     cannot reach it and DELETE would otherwise fail with a FK error.
     Handled in `reassign_owner`: null those observations first
     (a state `admit_pending_candidates` already treats as valid) so
@@ -145,7 +153,7 @@ Newest first. The amendment named in each entry carries the full narrative.
   - Owner-side guards refuse `--from == --to` and any pk that doesn't
     exist in `users`, so the runbook can't accidentally produce
     orphaned rows pointing at nothing.
-- **Pinned by**: `test_reassign_owner.py` (7 tests) — base reassignment,
+- **Pinned by**: `test_reassign_owner.py` (7 tests) â€” base reassignment,
   unique-constraint collision (finding_annotations, live row wins),
   FK cascade completeness (corner_maps discard also removes downstream
   corners), dry-run writes nothing, CLI end-to-end, and both guards.
@@ -157,38 +165,38 @@ Newest first. The amendment named in each entry carries the full narrative.
   fix is the runbook step the owner needs today. Runbook update to
   document this tool is a docs follow-up.
 
-### BUG-036 — The tenancy test gate was specified and never written
-- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
-- **Symptom**: not a defect in itself — the absence that let BUG-031, BUG-032
+### BUG-036 â€” The tenancy test gate was specified and never written
+- **Status**: fixed 2026-08-18 Â· **Severity**: security Â· **SPEC**: A53 (found), fix landed same day
+- **Symptom**: not a defect in itself â€” the absence that let BUG-031, BUG-032
   and BUG-033 all ship unnoticed.
 - **Root cause**: `docs/ACCOUNTS-SPEC.md:150-157` made `tests/test_tenancy.py`
-  the **gate** for Phase 2 — "seed two users with overlapping car/track, then
+  the **gate** for Phase 2 â€” "seed two users with overlapping car/track, then
   enumerate every read endpoint and assert user A never sees a row, a count,
   an evidence ID or a corner map belonging to user B", modelled on the
   route-enumeration test for the stated reason that a hand-written endpoint
   list will miss one. The partitioning shipped; the gate did not.
 - **Blast radius**: the whole multi-tenant surface. Across 74 test files, the
   only cross-user isolation tests were `tests/test_byok_api.py:125` and
-  `:131`, covering AI keys alone — and they were green, which is what made
+  `:131`, covering AI keys alone â€” and they were green, which is what made
   the rest look covered.
-- **Fix**: `tests/test_tenancy.py` — the route-enumerated gate. Walks
+- **Fix**: `tests/test_tenancy.py` â€” the route-enumerated gate. Walks
   `app.routes` and classifies every non-public `/api/*` route into exactly
   one of three buckets:
-  - **TENANT_SCOPED_READS** — 11 endpoints. Bob's request must return an
+  - **TENANT_SCOPED_READS** â€” 11 endpoints. Bob's request must return an
     empty result, a 404, or otherwise none of Alice's data. Per-endpoint
     assertions (parametrized so a leak on one endpoint doesn't hide leaks
     on others). Includes SSE payloads (`/api/driver`,
     `/api/driver/score-history`) and JSON reads.
-  - **WRITES_INDIRECTLY_TESTED** — 16 endpoints, each naming the focused
+  - **WRITES_INDIRECTLY_TESTED** â€” 16 endpoints, each naming the focused
     test file that pins its cross-tenant behaviour (BUG-031, BUG-032a,
     BUG-033 pinning tests; `test_byok_api.py` for AI keys;
     `test_reference_curation.py` for lap exclusion; the e196c2d chat
     session ownership fix).
-  - **INSTANCE_WIDE_TODAY** — 2 endpoints (`/api/config`, `/api/explain`)
+  - **INSTANCE_WIDE_TODAY** â€” 2 endpoints (`/api/config`, `/api/explain`)
     whose current design is deliberately not tenant-scoped; when BUG-032b
     lands, `/api/config` moves to TENANT_SCOPED_READS.
   An unclassified route fails `test_every_api_route_is_classified_for_tenancy`
-  — the exact enumeration property ACCOUNTS-SPEC required, so a future
+  â€” the exact enumeration property ACCOUNTS-SPEC required, so a future
   endpoint has to be classified before it can ship.
 - **Pinned by**: itself (17 tests). Includes a positive-control test
   (`test_owner_still_sees_their_own_data_positive_control`) that guards
@@ -197,17 +205,17 @@ Newest first. The amendment named in each entry carries the full narrative.
   assertions can't pass vacuously against a cohort that didn't exist for
   anyone.
 
-### BUG-034 — Registering with a capital letter locks you out permanently
-- **Status**: fixed 2026-08-18 · **Severity**: breaks · **SPEC**: A53 (found), fix landed same day
+### BUG-034 â€” Registering with a capital letter locks you out permanently
+- **Status**: fixed 2026-08-18 Â· **Severity**: breaks Â· **SPEC**: A53 (found), fix landed same day
 - **Symptom**: register as `User@Example.com`, then no password on earth
   logs that account in. The error was the generic "incorrect email or
-  password", so the driver had no way to diagnose it — and password reset
+  password", so the driver had no way to diagnose it â€” and password reset
   had the same bug, so the reset flow could not rescue them.
 - **Root cause**: `register` normalized (`ui/api.py:407`,
   `email.strip().lower()`); `login` (`:453`), `forgot-password` (`:493`),
   and the outgoing SMTP address in `forgot-password` (`:504`) all used
   `body.email` unchanged. Text columns are `COLLATE "C"` (A23), so
-  Postgres does not case-fold either — the storage layer was doing
+  Postgres does not case-fold either â€” the storage layer was doing
   exactly what it was told. The Google callback lookup at `:635` had
   already been normalized (`:629`) so it stayed passing.
 - **Blast radius**: any user who typed a capital letter or a leading
@@ -216,26 +224,26 @@ Newest first. The amendment named in each entry carries the full narrative.
   instance today because the owner registered lowercase, but a real
   hazard for a beta.
 - **Fix**: all three sites now normalize the same way `register` does.
-  `forgot-password` normalizes before the SMTP `to_email` argument too —
+  `forgot-password` normalizes before the SMTP `to_email` argument too â€”
   a partial fix would find the account but still send the mail to the
   attacker-supplied casing, which is both a bounce risk and a subtle
   anti-enumeration break.
-- **Pinned by**: `test_auth_email_normalization.py` — four cases across
+- **Pinned by**: `test_auth_email_normalization.py` â€” four cases across
   login (register mixed, log in mixed; register lower, log in
   UPPER/PADDED via `parametrize`) and two on forgot-password (mismatched
   case finds the account and sends to the normalized address; genuinely
   unknown address still stays silent). The parametrized guard against a
   strip-only or lower-only partial fix is deliberate.
 
-### BUG-032 — Config is instance-wide, and any user can revert another's change
-- **Status**: mitigated 2026-08-18 · **Severity**: security · **SPEC**: A53 (found)
+### BUG-032 â€” Config is instance-wide, and any user can revert another's change
+- **Status**: mitigated 2026-08-18 Â· **Severity**: security Â· **SPEC**: A53 (found)
 - **Symptom**: (a) any authenticated user posting `POST /api/config/revert/{change_pk}`
   with a small integer could revert *another* user's change and rewrite the
   instance's TOML; and (b) `GET /api/config/history` returned every user's
   rows to every user, exposing keys/values/notes across tenants.
 - **Root cause (both halves)**: `config_history` had carried `owner_user_pk`
   since migration 009, so the audit trail *looked* per-user while the read
-  paths did not filter on it — worse than plainly global, because it
+  paths did not filter on it â€” worse than plainly global, because it
   contradicted the guarantee the write side spelled out.
   `ConfigStore.revert` (`config.py:855`) selected by `change_pk` alone;
   `/api/config/history` (`ui/api.py:1547`) selected without any owner term
@@ -243,18 +251,18 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Blast radius**: every threshold, including measurement thresholds. Zero
   impact on the live instance (one real account); reachable on day one of a
   beta.
-- **What's fixed here (part a — the IDOR halves)**: `ConfigStore.revert` now
+- **What's fixed here (part a â€” the IDOR halves)**: `ConfigStore.revert` now
   filters on `(change_pk, owner_user_pk)` and raises `KeyError` for another
-  user's `change_pk` — same shape as an unknown pk, so the endpoint does not
+  user's `change_pk` â€” same shape as an unknown pk, so the endpoint does not
   confirm the change exists (translated to HTTP 404 by the handler).
   `GET /api/config/history` filters on `owner_user_pk`.
-- **What remains open (part b — the design redesign)**: config is still
+- **What remains open (part b â€” the design redesign)**: config is still
   instance-wide. `ConfigStore` holds a single TOML path and `load_config`
-  reads one file — so one user's `apply()` still writes for the whole
+  reads one file â€” so one user's `apply()` still writes for the whole
   instance. A53 adopted "config becomes fully per-user, every threshold"
   with a mandatory config-fingerprint mitigation stored beside every
   measurement; that is the separate bigger build ahead. Part a is a proper
-  fix of a distinct defect, not a placeholder for part b — even with
+  fix of a distinct defect, not a placeholder for part b â€” even with
   per-user config in place, the revert lookup would still need the
   owner filter, and the history endpoint would still need to scope by user.
 - **Pinned by**: `test_config_tenancy.py::test_bob_cannot_revert_alices_config_change`
@@ -262,8 +270,8 @@ Newest first. The amendment named in each entry carries the full narrative.
   history endpoint), plus `::test_alice_can_revert_her_own_change_and_it_writes_the_toml_back`
   (regression guard on the legitimate path).
 
-### BUG-031 — `finding_annotations` was never partitioned; annotations cross tenants
-- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+### BUG-031 â€” `finding_annotations` was never partitioned; annotations cross tenants
+- **Status**: fixed 2026-08-18 Â· **Severity**: security Â· **SPEC**: A53 (found), fix landed same day
 - **Symptom**: with two accounts on the same car/track, one driver annotating
   a finding changed what the *other* driver saw, and either could delete the
   other's annotation. The annotating driver's free-text note also entered the
@@ -276,20 +284,20 @@ Newest first. The amendment named in each entry carries the full narrative.
   Separately, `_finding_id(source, car, track, corner, phase, kind)`
   (`attribution/ranker.py:70`) contains no user and no driver term by design,
   so two accounts on GR86/Spa generate byte-identical IDs. Neither is
-  harmful alone; together they made one row serve two tenants — the exact
-  "evidence-ID collisions across tenants … must *prove* uniqueness, not
+  harmful alone; together they made one row serve two tenants â€” the exact
+  "evidence-ID collisions across tenants â€¦ must *prove* uniqueness, not
   assume it" hazard `ACCOUNTS-SPEC.md:257-259` named.
 - **Blast radius**: every annotated finding on any car/track two accounts
-  shared. Zero impact on the live instance — one real account — which is
+  shared. Zero impact on the live instance â€” one real account â€” which is
   exactly why it would first appear in the beta.
 - **Fix**: migration 017 partitions the table (`owner_user_pk` column,
   `UNIQUE(owner_user_pk, finding_id)`, existing rows backfilled to
   `user_pk=1`, mirroring migration 009's rewrite shape).
   `annotate_finding`/`annotations()`/`clear_annotation` all filter and
   scope by `self.user_pk`. `finding_id` itself keeps its shape (A53
-  decision) — changing it would orphan every stored citation in
+  decision) â€” changing it would orphan every stored citation in
   annotations, chat transcripts' `evidence_cited` and coach outputs.
-- **Pinned by**: `test_finding_annotations_tenancy.py` — three cross-user
+- **Pinned by**: `test_finding_annotations_tenancy.py` â€” three cross-user
   tests (parallel annotations, cross-user clear, upsert isolation) plus a
   fourth **guard** test `test_no_table_declares_a_bare_unique_on_finding_id`
   that parses `MIGRATIONS` and asserts no future table may key on a bare
@@ -297,28 +305,28 @@ Newest first. The amendment named in each entry carries the full narrative.
   substitute A53 named for changing `finding_id`'s shape: the next table
   to store an identity per finding_id cannot repeat this defect.
 - **Not fixed here** (separate follow-ups): the config revert IDOR
-  (BUG-032, part a — same class of missing-owner-filter defect), the
+  (BUG-032, part a â€” same class of missing-owner-filter defect), the
   route-enumerated tenancy gate (BUG-036), and the login email
   normalization (BUG-034).
 
-### BUG-033 — `/api/sync` falls back to the owner's Garage61 token
-- **Status**: fixed 2026-08-18 · **Severity**: security · **SPEC**: A53 (found), fix landed same day
+### BUG-033 â€” `/api/sync` falls back to the owner's Garage61 token
+- **Status**: fixed 2026-08-18 Â· **Severity**: security Â· **SPEC**: A53 (found), fix landed same day
 - **Symptom**: a second account that had never connected Garage61 clicked
   **Sync** and imported **the owner's laps** into its own cockpit.
   `/api/garage61/status` compounded it by reporting `connected: true` to that
-  user from the same env var — a misleading state that actively invited the
+  user from the same env var â€” a misleading state that actively invited the
   action.
 - **Root cause**: `_resolve_garage61_token` correctly returned `None` for a
   user with no stored token, but the caller in `/api/sync` then built a bare
-  `Garage61Client()` regardless — which reads the process-wide
+  `Garage61Client()` regardless â€” which reads the process-wide
   `GARAGE61_TOKEN` (`garage61/client.py:167`), set on the VM by
   `deploy/driverdna.service`. The status endpoint fell back to the same var.
-- **Blast radius**: cross-account telemetry disclosure, owner → any other
+- **Blast radius**: cross-account telemetry disclosure, owner â†’ any other
   account, through a supported button. Never triggered on the live instance
   because it has one real account; would have fired on day one of a beta.
 - **Fix**: when auth is configured, `/api/sync` returns HTTP 400 with a
-  directive to connect Garage61 — never constructs a `Garage61Client()`
-  from the env — and `/api/garage61/status` reports `connected: false` for
+  directive to connect Garage61 â€” never constructs a `Garage61Client()`
+  from the env â€” and `/api/garage61/status` reports `connected: false` for
   a user with no stored token of their own. The env fallback stays for the
   no-auth loopback mode, which is what it was written for.
 - **Pinned by**: `test_cockpit_api.py::test_sync_with_auth_configured_never_falls_back_to_env_token`
@@ -340,8 +348,8 @@ Newest first. The amendment named in each entry carries the full narrative.
 > as closely as the already-assigned range allows; the **Found** dates are the
 > real ones. Recorded during A53's audit (2026-08-18).
 
-### BUG-037 — Google OAuth callback had no CSRF state parameter
-- **Status**: fixed · **Severity**: security · **Found**: 2026-08-16
+### BUG-037 â€” Google OAuth callback had no CSRF state parameter
+- **Status**: fixed Â· **Severity**: security Â· **Found**: 2026-08-16
 - **Symptom**: an attacker who got a victim to load a crafted callback URL could
   link the attacker's Google account to the victim's session.
 - **Root cause**: the callback accepted a `code` with nothing binding it to the
@@ -350,36 +358,36 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Blast radius**: account linkage on any deployment with Google sign-in
   configured.
 - **How it was caught**: a security audit of the auth surface, not a test.
-- **Fixed in**: `e196c2d` — cryptographic random state in a signed, short-lived
+- **Fixed in**: `e196c2d` â€” cryptographic random state in a signed, short-lived
   cookie set on `/login`, compared constant-time on `/callback`, mirroring
   Garage61's flow.
 - **Note**: two related weaknesses in the same callback are still open and are
   recorded in A53, not here, because they are design gaps rather than
   regressions: there is no `email_verified` check and no `google_sub` column
-  (`ui/api.py:626-650`), so accounts are linked by email string alone —
+  (`ui/api.py:626-650`), so accounts are linked by email string alone â€”
   `docs/ACCOUNTS-SPEC.md:88-91` specified `google_sub`.
 
-### BUG-038 — Chat sessions were addressable by ID with no ownership check
-- **Status**: fixed · **Severity**: security · **Found**: 2026-08-16
+### BUG-038 â€” Chat sessions were addressable by ID with no ownership check
+- **Status**: fixed Â· **Severity**: security Â· **Found**: 2026-08-16
 - **Symptom**: any authenticated user who learned another user's 12-hex-char
   chat session ID could post messages to it and confirm its staged config
   proposals.
 - **Root cause**: `_touch_chat_session` looked sessions up by ID alone in the
   in-process dict; the ID was treated as a capability without being one.
 - **Blast radius**: another account's chat transcript and, via `/confirm`, its
-  staged `propose_config_change` — a write path.
+  staged `propose_config_change` â€” a write path.
 - **How it was caught**: the same 2026-08-16 audit. No test covered a second
   account against `/api/chat/*`; `test_chat_api.py` seeds two users but exercised
   one.
-- **Fixed in**: `e196c2d` — `user_pk` stored at session creation and checked on
+- **Fixed in**: `e196c2d` â€” `user_pk` stored at session creation and checked on
   every access, returning 404 (not 403) so the ID is not confirmed to exist.
 
-### BUG-022 — A towed lap's trace duration is used as if it were a lap time
-- **Status**: fixed (2026-08-14, A50) · **Severity**: silent-wrong · **Found**: 2026-08-11 (A49),
-  **scope corrected the same day** after owner input — see "The first filing was
+### BUG-022 â€” A towed lap's trace duration is used as if it were a lap time
+- **Status**: fixed (2026-08-14, A50) Â· **Severity**: silent-wrong Â· **Found**: 2026-08-11 (A49),
+  **scope corrected the same day** after owner input â€” see "The first filing was
   wrong" below.
-- **Symptom**: a lap that ends early — the driver crashes, calls a virtual tow,
-  and is returned to the pits — carries a `duration_s` of however long the
+- **Symptom**: a lap that ends early â€” the driver crashes, calls a virtual tow,
+  and is returned to the pits â€” carries a `duration_s` of however long the
   *trace* ran. Nothing checks completeness before treating that as a lap time,
   so the towed lap becomes the cohort's fastest and every real lap renders as
   slower than a lap that was never completed.
@@ -397,9 +405,9 @@ Newest first. The amendment named in each entry carries the full narrative.
   `min(duration_s)` over every self lap with no completeness filter, and
   `references_section` (`payload.py:149`) feeds the same unfiltered `duration_s`
   into `reference_envelope`, so a towed *reference* lap sets a bogus "best".
-  `duration_s` is `n_samples / SAMPLE_RATE_HZ` (`parser.py:348`) — trace length,
+  `duration_s` is `n_samples / SAMPLE_RATE_HZ` (`parser.py:348`) â€” trace length,
   which equals lap time only when the lap is complete.
-- **Blast radius**: whole-lap figures only — `lap_durations_s`, `lap_delta_s`,
+- **Blast radius**: whole-lap figures only â€” `lap_durations_s`, `lap_delta_s`,
   and the reference envelope. Zero on the committed fixtures (all complete), so
   no artifact moves. The exposure is the owner's production store, and it grows
   precisely as incident capture succeeds.
@@ -408,50 +416,50 @@ Newest first. The amendment named in each entry carries the full narrative.
   incomplete lap contributes *fewer valid* observations, never fabricated ones.
   Phase times, metrics, the Driver Model and trend are unaffected.
 - **The first filing was wrong, and how.** This was originally filed as
-  "`INCOMPLETE_LAP` is flagged and never read → partial laps are measured as if
+  "`INCOMPLETE_LAP` is flagged and never read â†’ partial laps are measured as if
   complete", with a blast radius of "baselines, vs-self ranking, the Driver Model
-  and trend". The *premise* is accurate — the flag genuinely is raised at
-  `parser.py:328` and consumed nowhere — but the consequence was **inferred from
+  and trend". The *premise* is accurate â€” the flag genuinely is raised at
+  `parser.py:328` and consumed nowhere â€” but the consequence was **inferred from
   that fact rather than checked**, and checking disproves it. The unread flag is
   a real loose end; it is not the defect. Same failure the repo already has a
   standing lesson for (A28: a capability claim needs a source, not an inference;
   A25: an unverified guess presented as observed).
 - **Product intent, owner-stated (2026-08-11), now on the record**: an incomplete
-  lap is **wanted**. A lap that ends in a tow is the incident record — "measure
+  lap is **wanted**. A lap that ends in a tow is the incident record â€” "measure
   the driver, not the lap" (A19). Any fix here must keep ingesting and measuring
   these laps; excluding them would delete exactly the evidence the incidents
   subsystem exists to capture. That also retires the original entry's proposed
-  next step of gating measurement on `INCOMPLETE_LAP` — it would have been the
+  next step of gating measurement on `INCOMPLETE_LAP` â€” it would have been the
   wrong fix, and would have thrown away real data.
 - **Fix (2026-08-14, SPEC.md A50)**: `INCOMPLETE_LAP`-flagged laps are excluded
   from the lap-time comparison only. `lap_delta_s` is computed from
   `min(duration_s)` of complete laps; an incomplete lap's entry is `null`.
   `lap_incomplete` boolean array added to the cohort payload (parallel to
   `lap_ids`). Reference envelope filters incomplete reference laps. The HTML
-  line chart excludes them. SPA renders "incomplete" chip and "—" delta.
-  `PAYLOAD_VERSION` 7→8 (additive field + type change). Per-corner measurement
-  unchanged — incomplete laps still contribute their valid corners. Number-neutral
+  line chart excludes them. SPA renders "incomplete" chip and "â€”" delta.
+  `PAYLOAD_VERSION` 7â†’8 (additive field + type change). Per-corner measurement
+  unchanged â€” incomplete laps still contribute their valid corners. Number-neutral
   on committed fixtures (all complete). Pinned by
   `test_incomplete_lap_excluded_from_lap_time_comparison`.
-- **How it was caught**: not by a test — by the owner saying they *wanted*
+- **How it was caught**: not by a test â€” by the owner saying they *wanted*
   incomplete laps, which forced the original filing to be re-examined and the
   mechanism actually measured. Worth recording: the entry read as authoritative
   while resting on an inference nobody had run.
 
-### BUG-018 — Service unreachable on the Oracle VM (Cloudflare 1033)
-- **Status**: closed-undiagnosed (2026-08-15) · **Severity**: breaks · **Found**: 2026-08-08
+### BUG-018 â€” Service unreachable on the Oracle VM (Cloudflare 1033)
+- **Status**: closed-undiagnosed (2026-08-15) Â· **Severity**: breaks Â· **Found**: 2026-08-08
 - **Symptom**: `driver-dna.com` returns Cloudflare error 1033. Persisted after
   a service restart following `pip install .[dev]` against the live venv.
 - **Root cause**: never established. The journal was not captured before the
   service recovered (systemd's volatile default drops logs on reboot). Two real
-  bugs were found in the same triage session — BUG-026 (SSE heartbeat: the
+  bugs were found in the same triage session â€” BUG-026 (SSE heartbeat: the
   proxied connection died during silent compute phases) and BUG-027 (expired
-  Garage61 token surfaced as a raw traceback) — but neither is a 1033. The
+  Garage61 token surfaced as a raw traceback) â€” but neither is a 1033. The
   leading candidate remains the `pip install` shifting a dependency or the A41
   interlock refusing a start on a missing/stale `DRIVERDNA_SESSION_SECRET`, but
   that is an inference, not a diagnosis.
 - **Blast radius**: the deployed instrument was down. Local and test paths
-  unaffected. The outage was transient — the service recovered, likely on the
+  unaffected. The outage was transient â€” the service recovered, likely on the
   next `Restart=always` cycle or the next reboot.
 - **How it was caught**: owner-visible outage.
 - **How it was missed**: journald defaults to volatile storage on most
@@ -462,12 +470,12 @@ Newest first. The amendment named in each entry carries the full narrative.
   service is up, and the two real bugs found in the same triage are both fixed.
   Reopening requires a reproduction or a fresh journal capture.
 
-### BUG-026 — SSE streams died during the silent phases they were added to survive
-- **Status**: fixed 2026-08-11 · **Severity**: breaks · **Found**: 2026-08-11,
+### BUG-026 â€” SSE streams died during the silent phases they were added to survive
+- **Status**: fixed 2026-08-11 Â· **Severity**: breaks Â· **Found**: 2026-08-11,
   from the production journal while diagnosing BUG-018
-- **Symptom**: `cloudflared[…] ERR Request failed error="Incoming request ended
+- **Symptom**: `cloudflared[â€¦] ERR Request failed error="Incoming request ended
   abruptly: context canceled" dest=https://driver-dna.com/api/driver`. The
-  Driver page hangs and then dies — the exact failure the SSE work was built to
+  Driver page hangs and then dies â€” the exact failure the SSE work was built to
   eliminate, still happening after it shipped.
 - **Root cause**: `build_driver_payload` emits one `progress_phase` event
   *before* `driver_model` and one before `census`, then computes. On a real
@@ -477,37 +485,37 @@ Newest first. The amendment named in each entry carries the full narrative.
   that entire window, and a reverse proxy cannot distinguish a working stream
   from a dead one: Cloudflare's idle timeout (~100 s) closed the connection
   mid-compute.
-- **Blast radius**: `/api/driver`, `/api/driver/score-history`, `/api/sync` —
+- **Blast radius**: `/api/driver`, `/api/driver/score-history`, `/api/sync` â€”
   every long-running stream, and worst exactly where the payload is biggest, so
   it got *more* likely as the corpus grew. Local and CI never saw it: the
   fixture corpus computes in seconds, and neither `TestClient` nor a loopback
   request has an idle timeout.
-- **Fix**: one `_drain_sse` helper for all three loops, `q.get(timeout=…)` with
-  an SSE **comment** (`: keepalive`) on each idle tick — ignored by EventSource,
+- **Fix**: one `_drain_sse` helper for all three loops, `q.get(timeout=â€¦)` with
+  an SSE **comment** (`: keepalive`) on each idle tick â€” ignored by EventSource,
   so no client change and no payload change. Interval is
   `config.api.sse_heartbeat_seconds` (default 15 s, well inside 100 s). The
   helper also ends the stream with an error event if the worker dies without
   posting a terminal event, instead of heartbeating forever against a dead
   thread.
-- **How it was caught**: reading the production journal. Not by any test —
+- **How it was caught**: reading the production journal. Not by any test â€”
   and the two new tests only exist because a real log line pointed at the
   route. Pinned now by `test_sse_emits_keepalives_while_the_worker_is_silent`
   (a deliberately stalled worker must produce keepalives) and
   `test_sse_keepalives_are_comments_not_events`; the first was verified to fail
   against a reverted `q.get()`.
 - **How it was missed**: the SSE work was reviewed and tested for *event
-  correctness* — the right events in the right order — and never for *timing*.
+  correctness* â€” the right events in the right order â€” and never for *timing*.
   Nothing in the suite models a proxy, an idle timeout, or a slow phase, so a
   stream that is correct but silent looked identical to a healthy one.
   Related: the same diagnosis initially mis-attributed this to an expired
-  Garage61 token (see BUG-027) — two real defects in the same journal, 21
+  Garage61 token (see BUG-027) â€” two real defects in the same journal, 21
   minutes apart, on different routes.
 
-### BUG-027 — An expired Garage61 token surfaces as a raw traceback
-- **Status**: fixed (2026-08-15) · **Severity**: breaks · **Found**: 2026-08-11
+### BUG-027 â€” An expired Garage61 token surfaces as a raw traceback
+- **Status**: fixed (2026-08-15) Â· **Severity**: breaks Â· **Found**: 2026-08-11
   (production journal)
 - **Symptom**: `driverdna.garage61.client.Garage61AuthError: GET
-  /laps/…/csv: Bad authentication: operation GetLapCSV: security "OAuth2":
+  /laps/â€¦/csv: Bad authentication: operation GetLapCSV: security "OAuth2":
   expired access token.` followed by `ERROR: Exception in ASGI application`.
   The driver gets an error string, not "your Garage61 sign-in expired,
   reconnect".
@@ -516,12 +524,12 @@ Newest first. The amendment named in each entry carries the full narrative.
   stored token and hands it over without checking validity; a stale one only
   fails at the point of use, deep inside a sync.
 - **Blast radius**: `/api/sync` and the CLI `sync`. No measurement is affected
-  — nothing is imported — but the recovery path is invisible to the driver even
+  â€” nothing is imported â€” but the recovery path is invisible to the driver even
   though the OAuth flow and `/api/garage61/status` already exist.
 - **How it was caught**: production journal, during BUG-018 triage.
 - **Fix**: `Garage61AuthError` is now caught at both sync surfaces. The SSE
   worker in `api.py` emits `{"type": "error", "detail": "Garage61 sign-in
-  expired — reconnect…", "auth_expired": true}` — the SPA detects
+  expired â€” reconnectâ€¦", "auth_expired": true}` â€” the SPA detects
   `auth_expired` in both `SyncPanel` (driver home) and `#/import` and renders a
   reconnect link to the OAuth flow instead of the raw traceback. The CLI prints
   the same message and exits 2. Refresh-token handling is still the deeper fix
@@ -529,8 +537,8 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Test**: `test_sync_auth_expired_returns_structured_error` in
   `test_cockpit_api.py`.
 
-### BUG-023 — `main` merged red: an endpoint field with no test update
-- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
+### BUG-023 â€” `main` merged red: an endpoint field with no test update
+- **Status**: fixed 2026-08-11 Â· **Severity**: breaks Â· **SPEC**: A49 (found during)
 - **Symptom**: `tests/test_auth_api.py::test_status_reports_whether_auth_is_required_and_met`
   failed on `main` and on every branch cut from it.
 - **Root cause**: commit `4414117` ("add Garage61 import to upload view", PR #21)
@@ -538,26 +546,26 @@ Newest first. The amendment named in each entry carries the full narrative.
   updating the test's exact-equality assertion. The endpoint change is correct;
   only the assertion was stale.
 - **Fix**: added `"garage61_linked": False` to all three expected dicts. The
-  assertion keeps its exact-equality form — the strong version that caught this
-  in the first place — rather than being relaxed to a subset check.
+  assertion keeps its exact-equality form â€” the strong version that caught this
+  in the first place â€” rather than being relaxed to a subset check.
 - **Blast radius**: no product behaviour. The cost was to trust: a red suite on
   `main` trains everyone to treat red as background noise, which is exactly what
   AGENTS.md's "never assume a failure is synthetic" rule exists to prevent. It
-  was very nearly written off here as "branch is behind main" — `git rev-list
+  was very nearly written off here as "branch is behind main" â€” `git rev-list
   --count HEAD..origin/main` returned 0, which disproved that in one command.
 - **How it was missed**: nothing enforces the checks. AGENTS.md already records
   that the PR-to-`main` rule is convention-only (a Ruleset was blocked by a
   paid-plan restriction on private repos), so a red `pytest` job does not block
   a merge. This is the first entry where that gap actually cost something.
-- **Related, still open**: `ruff check .` is also red on `main` — 25 findings,
+- **Related, still open**: `ruff check .` is also red on `main` â€” 25 findings,
   all in dead root-level scratch scripts (`apply_phase1_phase2.py`, `db_patch*.py`,
   `inject*.py`, `phase1.py`, `phase2.py`, `refactor_db_*.py`, `rewrite_queries.py`,
   `tests/run_blobs*.py`), which are referenced only by each other. Untouched
   here: deleting fifteen tracked files is an owner call, not a side effect of a
   sync change. Filed as **BUG-024**.
 
-### BUG-024 — `ruff check .` is red on `main` from dead scratch scripts
-- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49
+### BUG-024 â€” `ruff check .` is red on `main` from dead scratch scripts
+- **Status**: fixed 2026-08-11 Â· **Severity**: breaks Â· **SPEC**: A49
 - **Symptom**: `python3 -m ruff check .` reports 25 findings (22 auto-fixable):
   unused imports, `E741` ambiguous `l`, `E402` late import. CI's `lint` job is a
   declared merge gate, so it is red for every PR regardless of the PR's content.
@@ -568,28 +576,28 @@ Newest first. The amendment named in each entry carries the full narrative.
   `refactor_db_2.py`, `rewrite_queries.py`, plus `tests/run_blobs.py` and
   `tests/run_blobs_debug.py`. Nothing in the package imports any of them; the
   only cross-reference is `fix_patch.py` naming its siblings.
-- **Blast radius**: no product behaviour — but a permanently red gate is
+- **Blast radius**: no product behaviour â€” but a permanently red gate is
   indistinguishable from a newly red gate, so it hides real lint regressions.
   All of `src/driverdna/` and the real test files pass cleanly.
 - **How it was caught**: running `ruff check .` before committing A49, per
   AGENTS.md's command list.
 - **Fix**: all fifteen deleted (owner-directed). They are one-shot source
-  rewriters — each opens `src/driverdna/db.py`, runs string replacements and
-  writes it back — left over from the identity/`users` phase work and the
+  rewriters â€” each opens `src/driverdna/db.py`, runs string replacements and
+  writes it back â€” left over from the identity/`users` phase work and the
   Postgres move (A23). Their output has been in `db.py` for months, so the
   scripts were both dead and misleading: a reader could mistake them for a
   supported migration path. Auto-fixing the imports instead was rejected for
-  exactly that reason — it would have left dead code lint-clean and still dead.
+  exactly that reason â€” it would have left dead code lint-clean and still dead.
   Verified before removal: no module imports any of them (the only
   cross-references were `fix_patch.py` naming its siblings, and the English
   word "inject" in unrelated prose). After: `ruff check .` passes repo-wide for
   the first time, and the suite is unchanged at 993 passed / 16 skipped.
 - **Worth noting**: this had been red long enough that a permanently-red gate
-  read as normal. That is the actual cost — BUG-023 (a genuine regression on
+  read as normal. That is the actual cost â€” BUG-023 (a genuine regression on
   `main`) sat in the same CI run and was nearly dismissed as environmental.
 
-### BUG-025 — Browser tests skipped silently, hiding a broken assertion for two commits
-- **Status**: fixed 2026-08-11 · **Severity**: breaks · **SPEC**: A49 (found during)
+### BUG-025 â€” Browser tests skipped silently, hiding a broken assertion for two commits
+- **Status**: fixed 2026-08-11 Â· **Severity**: breaks Â· **SPEC**: A49 (found during)
 - **Symptom**: `tests/test_upload_ui.py::test_upload_flow_end_to_end_through_the_real_browser`
   asserted `GET /api/cohorts` equalled a four-key dict. Two commits earlier on
   the same branch, `/api/cohorts` gained `n_laps`, `n_reference_laps` and
@@ -600,22 +608,22 @@ Newest first. The amendment named in each entry carries the full narrative.
   browser-marked suite when that path does not exist. The installed Playwright
   resolves `/opt/pw-browsers/chromium-1234/chrome-linux64/chrome`; the image
   ships build **1194** at `chromium-1194/chrome-linux/chrome`. Nothing was
-  broken in the repo — the environment simply had a different Chromium build,
+  broken in the repo â€” the environment simply had a different Chromium build,
   so all 26 browser tests reported as skips and the suite read green.
 - **Blast radius**: no product behaviour; the endpoint change was correct and
-  the SPA consumed the new fields fine. What was lost was the guarantee — for
+  the SPA consumed the new fields fine. What was lost was the guarantee â€” for
   two commits, every browser-gated trust gate (render parity, offline, auth UI,
   feedback hierarchy, cockpit, reference curation) was unverified while
   appearing to pass.
 - **Fix**: expected dict updated to the endpoint's real shape, keeping exact
   equality. Chromium made discoverable in this environment by symlinking the
-  expected build path at the real one — an environment fix, no repo change:
+  expected build path at the real one â€” an environment fix, no repo change:
   `ln -sfn /opt/pw-browsers/chromium-1194/chrome-linux /opt/pw-browsers/chromium-1234/chrome-linux64`.
   All 26 browser tests then ran and passed.
-- **How it was caught**: reading the skip list instead of the pass count —
+- **How it was caught**: reading the skip list instead of the pass count â€”
   AGENTS.md's "a skipped test is not a pass" applied literally. 42 skips broke
   down as 16 Postgres (expected, no `DRIVERDNA_TEST_DATABASE_URL`) and 26
-  browser (not expected — the environment advertises a pre-installed Chromium).
+  browser (not expected â€” the environment advertises a pre-installed Chromium).
 - **Why the guard did not fire**: `browser.py`'s docstring says its whole reason
   for existing is that a *previous* hardcoded-layout version silently stopped
   matching after Playwright changed its unpack layout, and that CI's grep-based
@@ -623,11 +631,11 @@ Newest first. The amendment named in each entry carries the full narrative.
   removed the layout guess but not the failure mode: the answer can still point
   at a build the machine does not have, and the result is still a silent skip.
   CI is unaffected (its `browser-tests` job installs the matching build and
-  fails if the skip guard triggers) — this bites local and remote dev
+  fails if the skip guard triggers) â€” this bites local and remote dev
   environments, which is where most of this repo's work happens.
 
-### BUG-020 — Committed artifacts could drift from what the code regenerates
-- **Status**: fixed 2026-08-09 · **Severity**: silent-wrong · **SPEC**: A46 (found), fix in `tests/test_artifact_freshness.py`
+### BUG-020 â€” Committed artifacts could drift from what the code regenerates
+- **Status**: fixed 2026-08-09 Â· **Severity**: silent-wrong Â· **SPEC**: A46 (found), fix in `tests/test_artifact_freshness.py`
 - **Symptom**: `docs/coaching-report.md`, `driver.*` and
   `gr86-spa-francorchamps.*` sat stale for days across two merges. They are
   committed as regression anchors and read as current, by humans and agents.
@@ -636,7 +644,7 @@ Newest first. The amendment named in each entry carries the full narrative.
   regenerating them. Nothing failed when they drifted.
 - **Blast radius**: anyone reading a committed report got pre-A42 consistency
   numbers. The A46 session initially misread the staleness as its own
-  regression and had to regenerate on a clean checkout to prove otherwise —
+  regression and had to regenerate on a clean checkout to prove otherwise â€”
   the cost of the missing guard was paid in doubt, not just wrong data.
 - **How it was caught**: by hand, during A46's number-neutrality check.
 - **Fix**: `tests/test_artifact_freshness.py` regenerates all fourteen
@@ -645,7 +653,7 @@ Newest first. The amendment named in each entry carries the full narrative.
   A failure names the first differing line and quotes the exact regeneration
   command. Three things make it more than a green tick:
   - `test_the_guard_covers_every_committed_docs_report` fails if a new
-    `docs/*-report.md` is committed without being added to the table — the
+    `docs/*-report.md` is committed without being added to the table â€” the
     same drift, one level up.
   - `test_the_guard_would_catch_a_stale_artifact` mutates one digit of a real
     artifact and asserts rejection (the
@@ -656,28 +664,28 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Verified, not assumed, before adopting a strict byte-compare**: all
   fourteen regenerate byte-identical under both CI matrix versions (3.11 and
   3.12) and across two numpy majors. If it ever fails for a platform reason
-  — a numpy release moving a last decimal, or BUG-019's ARM64 divergence —
+  â€” a numpy release moving a last decimal, or BUG-019's ARM64 divergence â€”
   that is a finding, not noise. Investigate; never loosen it to go green.
 - **Found while building the guard**: `driverdna corners` prints the
   fixtures directory it was handed into its own report header, so
-  `docs/corners-report.md` is **cwd-dependent** — only the documented
+  `docs/corners-report.md` is **cwd-dependent** â€” only the documented
   invocation from the repo root reproduces the committed bytes. The test now
   pins that invocation. Not otherwise fixed: relativising the header would
   itself change a committed artifact, which belongs in its own change.
 
-### BUG-021 — The methodology-id guard did not see hook-referenced ids
-- **Status**: fixed 2026-08-09 · **Severity**: silent-wrong
+### BUG-021 â€” The methodology-id guard did not see hook-referenced ids
+- **Status**: fixed 2026-08-09 Â· **Severity**: silent-wrong
 - **Symptom**: `test_every_jsx_methodology_id_reference_exists` matched only
   `<Methodology id="...">`. Ids reached through `useMethodologyText("...")`
-  were invisible to it — the four in `SourceLegend`, plus every
-  `incident.*` id — so a typo in one would render as **nothing** in the
+  were invisible to it â€” the four in `SourceLegend`, plus every
+  `incident.*` id â€” so a typo in one would render as **nothing** in the
   browser with the whole suite still green. That is precisely the failure the
   test's own docstring says it exists to prevent.
 - **Root cause**: the guard was written when `<Methodology>` was the only way
   to name an id. `useMethodologyText` was extracted later as a public hook
   (for `IncidentCard`'s inline empathy line) and the guard was never widened
   to follow it. A46 then added four more references through the hook.
-- **Blast radius**: no live typo — all eleven hook-referenced ids resolve. The
+- **Blast radius**: no live typo â€” all eleven hook-referenced ids resolve. The
   exposure was the missing guard, not a wrong string on screen.
 - **How it was caught**: reading the test to confirm a claim before writing it
   into `CLAUDE.md`. Nothing failed; the gap was only visible in the regex.
@@ -686,56 +694,56 @@ Newest first. The amendment named in each entry carries the full narrative.
   Template-literal ids (`incident.${cls}`) *cannot* be checked statically, so
   two new tests cover them dynamically instead: every classification
   `classify.py` can emit has an `incident.<cls>` explanation, and empathy text
-  exists for exactly the mechanisms the engine names a cause for — the
+  exists for exactly the mechanisms the engine names a cause for â€” the
   deliberate absence on `unclassified`/`external` is now pinned as a decision
   rather than looking like an oversight.
 - **Lesson**: a guard is only as wide as the syntax it happened to be written
   against. When you add a second way to do the thing a test protects, widen
   the test in the same commit.
 
-### BUG-017 — A detector's per-lap rationale was printed as the corner's figure
-- **Status**: fixed 2026-08-09 · **Severity**: silent-wrong · **SPEC**: A46
+### BUG-017 â€” A detector's per-lap rationale was printed as the corner's figure
+- **Status**: fixed 2026-08-09 Â· **Severity**: silent-wrong Â· **SPEC**: A46
 - **Root cause**: `vs_principle_findings` built its description as
-  `f"...{rationale}"` where `rationale = rows[0]["rationale"]` — the **first
+  `f"...{rationale}"` where `rationale = rows[0]["rationale"]` â€” the **first
   triggering lap's** value. "3.63 s with neither pedal" read as the corner's
   characteristic, not one observation's.
 - **Fix**: description is a summary; the rationale moved to
   `details["rationale"]` and renders behind the evidence disclosure, labelled
   as one lap.
 - **How it was caught**: reading the string while rewriting it for
-  readability. No test asserted anything about it, and none could have — the
+  readability. No test asserted anything about it, and none could have â€” the
   sentence was true, just about the wrong scope.
 
-### BUG-016 — Postgres blob roots collided on the URL's last path segment
-- **Status**: fixed 2026-08-06 · **Severity**: data-loss · **SPEC**: A45
+### BUG-016 â€” Postgres blob roots collided on the URL's last path segment
+- **Status**: fixed 2026-08-06 Â· **Severity**: data-loss Â· **SPEC**: A45
 - **Root cause**: `default_blob_root` keyed a DSN's blob directory on the last
-  URL path segment. Two projects whose path ends `/postgres` — the Supabase
-  default — shared one blob root.
+  URL path segment. Two projects whose path ends `/postgres` â€” the Supabase
+  default â€” shared one blob root.
 - **Fix**: key on `SHA-256(DSN)[:16]`.
 - **How it was caught**: source review, not a failure. Lower urgency after
   Supabase was retired, but live in the Postgres backend either way.
 
-### BUG-015 — Google sign-in did not invalidate a prior session
-- **Status**: fixed 2026-08-06 · **Severity**: security · **SPEC**: A45
+### BUG-015 â€” Google sign-in did not invalidate a prior session
+- **Status**: fixed 2026-08-06 Â· **Severity**: security Â· **SPEC**: A45
 - **Root cause**: `google_callback` did not bump `session_epoch` for existing
   users; the password login path always did. An old cookie stayed valid.
 - **How it was caught**: comparing the two auth paths against each other.
 
-### BUG-014 — `--db ""` silently opened an evaporating temp database
-- **Status**: fixed 2026-08-05 · **Severity**: silent-wrong · **SPEC**: A41
+### BUG-014 â€” `--db ""` silently opened an evaporating temp database
+- **Status**: fixed 2026-08-05 Â· **Severity**: silent-wrong Â· **SPEC**: A41
 - **Root cause**: an unset deploy secret passed `--db ""`, which SQLite
   accepts as "private temporary database". Every write went to a store that
   vanished on restart.
 - **Blast radius**: presented as a sign-in bounce. **Four prior sessions tried
-  to fix it by editing auth code** — the auth layer was innocent.
+  to fix it by editing auth code** â€” the auth layer was innocent.
 - **Fix**: `resolve_store("")` raises; the ephemeral session-secret fallback
   is retired and the interlock fails closed; `/health` reports `store`/`auth`.
 - **How it was caught**: a session that stopped editing the suspected
   component and read the actual deploy configuration.
 - **Lesson**: a symptom in layer A is not evidence of a bug in layer A.
 
-### BUG-013 — Reference laps defined the driver's own corner geometry
-- **Status**: fixed 2026-08-03 · **Severity**: silent-wrong · **SPEC**: A34
+### BUG-013 â€” Reference laps defined the driver's own corner geometry
+- **Status**: fixed 2026-08-03 Â· **Severity**: silent-wrong Â· **SPEC**: A34
 - **Root cause**: role isolation was enforced in the measurement layer but not
   in the **coordinate system** those measurements are taken in. Three paths
   wrote reference geometry into the corner map: founding (first lap in a
@@ -746,32 +754,32 @@ Newest first. The amendment named in each entry carries the full narrative.
   (largest 46.94 m), 11 of 14 windows differed, **154 of 191 phase times
   changed** by up to 1.57 s.
 - **How it was missed**: `test_reference_import_perturbs_gap_sections_only`
-  existed, passed, and **was pinned one layer above the break** — its
+  existed, passed, and **was pinned one layer above the break** â€” its
   synthetic reference lap matched existing corners, so the admission path
   never ran and it never rebuilt. An audit for an unfiltered `JOIN laps`
   also missed it, because the offending queries did not join `laps` at all.
 - **How it was caught**: the owner supplied real reference laps, so the
   vs-reference path ran on real data for the first time.
 
-### BUG-012 — Upload endpoint hardcoded `driver="owner"` regardless of role
-- **Status**: fixed 2026-08-03 · **Severity**: silent-wrong · **SPEC**: A39
+### BUG-012 â€” Upload endpoint hardcoded `driver="owner"` regardless of role
+- **Status**: fixed 2026-08-03 Â· **Severity**: silent-wrong Â· **SPEC**: A39
 - **Root cause**: `POST /api/laps/upload` stamped every upload as the owner,
   so a reference lap imported through the browser lost its contributor
   identity.
 - **How it was caught**: building R2, which made the `driver` column
   load-bearing for the first time.
 
-### BUG-011 — Coach token ceiling silently starved the thinking-model provider
-- **Status**: fixed 2026-08-02 · **Severity**: breaks · **SPEC**: A38
+### BUG-011 â€” Coach token ceiling silently starved the thinking-model provider
+- **Status**: fixed 2026-08-02 Â· **Severity**: breaks Â· **SPEC**: A38
 - **Root cause**: `coach.max_tokens` defaulted to 4000, spent on reasoning
   before any output existed. Two prompt ambiguities in the coach system prompt
-  were also hit reliably (`coach-v2`→`coach-v3`, wording only).
+  were also hit reliably (`coach-v2`â†’`coach-v3`, wording only).
 - **How it was caught**: **a real live API run.** Every provider test is
   mocked by policy, and mocks cannot surface a token ceiling. Nothing else
   would have found this.
 
-### BUG-010 — Every deployed `/api` route was unauthenticated
-- **Status**: fixed 2026-07-27 · **Severity**: security · **SPEC**: A31
+### BUG-010 â€” Every deployed `/api` route was unauthenticated
+- **Status**: fixed 2026-07-27 Â· **Severity**: security Â· **SPEC**: A31
 - **Root cause**: DEPLOY-SPEC track H1 (single-driver auth) was adopted
   2026-07-26 and never built, while the Cloud Run deploy shipped anyway. The
   live service was protected by nothing but
@@ -782,101 +790,101 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **How it was caught**: reconciling what the deploy spec said was done
   against what was actually in the code.
 
-### BUG-009 — A negative capability claim was an inference presented as fact
-- **Status**: fixed 2026-07-27 · **Severity**: silent-wrong · **SPEC**: A28
+### BUG-009 â€” A negative capability claim was an inference presented as fact
+- **Status**: fixed 2026-07-27 Â· **Severity**: silent-wrong Â· **SPEC**: A28
 - **Root cause**: M0b concluded `/laps` caps at ~1 saved lap per driver per
-  cohort. The census was accurate; the conclusion was not — it was `group`'s
+  cohort. The census was accurate; the conclusion was not â€” it was `group`'s
   default (`driver` = PB per driver; `group=none` = all laps). The wrong
   premise silently shaped three later decisions.
-- **How it was caught**: reading `https://garage61.net/api/openapi/v1.json` —
+- **How it was caught**: reading `https://garage61.net/api/openapi/v1.json` â€”
   the spec the "unreachable" JS developer portal fetches for itself, its URL a
   plain string in the SPA bundle.
 - **Lesson, standing**: when a docs site will not render, read its client
   before declaring the documentation unavailable; a negative capability claim
   needs a source, not a probe inference.
 
-### BUG-008 — Cohort labels drift between `sync` and manual import
-- **Status**: fixed (detection only) 2026-07-26 · **Severity**: silent-wrong · **SPEC**: A27
+### BUG-008 â€” Cohort labels drift between `sync` and manual import
+- **Status**: fixed (detection only) 2026-07-26 Â· **Severity**: silent-wrong Â· **SPEC**: A27
 - **Root cause**: `sync` labels a track `"Name (Variant)"` from the API;
   manual import uses the filename's bare name. Doing both splits one cohort in
   two, silently halving the evidence behind every baseline, trend and
   consistency number.
 - **Fix**: `cohorts.find_label_drift` flags it in `history` and at the end of
-  `import`. **Reported, never auto-merged** — the right label is not derivable
+  `import`. **Reported, never auto-merged** â€” the right label is not derivable
   from the strings, and cohort keys are load-bearing for evidence IDs.
 - **How it was caught**: reasoning about what happens when both ingest paths
   are used on one car/track.
 
-### BUG-007 — Re-download suffix assumed a space that was never observed
-- **Status**: fixed 2026-07-26 · **Severity**: breaks · **SPEC**: A24 → A25
+### BUG-007 â€” Re-download suffix assumed a space that was never observed
+- **Status**: fixed 2026-07-26 Â· **Severity**: breaks Â· **SPEC**: A24 â†’ A25
 - **Root cause**: A24 stripped a browser re-download's `" (1)"` assuming a
   leading space. The owner's next real Windows re-download produced
-  `...(1).csv` with **no space**, and the parser rejected it — the same error
+  `...(1).csv` with **no space**, and the parser rejected it â€” the same error
   A24 existed to close.
 - **How it was caught**: the owner hit it.
 - **Lesson**: A24 itself warned against unverified guesses presented as
   observations, and then made one. Only the no-space spelling is confirmed
   against a real file.
 
-### BUG-006 — Two silent-corruption risks in the Postgres move
-- **Status**: fixed 2026-07-26 · **Severity**: silent-wrong · **SPEC**: A23
+### BUG-006 â€” Two silent-corruption risks in the Postgres move
+- **Status**: fixed 2026-07-26 Â· **Severity**: silent-wrong Â· **SPEC**: A23
 - **Root cause**: (a) Postgres `REAL` is float4 and would have **truncated
   every metric**; (b) Supabase's `en_US.UTF-8` collation would have
   **reordered every report**.
-- **Fix**: `REAL`→`DOUBLE PRECISION`, and every text column `COLLATE "C"`.
+- **Fix**: `REAL`â†’`DOUBLE PRECISION`, and every text column `COLLATE "C"`.
   Equivalence is tested, not claimed: the same corpus in either backend
   produces byte-identical artifacts.
 - **How it was caught**: reading the dialect differences before trusting them.
   Neither would have failed loudly. Four further latent bugs were found on the
   same pass.
 
-### BUG-005 — `rebuild-map` destroyed recoverable phase times
-- **Status**: fixed 2026-07-26 · **Severity**: data-loss · **SPEC**: A26
+### BUG-005 â€” `rebuild-map` destroyed recoverable phase times
+- **Status**: fixed 2026-07-26 Â· **Severity**: data-loss Â· **SPEC**: A26
 - **Root cause**: after blobs moved to local disk, an unreadable trace meant
   either "evicted here" (gone) or "imported on another machine" (intact
   there). `rebuild_cohort_map` treated both as eviction: `delete_phase_times`
   plus a report blaming retention.
 - **Fix**: eviction writes a tombstone in the **blob store** (per-machine, not
-  a DB column — the store may be shared); a pre-flight raises
+  a DB column â€” the store may be shared); a pre-flight raises
   `RawTracesUnavailable` before touching anything.
 - **How it was caught**: reasoning about the multi-machine case A23 had just
   created.
 
-### BUG-004 — `same_lap_twice` pooled CVs across metric types
-- **Status**: fixed 2026-08-06 · **Severity**: silent-wrong · **SPEC**: A42
+### BUG-004 â€” `same_lap_twice` pooled CVs across metric types
+- **Status**: fixed 2026-08-06 Â· **Severity**: silent-wrong Â· **SPEC**: A42
 - **Root cause**: the same defect as BUG-003, one layer down, in
   `coaching/engine.py`'s gate. Five "% lap" metrics with tiny natural CVs
   diluted one "count" metric's genuine signal under a flat mean.
 - **How it was caught**: BUG-003 was flagged at the time as probably recurring
   here. It did.
 
-### BUG-003 — `consistency` scoring pooled CVs across metric types
-- **Status**: fixed 2026-07-21 · **Severity**: silent-wrong · **SPEC**: A21
+### BUG-003 â€” `consistency` scoring pooled CVs across metric types
+- **Status**: fixed 2026-07-21 Â· **Severity**: silent-wrong Â· **SPEC**: A21
 - **Root cause**: a "% lap" metric's naturally tiny CV (~0.007) against a
-  "count" metric's naturally huge one (~0.99), flat-averaged — so the pooled
+  "count" metric's naturally huge one (~0.99), flat-averaged â€” so the pooled
   figure tracked which metric types a corner had, not how consistent the
   driver was.
-- **Blast radius**: `consistency` 5.1 → 34.3; `commitment`, inflated the
-  *other* way by the same mechanism, 96.5 → 56.1. `dm-v1` → `dm-v2`.
-- **How it was caught**: investigating a "Known v1 limitation" note — **whose
+- **Blast radius**: `consistency` 5.1 â†’ 34.3; `commitment`, inflated the
+  *other* way by the same mechanism, 96.5 â†’ 56.1. `dm-v1` â†’ `dm-v2`.
+- **How it was caught**: investigating a "Known v1 limitation" note â€” **whose
   own stated diagnosis was wrong.** The note blamed cross-cohort raw-magnitude
   pooling; each CV was already per-cohort. Fixing the documented cause would
   have changed nothing.
 - **Lesson**: a recorded diagnosis is a hypothesis, not a finding.
 
-### BUG-002 — ConfigStore's TOML writer emitted invalid TOML for dict values
-- **Status**: fixed 2026-07-21 · **Severity**: breaks · **SPEC**: A21
+### BUG-002 â€” ConfigStore's TOML writer emitted invalid TOML for dict values
+- **Status**: fixed 2026-07-21 Â· **Severity**: breaks Â· **SPEC**: A21
 - **Root cause**: the hand-rolled writer had no dict-value branch and fell
   through to Python `repr()`.
-- **How it was caught**: incidentally — A21 introduced the first dict-valued
+- **How it was caught**: incidentally â€” A21 introduced the first dict-valued
   config field, so the path had never executed.
 
-### BUG-001 — One incident lap inflated vs-self opportunity
-- **Status**: fixed 2026-07-21 · **Severity**: silent-wrong · **SPEC**: A18
+### BUG-001 â€” One incident lap inflated vs-self opportunity
+- **Status**: fixed 2026-07-21 Â· **Severity**: silent-wrong Â· **SPEC**: A18
 - **Root cause**: `vs_self_findings` screened outliers out of the *baseline*
   but not out of the fast/slow tercile split, so a single spin manufactured a
-  phantom "opportunity" — ~2.5× at one corner.
-- **Fix**: reuse `baseline()`'s own median±k·MAD fence at the same
+  phantom "opportunity" â€” ~2.5Ã— at one corner.
+- **Fix**: reuse `baseline()`'s own medianÂ±kÂ·MAD fence at the same
   per-corner-phase granularity, before the split. The raw observation still
   counts in `n` and `evidence_ids`; only the computed figures exclude it.
 - **How it was caught**: the **Spa blind acceptance test** on 11 real,
@@ -885,8 +893,8 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Lesson**: this is the entry that justifies the whole practice of running
   the instrument blind against real laps.
 
-### BUG-028 — Six methodology texts written, none reachable; the guard only checked one direction
-- **Status**: fixed 2026-08-16 · **Severity**: dead-weight · **SPEC**: A51 (found during)
+### BUG-028 â€” Six methodology texts written, none reachable; the guard only checked one direction
+- **Status**: fixed 2026-08-16 Â· **Severity**: dead-weight Â· **SPEC**: A51 (found during)
 - **Symptom**: `explain.py` defined `model.adherence`, `model.opportunity`,
   `model.consistency`, `model.evidence_count`, `baseline.spread` and
   `baseline.outliers_screened`. Grepping the SPA for each returned **zero**
@@ -899,7 +907,7 @@ Newest first. The amendment named in each entry carries the full narrative.
   requires a composite score to expose, and the payload was not carrying the
   components at all, so the texts had nothing to attach to even if a view had
   wanted them.
-- **Blast radius**: no wrong number and no wrong claim — purely absent
+- **Blast radius**: no wrong number and no wrong claim â€” purely absent
   explanation. But it is the direct cause of `#/model` reading as seven
   uninterpretable scores, which is half of what A51 exists to fix.
 - **How it was caught**: an audit of the product against its own stated goal,
@@ -908,19 +916,19 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **Fix**: the three component texts are now rendered behind each meter's
   disclosure on `#/model` (A51 work item 1). The remaining three
   (`model.evidence_count`, `baseline.spread`, `baseline.outliers_screened`)
-  are **still unreferenced** and left open deliberately — they belong to
+  are **still unreferenced** and left open deliberately â€” they belong to
   surfaces this change did not touch, and inventing a home for them to clear a
   grep would be worse than leaving them listed here.
 - **Lesson**: a cross-reference test has two directions and checking one of
-  them feels like checking both. Same shape as BUG-013 — the guard was pinned
+  them feels like checking both. Same shape as BUG-013 â€” the guard was pinned
   where the failure was loud, not where it was silent.
 
-### BUG-029 — A42 changed the unit and left every threshold behind
-- **Status**: fixed 2026-08-16 · **Severity**: breaks · **SPEC**: A52
+### BUG-029 â€” A42 changed the unit and left every threshold behind
+- **Status**: fixed 2026-08-16 Â· **Severity**: breaks Â· **SPEC**: A52
 - **Symptom**: every one of the 16 fixture corners banded `major` on
   `same_lap_twice`, and every one cleared the eligibility gate. The loudest
   tone in the coaching vocabulary was the only tone it could produce, so the
-  band carried no information at all — a driver saw sixteen identical maximum
+  band carried no information at all â€” a driver saw sixteen identical maximum
   alarms and could not tell which corner was actually the problem.
 - **Root cause**: A42 changed the gated quantity from a **raw** coefficient of
   variation to a **per-unit normalized** one. On the new scale `1.0` is exactly
@@ -937,11 +945,11 @@ Newest first. The amendment named in each entry carries the full narrative.
   reading; the number never got it.
 - **Blast radius**: coaching tone and eligibility only. `dm-v2` reads
   `config.model.*` and these are `config.coaching.*`, so no Driver Model score
-  was ever affected — confirmed empirically when
+  was ever affected â€” confirmed empirically when
   `docs/driver-model-report.md` and `docs/census-report.md` regenerated
   byte-identical across the fix.
 - **How it was missed**: no test asserted a *relationship* between the
-  thresholds and the scale they sit on — only that banding used CV rather than
+  thresholds and the scale they sit on â€” only that banding used CV rather than
   seconds, which stayed true throughout. The synthetic fixture behind that test
   produced a normalized CV of **0.388** (i.e. a driver 61% more repeatable than
   typical) and "triggered the inconsistency principle" purely because the floor
@@ -955,31 +963,31 @@ Newest first. The amendment named in each entry carries the full narrative.
   properties instead of one so it is genuinely inconsistent.
 - **Lesson**: when a change redefines what a number *means*, the thresholds
   compared against it are part of the change. Editing the docstring to describe
-  the new unit — and stopping there — is the most convincing possible way to
+  the new unit â€” and stopping there â€” is the most convincing possible way to
   look done. Same family as BUG-003/BUG-009: a recorded description got trusted
   in place of the value it described.
 
-### BUG-030 — The weakest fundamental could never be coached
-- **Status**: fixed 2026-08-16 · **Severity**: breaks · **SPEC**: A52
+### BUG-030 â€” The weakest fundamental could never be coached
+- **Status**: fixed 2026-08-16 Â· **Severity**: breaks Â· **SPEC**: A52
 - **Symptom**: `consistency` was the driver's lowest measured fundamental
   (34.3) and fired at 16 corners, and the coaching layer was structurally
   incapable of ever making it the headline.
 - **Root cause**: `headline_eligible` was
   `magnitude_kind == "seconds_lost" and band in (notable, major)`.
   `same_lap_twice` bands on a coefficient of variation, so it failed the first
-  clause permanently — no quantity of evidence could change it. The two halves
+  clause permanently â€” no quantity of evidence could change it. The two halves
   of the product therefore disagreed by construction: the Driver Model named
   consistency the weakness while coaching could only ever talk about something
   else.
 - **Why the restriction existed**: removing it alone would have introduced a
   worse bug. The ranker picked `max(..., key=magnitude)`, which compares 0.591
-  **seconds** against a CV of **2.724** and takes the CV every time — not
+  **seconds** against a CV of **2.724** and takes the CV every time â€” not
   because it is worse but because CVs are bigger numbers. Fixed with a
   unit-free `_severity` (magnitude as a multiple of the `major` floor for its
   own kind), kept private so a number with no unit never reaches the payload
   or the grounding validator's citable pool.
 - **How it was caught**: an audit against the product's stated goal, and only
-  because A51 had just built the reading that named consistency the weakness —
+  because A51 had just built the reading that named consistency the weakness â€”
   the contradiction was invisible until two layers stated the same thing in
   different words.
 - **Lesson**: a hard `and` in an eligibility predicate is a permanent
@@ -1000,7 +1008,7 @@ Read as a set, the entries above cluster:
    BUG-007). This repo's docs are unusually good, which makes their occasional
    wrong claims unusually dangerous. Re-derive before fixing.
 3. **Mocks cannot find what only reality has** (BUG-011, BUG-001, BUG-007).
-   The provider tests are mocked by policy and should stay so — but "all
+   The provider tests are mocked by policy and should stay so â€” but "all
    green" and "it works" are different claims.
 4. **A symptom's location is not the bug's location** (BUG-014). Four sessions
    edited auth code for a database-configuration bug.
@@ -1010,12 +1018,12 @@ Read as a set, the entries above cluster:
    therefore BUG-031/029/030). `docs/ACCOUNTS-SPEC.md` named the test that
    would have caught all three, named the hazard one of them realises, and was
    right about both. The design work was done and the verification work was
-   not — so the partitioning *looked* finished, and the suite stayed green
+   not â€” so the partitioning *looked* finished, and the suite stayed green
    because nothing asked it the question. When a spec names a gate, the gate is
    part of the deliverable, not a follow-up.
 7. **Documentation drift is a defect, with a blast radius** (BUG-031..033, all
    found in one audit). Three weeks of documents contradicted A32 while the
-   code moved on, so each new session re-derived the wrong mental model —
-   "personal instrument for one driver" — and none of them looked for tenant
+   code moved on, so each new session re-derived the wrong mental model â€”
+   "personal instrument for one driver" â€” and none of them looked for tenant
    bugs. `docs/ACCOUNTS-SPEC.md:37-56` predicted exactly this and specified the
    reconciling edits; skipping them cost more than writing them would have.

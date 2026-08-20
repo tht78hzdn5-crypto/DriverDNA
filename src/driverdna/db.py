@@ -1475,6 +1475,33 @@ class Database:
             for r in rows
         ]
 
+    def all_self_phase_times(
+        self, driver: str, car: str, track: str, lap_pks: frozenset[int] | None = None
+    ) -> dict[str, dict[str, list[float]]]:
+        """Bulk fetch all phase times for a cohort to avoid N^2 queries in rollup."""
+        pk_clause, pk_params = _lap_pk_filter(lap_pks)
+        rows = self.conn.execute(
+            f"""SELECT c.corner_id, p.phase, p.time_s
+                FROM phase_times p
+                JOIN corner_observations o ON o.obs_pk = p.obs_pk
+                JOIN corners c ON c.corner_pk = o.corner_pk
+                JOIN laps l ON l.lap_pk = o.lap_pk
+                WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=? AND l.owner_user_pk=? {pk_clause}
+                ORDER BY l.lap_pk, o.span_start""",
+            [driver, car, track, self.user_pk, *pk_params],
+        ).fetchall()
+        
+        result: dict[str, dict[str, list[float]]] = {}
+        for r in rows:
+            cid = r["corner_id"]
+            ph = r["phase"]
+            if cid not in result:
+                result[cid] = {}
+            if ph not in result[cid]:
+                result[cid][ph] = []
+            result[cid][ph].append(float(r["time_s"]))
+        return result
+
     def reference_laps_for_cohort(self, *, car: str, track: str) -> list[dict[str, Any]]:
         """Every reference lap for this (car, track), each flagged with
         whether R3 curation has excluded it. Excluded laps stay listed --

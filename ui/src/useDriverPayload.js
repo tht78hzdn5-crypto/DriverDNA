@@ -88,7 +88,9 @@ export function useDriverPayload() {
             ...prev,
             rollupProgress: {
               ...(prev.rollupProgress || {}),
-              cohort: event.phase === "driver_model" ? "computing driver model…" : "computing census…",
+              cohort: event.phase === "driver_model" ? "computing driver model…" :
+                      event.phase === "coaching_rollup" ? "computing driver coaching…" :
+                      "computing census…",
             }
           }));
         }
