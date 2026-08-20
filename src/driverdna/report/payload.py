@@ -192,6 +192,7 @@ def references_section(db: Database, *, car: str, track: str) -> dict[str, Any]:
 def build_cohort_payload(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig,
     _for_driver_rollup: bool = False,
+    _skip_driver_model: bool = False,
 ) -> dict[str, Any]:
     loaded = db.load_corner_map(car=car, track=track)
     map_pk, corner_map = loaded if loaded else (None, None)
@@ -319,7 +320,10 @@ def build_cohort_payload(
         "cumulative_loss": loss,
         "findings": finding_dicts,
         "unavailable_fundamentals": list(UNAVAILABLE_FUNDAMENTALS),
-        "driver_model": driver_model_section(db, driver=driver, config=config),
+        "driver_model": (
+            None if _skip_driver_model
+            else driver_model_section(db, driver=driver, config=config)
+        ),
         "coaching": coaching_section(db, driver=driver, car=car, track=track, config=config),
         "incidents": incidents_section(db, driver=driver, car=car, track=track),
         "references": references_section(db, car=car, track=track),
@@ -401,7 +405,9 @@ def build_driver_payload(
         _progress({"type": "progress_phase", "phase": "census"})
         from driverdna.census import build_census, census_to_dict
         try:
-            census_data = census_to_dict(build_census(db, config, driver=driver_name))
+            census_data = census_to_dict(build_census(
+                db, config, driver=driver_name, cross_track_rollups=rollups
+            ))
         except ValueError:
             pass  # no self laps
 

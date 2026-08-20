@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { get, streamUpload, streamSync } from "../api.js";
+import { invalidateDriverCache } from "../useDriverPayload.js";
 
 // Upload (UI-SPEC view 7: "Laps — Import/session listing"). A thin form over
 // POST /api/laps/upload, which is itself a thin wrapper over the same
@@ -61,6 +62,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
 
       if (finalResult) {
         setResult({ results: finalResult.results, evicted: finalResult.evicted });
+        invalidateDriverCache();
         const cohorts = await get("/api/cohorts");
         const wanted = new Set(finalResult.results.map((x) => `${x.car}::${x.track}`));
         setLandedCohorts(cohorts.filter((c) => wanted.has(`${c.car}::${c.track}`)));
@@ -114,6 +116,7 @@ export default function Upload({ garage61Enabled, garage61Linked }) {
 
       if (finalResult) {
         setSyncResult(finalResult.results);
+        invalidateDriverCache();
       }
     } catch (e) {
       setSyncError(String(e.message || e));

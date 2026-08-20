@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { get, streamGet, streamSync } from "../api.js";
+import { useState } from "react";
+import { get, streamSync } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading, useFetch } from "../app.jsx";
+import { useDriverPayload, invalidateDriverCache } from "../useDriverPayload.js";
 import { LossBars, Methodology, ReadingPanel, fundamentalLabels } from "./shared.jsx";
 
 // Driver home (UI-SPEC view 1, v2): the rollup and its gates panel. The
@@ -273,30 +274,7 @@ export default function DriverHome() {
   const summary = useFetch(() => get("/api/driver/summary"), [reload]);
   const cohorts = useFetch(() => get("/api/cohorts"), [reload]);
 
-  const [driver, setDriver] = useState(null);
-  const [driverError, setDriverError] = useState(null);
-  const [rollupProgress, setRollupProgress] = useState(null);
-
-  useEffect(() => {
-    let alive = true;
-    setDriver(null);
-    setDriverError(null);
-    setRollupProgress(null);
-    streamGet("/api/driver", (event) => {
-      if (!alive) return;
-      if (event.type === "progress") {
-        setRollupProgress(event);
-      } else if (event.type === "progress_phase") {
-        setRollupProgress((prev) => ({
-          ...prev,
-          cohort: event.phase === "driver_model" ? "computing driver model…" : "computing census…",
-        }));
-      }
-    })
-      .then((payload) => alive && setDriver(payload))
-      .catch((err) => alive && setDriverError(String(err.message || err)));
-    return () => { alive = false; };
-  }, [reload]);
+  const { driver, driverError, rollupProgress } = useDriverPayload();
 
   const coldStart = (summary.error || "").includes(NO_DB) || (cohorts.error || "").includes(NO_DB)
     || (driverError || "").includes(NO_DB);
@@ -381,7 +359,7 @@ export default function DriverHome() {
 
       {driver && <CensusPanel census={driver.census} />}
 
-      <SyncPanel onSynced={() => setReload((n) => n + 1)} />
+      <SyncPanel onSynced={() => { invalidateDriverCache(); setReload((n) => n + 1); }} />
     </div>
   );
 }
