@@ -52,7 +52,7 @@ async function readSSE(response, label, onEvent) {
   
   const processEvent = (data) => {
     onEvent(data);
-    if (data.type === "response" || data.type === "error") {
+    if (data.type === "response" || data.type === "error" || data.type === "complete") {
       terminated = true;
     }
   };
