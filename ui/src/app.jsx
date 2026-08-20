@@ -83,7 +83,7 @@ export default function App() {
 
   async function signOut() {
     await send("POST", "/api/auth/logout").catch(() => {});
-    setSession({ required: true, authenticated: false });
+    setSession((s) => ({ ...s, required: true, authenticated: false }));
   }
 
   const { view, args } = route;
