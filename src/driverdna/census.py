@@ -45,7 +45,7 @@ from driverdna.model.scoring import (
     confidence_terms,
 )
 from driverdna.model.taxonomy import SignalStatus
-from driverdna.report.payload import build_cohort_payload, build_driver_payload
+from driverdna.report.payload import build_cohort_payload
 
 #: Confidence terms whose shortfall is closed by acquiring whole cohorts, and
 #: whose gain is therefore exactly computable. "evidence laps" is deliberately
@@ -235,13 +235,15 @@ def _reference_section(n_reference: int, cohorts: tuple) -> CensusSection:
 
 def _suppression_section(
     db: Database, driver: str, cohorts: tuple, config: DriverDNAConfig,
+    cross_track_rollups: list | None = None,
 ) -> tuple[CensusSection, tuple[str, ...]]:
     """Read back what the engine actually suppressed, verbatim."""
     reasons: Counter[str] = Counter()
     n_shown = n_total = 0
     for car, track in cohorts:
         payload = build_cohort_payload(
-            db, driver=driver, car=car, track=track, config=config
+            db, driver=driver, car=car, track=track, config=config,
+            _skip_driver_model=True,
         )
         for finding in payload["findings"]:
             n_total += 1
@@ -251,7 +253,11 @@ def _suppression_section(
                 reasons[finding["gate_reason"]] += 1
 
     rollup_reasons: Counter[str] = Counter()
-    for rollup in build_driver_payload(db, config, _include_census=False)["cross_track_rollups"]:
+    if cross_track_rollups is None:
+        from driverdna.report.payload import build_driver_payload
+        cross_track_rollups = build_driver_payload(
+            db, config, _include_census=False)["cross_track_rollups"]
+    for rollup in cross_track_rollups:
         if not rollup["shown"] and rollup["gate_reason"]:
             rollup_reasons[rollup["gate_reason"]] += 1
 
@@ -365,7 +371,8 @@ def _next_steps(
 
 
 def build_census(
-    db: Database, config: DriverDNAConfig, *, driver: str | None = None
+    db: Database, config: DriverDNAConfig, *, driver: str | None = None,
+    cross_track_rollups: list | None = None,
 ) -> Census:
     """Have-vs-need across every gate, for one driver's corpus."""
     if driver is None:
@@ -400,7 +407,7 @@ def build_census(
 
     trend_section = _trend_section(db, driver, config)
     suppression_section, suppressed = _suppression_section(
-        db, driver, cohorts, config
+        db, driver, cohorts, config, cross_track_rollups=cross_track_rollups
     )
     sections = (
         _confidence_section(terms, config),

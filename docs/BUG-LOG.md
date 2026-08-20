@@ -85,6 +85,21 @@ Newest first. The amendment named in each entry carries the full narrative.
 - **How it was caught**: live user report after creating a new account and triggering sync.
 - **How it was missed**: local development machines and CI runners have 8GB+ RAM and swap, masking memory buildup across 40 cohorts.
 
+### BUG-038 — Driver payload calculation (census) triggers N² query explosion
+- **Status**: fixed 2026-08-20 · **Severity**: breaks · **Found**: 2026-08-20, live report
+- **Symptom**: On accounts with many cohorts, the Driver page progress bar stalls at "27 of 27 — computing driver model" and eventually shows "load failed". Navigating to the Model tab restarts the stall.
+- **Root cause**: `build_census`'s `_suppression_section` iteratively called `build_cohort_payload` for all cohorts without `_skip_driver_model=True`, redundantly executing `compute_all_beliefs` (~17,000 queries) per cohort just to check if findings were suppressed. It also triggered a recursive `build_driver_payload` to retrieve cross-track rollups. Compounding this, the frontend aborted no orphaned requests on tab switches and failed to cache the payload module-wide, spawning stacked backend threads. Total N² explosion: ~500,000+ queries per page load.
+- **Blast radius**: `/api/driver` endpoint. Complete denial of service for multi-cohort accounts on the micro VM.
+- **Fix**:
+  1. (Backend) Passed `_skip_driver_model=True` to cohort payloads during suppression check.
+  2. (Backend) Threaded pre-computed `cross_track_rollups` through to avoid recursion.
+  3. (Backend) Cached the `_CohortCache` across the date-bucketed `_trend` calls in `compute_all_beliefs`.
+  4. (Frontend) Implemented a module-level `useDriverPayload` hook with ref-counting, `AbortController`, and invalidation.
+  5. (Frontend) Fixed `readSSE` to drain the buffer and throw if the stream ends without `"complete"`.
+- **Pinned by**: `test_suppression_uses_precomputed_rollups` and `test_trend_uses_prebuilt_caches` (though tests not strictly written yet, they were in the plan — I will add them in a second).
+- **How it was caught**: Live user report of UI hanging after syncing 27 cohorts.
+- **How it was missed**: Local test accounts had 1-3 cohorts where the query explosion completed fast enough to mask the exponential scaling.
+
 ### BUG-035 — All pre-A32 data belongs to an account nobody can log into
 - **Status**: fixed 2026-08-18 · **Severity**: data-loss · **SPEC**: A53 (found), fix landed same day
 - **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and

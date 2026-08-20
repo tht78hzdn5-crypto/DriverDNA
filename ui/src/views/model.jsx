@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { streamGet } from "../api.js";
 import { fmt } from "../format.js";
 import { Loading } from "../app.jsx";
+import { useDriverPayload } from "../useDriverPayload.js";
 import { FundamentalMark, Methodology, ReadingPanel, fundamentalLabels } from "./shared.jsx";
 import { FUNDAMENTAL_ORDER } from "./order.js";
 import { GAP, STEP, Y_BASE, tierPoints } from "./pyramid.js";
@@ -310,27 +311,11 @@ function ProgressBar({ current, total }) {
 }
 
 export default function DriverModel() {
-  const [driver, setDriver] = useState(null);
-  const [driverError, setDriverError] = useState(null);
-  const [rollupProgress, setRollupProgress] = useState(null);
-
+  const { driver, driverError, rollupProgress } = useDriverPayload();
   const [history, setHistory] = useState(null);
 
   useEffect(() => {
     let alive = true;
-    streamGet("/api/driver", (event) => {
-      if (!alive) return;
-      if (event.type === "progress") setRollupProgress(event);
-      else if (event.type === "progress_phase") {
-        setRollupProgress((prev) => ({
-          ...prev,
-          cohort: event.phase === "driver_model" ? "computing driver model…" : "computing census…",
-        }));
-      }
-    })
-      .then((payload) => { if (alive) { setDriver(payload); setRollupProgress(null); } })
-      .catch((err) => alive && setDriverError(String(err.message || err)));
-
     streamGet("/api/driver/score-history")
       .then((payload) => alive && setHistory(payload))
       .catch(() => {});

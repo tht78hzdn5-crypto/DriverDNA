@@ -59,18 +59,23 @@ async function readSSE(response, label, onEvent) {
       if (line) onEvent(JSON.parse(line.slice("data: ".length)));
     }
   }
+  if (buffer.trim()) {
+    const line = buffer.split("\n").find((l) => l.startsWith("data: "));
+    if (line) onEvent(JSON.parse(line.slice("data: ".length)));
+  }
 }
 
 // SSE GET — for endpoints that stream progress (driver, score-history).
 // Returns the "complete" event's payload, calling onEvent for progress.
-export async function streamGet(path, onEvent) {
-  const response = await fetch(path);
+export async function streamGet(path, onEvent, signal) {
+  const response = await fetch(path, signal ? { signal } : undefined);
   let result = null;
   await readSSE(response, path, (event) => {
     if (event.type === "complete") result = event.payload;
     else if (event.type === "error") throw new Error(event.detail);
     else if (onEvent) onEvent(event);
   });
+  if (result === null) throw new Error("stream ended without completion");
   return result;
 }
 

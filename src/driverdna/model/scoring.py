@@ -562,6 +562,8 @@ def _bucket_score(
 def _trend(
     db: Database, driver: str, fundamental_id: str,
     cohorts: list[tuple[str, str]], config: DriverDNAConfig,
+    earlier_cache: _CohortCache | None = None,
+    recent_cache: _CohortCache | None = None,
 ) -> str:
     """Direction of this fundamental's score between an earlier and a recent
     bucket of the driver's dated laps (SPEC.md M6; ARCHITECTURE_VISION.md
@@ -596,8 +598,8 @@ def _trend(
     half = len(dated) // 2
     earlier = frozenset(dated[:half])
     recent = frozenset(dated[half:])
-    earlier_score = _bucket_score(db, driver, fundamental_id, cohorts, config, earlier)
-    recent_score = _bucket_score(db, driver, fundamental_id, cohorts, config, recent)
+    earlier_score = _bucket_score(db, driver, fundamental_id, cohorts, config, earlier, cache=earlier_cache)
+    recent_score = _bucket_score(db, driver, fundamental_id, cohorts, config, recent, cache=recent_cache)
     if earlier_score is None or recent_score is None:
         return "unavailable"
     delta = recent_score - earlier_score
@@ -636,6 +638,8 @@ def compute_belief(
     db: Database, *, driver: str, fundamental_id: str, config: DriverDNAConfig,
     cohorts: list[tuple[str, str]] | None = None,
     cache: _CohortCache | None = None,
+    earlier_cache: _CohortCache | None = None,
+    recent_cache: _CohortCache | None = None,
 ) -> Belief:
     """Deterministic belief for one (driver, fundamental) — pure function of
     the evidence currently persisted plus SCORING_MODEL_VERSION."""
@@ -673,7 +677,7 @@ def compute_belief(
         fundamental=fundamental_id, signal_status=signal_status,
         score=round(score, 2), confidence=round(confidence, 4),
         evidence_count=evidence_count,
-        trend=_trend(db, driver, fundamental_id, cohorts, config),
+        trend=_trend(db, driver, fundamental_id, cohorts, config, earlier_cache=earlier_cache, recent_cache=recent_cache),
         insufficient_reason=None,
         scoring_model_version=SCORING_MODEL_VERSION, taxonomy_version=TAXONOMY_VERSION,
         components=components,
@@ -686,10 +690,22 @@ def compute_all_beliefs(
 ) -> dict[str, Belief]:
     cohorts = _driver_cohorts(db, driver)
     cache = _CohortCache.build(db, driver, cohorts, config)
+    
+    dated = db.dated_self_lap_pks(driver)
+    k = config.model.trend_min_laps_per_bucket
+    earlier_cache = recent_cache = None
+    if len(dated) >= 2 * k:
+        half = len(dated) // 2
+        earlier_cache = _CohortCache.build(
+            db, driver, cohorts, config, lap_pks=frozenset(dated[:half]))
+        recent_cache = _CohortCache.build(
+            db, driver, cohorts, config, lap_pks=frozenset(dated[half:]))
+
     return {
         fid: compute_belief(
             db, driver=driver, fundamental_id=fid, config=config,
             cohorts=cohorts, cache=cache,
+            earlier_cache=earlier_cache, recent_cache=recent_cache,
         )
         for fid in sorted(FUNDAMENTALS)
     }

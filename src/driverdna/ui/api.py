@@ -1199,7 +1199,7 @@ def create_app(
         with open_db(request) as db:
             cohort = resolve(db, slug)
             return normalized(
-                build_cohort_payload(db, **cohort, config=load_config(config_path))
+                build_cohort_payload(db, driver=cohort["driver"], car=cohort["car"], track=cohort["track"], config=load_config(config_path))
             )
 
     @app.get("/api/cohorts/{slug}/corners")
@@ -1651,10 +1651,11 @@ def create_app(
             raise HTTPException(422, detail="status must be acknowledged or intentional")
         with open_db(request) as db:
             config = load_config(config_path)
+            cohorts = list_cohorts(db)
             known = {
                 f["finding_id"]
-                for c in list_cohorts(db)
-                for f in build_cohort_payload(db, **c, config=config)["findings"]
+                for c in cohorts
+                for f in build_cohort_payload(db, driver=c["driver"], car=c["car"], track=c["track"], config=config)["findings"]
             }
             if finding_id not in known:
                 raise HTTPException(404, detail=f"unknown finding: {finding_id}")
