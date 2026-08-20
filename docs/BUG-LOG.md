@@ -37,6 +37,7 @@ Writing that down is the point.
 
 ## Open
 
+
 ### BUG-019 â€” Test suite fails on ARM64, passes on x86
 - **Status**: open Â· **Severity**: breaks Â· **Found**: 2026-08-08
 - **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
@@ -69,6 +70,14 @@ Writing that down is the point.
 ---
 
 ## Fixed
+
+### BUG-039 — Logging out hides third-party login options
+- **Status**: fixed · **Severity**: usability · **Found**: 2026-08-20
+- **Symptom**: Logging out of the application removes the Google and Garage61 login buttons from the resulting sign-in page.
+- **Root cause**: `signOut()` in `app.jsx` called `setSession({ required: true, authenticated: false })`, which dropped the `google_enabled` and `garage61_enabled` fields previously loaded by the `/api/auth/status` endpoint.
+- **Blast radius**: The user is unable to log back in using external providers without hard-refreshing the application to force a new `/api/auth/status` fetch.
+- **How it was caught**: Manual user testing after logging out of a Google-linked account.
+- **How it was fixed**: Updated `setSession` in `signOut()` to spread the existing session state `setSession(s => ({ ...s, required: true, authenticated: false }))`, mirroring the handling in `onLost`.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
