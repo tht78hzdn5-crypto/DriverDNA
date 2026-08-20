@@ -15,6 +15,7 @@ validated-display client exists would invite unvalidated rendering).
 from __future__ import annotations
 
 import base64
+import gc
 import json
 import logging
 import queue
@@ -1908,6 +1909,7 @@ def create_app(
                         )
                         if summaries:
                             db.enforce_retention(config.retention.raw_laps_per_cohort)
+                        gc.collect()
                         q.put({
                             "type": "complete",
                             "results": [_cohort_sync_dict(s) for s in summaries],

@@ -1,15 +1,11 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-08-18 (multi-tenancy audited, docs reconciled — SPEC.md
-A53). Docs-only change: no code touched, no committed artifact moved.**
+**Snapshot date: 2026-08-20 (BUG-037 fixed: VM 2GB swap persisted + Garage61 sync memory optimizations).**
 
-- **What prompted it:** A32 (2026-07-28) recorded multi-user as built and
-  merged. `docs/DEPLOY-SPEC.md` then went on saying "no user table, no
-  registration, no tenant column"; `AGENTS.md` and `CLAUDE.md` kept opening
-  "personal instrument for one driver"; this log ran from 2026-07-28 to
-  2026-08-15 without naming A32 again. `docs/ACCOUNTS-SPEC.md:37-56` predicted
-  that failure and required the reconciling edits *in the same change as A32*.
-  They never happened.
+- **What prompted it:** Live outage during initial Garage61 account sync on the
+  1GB Oracle VM (Cloudflare error 1033). Resolved with persistent 2GB swap
+  allocation on the VM and per-cohort / per-lap memory cleanups (`gc.collect()`,
+  unreferencing raw CSVs/laps).
 - **A32 is live, not dead code.** `docs/DEPLOY-RUNBOOK.md` Part D step 5 makes
   `POST /api/auth/register` the documented way the owner creates their account
   on the VM, and registration ships in the built SPA bundle. Partitioning is
@@ -57,15 +53,11 @@ A53). Docs-only change: no code touched, no committed artifact moved.**
   binding constraint at beta scale — `MAX_CHAT_SESSIONS = 8` is instance-wide
   (`ui/api.py:149`), the service runs one uvicorn worker by construction, and
   SQLite is single-writer. Size the beta on concurrent activity, not disk.
-- **Verified counts:** `python3 -m pytest` → **975 passed, 42 skipped, 0
-  failed** (SQLite backend, Python 3.11, clean venv from `pip install -e
-  ".[dev]"`, 434 s). Unchanged by this work, which touches no code. The 42
-  skips are **26 browser** (`Chromium binary or built SPA not present` — the
-  built SPA is present, Chromium is not in this container) and **16
-  Postgres-absent**. Per AGENTS.md the browser skips are a **gap, not a pass**:
-  BUG-025 is exactly that hiding a real defect, and this environment cannot
-  close it. `tests/test_agent_contract.py` re-run green after the AGENTS.md
-  edits (9 passed); AGENTS.md is 10,914 chars against the 11,000 budget.
+- **Verified counts:** `python3 -m pytest -rs -m "not browser"` → **1057 passed,
+  19 skipped, 26 deselected, 0 failed** (SQLite backend, Python 3.14, clean dev
+  venv, 313 s). The 19 skips are **16 Postgres-absent** and **3 optional Gemini
+  SDK-absent**. The 26 deselected are browser tests. `tests/test_agent_contract.py`
+  green (9 passed).
 
 ---
 

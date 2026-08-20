@@ -72,6 +72,19 @@ Writing that down is the point.
 
 Newest first. The amendment named in each entry carries the full narrative.
 
+### BUG-037 — Garage61 multi-cohort sync exhausts memory on 1GB hosts (Cloudflare 1033)
+- **Status**: fixed 2026-08-20 · **Severity**: breaks · **Found**: 2026-08-20, live outage during initial sync
+- **Symptom**: Triggering a Garage61 sync on a newly registered account locks up the host VM and causes Cloudflare to return Error 1033 (service unreachable).
+- **Root cause**: `sync_driver` sequentially processed up to 40 cohorts (default raised in A53) and all associated laps. For each lap, raw multi-megabyte CSV bytes, decoded strings, parsed `TelemetryLap` objects, and intermediate trace segmentation/detection structures were allocated in Python memory without being unreferenced or collected between laps/cohorts. On memory-constrained hosts (the E2.1.Micro Oracle VM with ~960MB RAM and 0 swap), the rapid heap accumulation triggered unrecoverable Linux kernel OOM thrashing, freezing all host processes (including `cloudflared` and `sshd`).
+- **Blast radius**: `/api/sync` and `driverdna sync` on memory-constrained single-worker hosts running large initial syncs.
+- **Fix**:
+  1. Configured and persisted a 2GB swapfile (`/swapfile` in `/etc/fstab`) on the deployment VM to provide memory cushion against spikes.
+  2. In `src/driverdna/garage61/sync.py`: explicitly deleted raw `csv_bytes` and `lap` references immediately after use and invoked `gc.collect()` at the end of every cohort iteration.
+  3. In `src/driverdna/ui/api.py`: invoked `gc.collect()` after retention enforcement in `/api/sync`.
+- **Pinned by**: `tests/test_garage61_sync.py::test_sync_driver_cleans_up_memory_between_cohorts` (verifies GC collection runs per cohort during multi-cohort sync).
+- **How it was caught**: live user report after creating a new account and triggering sync.
+- **How it was missed**: local development machines and CI runners have 8GB+ RAM and swap, masking memory buildup across 40 cohorts.
+
 ### BUG-035 — All pre-A32 data belongs to an account nobody can log into
 - **Status**: fixed 2026-08-18 · **Severity**: data-loss · **SPEC**: A53 (found), fix landed same day
 - **Symptom**: on the live VM the owner is `user_pk=2`; every lap, belief and

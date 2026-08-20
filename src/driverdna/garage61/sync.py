@@ -23,9 +23,11 @@ per-cohort summary in `garage61_sync_state` for `driverdna sync` to report.
 
 from __future__ import annotations
 
+import gc
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Callable
+
 
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -256,6 +258,7 @@ def sync_driver(
             lap = parse_lap_text(
                 csv_bytes.decode("utf-8-sig"), source_label=source_label, lap_id=lap_id,
             )
+            del csv_bytes
             lap.quality_flags.append(
                 QualityFlag(
                     FlagCode.API_LAP_METADATA,
@@ -274,6 +277,7 @@ def sync_driver(
                 lap_date=item.get("startTime"),
                 config=config,
             )
+            del lap
             if result.was_new:
                 summary.laps_new += 1
                 _progress({
@@ -293,4 +297,6 @@ def sync_driver(
             "index": ci, "total": len(cohorts),
             "laps_seen": summary.laps_seen, "laps_new": summary.laps_new,
         })
+        del listing
+        gc.collect()
     return summaries
