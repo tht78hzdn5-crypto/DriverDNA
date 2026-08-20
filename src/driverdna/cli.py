@@ -1054,7 +1054,7 @@ def report(
                 typer.echo(f"error: no cohort matching {cohort!r}")
                 raise typer.Exit(code=2)
         for c in cohorts:
-            payload = build_cohort_payload(db, **c, config=config)
+            payload = build_cohort_payload(db, driver=c["driver"], car=c["car"], track=c["track"], config=config)
             base = out_dir / f"{slug(c['car'])}-{slug(c['track'])}"
             base.with_suffix(".md").write_text(render_cohort_markdown(payload))
             base.with_suffix(".json").write_text(to_normalized_json(payload))

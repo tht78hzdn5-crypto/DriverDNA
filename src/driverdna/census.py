@@ -45,7 +45,7 @@ from driverdna.model.scoring import (
     confidence_terms,
 )
 from driverdna.model.taxonomy import SignalStatus
-from driverdna.report.payload import build_cohort_payload, build_driver_payload
+from driverdna.report.payload import build_cohort_payload
 
 #: Confidence terms whose shortfall is closed by acquiring whole cohorts, and
 #: whose gain is therefore exactly computable. "evidence laps" is deliberately

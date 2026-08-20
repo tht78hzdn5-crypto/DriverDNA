@@ -356,7 +356,7 @@ def build_driver_payload(
             "cohort": f"{c['car']} @ {c['track']}",
         })
         rollup_payloads.append(
-            build_cohort_payload(db, **c, config=config, _for_driver_rollup=True)
+            build_cohort_payload(db, driver=c["driver"], car=c["car"], track=c["track"], config=config, _for_driver_rollup=True)
         )
 
     by_car_class: dict[str, dict[str, Any]] = {}
