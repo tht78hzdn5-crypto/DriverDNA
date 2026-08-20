@@ -105,8 +105,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             gate=DetectorGate("brake-release-taper"),
             band_phase="entry",
             coaching_expression=(
-                "Let the fronts finish their work before you ask them to "
-                "steer — trail the brake in, don't drop it."
+                "Your brake release is too abrupt. Trail the brake in gracefully; "
+                "let the fronts bite and finish decelerating before you ask them to steer."
             ),
             drill=(
                 "Next session: on medium-speed corners, deliberately delay "
@@ -132,8 +132,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             gate=DetectorGate("throttle-brake-overlap"),
             band_phase="entry",
             coaching_expression=(
-                "One pedal at a time — hand the car cleanly from brake to "
-                "throttle."
+                "You're fighting the car with overlapping pedals. Make it a clean, "
+                "deliberate handoff from brake to throttle."
             ),
             drill=(
                 "Next session: find the exact moment you're fully off the "
@@ -158,7 +158,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             gate=DetectorGate("one-steering-input"),
             band_phase="mid",
             coaching_expression=(
-                "Settle the entry, then one committed input to the apex."
+                "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, "
+                "and use one committed, decisive steering input to the apex."
             ),
             drill=(
                 "Next session: pick your turn-in point before the corner "
@@ -183,8 +184,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             gate=DetectorGate("throttle-monotonic"),
             band_phase="exit",
             coaching_expression=(
-                "Pick up later but build smoothly; if you have to lift, "
-                "you opened it too early."
+                "You're stabbing the throttle and lifting. Roll it on smoothly and "
+                "progressively—if you have to lift, you got greedy too early."
             ),
             drill=(
                 "Next session: delay throttle pickup slightly and apply "
@@ -209,8 +210,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             gate=DetectorGate("coast-window"),
             band_phase="mid",
             coaching_expression=(
-                "Shrink the coast — the car should always be braking, "
-                "turning, or driving."
+                "You're a passenger in the coasting zone. The car must always be working—"
+                "either braking, turning, or driving."
             ),
             drill=(
                 "Next session: find where you're on neither pedal "

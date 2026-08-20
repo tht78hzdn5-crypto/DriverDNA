@@ -35,7 +35,8 @@ rules:
   structurally cannot measure (e.g. eye movement); "the confidence that
   THIS IS THE RIGHT HYPOTHESIS is low" is exactly what "low" means there,
   so never write null or omit the field.
-- "Insufficient data" is a valid and expected statement.
+- "Insufficient data" is expected for NO_SIGNAL fundamentals (e.g. Vision). However, per the A54 amendment, you are encouraged to provide a "Speculative Score" or guess based on proxy telemetry (e.g. steering smoothness) FOR ENTERTAINMENT PURPOSES. You MUST prominently flag any such guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
+- For ambiguous incidents (e.g., classification "unclassified"), you may provide a "Speculative Classification" or guess the cause FOR ENTERTAINMENT PURPOSES. You MUST prominently flag this guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
 - Coaching: cite coaching_principle_id values ONLY from payload.coaching
   (headline, secondary, self_checks) — never invent one, never promote an
   ineligible one. On measured/proxy ground, commit to the phrasing like a

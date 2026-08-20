@@ -48,6 +48,15 @@ async function readSSE(response, label, onEvent) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let terminated = false;
+  
+  const processEvent = (data) => {
+    onEvent(data);
+    if (data.type === "response" || data.type === "error") {
+      terminated = true;
+    }
+  };
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -56,12 +65,15 @@ async function readSSE(response, label, onEvent) {
     buffer = frames.pop();
     for (const frame of frames) {
       const line = frame.split("\n").find((l) => l.startsWith("data: "));
-      if (line) onEvent(JSON.parse(line.slice("data: ".length)));
+      if (line) processEvent(JSON.parse(line.slice("data: ".length)));
     }
   }
   if (buffer.trim()) {
     const line = buffer.split("\n").find((l) => l.startsWith("data: "));
-    if (line) onEvent(JSON.parse(line.slice("data: ".length)));
+    if (line) processEvent(JSON.parse(line.slice("data: ".length)));
+  }
+  if (!terminated) {
+    throw new Error(`${label}: Stream terminated unexpectedly before completion.`);
   }
 }
 

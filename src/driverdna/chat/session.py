@@ -34,8 +34,7 @@ Hard rules:
 - Never invent a measurement. Any number with a unit must come from the
   bundle or a tool result in this turn. Cite finding IDs or obs:<n> refs
   for measured claims.
-- "Insufficient data" and "not measured" are correct answers (e.g. tire
-  slip has no channel and is never inferred). Say so plainly.
+- "Insufficient data" and "not measured" are expected for NO_SIGNAL fundamentals (e.g. Vision). However, per the A54 amendment, you are encouraged to provide a "Speculative Score" or guess based on proxy telemetry (e.g. steering smoothness, track position) FOR ENTERTAINMENT PURPOSES. You MUST prominently flag any such guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
 - Anything beyond the measurements is a hypothesis: label it as your
   interpretation with its basis. Racing canon may explain a finding but is
   never a measurement of this driver.
@@ -47,11 +46,13 @@ Hard rules:
   NEVER attach a confidence value or percentage to it, at any level.
 - Incidents: bundle.report.incidents.events lists detected spins/offs/
   near-stops, each already carrying the engine's own classification. Only
-  an incident whose coaching_principle_id is not null is even citable — if
-  the driver asks about one that isn't in your known IDs, that means the
-  engine itself could not name a clean cause; say so plainly ("detected,
-  but the trace wasn't clean enough to name a cause") rather than guessing
-  one. When an incident IS citable, explain the engine's own classification
+  an incident whose coaching_principle_id is not null is generally citable.
+  If the driver asks about one that isn't in your known IDs, that means the
+  engine itself could not name a clean cause. Per the A54 amendment, you
+  may analyze the surrounding metrics and provide a "Speculative Classification"
+  or guess the cause FOR ENTERTAINMENT PURPOSES. You MUST prominently flag this
+  guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
+  When an incident IS citable, explain the engine's own classification
   and what it suggests practicing — you narrate its verdict, you never
   pick or override it. Every incident is one lap's event (N=1), never a
   claim about the driver in general.
@@ -399,45 +400,56 @@ class ChatSession:
         self._messages.append({"role": "user", "content": text})
         yield {"type": "thinking"}
 
-        violations: list[str] = []
-        for attempt in (1, 2):
-            try:
-                reply, tool_pool, effects = yield from self._drive_provider_stream()
-            except GroundingError as e:  # MAX_TOOL_STEPS exceeded
-                violations = e.violations
-                break
-            yield {"type": "validating"}
-            violations = self._validate(reply, tool_pool)
-            if not violations:
-                cited = set(_ID_TOKEN.findall(reply))
-                self.db.add_chat_turn(
-                    session_id=self.session_id,
-                    bundle_version=self.bundle["bundle_version"],
-                    role="assistant", content=reply,
-                    evidence_cited=sorted(cited), effects=effects,
-                )
-                yield {"type": "response", "text": reply, "evidence": sorted(cited),
-                       "effects": effects, "staged": list(self.staged)}
-                return
-            if attempt == 1:
-                self._messages.append({
-                    "role": "user",
-                    "content": "GROUNDING VIOLATIONS — regenerate, citing only "
-                               "IDs from the bundle and numbers from the bundle "
-                               f"or tool results: {'; '.join(violations)}",
-                })
-                yield {"type": "thinking"}
+        try:
+            violations: list[str] = []
+            for attempt in (1, 2):
+                try:
+                    reply, tool_pool, effects = yield from self._drive_provider_stream()
+                except GroundingError as e:  # MAX_TOOL_STEPS exceeded
+                    violations = e.violations
+                    break
+                yield {"type": "validating"}
+                violations = self._validate(reply, tool_pool)
+                if not violations:
+                    cited = set(_ID_TOKEN.findall(reply))
+                    self.db.add_chat_turn(
+                        session_id=self.session_id,
+                        bundle_version=self.bundle["bundle_version"],
+                        role="assistant", content=reply,
+                        evidence_cited=sorted(cited), effects=effects,
+                    )
+                    yield {"type": "response", "text": reply, "evidence": sorted(cited),
+                           "effects": effects, "staged": list(self.staged)}
+                    return
+                if attempt == 1:
+                    self._messages.append({
+                        "role": "user",
+                        "content": "GROUNDING VIOLATIONS — regenerate, citing only "
+                                   "IDs from the bundle and numbers from the bundle "
+                                   f"or tool results: {'; '.join(violations)}",
+                    })
+                    yield {"type": "thinking"}
 
-        error_text = (
-            "response rejected by the grounding contract (after one "
-            f"regeneration): {'; '.join(violations)}"
-        )
-        self.db.add_chat_turn(
-            session_id=self.session_id,
-            bundle_version=self.bundle["bundle_version"],
-            role="system-event", content=error_text,
-        )
-        yield {"type": "error", "error": error_text}
+            error_text = (
+                "response rejected by the grounding contract (after one "
+                f"regeneration): {'; '.join(violations)}"
+            )
+            self.db.add_chat_turn(
+                session_id=self.session_id,
+                bundle_version=self.bundle["bundle_version"],
+                role="system-event", content=error_text,
+            )
+            yield {"type": "error", "error": error_text}
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            error_text = f"backend generation failed: {type(e).__name__}: {e}"
+            self.db.add_chat_turn(
+                session_id=self.session_id,
+                bundle_version=self.bundle["bundle_version"],
+                role="system-event", content=error_text,
+            )
+            yield {"type": "error", "error": error_text}
 
     def _drive_provider_stream(self) -> Iterator[dict[str, Any]]:
         """Yields ``consulting_tool`` audit events as each read-only tool

@@ -1,0 +1,3649 @@
+{
+ "caveats": [
+  "lap validity has no source channel: statistical outlier screening with counts, never silent exclusion",
+  "no session metadata for these laps: session-gated findings are suppressed and stint-position control is unavailable"
+ ],
+ "coaching": {
+  "headline": null,
+  "headline_reason": "insufficient data for the headline slot: nothing clears the notable gap band yet",
+  "ontology_version": "coach-onto-v4",
+  "secondary": [],
+  "self_checks": [
+   {
+    "coaching_principle_id": "cp.eye_line.look_further",
+    "corner_id": null,
+    "driving_principle": "Where the eyes point is where the hands steer toward. Looking at the apex instead of through it tends to produce a line that arrives at the apex correctly and has nowhere good to go after it.",
+    "evidence_ids": [],
+    "fundamental": "vision",
+    "gap_band": null,
+    "magnitude": null,
+    "magnitude_kind": null,
+    "n": 0,
+    "self_check": {
+     "basis": "Where the eyes point is where the hands tend to steer toward; there is no eye-tracking channel in the telemetry, so this can never be measured, only self-tested.",
+     "instruction": "Say out loud where you're looking the instant you turn in. If you can't answer before you're already at the apex, you're looking too late.",
+     "label": "coaching hypothesis, not a measurement \u2014 we can't see your eyes"
+    },
+    "signal_status": "no_signal",
+    "technique": "eye_line",
+    "thin_evidence": false
+   }
+  ],
+  "silent_count": 12,
+  "strengths": []
+ },
+ "cohort": {
+  "car": "Mustang",
+  "driver": "owner",
+  "lap_delta_s": [
+   0.0
+  ],
+  "lap_durations_s": [
+   97.2667
+  ],
+  "lap_ids": [
+   "RH11X7"
+  ],
+  "lap_incomplete": [
+   false
+  ],
+  "n_laps": 1,
+  "n_sessions": 0,
+  "track": "Laguna Seca"
+ },
+ "corner_map": [
+  {
+   "apex_pct": 13.58,
+   "class": "slow",
+   "corner_id": "C01",
+   "windows": {
+    "apex": 0.135827,
+    "entry_start": 0.066335,
+    "exit_end": 0.149647,
+    "turn_in": 0.040624
+   }
+  },
+  {
+   "apex_pct": 21.18,
+   "class": "medium",
+   "corner_id": "C02",
+   "windows": {
+    "apex": 0.211761,
+    "entry_start": 0.170811,
+    "exit_end": 0.227591,
+    "turn_in": 0.179702
+   }
+  },
+  {
+   "apex_pct": 27.81,
+   "class": "medium",
+   "corner_id": "C03",
+   "windows": {
+    "apex": 0.278071,
+    "entry_start": 0.259698,
+    "exit_end": 0.305247,
+    "turn_in": 0.270391
+   }
+  },
+  {
+   "apex_pct": 41.02,
+   "class": "medium",
+   "corner_id": "C04",
+   "windows": {
+    "apex": 0.410249,
+    "entry_start": 0.376025,
+    "exit_end": 0.441839,
+    "turn_in": 0.403195
+   }
+  },
+  {
+   "apex_pct": 53.31,
+   "class": "medium",
+   "corner_id": "C05",
+   "windows": {
+    "apex": 0.533116,
+    "entry_start": 0.504942,
+    "exit_end": 0.545356,
+    "turn_in": 0.527279
+   }
+  },
+  {
+   "apex_pct": 55.56,
+   "class": "medium",
+   "corner_id": "C06",
+   "windows": {
+    "apex": 0.555612,
+    "entry_start": null,
+    "exit_end": 0.555612,
+    "turn_in": 0.555612
+   }
+  },
+  {
+   "apex_pct": 68.45,
+   "class": "slow",
+   "corner_id": "C07",
+   "windows": {
+    "apex": 0.684505,
+    "entry_start": 0.63108,
+    "exit_end": 0.702211,
+    "turn_in": 0.648824
+   }
+  },
+  {
+   "apex_pct": 75.96,
+   "class": "medium",
+   "corner_id": "C08",
+   "windows": {
+    "apex": 0.759566,
+    "entry_start": 0.728646,
+    "exit_end": 0.770767,
+    "turn_in": 0.71758
+   }
+  },
+  {
+   "apex_pct": 82.31,
+   "class": "medium",
+   "corner_id": "C09",
+   "windows": {
+    "apex": 0.823086,
+    "entry_start": 0.794954,
+    "exit_end": 0.841756,
+    "turn_in": 0.807895
+   }
+  },
+  {
+   "apex_pct": 90.85,
+   "class": "slow",
+   "corner_id": "C10",
+   "windows": {
+    "apex": 0.908492,
+    "entry_start": 0.871674,
+    "exit_end": 0.913513,
+    "turn_in": 0.893367
+   }
+  }
+ ],
+ "cumulative_loss": {
+  "by_class": {
+   "medium": 0.0,
+   "slow": 0.0
+  },
+  "by_phase": {
+   "entry": 0.0,
+   "exit": 0.0,
+   "mid": 0.0
+  },
+  "outliers_screened": {},
+  "per_corner": {
+   "C01": {
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C02": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C03": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C04": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C05": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C07": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C08": {
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C09": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   },
+   "C10": {
+    "entry": 0.0,
+    "exit": 0.0,
+    "mid": 0.0
+   }
+  },
+  "per_corner_phase_n": {
+   "C01": {
+    "exit": 1,
+    "mid": 1
+   },
+   "C02": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C03": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C04": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C05": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C07": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C08": {
+    "exit": 1,
+    "mid": 1
+   },
+   "C09": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   },
+   "C10": {
+    "entry": 1,
+    "exit": 1,
+    "mid": 1
+   }
+  },
+  "per_corner_total": {
+   "C01": 0.0,
+   "C02": 0.0,
+   "C03": 0.0,
+   "C04": 0.0,
+   "C05": 0.0,
+   "C07": 0.0,
+   "C08": 0.0,
+   "C09": 0.0,
+   "C10": 0.0
+  }
+ },
+ "driver_model": {
+  "beliefs": {
+   "braking": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 253,
+      "value": 0.9565,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 596,
+      "value": 0.344,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.35
+     }
+    },
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Braking",
+    "score": 80.52,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "commitment": {
+    "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 94,
+      "value": 0.0,
+      "weight": 0.4167
+     },
+     "opportunity": {
+      "n": 88,
+      "value": 0.9617,
+      "weight": 0.5833
+     }
+    },
+    "confidence": 0.5,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Commitment",
+    "score": 56.1,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "consistency": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 2017,
+      "value": 0.3431,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Consistency",
+    "score": 34.31,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "corner_exit": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 122,
+      "value": 0.6967,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 472,
+      "value": 0.1635,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9497,
+      "weight": 0.35
+     }
+    },
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Corner exit",
+    "score": 65.19,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "rotation": {
+    "basis_reason": null,
+    "components": {
+     "adherence": {
+      "n": 224,
+      "value": 0.4777,
+      "weight": 0.4
+     },
+     "consistency": {
+      "n": 866,
+      "value": 0.3552,
+      "weight": 0.25
+     },
+     "opportunity": {
+      "n": 116,
+      "value": 0.9196,
+      "weight": 0.35
+     }
+    },
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Rotation",
+    "score": 60.17,
+    "signal_status": "measured",
+    "trend": "unavailable"
+   },
+   "vehicle_management": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+    "components": {
+     "adherence": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     },
+     "consistency": {
+      "n": 83,
+      "value": 0.0,
+      "weight": 1.0
+     },
+     "opportunity": {
+      "n": 0,
+      "value": null,
+      "weight": 0.0
+     }
+    },
+    "confidence": 0.5,
+    "evidence_count": 12,
+    "insufficient_reason": null,
+    "label": "Vehicle mgmt",
+    "score": 0.0,
+    "signal_status": "proxy",
+    "trend": "unavailable"
+   },
+   "vision": {
+    "basis_reason": null,
+    "components": {},
+    "confidence": 0.0,
+    "evidence_count": 0,
+    "insufficient_reason": "no telemetry channel for this fundamental \u2014 never inferred (docs/COACHING.md's tri-state signal rule)",
+    "label": "Vision",
+    "score": null,
+    "signal_status": "no_signal",
+    "trend": "unavailable"
+   }
+  },
+  "driver": "owner",
+  "note": "model estimate, not a measurement of truth \u2014 confidence and evidence count say how much to trust it; more laps (more sessions, tracks, cars) sharpen it",
+  "reading": {
+   "basis": "rank_within_driver",
+   "excluded_proxy": [
+    "commitment",
+    "vehicle_management"
+   ],
+   "min_confidence": 0.6017,
+   "ordering": [
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "braking",
+     "score": 80.52,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "corner_exit",
+     "score": 65.19,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 60.17,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "commitment",
+     "score": 56.1,
+     "signal_status": "proxy"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "consistency",
+     "score": 34.31,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
+     "confidence": 0.5,
+     "evidence_count": 12,
+     "fundamental": "vehicle_management",
+     "score": 0.0,
+     "signal_status": "proxy"
+    }
+   ],
+   "reading_version": "read-v1",
+   "separation_points": 46.21,
+   "strongest": {
+    "basis_reason": null,
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "braking",
+    "score": 80.52,
+    "signal_status": "measured"
+   },
+   "verdict_reason": null,
+   "weakest": {
+    "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+    "confidence": 0.6017,
+    "evidence_count": 12,
+    "fundamental": "consistency",
+    "score": 34.31,
+    "signal_status": "measured"
+   }
+  },
+  "scoring_model_version": "dm-v2",
+  "taxonomy_version": "pyramid-v1"
+ },
+ "findings": [
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:1"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C01:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:1"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C01:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C02:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C02:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C02:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:3"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C03:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:3"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C03:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:3"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C03:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:4"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C04:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:4"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C04:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:4"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C04:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:5"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C05:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:5"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C05:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:5"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C05:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C07:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C07:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C07:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:8"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C08:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:8"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C08:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:9"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C09:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:9"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C09:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:9"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C09:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10 entry: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:10"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C10:entry:opportunity",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "entry",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10 mid-corner: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:10"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C10:mid:opportunity",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "mid",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10 exit: insufficient laps to compare",
+   "details": {
+    "n_outliers": 0,
+    "n_sessions": 0,
+    "opportunity_s": null,
+    "rank_score": null,
+    "repeatability": null
+   },
+   "evidence_ids": [
+    "obs:10"
+   ],
+   "finding_id": "vs-self:Mustang:Laguna_Seca:C10:exit:opportunity",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "opportunity",
+   "n": 1,
+   "phase": "exit",
+   "seconds": null,
+   "shown": false,
+   "source": "vs-self",
+   "spread": 0.0,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C01:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01: coasting mid-corner on 1 of 1 laps",
+   "details": {
+    "rationale": "Between brake release and throttle pickup the car should be working, not coasting; 1.35 s with neither pedal is time the corner gives nobody.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:1"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C01:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01: extra steering corrections on 1 of 1 laps",
+   "details": {
+    "rationale": "One committed steering input entry to apex; 10 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:1"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C01:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C01:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C01",
+   "description": "C01: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C01:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C02:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02: coasting mid-corner on 1 of 1 laps",
+   "details": {
+    "rationale": "Between brake release and throttle pickup the car should be working, not coasting; 0.85 s with neither pedal is time the corner gives nobody.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C02:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02: extra steering corrections on 1 of 1 laps",
+   "details": {
+    "rationale": "One committed steering input entry to apex; 2 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C02:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02: throttle and brake overlapping on 1 of 1 laps",
+   "details": {
+    "rationale": "Throttle and brake should not work against each other; 0.78 s of overlap in this corner wastes both.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:2"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C02:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C02",
+   "description": "C02: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C02:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C03:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03: coasting mid-corner on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C03:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03: extra steering corrections on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C03:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C03:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C03",
+   "description": "C03: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C03:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C04:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04: coasting mid-corner on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C04:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04: extra steering corrections on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C04:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C04:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C04",
+   "description": "C04: lifting after throttle pickup on 1 of 1 laps",
+   "details": {
+    "rationale": "Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:4"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C04:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C05:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05: coasting mid-corner on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C05:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05: extra steering corrections on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C05:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C05:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C05",
+   "description": "C05: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C05:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C06",
+   "description": "C06: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C06:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C07:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07: coasting mid-corner on 1 of 1 laps",
+   "details": {
+    "rationale": "Between brake release and throttle pickup the car should be working, not coasting; 1.62 s with neither pedal is time the corner gives nobody.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C07:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07: extra steering corrections on 1 of 1 laps",
+   "details": {
+    "rationale": "One committed steering input entry to apex; 8 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C07:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07: throttle and brake overlapping on 1 of 1 laps",
+   "details": {
+    "rationale": "Throttle and brake should not work against each other; 0.90 s of overlap in this corner wastes both.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C07:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C07",
+   "description": "C07: lifting after throttle pickup on 1 of 1 laps",
+   "details": {
+    "rationale": "Once picked up, throttle should build monotonically to full; 1 lift(s)/stab(s) before full throttle mean the pickup came earlier than the car could take.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:7"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C07:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C08:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08: coasting mid-corner on 1 of 1 laps",
+   "details": {
+    "rationale": "Between brake release and throttle pickup the car should be working, not coasting; 1.78 s with neither pedal is time the corner gives nobody.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:8"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C08:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08: extra steering corrections on 1 of 1 laps",
+   "details": {
+    "rationale": "One committed steering input entry to apex; 5 correction(s) beyond the jitter floor suggest the entry (speed, line, or vision) wasn't settled.",
+    "trigger_rate": 1.0,
+    "triggered": 1
+   },
+   "evidence_ids": [
+    "obs:8"
+   ],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C08:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C08:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C08",
+   "description": "C08: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C08:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C09:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09: coasting mid-corner on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C09:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09: extra steering corrections on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C09:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C09:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C09",
+   "description": "C09: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C09:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10: brake released before turn-in on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C10:-:brake-release-taper",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "brake-release-taper",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10: coasting mid-corner on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C10:-:coast-window",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "coast-window",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10: extra steering corrections on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C10:-:one-steering-input",
+   "fundamental": "rotation",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "one-steering-input",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10: throttle and brake overlapping on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C10:-:throttle-brake-overlap",
+   "fundamental": "braking",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-brake-overlap",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  },
+  {
+   "annotation": null,
+   "car": "Mustang",
+   "corner_id": "C10",
+   "description": "C10: lifting after throttle pickup on 0 of 1 laps",
+   "details": {
+    "rationale": "",
+    "trigger_rate": 0.0,
+    "triggered": 0
+   },
+   "evidence_ids": [],
+   "finding_id": "vs-principle:Mustang:Laguna_Seca:C10:-:throttle-monotonic",
+   "fundamental": "corner_exit",
+   "gate_reason": "insufficient data: 1 phase samples < 10",
+   "kind": "throttle-monotonic",
+   "n": 1,
+   "phase": null,
+   "seconds": null,
+   "shown": false,
+   "source": "vs-principle",
+   "spread": null,
+   "track": "Laguna Seca"
+  }
+ ],
+ "incidents": {
+  "events": [],
+  "n": 0,
+  "note": "Incidents are single events (N=1): this lap did X, decomposable to the trace. Not a driver trait, and never priced as recoverable time. An 'unclassified' incident is detected but its cause was not clean enough to name \u2014 stated, not guessed."
+ },
+ "metric_definitions": {
+  "abs_active_ratio": {
+   "description": "Share of braking time with ABS active.",
+   "unit": "fraction"
+  },
+  "apex_dist_pct": {
+   "description": "Where the minimum-speed point sits.",
+   "unit": "% lap"
+  },
+  "brake_application_rate": {
+   "description": "How fast the pedal rises from first application to peak.",
+   "unit": "fraction/s"
+  },
+  "brake_peak": {
+   "description": "Maximum brake pedal reached in the corner.",
+   "unit": "fraction"
+  },
+  "brake_point_dist_pct": {
+   "description": "Where braking for the corner begins.",
+   "unit": "% lap"
+  },
+  "brake_release_duration_s": {
+   "description": "Time taken to release the brake: from last near-peak pressure to off.",
+   "unit": "s"
+  },
+  "coast_s": {
+   "description": "Time between brake release and throttle pickup with neither pedal working.",
+   "unit": "s"
+  },
+  "exit_accel_ms2": {
+   "description": "Mean longitudinal acceleration from apex to full throttle.",
+   "unit": "m/s^2"
+  },
+  "full_throttle_dist_pct": {
+   "description": "Where sustained full throttle begins.",
+   "unit": "% lap"
+  },
+  "min_speed_kmh": {
+   "description": "Minimum corner speed at the primary apex.",
+   "unit": "km/h"
+  },
+  "steering_corrections": {
+   "description": "Steering-rate sign reversals between turn-in and apex beyond the jitter floor.",
+   "unit": "count"
+  },
+  "steering_smoothness_dps2": {
+   "description": "RMS steering acceleration turn-in to apex; lower is smoother.",
+   "unit": "deg/s^2"
+  },
+  "throttle_brake_overlap_s": {
+   "description": "Time with throttle and brake applied together.",
+   "unit": "s"
+  },
+  "throttle_modulation_count": {
+   "description": "Throttle lifts/stabs between pickup and full throttle.",
+   "unit": "count"
+  },
+  "throttle_pickup_dist_pct": {
+   "description": "Where throttle is first picked up after the corner's final lift.",
+   "unit": "% lap"
+  },
+  "trail_brake_overlap_s": {
+   "description": "Time spent braking while steering (trail braking).",
+   "unit": "s"
+  },
+  "turn_in_dist_pct": {
+   "description": "Where sustained steering for the corner begins.",
+   "unit": "% lap"
+  },
+  "yaw_peak_rate": {
+   "description": "Peak yaw rate in the corner (rotation actually achieved).",
+   "unit": "rad/s"
+  }
+ },
+ "metrics": {
+  "C01": {
+   "abs_active_ratio": {
+    "mean": 0.149701,
+    "median": 0.149701,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 13.582712,
+    "median": 13.582712,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.371666,
+    "median": 0.371666,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.68569,
+    "median": 0.68569,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 6.633493,
+    "median": 6.633493,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 3.483333,
+    "median": 3.483333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 1.35,
+    "median": 1.35,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 2.077765,
+    "median": 2.077765,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 14.964718,
+    "median": 14.964718,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 74.57027,
+    "median": 74.57027,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 10.0,
+    "median": 10.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 239.099399,
+    "median": 239.099399,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.7,
+    "median": 0.7,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 13.534646,
+    "median": 13.534646,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 2.266667,
+    "median": 2.266667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 4.062374,
+    "median": 4.062374,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.72466,
+    "median": 0.72466,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C02": {
+   "abs_active_ratio": {
+    "mean": 0.037594,
+    "median": 0.037594,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 21.176066,
+    "median": 21.176066,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.163323,
+    "median": 0.163323,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.555582,
+    "median": 0.555582,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 17.081103,
+    "median": 17.081103,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.433333,
+    "median": 0.433333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.85,
+    "median": 0.85,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 2.686147,
+    "median": 2.686147,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 22.75908,
+    "median": 22.75908,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 97.932679,
+    "median": 97.932679,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 2.0,
+    "median": 2.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 174.012892,
+    "median": 174.012892,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.783333,
+    "median": 0.783333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 21.113914,
+    "median": 21.113914,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.066667,
+    "median": 1.066667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 17.970185,
+    "median": 17.970185,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.577695,
+    "median": 0.577695,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C03": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 27.80712,
+    "median": 27.80712,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.845347,
+    "median": 0.845347,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.675086,
+    "median": 0.675086,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 25.969753,
+    "median": 25.969753,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.366667,
+    "median": 0.366667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.283333,
+    "median": 0.283333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.170053,
+    "median": 1.170053,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 30.62797,
+    "median": 30.62797,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 121.182026,
+    "median": 121.182026,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 176.285932,
+    "median": 176.285932,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.466667,
+    "median": 0.466667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 27.743962,
+    "median": 27.743962,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.35,
+    "median": 0.35,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 27.039143,
+    "median": 27.039143,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.499969,
+    "median": 0.499969,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C04": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 41.024944,
+    "median": 41.024944,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.318255,
+    "median": 0.318255,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.627309,
+    "median": 0.627309,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 37.602526,
+    "median": 37.602526,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.5,
+    "median": 0.5,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.016667,
+    "median": 0.016667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.040806,
+    "median": 1.040806,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 44.183943,
+    "median": 44.183943,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 114.20667,
+    "median": 114.20667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 1.0,
+    "median": 1.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 297.936659,
+    "median": 297.936659,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.683333,
+    "median": 0.683333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 1.0,
+    "median": 1.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 40.73879,
+    "median": 40.73879,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.366667,
+    "median": 0.366667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 40.319476,
+    "median": 40.319476,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.543258,
+    "median": 0.543258,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C05": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 53.3116,
+    "median": 53.3116,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.683506,
+    "median": 0.683506,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.668176,
+    "median": 0.668176,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 50.494224,
+    "median": 50.494224,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 1.2,
+    "median": 1.2,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 2.880881,
+    "median": 2.880881,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 54.535615,
+    "median": 54.535615,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 110.71368,
+    "median": 110.71368,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 335.055753,
+    "median": 335.055753,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.666667,
+    "median": 0.666667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 53.23978,
+    "median": 53.23978,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.566667,
+    "median": 0.566667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 52.727854,
+    "median": 52.727854,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.576758,
+    "median": 0.576758,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C06": {
+   "apex_dist_pct": {
+    "mean": 55.56125,
+    "median": 55.56125,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 55.56125,
+    "median": 55.56125,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 137.722896,
+    "median": 137.722896,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 55.56125,
+    "median": 55.56125,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 55.56125,
+    "median": 55.56125,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.195227,
+    "median": 0.195227,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C07": {
+   "abs_active_ratio": {
+    "mean": 0.035587,
+    "median": 0.035587,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 68.45048,
+    "median": 68.45048,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.463879,
+    "median": 0.463879,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.541999,
+    "median": 0.541999,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 63.10803,
+    "median": 63.10803,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 2.916667,
+    "median": 2.916667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 1.616667,
+    "median": 1.616667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.471644,
+    "median": 1.471644,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 70.22114,
+    "median": 70.22114,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 67.825127,
+    "median": 67.825127,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 8.0,
+    "median": 8.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 540.837051,
+    "median": 540.837051,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.9,
+    "median": 0.9,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 1.0,
+    "median": 1.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 68.41594,
+    "median": 68.41594,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 2.116667,
+    "median": 2.116667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 64.882445,
+    "median": 64.882445,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 1.055596,
+    "median": 1.055596,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C08": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 75.95663,
+    "median": 75.95663,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.881158,
+    "median": 0.881158,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.458358,
+    "median": 0.458358,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 72.864634,
+    "median": 72.864634,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.533333,
+    "median": 0.533333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 1.783333,
+    "median": 1.783333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 1.150762,
+    "median": 1.150762,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 77.076733,
+    "median": 77.076733,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 125.046648,
+    "median": 125.046648,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 5.0,
+    "median": 5.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 282.330286,
+    "median": 282.330286,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.216667,
+    "median": 0.216667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 75.85942,
+    "median": 75.85942,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.85,
+    "median": 0.85,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 71.758026,
+    "median": 71.758026,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.603963,
+    "median": 0.603963,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C09": {
+   "abs_active_ratio": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 82.308567,
+    "median": 82.308567,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.466369,
+    "median": 0.466369,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.52377,
+    "median": 0.52377,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 79.495406,
+    "median": 79.495406,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 0.733333,
+    "median": 0.733333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.466667,
+    "median": 0.466667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 2.031063,
+    "median": 2.031063,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 84.46484,
+    "median": 84.46484,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 112.541962,
+    "median": 112.541962,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 162.836457,
+    "median": 162.836457,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.5,
+    "median": 0.5,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 82.221806,
+    "median": 82.221806,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 0.966667,
+    "median": 0.966667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 80.78954,
+    "median": 80.78954,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.548219,
+    "median": 0.548219,
+    "n": 1,
+    "spread": 0.0
+   }
+  },
+  "C10": {
+   "abs_active_ratio": {
+    "mean": 0.02765,
+    "median": 0.02765,
+    "n": 1,
+    "spread": 0.0
+   },
+   "apex_dist_pct": {
+    "mean": 90.849173,
+    "median": 90.849173,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_application_rate": {
+    "mean": 0.399557,
+    "median": 0.399557,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_peak": {
+    "mean": 0.66341,
+    "median": 0.66341,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_point_dist_pct": {
+    "mean": 87.16741,
+    "median": 87.16741,
+    "n": 1,
+    "spread": 0.0
+   },
+   "brake_release_duration_s": {
+    "mean": 2.916667,
+    "median": 2.916667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "coast_s": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "exit_accel_ms2": {
+    "mean": 4.137179,
+    "median": 4.137179,
+    "n": 1,
+    "spread": 0.0
+   },
+   "full_throttle_dist_pct": {
+    "mean": 91.351265,
+    "median": 91.351265,
+    "n": 1,
+    "spread": 0.0
+   },
+   "min_speed_kmh": {
+    "mean": 62.857836,
+    "median": 62.857836,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_corrections": {
+    "mean": 1.0,
+    "median": 1.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "steering_smoothness_dps2": {
+    "mean": 292.053961,
+    "median": 292.053961,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_brake_overlap_s": {
+    "mean": 0.433333,
+    "median": 0.433333,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_modulation_count": {
+    "mean": 0.0,
+    "median": 0.0,
+    "n": 1,
+    "spread": 0.0
+   },
+   "throttle_pickup_dist_pct": {
+    "mean": 90.80974,
+    "median": 90.80974,
+    "n": 1,
+    "spread": 0.0
+   },
+   "trail_brake_overlap_s": {
+    "mean": 1.516667,
+    "median": 1.516667,
+    "n": 1,
+    "spread": 0.0
+   },
+   "turn_in_dist_pct": {
+    "mean": 89.33666,
+    "median": 89.33666,
+    "n": 1,
+    "spread": 0.0
+   },
+   "yaw_peak_rate": {
+    "mean": 0.879131,
+    "median": 0.879131,
+    "n": 1,
+    "spread": 0.0
+   }
+  }
+ },
+ "payload_version": 9,
+ "phase_baselines": {
+  "C01": {
+   "exit": {
+    "median_s": 2.216667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.216667,
+    "single_best_s": 2.216667,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 8.983333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 8.983333,
+    "single_best_s": 8.983333,
+    "spread_s": 0.0
+   }
+  },
+  "C02": {
+   "entry": {
+    "median_s": 0.9,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.9,
+    "single_best_s": 0.9,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 1.966667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.966667,
+    "single_best_s": 1.966667,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 3.616667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 3.616667,
+    "single_best_s": 3.616667,
+    "spread_s": 0.0
+   }
+  },
+  "C03": {
+   "entry": {
+    "median_s": 0.916667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.916667,
+    "single_best_s": 0.916667,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 2.833333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.833333,
+    "single_best_s": 2.833333,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 0.783333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.783333,
+    "single_best_s": 0.783333,
+    "spread_s": 0.0
+   }
+  },
+  "C04": {
+   "entry": {
+    "median_s": 2.15,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.15,
+    "single_best_s": 2.15,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 3.5,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 3.5,
+    "single_best_s": 3.5,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 0.766667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.766667,
+    "single_best_s": 0.766667,
+    "spread_s": 0.0
+   }
+  },
+  "C05": {
+   "entry": {
+    "median_s": 1.866667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.866667,
+    "single_best_s": 1.866667,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 1.35,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.35,
+    "single_best_s": 1.35,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 0.65,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.65,
+    "single_best_s": 0.65,
+    "spread_s": 0.0
+   }
+  },
+  "C07": {
+   "entry": {
+    "median_s": 1.333333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.333333,
+    "single_best_s": 1.333333,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 2.916667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.916667,
+    "single_best_s": 2.916667,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 4.733333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 4.733333,
+    "single_best_s": 4.733333,
+    "spread_s": 0.0
+   }
+  },
+  "C08": {
+   "exit": {
+    "median_s": 1.133333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.133333,
+    "single_best_s": 1.133333,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 3.916667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 3.916667,
+    "single_best_s": 3.916667,
+    "spread_s": 0.0
+   }
+  },
+  "C09": {
+   "entry": {
+    "median_s": 1.083333,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.083333,
+    "single_best_s": 1.083333,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 2.016667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.016667,
+    "single_best_s": 2.016667,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 1.616667,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 1.616667,
+    "single_best_s": 1.616667,
+    "spread_s": 0.0
+   }
+  },
+  "C10": {
+   "entry": {
+    "median_s": 2.1,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.1,
+    "single_best_s": 2.1,
+    "spread_s": 0.0
+   },
+   "exit": {
+    "median_s": 0.95,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 0.95,
+    "single_best_s": 0.95,
+    "spread_s": 0.0
+   },
+   "mid": {
+    "median_s": 2.55,
+    "n": 1,
+    "n_outliers": 0,
+    "robust_best_s": 2.55,
+    "single_best_s": 2.55,
+    "spread_s": 0.0
+   }
+  }
+ },
+ "quality": {
+  "flag_counts": {
+   "clipped_pedal": 1
+  },
+  "n_laps_flagged": 1
+ },
+ "references": {
+  "contributors": [],
+  "envelope": null,
+  "n": 0,
+  "n_excluded": 0
+ },
+ "unavailable_fundamentals": [
+  "tire slip/utilization \u2014 no slip channel in the source; never inferred",
+  "vision/eye-line \u2014 not measurable from telemetry; never inferred",
+  "fuel load, weather, lap validity, stint index \u2014 absent from the source contract; controls degrade with stated caveats instead"
+ ]
+}

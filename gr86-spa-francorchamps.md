@@ -13,7 +13,7 @@ Laps: 11 · sessions: 3 · payload v9. Grouped by racing fundamental; sources ar
 
 ### Rotation
 
-> **Shrink the coast — the car should always be braking, turning, or driving.**
+> **You're a passenger in the coasting zone. The car must always be working—either braking, turning, or driving.**
 >
 > Neither pedal working means neither axle is doing anything useful — the car coasts through time that braking, turning, or driving could have used.
 >
@@ -31,7 +31,7 @@ Laps: 11 · sessions: 3 · payload v9. Grouped by racing fundamental; sources ar
 
 ### Corner exit
 
-> **Pick up later but build smoothly; if you have to lift, you opened it too early.**
+> **You're stabbing the throttle and lifting. Roll it on smoothly and progressively—if you have to lift, you got greedy too early.**
 >
 > A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.
 >
