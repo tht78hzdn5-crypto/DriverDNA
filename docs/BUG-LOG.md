@@ -71,6 +71,18 @@ Writing that down is the point.
 
 ## Fixed
 
+### BUG-041 — Chat grounding rejects finding IDs with parentheses and unclassified incidents
+- **Status**: fixed · **Severity**: breaks · **Found**: 2026-08-20
+- **Symptom**: The AI chat gets stuck on "thinking..." and eventually fails with "response rejected by the grounding contract... unknown evidence ID cited".
+- **Root cause**: 
+  1. Finding IDs derived from track names with parentheses (e.g., `Road_America_(Full_Course)`) were truncated by the `_ID_TOKEN` regex because `()` were not in the allowed character class.
+  2. The prompt instructed the AI to guess the classification of unclassified incidents, but the grounding contract forbids citing unclassified incidents, causing a rejection when the AI naturally cited them (e.g., `incident:837`).
+- **Blast radius**: Chat sessions on tracks with parentheses in their name or when discussing unclassified incidents would fail to generate responses.
+- **How it was caught**: Live user report with screenshot of "thinking..." and error message.
+- **How it was fixed**: 
+  1. Added `()` to the `_ID_TOKEN` regex character class in `src/driverdna/chat/session.py`.
+  2. Updated the system prompt to explicitly forbid citing `incident:<id>` for unclassified incidents.
+
 ### BUG-040 — Driver model phase (N² query explosion) hangs UI
 - **Status**: fixed · **Severity**: breaks · **Found**: 2026-08-20
 - **Symptom**: The Driver view freezes on "computing driver model..." and eventually fails with a "stream worker stopped without completing" error during the SSE payload fetch.
