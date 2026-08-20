@@ -541,6 +541,16 @@ MIGRATIONS: tuple[str, ...] = (
     ALTER TABLE finding_annotations_new RENAME TO finding_annotations;
     PRAGMA foreign_keys=ON;
     """,
+    # 018 - driver payload cache
+    """
+    CREATE TABLE driver_payload_cache (
+        owner_user_pk INTEGER NOT NULL,
+        payload_version INTEGER NOT NULL,
+        payload_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (owner_user_pk)
+    );
+    """,
 )
 
 
@@ -2327,3 +2337,28 @@ class Database:
         else:
             self.conn.rollback()
         return counts
+
+    # --- Driver Payload Cache ------------------------------------------------
+
+    def get_driver_payload_cache(self, payload_version: int) -> str | None:
+        row = self.conn.execute(
+            "SELECT payload_json FROM driver_payload_cache WHERE owner_user_pk=? AND payload_version=?",
+            (self.user_pk, payload_version),
+        ).fetchone()
+        return row["payload_json"] if row else None
+
+    def set_driver_payload_cache(self, payload_version: int, payload_json: str, updated_at: str) -> None:
+        with self.conn:
+            self.conn.execute(
+                """INSERT INTO driver_payload_cache (owner_user_pk, payload_version, payload_json, updated_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT (owner_user_pk) DO UPDATE SET
+                       payload_version=excluded.payload_version,
+                       payload_json=excluded.payload_json,
+                       updated_at=excluded.updated_at""",
+                (self.user_pk, payload_version, payload_json, updated_at),
+            )
+
+    def invalidate_driver_payload_cache(self) -> None:
+        with self.conn:
+            self.conn.execute("DELETE FROM driver_payload_cache WHERE owner_user_pk=?", (self.user_pk,))
