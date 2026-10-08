@@ -1,5 +1,45 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-08 (critical review: BUG-042/043/044 filed — dm-v2 consistency saturation on the owner's real corpus).**
+
+- **What prompted it:** the owner's full Garage61 history finished syncing
+  (282 laps, 5 cohorts, 3 cars) and the report showed `consistency` at
+  **0.0 with 100% confidence** and `vehicle_management` at **0.0 with
+  trend "improving"**. The owner directed a critical investigation of the
+  scores, the tests that missed them, and the suite itself.
+- **What was measured (engine run against a copy of the live DB;
+  independently replicated from the payload side, identical numbers):**
+  the consistency component's pooled normalized CV is **2.3898** against
+  `consistency_cv_ceiling` 2.0, so the linear map clamps to exactly 0.0.
+  Saturation is broad-based (five of nine unit means above the ceiling;
+  pooled is still 1.84 with the worst unit removed), the reference-CV
+  anchors are medians from a smaller 2026-07-21 sample, and the '% lap'
+  unit's tail is a statistic pathology of its own (BUG-044: CV divides
+  by landmark position; one wrap-around apex sample at Silverstone C18
+  alone contributes a normalized ~95). `braking`'s consistency component
+  is likewise zeroed (pooled 3.466); its score survives on the other
+  two components.
+- **Filed:** BUG-042 (saturation, silent-wrong, open), BUG-043 (trend
+  can assert "improving" for a saturated 0.0 belief, open), BUG-044
+  (CV unsuited to '% lap' position metrics, open). Pinned by
+  `tests/test_scoring_saturation.py` — two `xfail(strict=True)` tests
+  asserting the constitution's behaviour, tripwires for the fix.
+- **Deliberately NOT done:** no engine number changed. Rescoring needs
+  a SPEC amendment and a `dm-v3` bump (AGENTS.md); this change
+  documents and pins only.
+- **Verified counts:** targeted receipt for this change —
+  `python -m pytest tests/test_scoring.py tests/test_scoring_saturation.py
+  tests/test_model_reading.py tests/test_score_history.py
+  tests/test_census.py tests/test_agent_contract.py -q` → **82 passed,
+  2 xfailed (the new pins), 0 failed**; `ruff check` clean. A full-suite
+  baseline (`-m "not browser"`) was started before any change on this
+  host and ran far past the 313 s reference in docs below: the host is
+  memory-starved (no swap, ~0.6 GB available of 8 GB) and the pytest
+  main thread sits in disk-wait (D state) at ~14% CPU — the suite's
+  wall-clock here is I/O-bound, not compute-bound. Suite cost also
+  concentrates in full-pipeline/endpoint tests (slowest measured:
+  census CLI artifact 13.7 s, score-history endpoint 12.6 s / 8.0 s).
+
 **Snapshot date: 2026-08-20 (BUG-041 fixed: Chat grounding rejects finding IDs with parentheses and unclassified incidents).**
 
 - **What prompted it:** User reported the AI chat hanging at "thinking..." and eventually failing with a "response rejected by the grounding contract" error.
