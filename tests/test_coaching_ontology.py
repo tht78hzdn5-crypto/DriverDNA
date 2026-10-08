@@ -117,4 +117,8 @@ def test_principles_for_fundamental():
 
 
 def test_nine_seed_principles():
-    assert len(PRINCIPLES) == 9
+    # The seed set was nine at M7a. coach-onto-v5 (SPEC.md A56) grows the
+    # inventory by deliberate amendment — the entry-phase tranche — so
+    # the pin moves with it: this test asserts the ontology is exactly
+    # the reviewed set, and the reviewed set is now twelve.
+    assert len(PRINCIPLES) == 12

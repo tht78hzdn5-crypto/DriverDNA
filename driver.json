@@ -178,7 +178,7 @@
  "coaching_rollup": {
   "min_tracks": 2,
   "n_cohorts": 2,
-  "ontology_version": "coach-onto-v4",
+  "ontology_version": "coach-onto-v5",
   "patterns": [
    {
     "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
@@ -665,6 +665,148 @@
   ],
   "strengths": [
    {
+    "coaching_expression": "You're squeezing the brake on instead of getting to pressure. Build to peak decisively \u2014 the application should be quick; the release is where the finesse lives.",
+    "coaching_principle_id": "cp.brake_application.get_to_peak",
+    "drill": "Next session: on the heaviest braking zone, make the initial application a deliberate, quick build to full pressure, then manage the release as usual. Ignore lap time; judge only how fast the pedal reaches its peak.",
+    "driving_principle": "A braking zone is spent at whatever pressure the pedal has reached. A slow squeeze spends its first half below the tire's limit \u2014 track the corner never gives back \u2014 and the peak, when it finally arrives, has less room left to work in. Decisiveness belongs at the start of the pedal; finesse belongs at the release.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 1.256,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.3981,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.4344,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.8462,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.9679,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_application.get_to_peak",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.4148,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "You get to peak pressure decisively \u2014 the braking zone is spent at the tire's limit, not on the way to it.",
+    "technique": "brake_application"
+   },
+   {
+    "coaching_expression": "Your brake point wanders \u2014 the middle half of your laps starts braking across a wide band of track. Pick one physical marker for this corner and start braking on it, every lap.",
+    "coaching_principle_id": "cp.brake_point_selection.same_marker",
+    "drill": "Next session: name a board, seam, or shadow as this corner's brake marker. Brake on it for ten laps whether it feels early or late; move it between sessions if you must, never within one.",
+    "driving_principle": "Everything downstream \u2014 peak pressure, release, turn-in \u2014 keys off where braking starts. A brake point chosen by feel each lap turns every later input into a new experiment; a physical marker makes the whole entry repeatable, which is why schools teach markers before they teach speed.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.2733,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.5119,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.1606,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.1487,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.1878,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.brake_point_selection.same_marker",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.3658,
+      "observed_kind": "metric_iqr",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your brake point is a marker, not a mood \u2014 braking starts in the same place lap after lap.",
+    "technique": "brake_point_selection"
+   },
+   {
     "coaching_expression": "Your brake release is too abrupt. Trail the brake in gracefully; let the fronts bite and finish decelerating before you ask them to steer.",
     "coaching_principle_id": "cp.brake_release.finish_the_front",
     "drill": "Next session: on medium-speed corners, deliberately delay full brake release ~0.2 s into the corner. Ignore lap time. Feel the car keep pointing at the apex.",
@@ -787,77 +929,6 @@
     "signal_status": "measured",
     "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
     "technique": "coasting"
-   },
-   {
-    "coaching_expression": "This might be about commitment more than outright speed \u2014 you're giving up entry speed sooner than the corner needs.",
-    "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-    "drill": "Worth testing: hold your entry line half a beat longer and see if the exit actually gets worse.",
-    "driving_principle": "Brake-point timing is an indirect stand-in for entry commitment, not a direct measurement of it \u2014 a moving brake point can mean the driver is protecting margin rather than driving to the corner's actual limit.",
-    "fundamental": "commitment",
-    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
-    "instances": [
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C01",
-      "n": 11,
-      "observed": 0.0416,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C03",
-      "n": 11,
-      "observed": 0.0116,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C05",
-      "n": 11,
-      "observed": 0.0039,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C06",
-      "n": 9,
-      "observed": 0.0033,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C10",
-      "n": 11,
-      "observed": 0.002,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-      "corner_id": "C14",
-      "n": 11,
-      "observed": 0.0032,
-      "observed_kind": "coefficient_of_variation",
-      "track": "Spa-Francorchamps"
-     }
-    ],
-    "n_cohorts": 1,
-    "n_instances": 6,
-    "n_tracks": 1,
-    "shown": false,
-    "signal_status": "proxy",
-    "strength_expression": "Your braking points are settled lap to lap \u2014 which reads as entry commitment, though this one is inferred from brake point rather than measured directly.",
-    "technique": "entry_commitment"
    },
    {
     "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
@@ -1178,6 +1249,77 @@
     "signal_status": "measured",
     "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
     "technique": "throttle_pickup"
+   },
+   {
+    "coaching_expression": "You brake in a straight line and come fully off before the car turns. Carry the brake past turn-in and release it as you add steering \u2014 keep the nose loaded while the car rotates.",
+    "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+    "drill": "Next session: on your heaviest braking corner, hold a breath of brake pressure until the car has clearly started to rotate, then finish the release. Ignore lap time; feel the front stay planted.",
+    "driving_principle": "Braking and steering draw on one front-tire budget. Releasing the brake completely before turn-in unloads the nose at the exact moment it needs load to bite and rotate; carrying a shrinking brake pressure past turn-in keeps the front planted while the steering takes over the budget.",
+    "fundamental": "braking",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 1.9333,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 1.9,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 1.6667,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.6167,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.4167,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 2.8833,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "You're carrying the brake into the corner \u2014 the front stays loaded through turn-in instead of being unloaded before it.",
+    "technique": "trail_braking"
    },
    {
     "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",

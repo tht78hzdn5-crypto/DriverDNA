@@ -31,7 +31,12 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from driverdna.coaching.engine import eligible_principles, eligible_strengths
+from driverdna.coaching.engine import (
+    _measured_verdict_corners,
+    _proxy_presentable,
+    eligible_principles,
+    eligible_strengths,
+)
 from driverdna.coaching.ontology import ONTOLOGY_VERSION, PRINCIPLES
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -111,11 +116,24 @@ def build_coaching_rollup(
                 "type": "progress", "index": i, "total": len(cohorts),
                 "cohort": f"{car} @ {track}",
             })
-        for c in eligible_principles(db, driver=driver, car=car, track=track, config=config):
+        cohort_candidates = eligible_principles(
+            db, driver=driver, car=car, track=track, config=config,
+        )
+        cohort_strengths = eligible_strengths(
+            db, driver=driver, car=car, track=track, config=config,
+        )
+        # A56: the same measured-over-proxy presentation precedence as
+        # select_coaching — where the measured brake-point principle has
+        # a verdict at a corner in this cohort, the proxy's instance for
+        # that corner is not listed here either.
+        covered = _measured_verdict_corners(cohort_candidates, cohort_strengths)
+        for c in cohort_candidates:
             # A no_signal self-check is always eligible everywhere, so it
             # would "fire at every track" and top the ranking on breadth
             # while measuring nothing at all.
             if c.signal_status is SignalStatus.NO_SIGNAL:
+                continue
+            if not _proxy_presentable(c.principle_id, c.corner_id, covered):
                 continue
             faults.append({
                 "coaching_principle_id": c.principle_id,
@@ -123,7 +141,9 @@ def build_coaching_rollup(
                 "gap_band": c.gap_band, "magnitude": c.magnitude,
                 "magnitude_kind": c.magnitude_kind, "n": c.n,
             })
-        for s in eligible_strengths(db, driver=driver, car=car, track=track, config=config):
+        for s in cohort_strengths:
+            if not _proxy_presentable(s.principle_id, s.corner_id, covered):
+                continue
             wins.append({
                 "coaching_principle_id": s.principle_id,
                 "car": car, "track": track, "corner_id": s.corner_id,

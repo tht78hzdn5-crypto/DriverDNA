@@ -1,5 +1,29 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-08 (coach-onto-v5: entry-phase coaching tranche, SPEC.md A56).**
+
+- **What shipped:** three measured braking techniques that had metrics and
+  scores but no coaching principle — `trail_braking`, `brake_application`,
+  `brake_point_selection` — now speak as `cp.trail_braking.carry_the_brake`,
+  `cp.brake_application.get_to_peak`, `cp.brake_point_selection.same_marker`.
+  New gate type `MetricStatGate` (median / IQR of one metric, config floor,
+  optional guard metric) in `coaching/ontology.py` + `coaching/engine.py`;
+  four thresholds in `config.coaching` with per-corner corpus-percentile
+  anchors in their descriptions. Measured-over-proxy presentation
+  precedence: where `same_marker` has any verdict at a corner,
+  `cp.entry_commitment.trust_the_proxy` is not presented for that corner
+  (`select_coaching` + rollup; eligibility untouched).
+- **Verified on the owner's corpus** (282 laps, 5 cohorts): all three
+  principles fire (faults at 4 / 6 / 11 corners; strengths at 44 / 39 / 47);
+  proxy fault instances 4 → 2 and strength instances 62 → 6, exactly at
+  measured-verdict corners; all five cohort headlines unchanged; every
+  belief score/confidence identical; two report generations byte-identical.
+- **Sequencing note:** this branch is based on `main` at PR #53. The
+  fundamentals review it implements lives in PR #55
+  (`docs/COACHING-FUNDAMENTALS-REVIEW.md`) and the BUG-042/043/044 entries
+  it cross-references live on the scoring investigation's branch; merge
+  order may require a rebase, and the cross-references resolve as those land.
+
 **Snapshot date: 2026-08-20 (BUG-041 fixed: Chat grounding rejects finding IDs with parentheses and unclassified incidents).**
 
 - **What prompted it:** User reported the AI chat hanging at "thinking..." and eventually failing with a "response rejected by the grounding contract" error.

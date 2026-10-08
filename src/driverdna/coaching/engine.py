@@ -34,6 +34,14 @@ principle (trust_the_proxy) can still win the headline slot on magnitude,
 but callers must keep phrasing it tentatively regardless of band — the
 candidate carries `signal_status` precisely so that stays enforceable
 downstream (validator, artifact, AI prompt), not silently dropped.
+
+coach-onto-v5 (SPEC.md A56): `MetricStatGate` principles (median/IQR of
+one metric against a config floor, optional guard metric) join the gate
+family, banding on their phase like MetricCVGate's single-metric shape.
+And a presentation-only precedence: where the measured brake-point
+principle has any verdict at a corner, the entry-commitment proxy — same
+metric, weaker statistic — is not presented for that corner. It lives in
+`select_coaching` and in coaching/rollup.py, never in eligibility.
 """
 
 from __future__ import annotations
@@ -49,6 +57,7 @@ from driverdna.coaching.ontology import (
     DetectorGate,
     FindingGate,
     MetricCVGate,
+    MetricStatGate,
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -96,6 +105,56 @@ def _cv(values: list[float]) -> float | None:
     if mean == 0:
         return None
     return float(np.std(arr, ddof=1) / abs(mean))
+
+
+def _metric_stat(values: list[float], stat: str) -> float | None:
+    """One per-corner statistic over a metric's per-lap values.
+
+    "median" needs >= 2 values; "iqr" needs >= 4 (a quartile split of
+    fewer points is not a spread, it is arithmetic on noise). The IQR is
+    in the metric's own units and never divides by a mean — the property
+    that makes it safe for position metrics ('% lap') whose mean can
+    approach zero and explode a coefficient of variation (see
+    config.brake_point_iqr_floor_pct)."""
+    if stat == "median":
+        if len(values) < 2:
+            return None
+        return float(np.median(np.asarray(values, dtype=float)))
+    if stat == "iqr":
+        if len(values) < 4:
+            return None
+        arr = np.asarray(values, dtype=float)
+        return float(np.percentile(arr, 75) - np.percentile(arr, 25))
+    raise ValueError(f"unknown MetricStatGate stat: {stat!r}")
+
+
+def _stat_gate_stat(
+    metric_table: dict, corner_id: str, gate: MetricStatGate, cfg,
+) -> tuple[float, int] | None:
+    """(statistic, n) for a MetricStatGate at one corner, or None when
+    the statistic cannot be stated or the corner is out of scope.
+
+    Scope: when the gate carries a guard, the guard metric's median must
+    reach the guard floor — a corner below it is not being judged at
+    all, so it yields neither a candidate nor a strength."""
+    values = metric_table.get(corner_id, {}).get(gate.metric, [])
+    stat = _metric_stat(values, gate.stat)
+    if stat is None:
+        return None
+    if gate.guard_metric is not None:
+        guard_values = metric_table.get(corner_id, {}).get(gate.guard_metric, [])
+        guard_stat = _metric_stat(guard_values, "median")
+        if guard_stat is None or guard_stat < getattr(cfg, gate.guard_floor_key):
+            return None
+    return stat, len(values)
+
+
+def _stat_gate_metrics(gate: MetricStatGate) -> tuple[str, ...]:
+    """Metrics whose observations evidence a stat gate's claim — the
+    gated metric plus the guard when one scoped the corner in."""
+    if gate.guard_metric is not None:
+        return (gate.metric, gate.guard_metric)
+    return (gate.metric,)
 
 
 def _normalized_pooled_cv(
@@ -283,6 +342,21 @@ def _corner_candidate(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
             metric_names=metric_names,
         )
+    elif isinstance(gate, MetricStatGate):
+        scoped = _stat_gate_stat(metric_table, corner_id, gate, cfg)
+        if scoped is None:
+            return None
+        stat_value, n = scoped
+        floor = getattr(cfg, gate.floor_key)
+        if gate.direction == "below":
+            if stat_value > floor:
+                return None
+        elif stat_value < floor:
+            return None
+        evidence_ids = _metric_evidence_ids(
+            db, driver=driver, car=car, track=track, corner_id=corner_id,
+            metric_names=_stat_gate_metrics(gate),
+        )
     else:  # pragma: no cover - AlwaysEligible only used for no_signal, handled elsewhere
         return None
 
@@ -381,6 +455,26 @@ def _corner_strength(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
             metric_names=metric_names,
         )
+    elif isinstance(gate, MetricStatGate):
+        scoped = _stat_gate_stat(metric_table, corner_id, gate, cfg)
+        if scoped is None:
+            return None
+        stat_value, n = scoped
+        floor = getattr(cfg, gate.floor_key)
+        # The strict complement of the candidate's crossing: the
+        # statistic sits on the good side of the same floor.
+        if gate.direction == "below":
+            if stat_value <= floor:
+                return None
+        elif stat_value >= floor:
+            return None
+        observed, kind = stat_value, (
+            "metric_median" if gate.stat == "median" else "metric_iqr"
+        )
+        evidence_ids = _metric_evidence_ids(
+            db, driver=driver, car=car, track=track, corner_id=corner_id,
+            metric_names=_stat_gate_metrics(gate),
+        )
     elif isinstance(gate, FindingGate):
         finding = findings_by_corner_phase.get((corner_id, gate.phase))
         # "no effect" is the ranker's own words for "the evidence gates
@@ -471,6 +565,40 @@ def _severity(candidate: CoachingCandidate, cfg) -> float:
     return candidate.magnitude / ceiling if ceiling > 0 else 0.0
 
 
+#: A56 measured-over-proxy precedence (presentation only).
+#: `cp.brake_point_selection.same_marker` (measured: IQR of
+#: brake_point_dist_pct) and `cp.entry_commitment.trust_the_proxy`
+#: (proxy: raw CV of the SAME metric) read one piece of evidence with two
+#: statistics. Where the measured principle has any verdict at a corner —
+#: candidate or strength — the proxy is not presented for that corner:
+#: one voice per piece of evidence, and the measured voice wins.
+#: Eligibility is untouched (both stay in eligible_principles' output,
+#: and the proxy still presents wherever the measured principle is
+#: silent, e.g. too few laps to state an IQR) — this rule lives in the
+#: two presentation paths, select_coaching here and build_coaching_rollup
+#: in coaching/rollup.py, and nowhere else.
+_PROXY_PRINCIPLE_ID = "cp.entry_commitment.trust_the_proxy"
+_MEASURED_BRAKE_POINT_ID = "cp.brake_point_selection.same_marker"
+
+
+def _measured_verdict_corners(candidates, strengths) -> set[str]:
+    """Corners where the measured brake-point principle has spoken, in
+    either direction, on this cohort's evidence."""
+    corners = {
+        c.corner_id for c in candidates
+        if c.principle_id == _MEASURED_BRAKE_POINT_ID and c.corner_id is not None
+    }
+    corners |= {
+        s.corner_id for s in (strengths or [])
+        if s.principle_id == _MEASURED_BRAKE_POINT_ID
+    }
+    return corners
+
+
+def _proxy_presentable(principle_id: str, corner_id: str | None, covered: set[str]) -> bool:
+    return principle_id != _PROXY_PRINCIPLE_ID or corner_id not in covered
+
+
 def select_coaching(
     candidates: list[CoachingCandidate],
     strengths: list[CoachingStrength] | None = None,
@@ -481,6 +609,7 @@ def select_coaching(
     — the delivery-tone grouping docs/COACHING.md describes. Deterministic:
     ties broken by (principle_id, corner_id) for reproducibility."""
     cfg = (config or DriverDNAConfig()).coaching
+    covered = _measured_verdict_corners(candidates, strengths)
     # Band first, then severity within it (A52). Ranking on raw `magnitude`
     # across kinds would compare seconds against a coefficient of variation
     # and always pick the CV — not because it is worse, but because CVs are
@@ -488,7 +617,9 @@ def select_coaching(
     # ids the same way `secondary` below already does: deterministic, and
     # independent of input order.
     headline_pool = sorted(
-        (c for c in candidates if c.headline_eligible),
+        (c for c in candidates
+         if c.headline_eligible
+         and _proxy_presentable(c.principle_id, c.corner_id, covered)),
         key=lambda c: (
             # `gap_band` is None only for no_signal candidates, which are
             # never headline_eligible and so never reach here — `or ""` keeps
@@ -504,6 +635,7 @@ def select_coaching(
         (
             c for c in candidates
             if c.gap_band in ("moderate", "notable", "major") and c is not headline
+            and _proxy_presentable(c.principle_id, c.corner_id, covered)
         ),
         key=lambda c: (-(c.magnitude or 0.0), c.principle_id, c.corner_id or ""),
     )
@@ -516,6 +648,8 @@ def select_coaching(
     # comparing unlike quantities.
     by_principle: dict[str, list[CoachingStrength]] = {}
     for s in strengths or []:
+        if not _proxy_presentable(s.principle_id, s.corner_id, covered):
+            continue
         by_principle.setdefault(s.principle_id, []).append(s)
     ranked_strengths = sorted(
         by_principle.values(), key=lambda g: (-len(g), g[0].principle_id),
