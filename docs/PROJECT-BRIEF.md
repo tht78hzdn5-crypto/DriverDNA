@@ -258,6 +258,22 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-08 — Coaching fundamentals review + tendency-layer proposal
+  (design stage; no decision taken).** Owner directed a review of the racing
+  fundamentals against racing-school curricula, and of whether the coaching
+  "knows the driver." Findings and staged proposal in
+  `docs/COACHING-FUNDAMENTALS-REVIEW.md`: the ontology speaks 9 principles
+  against 20 taxonomy techniques (trail braking and brake application are
+  measured but voiceless; vehicle_management has no principle at all); the
+  coaching layer is a pure function of the pooled current corpus — cross-track
+  habit detection (A51 rollup) is real, but eligibility has no time
+  dimension, `_trend`/score history are never read by coaching, and prior
+  coach plans persist only as titles in a `focus_history` the coach prompt
+  never instructs on. Proposal: a deterministic, versioned **tendency
+  layer** (era-bucketed eligibility → per-principle longitudinal states with
+  evidence IDs), carried as **draft SPEC amendment A55, unratified**, in that
+  document. Awaiting owner reaction before any build — mirroring the
+  2026-07-19 M7 design-stage entry below.
 - **2026-08-09 — CI quality gates adopted; "no linter, no formatter, no
   type checker" re-decided (SPEC.md A47).** `main` had no merge gate
   (unprotected; `tests.yml` triggers on `push`, so CI only ever reported
