@@ -36,7 +36,12 @@
   host and ran far past the 313 s reference in docs below: the host is
   memory-starved (no swap, ~0.6 GB available of 8 GB) and the pytest
   main thread sits in disk-wait (D state) at ~14% CPU — the suite's
-  wall-clock here is I/O-bound, not compute-bound. Suite cost also
+  wall-clock here is I/O-bound, not compute-bound. That run was later
+  terminated (SIGTERM) at ~40 min / ~65% progress; its progress output
+  showed 1 failure and a cluster of 8 errors whose identities and
+  tracebacks were never captured — unexplained red on pre-change code,
+  recorded in PR #54's receipts, with a full-suite run on a healthy
+  host still owed. Suite cost also
   concentrates in full-pipeline/endpoint tests (slowest measured:
   census CLI artifact 13.7 s, score-history endpoint 12.6 s / 8.0 s).
 
