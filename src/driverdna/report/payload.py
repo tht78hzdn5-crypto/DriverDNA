@@ -34,7 +34,7 @@ from driverdna.model.scoring import (
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 9  # +driver_model.{reading,beliefs[].components,basis_reason} (A51)
+PAYLOAD_VERSION = 10  # +driver_model.beliefs[].trend_reason (A56); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -120,6 +120,7 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
                 "confidence": b.confidence,
                 "evidence_count": b.evidence_count,
                 "trend": b.trend,
+                "trend_reason": b.trend_reason,
                 "insufficient_reason": b.insufficient_reason,
                 **_components_dict(b, config),
             }
