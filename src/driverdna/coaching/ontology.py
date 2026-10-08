@@ -8,8 +8,8 @@ or fundamental (no_signal), so `signal_status` here is never invented
 independently of M6's own tri-state rule — see test_coaching_ontology.py's
 cross-check.
 
-Gate descriptors (`DetectorGate`, `MetricCVGate`, `FindingGate`,
-`AlwaysEligible`) are declarative: coaching/engine.py interprets them
+Gate descriptors (`DetectorGate`, `MetricCVGate`, `MetricStatGate`,
+`FindingGate`, `AlwaysEligible`) are declarative: coaching/engine.py interprets them
 against a cohort's real DB rows. Keeping the gate as data alongside the
 principle (rather than a bespoke function per principle) is what makes
 "adding a coaching concept" stay a data change, not new eligibility code.
@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v4"
+ONTOLOGY_VERSION = "coach-onto-v5"
 
 
 @dataclass(frozen=True)
@@ -45,6 +45,37 @@ class MetricCVGate:
 
 
 @dataclass(frozen=True)
+class MetricStatGate:
+    """Eligible where a per-corner statistic of one metric crosses a
+    floor (coach-onto-v5, SPEC.md A56) — for measured techniques whose
+    fault is a LEVEL or a SPREAD of a metric rather than a detector
+    pattern or a coefficient of variation.
+
+    `stat` is "median" (the corner's typical lap) or "iqr" (the
+    interquartile range of the corner's laps, in the metric's own
+    units — a dispersion that never divides by a mean, so a position
+    metric whose mean approaches zero cannot explode it the way a CV
+    does). `direction` is "below" (eligible at or under the floor) or
+    "above" (eligible at or over it). `floor_key` names a
+    CoachingConfig field, resolved by the engine like MetricCVGate's.
+
+    `guard_metric`/`guard_floor_key` optionally scope the corner: the
+    guard metric's median must reach the guard floor before the corner
+    is in scope at all (e.g. only judge entry technique where a
+    substantial braking event exists). Out of scope means neither a
+    candidate nor a strength — the corner is not being judged, not
+    being praised.
+    """
+
+    metric: str
+    stat: str  # "median" | "iqr"
+    direction: str  # "below" | "above"
+    floor_key: str
+    guard_metric: str | None = None
+    guard_floor_key: str | None = None
+
+
+@dataclass(frozen=True)
 class FindingGate:
     """Eligible where a `phase` vs-self finding for the corner is already
     `shown` (reuses ranker.vs_self_findings's own tested gates, rather than
@@ -60,7 +91,7 @@ class AlwaysEligible:
     headline" IS the trigger for a no_signal principle)."""
 
 
-Gate = DetectorGate | MetricCVGate | FindingGate | AlwaysEligible
+Gate = DetectorGate | MetricCVGate | MetricStatGate | FindingGate | AlwaysEligible
 
 
 @dataclass(frozen=True)
@@ -336,6 +367,138 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 ),
             ),
             evidence_binding=(),
+        ),
+        # --- coach-onto-v5 (SPEC.md A56): the entry-phase tranche. Three
+        # measured braking techniques that had metrics and scores but no
+        # principle. Appended, not interleaved: nothing above this line
+        # changed, so every v4 eligibility outcome is reproducible from
+        # the principles above alone.
+        CoachingPrinciple(
+            id="cp.trail_braking.carry_the_brake",
+            technique="trail_braking", fundamental="braking",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "Braking and steering draw on one front-tire budget. "
+                "Releasing the brake completely before turn-in unloads "
+                "the nose at the exact moment it needs load to bite and "
+                "rotate; carrying a shrinking brake pressure past "
+                "turn-in keeps the front planted while the steering "
+                "takes over the budget."
+            ),
+            gate=MetricStatGate(
+                metric="trail_brake_overlap_s", stat="median",
+                direction="below", floor_key="trail_brake_overlap_floor_s",
+                guard_metric="brake_peak",
+                guard_floor_key="braking_zone_peak_floor",
+            ),
+            band_phase="entry",
+            coaching_expression=(
+                "You brake in a straight line and come fully off before "
+                "the car turns. Carry the brake past turn-in and release "
+                "it as you add steering — keep the nose loaded while "
+                "the car rotates."
+            ),
+            drill=(
+                "Next session: on your heaviest braking corner, hold a "
+                "breath of brake pressure until the car has clearly "
+                "started to rotate, then finish the release. Ignore lap "
+                "time; feel the front stay planted."
+            ),
+            strength_expression=(
+                "You're carrying the brake into the corner — the front "
+                "stays loaded through turn-in instead of being unloaded "
+                "before it."
+            ),
+            evidence_binding=(
+                "trail_brake_overlap_s median", "brake_peak median",
+                "entry cumulative_loss",
+            ),
+        ),
+        CoachingPrinciple(
+            id="cp.brake_application.get_to_peak",
+            technique="brake_application", fundamental="braking",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "A braking zone is spent at whatever pressure the pedal "
+                "has reached. A slow squeeze spends its first half "
+                "below the tire's limit — track the corner never gives "
+                "back — and the peak, when it finally arrives, has less "
+                "room left to work in. Decisiveness belongs at the "
+                "start of the pedal; finesse belongs at the release."
+            ),
+            gate=MetricStatGate(
+                metric="brake_application_rate", stat="median",
+                direction="below",
+                floor_key="brake_application_rate_floor",
+                guard_metric="brake_peak",
+                guard_floor_key="braking_zone_peak_floor",
+            ),
+            band_phase="entry",
+            coaching_expression=(
+                "You're squeezing the brake on instead of getting to "
+                "pressure. Build to peak decisively — the application "
+                "should be quick; the release is where the finesse "
+                "lives."
+            ),
+            drill=(
+                "Next session: on the heaviest braking zone, make the "
+                "initial application a deliberate, quick build to full "
+                "pressure, then manage the release as usual. Ignore lap "
+                "time; judge only how fast the pedal reaches its peak."
+            ),
+            strength_expression=(
+                "You get to peak pressure decisively — the braking zone "
+                "is spent at the tire's limit, not on the way to it."
+            ),
+            evidence_binding=(
+                "brake_application_rate median", "brake_peak median",
+                "entry cumulative_loss",
+            ),
+        ),
+        CoachingPrinciple(
+            id="cp.brake_point_selection.same_marker",
+            technique="brake_point_selection", fundamental="braking",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "Everything downstream — peak pressure, release, "
+                "turn-in — keys off where braking starts. A brake point "
+                "chosen by feel each lap turns every later input into a "
+                "new experiment; a physical marker makes the whole "
+                "entry repeatable, which is why schools teach markers "
+                "before they teach speed."
+            ),
+            # IQR, never the CV: see config.brake_point_iqr_floor_pct.
+            # Where this measured principle has any verdict at a corner,
+            # the entry-commitment PROXY (same metric, raw CV) is not
+            # presented for that corner — one voice per piece of
+            # evidence, and the measured voice wins. The selection-layer
+            # rule lives in coaching/engine.py (select_coaching) and
+            # coaching/rollup.py; eligibility itself is untouched.
+            gate=MetricStatGate(
+                metric="brake_point_dist_pct", stat="iqr",
+                direction="above", floor_key="brake_point_iqr_floor_pct",
+            ),
+            band_phase="entry",
+            coaching_expression=(
+                "Your brake point wanders — the middle half of your "
+                "laps starts braking across a wide band of track. Pick "
+                "one physical marker for this corner and start braking "
+                "on it, every lap."
+            ),
+            drill=(
+                "Next session: name a board, seam, or shadow as this "
+                "corner's brake marker. Brake on it for ten laps "
+                "whether it feels early or late; move it between "
+                "sessions if you must, never within one."
+            ),
+            strength_expression=(
+                "Your brake point is a marker, not a mood — braking "
+                "starts in the same place lap after lap."
+            ),
+            evidence_binding=(
+                "brake_point_dist_pct interquartile range",
+                "entry cumulative_loss",
+            ),
         ),
     )
 }

@@ -530,3 +530,42 @@ coefficient of variation and always pick the CV, purely because CVs are bigger
 numbers. `_severity` is a private sort key and must stay one — a number with
 no unit has no business in the payload, where the grounding validator would
 let the AI cite it.
+
+## The entry-phase tranche: metric-statistic gates (2026-10-08, SPEC.md A56)
+
+The fundamentals review (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found
+seven measured techniques with no principle — measured, scored, and silent.
+Tranche 1 gives three of them a voice, all in the entry phase:
+`cp.trail_braking.carry_the_brake`, `cp.brake_application.get_to_peak`, and
+`cp.brake_point_selection.same_marker`. `ONTOLOGY_VERSION` is now
+`coach-onto-v5`; the nine v4 principles are byte-for-byte untouched, so every
+v4 eligibility outcome is reproducible from them alone.
+
+**A new gate type, because none of the four fit.** DetectorGate needs a
+detector; none exists for these techniques. FindingGate needs a vs-self
+finding; these faults are levels and spreads, not opportunity gaps.
+MetricCVGate states a coefficient of variation — the wrong statistic twice
+over here: for `brake_point_dist_pct` a CV divides by a mean that can
+approach zero (the BUG-042/043/044 pathology), and for overlap/rate the
+fault is a *level*, not a variability. So `MetricStatGate` states one
+statistic of one metric — **median** or **iqr** — crossing a config floor in
+a stated direction, with an optional guard (a second metric's median) that
+scopes the corner in or out entirely. The IQR is the dispersion: in the
+metric's own units, robust to outliers, and it never divides by anything.
+All three principles band on the entry phase's cumulative loss, the
+`trust_the_proxy` shape: the statistic is the trigger, the seconds are the
+tone. Thresholds live in `config.coaching` with their corpus anchors written
+into their descriptions (per-corner percentiles over the owner's 282 laps) —
+if you move one, restate its anchor the way the A52 section above demands
+for CV thresholds.
+
+**Measured-over-proxy precedence.** `same_marker` and `trust_the_proxy`
+read the same evidence — `brake_point_dist_pct` at a corner — with different
+statistics and different conviction. Where the measured principle has any
+verdict at a corner (candidate *or* strength), the proxy is not presented
+for that corner, in either presentation path (`select_coaching`, the driver
+rollup). One voice per piece of evidence; the measured voice wins; the
+proxy remains the fallback exactly where a proxy belongs — corners where
+the measured statistic cannot be stated (too few laps for an IQR) or has
+not cleared its evidence bar. Eligibility is deliberately *not* where this
+rule lives: `eligible_principles` still returns both, and a test pins that.

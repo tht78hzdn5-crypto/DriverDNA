@@ -626,6 +626,57 @@ class CoachingConfig(_Section):
         "corner through the gate. Equal to cv_band_moderate: a CV candidate "
         "that exists is at least moderate.",
     )
+    braking_zone_peak_floor: float = Field(
+        default=0.50,
+        description="Scope guard for the MetricStatGate entry principles "
+        "(coach-onto-v5, SPEC.md A56): a corner is only in scope for "
+        "trail-braking / brake-application coaching when its median "
+        "brake_peak reaches this — half pedal, a substantial braking "
+        "event rather than a brush. Below it there is no application to "
+        "judge the rate of and nothing to trail. Anchored to the owner's "
+        "282-lap corpus (2026-10-08): the ~30th percentile of per-corner "
+        "median brake_peak across all 106 corners (p25 = 0.45, p50 = 0.71).",
+    )
+    trail_brake_overlap_floor_s: float = Field(
+        default=0.10,
+        description="cp.trail_braking.carry_the_brake's trigger "
+        "(coach-onto-v5, SPEC.md A56): a corner (in scope per "
+        "braking_zone_peak_floor) whose MEDIAN trail_brake_overlap_s sits "
+        "at or below this is a corner where the brake is fully released "
+        "before the steering starts — 0.10 s is six samples at 60 Hz, "
+        "effectively never braking while steering. Anchored to the "
+        "owner's corpus: among the 62 corners with a substantial braking "
+        "event, the ~13th percentile of per-corner median overlap "
+        "(p25 = 0.45 s, p50 = 1.03 s).",
+    )
+    brake_application_rate_floor: float = Field(
+        default=0.35,
+        description="cp.brake_application.get_to_peak's trigger "
+        "(coach-onto-v5, SPEC.md A56): a corner (in scope per "
+        "braking_zone_peak_floor) whose MEDIAN brake_application_rate "
+        "(fraction of pedal per second, brake_start to peak) sits at or "
+        "below this is a squeeze, not an application — peak pressure "
+        "arrives seconds into the braking zone, so most of the zone is "
+        "spent below the tire's limit. Anchored to the owner's corpus: "
+        "among the 62 substantial-braking corners, between the 10th "
+        "(0.28/s) and 25th (0.43/s) percentiles of per-corner median rate "
+        "(~17th).",
+    )
+    brake_point_iqr_floor_pct: float = Field(
+        default=1.0,
+        description="cp.brake_point_selection.same_marker's trigger "
+        "(coach-onto-v5, SPEC.md A56): a corner whose brake_point_dist_pct "
+        "INTERQUARTILE RANGE reaches this — the middle half of the "
+        "driver's brake points spans a full percent of the lap, which is "
+        "a brake point chosen by feel rather than a marker. IQR, not the "
+        "coefficient of variation trust_the_proxy uses: a CV divides by "
+        "the mean, and a position metric's mean can approach zero, so "
+        "the CV measures 1/mean more than dispersion (the defect family "
+        "in BUG-042/043/044); the IQR is in the metric's own units and "
+        "needs no mean at all. Anchored to the owner's corpus: the ~73rd "
+        "percentile of per-corner IQR across the 64 corners with >= 8 "
+        "laps (p50 = 0.54, p75 = 1.03).",
+    )
     thin_evidence_floor_n: int = Field(
         default=8,
         description="Below this many contributing laps, an eligible "
