@@ -38,8 +38,91 @@ Writing that down is the point.
 ## Open
 
 
+### BUG-019 — Test suite fails on ARM64, passes on x86
+- **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
+- **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
+  31% and 38% of the run. Same commit is green on x86.
+- **Root cause**: unknown — tracebacks were never captured.
+- **Blast radius**: unknown, and that is the problem. Until the failures are
+  read, it is not known whether this is an environment artifact or a real
+  architecture-dependent defect in float/collation/ordering behaviour. This
+  product's numbers are float-sensitive (see BUG-006), so it must not be
+  assumed cosmetic.
+- **How it was caught**: running the suite on the target platform â€” something
+  x86 CI cannot do.
+- **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
+  on the VM. Do not theorise before reading it.
+
+### BUG-013b â€” Cohorts founded by a reference lap keep stranger-built geometry
+- **Status**: mitigated Â· **Severity**: silent-wrong Â· **Found**: 2026-08-03 (A34)
+- **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
+  whose map was already founded or shifted by a reference lap keeps that
+  geometry.
+- **Blast radius**: none in this repo (both fixture manifests hold zero
+  reference laps, and 7/7 committed reports were byte-identical after the fix)
+  â€” but unknown in the owner's production store.
+- **Mitigation**: `driverdna rebuild-map` is the recovery path, and after A34
+  its refreeze queries are self-only.
+- **Open part**: nothing *detects* an affected cohort, so nobody knows to run
+  the recovery. A check comparing a cohort's map provenance against its
+  role-filtered lap set would close it.
+
+---
+
+## Fixed
+
+### BUG-044 — CV is the wrong dispersion statistic for '% lap' position metrics
+- **Status**: fixed 2026-10-08 (scoring layer; coaching layer still open — see Fix) · **SPEC**: A56 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
+- **Symptom**: the largest normalized CVs in the live corpus are all
+  `_dist_pct` landmark metrics: `brake_point_dist_pct` at **149.2×**
+  reference (Brands Hatch C01, n=5) and **110.1×** (C10, n=5);
+  `apex`/`turn_in`/`throttle_pickup`/`full_throttle_dist_pct` at
+  Silverstone C18 all ≈ **93–95×** (n=4). These samples feed the
+  '% lap' unit mean (6.77) that drives BUG-042's saturation.
+- **Root cause**: coefficient of variation divides dispersion by the
+  mean, so for a *position* metric it measures where the landmark sits
+  as much as how much it moves. Two failure modes, both measured on
+  the live corpus:
+  1. **Mean-dependence.** Brands Hatch C10's brake points are
+     [0.24, 0.24, 0.30, 0.76, 1.27] % lap — absolute scatter under
+     half a percentage point (std 0.44) — but because the mean is
+     0.57, raw CV is 0.77 and the normalized value is 110. The same
+     absolute repeatability at a landmark sitting at 50% of lap
+     would normalize to ~1.3. Identical driving, 85× different
+     evidence.
+  2. **Single-sample fragility at small n.** Silverstone C18's apex
+     positions are [99.0, 98.4, **0.013**, 93.9]: three laps agree
+     within ~5 points and one lap's landmark sits at the lap origin
+     (a wrap-around/segmentation edge case, not driving). That one
+     sample makes std 48.6, raw CV 0.667, normalized ≈ 95 — a
+     unit-mean-moving term manufactured by one anomalous landmark.
+     Per-(corner, metric) CVs are computed from as few as 4 laps and
+     enter the unit mean at the same weight as a 30-lap sample.
+  A third shape, genuine bimodality (Brands Hatch C01 brake points
+  [0.81, 9.27, 1.13, 1.52, 10.92] — two distinct braking zones), also
+  yields raw CV ≈ 1.0 regardless of how tight each cluster is; CV
+  cannot distinguish "two tight habits" from "no habit at all".
+- **Blast radius**: every fundamental's consistency component (the
+  '% lap' metrics belong to braking/rotation/corner_exit techniques);
+  `braking`'s '% lap' unit mean on this corpus is 10.52, the worst
+  measured. Also the coaching layer: `same_lap_twice` pools the same
+  normalized CVs through the same reference table (BUG-004's layer),
+  so the pathology reaches coaching gates as well as scores.
+- **How it was caught**: reading the top contributors to BUG-042's
+  pooled value back to their raw per-lap values. The aggregate
+  statistic alone (149.2×) looked like wild driving; the raw values
+  show two distinct mechanisms and one data anomaly instead.
+- **How it was missed**: dm-v2's normalization was validated against
+  fixture telemetry whose landmark means sit mid-lap and whose corner
+  maps are clean, so neither a near-origin landmark nor a wrap-around
+  sample existed in the validation data. BUG-003 fixed *pooling*
+  across metric types; nobody re-asked whether CV suits each type.
+- **Pinned by**: `tests/test_scoring_saturation.py::test_brake_point_near_origin_is_not_a_dispersion_explosion`, `::test_wrap_around_sample_cannot_manufacture_a_corner_verdict`, and `::test_bimodal_brake_points_read_as_poor_not_absurd` — this entry's three measured shapes (near-origin landmark, wrap-around sample, bimodality) as scorer-level tests on the real values quoted above, added with the fix. (The gap recorded when this entry was filed — no scorer-level fixture with a near-origin landmark — is closed by stubbing `self_metric_table` directly, the pattern test_scoring.py already used; no synthetic-lap builder was needed.)
+
+- **Fix**: dm-v3 (SPEC.md A56) adopted the direction recorded below: dispersion is now absolute and robust — each (corner, metric) sample contributes its scaled MAD (1.4826 × median absolute deviation from the sample median, with a resolution floor for majority-tied samples), normalized by that metric's own measured reference dispersion. No sample mean is ever a denominator, so landmark position cannot masquerade as dispersion (C10's sample now normalizes to ~0.21), and the estimator is median-based, so one wrap-around sample moves a reading by a bounded amount (C18's apex sample ~8.6× its metric anchor — loose, truly — not ~95×). The driver's data is untouched: the statistic changed, nothing was filtered or winsorized. **Still open**: the coaching layer's `same_lap_twice` gates pool the same dm-v2 normalized CVs through the same reference table, so this pathology still reaches coaching gates; migrating that layer was deliberately deferred (A56), as A21 deferred it before.
+
 ### BUG-043 — Trend can read "improving" for a belief saturated at exactly 0.0
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
+- **Status**: fixed 2026-10-08 · **SPEC**: A56 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
 - **Symptom**: the owner's live payload (282 laps, 2026-10-08) reports
   `vehicle_management` score **0.0** with trend **"improving"** — a
   direction asserted for a number that is pinned at the floor of its
@@ -63,16 +146,12 @@ Writing that down is the point.
 - **How it was missed**: `_trend`'s bucket independence is documented
   design, and its tests exercise dated synthetic cohorts whose scores
   sit mid-scale, where score and trend cannot diverge this way.
-- **Pinned by**: `tests/test_scoring_saturation.py::test_vehicle_management_trend_never_improves_a_zero_score`
-  (xfail strict — asserts the pair must never co-occur; tripwire for
-  the fix, not a pass).
-- **Next step**: with BUG-042's rescoring (SPEC amendment + dm-v3):
-  decide whether a saturated belief may carry a directional trend at
-  all, and pin the decision. Not fixable by editing the trend band
-  alone — that would hide the divergence, not resolve it.
+- **Pinned by**: `tests/test_scoring_saturation.py::test_vehicle_management_trend_never_improves_a_zero_score` (retired from xfail pin to a genuine pass by this fix) and `::test_trend_is_suppressed_with_reason_when_headline_score_is_clamped` (the gate case: a dm-v3 pool engineered to still clamp, halves straddling it).
+
+- **Fix**: a gate in `compute_belief`, not a band tweak (the entry above records why a band tweak would hide the divergence): when the headline score is pinned at a scale bound (0.0 or 100.0), a directional trend is suppressed — trend reads `unavailable` and the belief carries `trend_reason` (payload-visible, payload v10) stating the suppression and the bound. On the live corpus `vehicle_management` now reads 68.87 / "stable" under dm-v3 — a measurement, not a straddle — and the gate stands for any future corpus that still clamps.
 
 ### BUG-042 — dm-v2 consistency component saturates to exactly 0.0 on a realistic corpus
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
+- **Status**: fixed 2026-10-08 · **SPEC**: A56 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
 - **Symptom**: after the owner's Garage61 history finished syncing
   (282 laps, 5 cohorts, 3 cars), the `consistency` belief reads **0.0
   at 100% confidence** (36,264 component observations) and
@@ -118,106 +197,9 @@ Writing that down is the point.
   assert the *formula*, so they pass at any calibration. No test feeds
   the scorer data at a realistic scale and asserts a fundamental stays
   off the floor. The suite was green on the commit that produced 0.0.
-- **Pinned by**: `tests/test_scoring_saturation.py::test_consistency_component_does_not_saturate_at_live_corpus_profile`
-  (xfail strict — asserts the desired behaviour; a fix must retire it).
-- **Next step**: rescoring is an engine-numbers change — it needs a
-  SPEC amendment and a `dm-v3` bump (AGENTS.md), and is deliberately
-  NOT part of the change that filed this entry. Candidate directions
-  recorded for that amendment, none adopted here: absolute-scale
-  dispersion instead of median-relative CV; a saturating map with a
-  non-zero floor plus an explicit saturation flag on the belief.
+- **Pinned by**: `tests/test_scoring_saturation.py::test_consistency_component_does_not_saturate_at_live_corpus_profile` (retired from xfail pin to a genuine pass by this fix), plus the golden-driver calibration tests in `tests/test_scoring_calibration.py` — the meaning-ward tests whose absence this entry's "How it was missed" records.
 
-### BUG-044 — CV is the wrong dispersion statistic for '% lap' position metrics
-- **Status**: open · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
-- **Symptom**: the largest normalized CVs in the live corpus are all
-  `_dist_pct` landmark metrics: `brake_point_dist_pct` at **149.2×**
-  reference (Brands Hatch C01, n=5) and **110.1×** (C10, n=5);
-  `apex`/`turn_in`/`throttle_pickup`/`full_throttle_dist_pct` at
-  Silverstone C18 all ≈ **93–95×** (n=4). These samples feed the
-  '% lap' unit mean (6.77) that drives BUG-042's saturation.
-- **Root cause**: coefficient of variation divides dispersion by the
-  mean, so for a *position* metric it measures where the landmark sits
-  as much as how much it moves. Two failure modes, both measured on
-  the live corpus:
-  1. **Mean-dependence.** Brands Hatch C10's brake points are
-     [0.24, 0.24, 0.30, 0.76, 1.27] % lap — absolute scatter under
-     half a percentage point (std 0.44) — but because the mean is
-     0.57, raw CV is 0.77 and the normalized value is 110. The same
-     absolute repeatability at a landmark sitting at 50% of lap
-     would normalize to ~1.3. Identical driving, 85× different
-     evidence.
-  2. **Single-sample fragility at small n.** Silverstone C18's apex
-     positions are [99.0, 98.4, **0.013**, 93.9]: three laps agree
-     within ~5 points and one lap's landmark sits at the lap origin
-     (a wrap-around/segmentation edge case, not driving). That one
-     sample makes std 48.6, raw CV 0.667, normalized ≈ 95 — a
-     unit-mean-moving term manufactured by one anomalous landmark.
-     Per-(corner, metric) CVs are computed from as few as 4 laps and
-     enter the unit mean at the same weight as a 30-lap sample.
-  A third shape, genuine bimodality (Brands Hatch C01 brake points
-  [0.81, 9.27, 1.13, 1.52, 10.92] — two distinct braking zones), also
-  yields raw CV ≈ 1.0 regardless of how tight each cluster is; CV
-  cannot distinguish "two tight habits" from "no habit at all".
-- **Blast radius**: every fundamental's consistency component (the
-  '% lap' metrics belong to braking/rotation/corner_exit techniques);
-  `braking`'s '% lap' unit mean on this corpus is 10.52, the worst
-  measured. Also the coaching layer: `same_lap_twice` pools the same
-  normalized CVs through the same reference table (BUG-004's layer),
-  so the pathology reaches coaching gates as well as scores.
-- **How it was caught**: reading the top contributors to BUG-042's
-  pooled value back to their raw per-lap values. The aggregate
-  statistic alone (149.2×) looked like wild driving; the raw values
-  show two distinct mechanisms and one data anomaly instead.
-- **How it was missed**: dm-v2's normalization was validated against
-  fixture telemetry whose landmark means sit mid-lap and whose corner
-  maps are clean, so neither a near-origin landmark nor a wrap-around
-  sample existed in the validation data. BUG-003 fixed *pooling*
-  across metric types; nobody re-asked whether CV suits each type.
-- **Pinned by**: no test yet — the honest pin is BUG-042's
-  (`tests/test_scoring_saturation.py`), whose '% lap' sample is one of
-  the saturating inputs. A dedicated pin needs a scorer-level fixture
-  with a near-origin landmark, which the current synthetic-lap
-  builders cannot place (landmarks derive from the trace, not
-  parameters); recorded here so the gap is explicit rather than
-  implied covered.
-- **Next step**: statistic choice is an engine-numbers change — SPEC
-  amendment + dm-v3, with BUG-042. Candidate direction recorded, not
-  adopted: absolute dispersion (in % lap points) for position metrics,
-  whose typical scale is a property of the unit, not of where a
-  corner happens to sit.
-
-### BUG-019 — Test suite fails on ARM64, passes on x86
-- **Status**: open · **Severity**: breaks · **Found**: 2026-08-08
-- **Symptom**: `pytest` on the Ampere A1 VM shows `F` markers at roughly 15%,
-  31% and 38% of the run. Same commit is green on x86.
-- **Root cause**: unknown — tracebacks were never captured.
-- **Blast radius**: unknown, and that is the problem. Until the failures are
-  read, it is not known whether this is an environment artifact or a real
-  architecture-dependent defect in float/collation/ordering behaviour. This
-  product's numbers are float-sensitive (see BUG-006), so it must not be
-  assumed cosmetic.
-- **How it was caught**: running the suite on the target platform â€” something
-  x86 CI cannot do.
-- **Next step**: `python3 -m pytest --tb=short 2>&1 | tee pytest-arm64.txt`
-  on the VM. Do not theorise before reading it.
-
-### BUG-013b â€” Cohorts founded by a reference lap keep stranger-built geometry
-- **Status**: mitigated Â· **Severity**: silent-wrong Â· **Found**: 2026-08-03 (A34)
-- **Symptom**: residue of BUG-013. A34's refusal guards *new* imports; a cohort
-  whose map was already founded or shifted by a reference lap keeps that
-  geometry.
-- **Blast radius**: none in this repo (both fixture manifests hold zero
-  reference laps, and 7/7 committed reports were byte-identical after the fix)
-  â€” but unknown in the owner's production store.
-- **Mitigation**: `driverdna rebuild-map` is the recovery path, and after A34
-  its refreeze queries are self-only.
-- **Open part**: nothing *detects* an affected cohort, so nobody knows to run
-  the recovery. A check comparing a cohort's map provenance against its
-  role-filtered lap set would close it.
-
----
-
-## Fixed
+- **Fix**: dm-v3 (SPEC.md A56). The consistency component's statistic and calibration were replaced together: scaled MAD against per-metric reference dispersions (BUG-044's fix) with anchors measured from this corpus, and the ceiling re-anchored to 3.0 so reference-typical dispersion (pooled 1.0) scores 0.667 instead of sitting past the maximum. On the same evidence: `consistency` 0.0 → 56.19, `vehicle_management` 0.0 → 68.87; every other belief's movement decomposes exactly through the shared component. Of the candidate directions recorded below when this entry was filed, the adopted one is absolute-scale dispersion; the saturating map keeps its zero floor, now reachable only at 3× typical dispersion in every unit at once, and no separate saturation flag was needed once BUG-043's `trend_reason` made bound-pinning payload-visible where it misleads.
 
 ### BUG-041 — Chat grounding rejects finding IDs with parentheses and unclassified incidents
 - **Status**: fixed · **Severity**: breaks · **Found**: 2026-08-20
