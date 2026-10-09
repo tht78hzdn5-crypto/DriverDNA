@@ -148,18 +148,33 @@ def _cv_band(cv: float, cfg) -> str:
     return "negligible"
 
 
+def _lap_pk_clause(lap_pks: frozenset[int] | None) -> tuple[str, list[int]]:
+    """SQL fragment restricting an aliased `laps l` join to a lap set —
+    db._lap_pk_filter's semantics, for this module's raw queries (that
+    helper is private to db.py). None = unrestricted; an empty set
+    matches nothing, never everything."""
+    if lap_pks is None:
+        return "", []
+    if not lap_pks:
+        return " AND 1=0", []
+    ordered = sorted(lap_pks)
+    return f" AND l.lap_pk IN ({','.join('?' * len(ordered))})", ordered
+
+
 def _detector_evidence_ids(
     db: Database, *, driver: str, car: str, track: str, corner_id: str, detector: str,
+    lap_pks: frozenset[int] | None = None,
 ) -> tuple[str, ...]:
+    pk_clause, pk_params = _lap_pk_clause(lap_pks)
     rows = db.conn.execute(
-        """SELECT d.obs_pk FROM detector_results d
+        f"""SELECT d.obs_pk FROM detector_results d
            JOIN corner_observations o ON o.obs_pk = d.obs_pk
            JOIN corners c ON c.corner_pk = o.corner_pk
            JOIN laps l ON l.lap_pk = o.lap_pk
            WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
-             AND c.corner_id=? AND d.detector=? AND d.triggered=1
+             AND c.corner_id=? AND d.detector=? AND d.triggered=1{pk_clause}
            ORDER BY d.obs_pk""",
-        (driver, car, track, corner_id, detector),
+        (driver, car, track, corner_id, detector, *pk_params),
     ).fetchall()
     return tuple(f"obs:{r['obs_pk']}" for r in rows)
 
@@ -167,43 +182,51 @@ def _detector_evidence_ids(
 def _metric_evidence_ids(
     db: Database, *, driver: str, car: str, track: str, corner_id: str,
     metric_names: tuple[str, ...],
+    lap_pks: frozenset[int] | None = None,
 ) -> tuple[str, ...]:
     if not metric_names:
         return ()
     placeholders = ",".join("?" * len(metric_names))
+    pk_clause, pk_params = _lap_pk_clause(lap_pks)
     rows = db.conn.execute(
         f"""SELECT DISTINCT mv.obs_pk FROM metric_values mv
             JOIN corner_observations o ON o.obs_pk = mv.obs_pk
             JOIN corners c ON c.corner_pk = o.corner_pk
             JOIN laps l ON l.lap_pk = o.lap_pk
             WHERE l.role='self' AND l.driver=? AND l.car=? AND l.track=?
-              AND c.corner_id=? AND mv.name IN ({placeholders}) AND mv.value IS NOT NULL
+              AND c.corner_id=? AND mv.name IN ({placeholders}) AND mv.value IS NOT NULL{pk_clause}
             ORDER BY mv.obs_pk""",
-        [driver, car, track, corner_id, *metric_names],
+        [driver, car, track, corner_id, *metric_names, *pk_params],
     ).fetchall()
     return tuple(f"obs:{r['obs_pk']}" for r in rows)
 
 
 def eligible_principles(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> list[CoachingCandidate]:
     """Every (principle, corner) pair whose gate clears, banded and ranked.
-    Pure function of DB state + config — deterministic, no AI."""
+    Pure function of DB state + config — deterministic, no AI.
+
+    `lap_pks` (A55 Stage 1) restricts every input to one era's laps, the
+    same optional restriction M6 trend put on the underlying tables;
+    None is the pooled corpus every pre-A55 caller means."""
     windows_by_corner = _cohort_windows_by_corner(db, car, track)
     candidates: list[CoachingCandidate] = []
 
     if windows_by_corner:
         loss = cumulative_loss(
             db, driver=driver, car=car, track=track,
-            windows_by_corner=windows_by_corner, config=config,
+            windows_by_corner=windows_by_corner, config=config, lap_pks=lap_pks,
         )
-        detector_table = db.self_detector_table(driver=driver, car=car, track=track)
-        metric_table = db.self_metric_table(driver=driver, car=car, track=track)
+        detector_table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
+        metric_table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
         findings_by_corner_phase = {
             (f.corner_id, f.phase): f
             for f in vs_self_findings(
                 db, driver=driver, car=car, track=track,
                 windows_by_corner=windows_by_corner, config=config,
+                lap_pks=lap_pks,
             )
             if f.kind == "opportunity"
         }
@@ -219,6 +242,7 @@ def eligible_principles(
                     findings_by_corner_phase=findings_by_corner_phase,
                     loss=loss, cfg=cfg, min_trigger_rate=config.detectors.min_trigger_rate,
                     unit_reference=config.model.consistency_unit_reference_cv,
+                    lap_pks=lap_pks,
                 )
                 if candidate is not None:
                     candidates.append(candidate)
@@ -239,6 +263,7 @@ def _corner_candidate(
     db, principle, corner_id, *, driver, car, track,
     detector_table, metric_table, findings_by_corner_phase, loss, cfg, min_trigger_rate,
     unit_reference: dict[str, float],
+    lap_pks: frozenset[int] | None = None,
 ) -> CoachingCandidate | None:
     gate = principle.gate
     if isinstance(gate, DetectorGate):
@@ -248,7 +273,7 @@ def _corner_candidate(
         n = total
         evidence_ids = _detector_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
-            detector=gate.detector,
+            detector=gate.detector, lap_pks=lap_pks,
         )
     elif isinstance(gate, FindingGate):
         finding = findings_by_corner_phase.get((corner_id, gate.phase))
@@ -281,7 +306,7 @@ def _corner_candidate(
             return None
         evidence_ids = _metric_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
-            metric_names=metric_names,
+            metric_names=metric_names, lap_pks=lap_pks,
         )
     else:  # pragma: no cover - AlwaysEligible only used for no_signal, handled elsewhere
         return None
@@ -334,6 +359,7 @@ def _corner_strength(
     db, principle, corner_id, *, driver, car, track,
     detector_table, metric_table, findings_by_corner_phase,
     cfg, min_trigger_rate, unit_reference: dict[str, float],
+    lap_pks: frozenset[int] | None = None,
 ) -> CoachingStrength | None:
     """The strict complement of `_corner_candidate`: a record where there IS
     evidence and the gate did NOT clear.
@@ -355,7 +381,7 @@ def _corner_strength(
         n, observed, kind = total, triggered / total, "trigger_rate"
         evidence_ids = _detector_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
-            detector=gate.detector,
+            detector=gate.detector, lap_pks=lap_pks,
         )
     elif isinstance(gate, MetricCVGate):
         metric_names = _ALL_MEASURED_METRICS if gate.metric == "*" else (gate.metric,)
@@ -379,7 +405,7 @@ def _corner_strength(
         observed, kind = cv, "coefficient_of_variation"
         evidence_ids = _metric_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
-            metric_names=metric_names,
+            metric_names=metric_names, lap_pks=lap_pks,
         )
     elif isinstance(gate, FindingGate):
         finding = findings_by_corner_phase.get((corner_id, gate.phase))
@@ -408,24 +434,28 @@ def _corner_strength(
 
 def eligible_strengths(
     db: Database, *, driver: str, car: str, track: str, config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> list[CoachingStrength]:
     """Every (principle, corner) the driver is clearing on real evidence.
 
     Same shape and same tables as `eligible_principles`, walked for the
     opposite outcome. Pure function of DB state + config — deterministic,
-    no AI.
+    no AI. `lap_pks` restricts to one era's laps exactly as in
+    `eligible_principles` (A55; Stage 1 annotates faults only, but the
+    pair stays symmetric for Stage 2's resolved detection).
     """
     windows_by_corner = _cohort_windows_by_corner(db, car, track)
     if not windows_by_corner:
         return []
 
-    detector_table = db.self_detector_table(driver=driver, car=car, track=track)
-    metric_table = db.self_metric_table(driver=driver, car=car, track=track)
+    detector_table = db.self_detector_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
+    metric_table = db.self_metric_table(driver=driver, car=car, track=track, lap_pks=lap_pks)
     findings_by_corner_phase = {
         (f.corner_id, f.phase): f
         for f in vs_self_findings(
             db, driver=driver, car=car, track=track,
             windows_by_corner=windows_by_corner, config=config,
+            lap_pks=lap_pks,
         )
         if f.kind == "opportunity"
     }
@@ -442,6 +472,7 @@ def eligible_strengths(
                 findings_by_corner_phase=findings_by_corner_phase,
                 cfg=cfg, min_trigger_rate=config.detectors.min_trigger_rate,
                 unit_reference=config.model.consistency_unit_reference_cv,
+                lap_pks=lap_pks,
             )
             if found is not None:
                 strengths.append(found)
