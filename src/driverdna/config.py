@@ -634,6 +634,17 @@ class CoachingConfig(_Section):
         "(docs/COACHING.md: 'softens phrasing when the measured evidence "
         "itself is thin,' never the gap band itself).",
     )
+    tendency_persistent_min_share: float = Field(
+        default=0.5,
+        description="Tendency layer (SPEC.md A55, Stage 1): a rollup "
+        "pattern that fired in the most recent era is 'persistent' when "
+        "the share of all eras it fired in reaches this fraction; below "
+        "it (but fired in at least two eras, the latest included) it is "
+        "'recurring'. Fired only in the most recent era is 'new'; fired "
+        "before but absent from the most recent era is 'resolved'. "
+        "Annotation only — this threshold gates no eligibility, band or "
+        "score anywhere.",
+    )
 
 
 class AuthConfig(_Section):

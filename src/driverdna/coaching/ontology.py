@@ -341,6 +341,62 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
 }
 
 
+#: Tendency layer (SPEC.md A55, Stage 1): the words for a rollup
+#: pattern's longitudinal state, computed by coaching/rollup.py from
+#: per-era eligibility. Like every other driver-facing sentence, the text
+#: lives here as versioned data; the numbers are filled from the payload,
+#: never invented by a renderer. State semantics (rollup._tendency_state):
+#: `new` = fired only in the most recent era; `recurring` = fired in at
+#: least two eras including the most recent, below the persistent share;
+#: `persistent` = most recent era and at least
+#: config.coaching.tendency_persistent_min_share of all eras; `resolved`
+#: = fired in an earlier era, absent from the most recent.
+TENDENCY_STATE_LINES: dict[str, str] = {
+    "new": (
+        "First fired in the most recent era ({eras_fired} of "
+        "{eras_total} eras) — new, not yet a habit."
+    ),
+    "recurring": (
+        "Fired in {eras_fired} of {eras_total} eras, including the most "
+        "recent — it keeps coming back."
+    ),
+    "persistent": (
+        "Fired in {eras_fired} of {eras_total} eras, including the most "
+        "recent — this is the habit, not a corner, and it isn't fixed yet."
+    ),
+    "resolved": (
+        "Fired in {eras_fired} of {eras_total} eras, but not in the "
+        "most recent — it has stopped firing lately."
+    ),
+}
+
+
+def tendency_line(
+    *, state: str | None, eras_fired: int, eras_total: int,
+    current_band: str | None = None, current_band_corners: int = 0,
+) -> str | None:
+    """The one rendered sentence for a pattern's tendency annotation, or
+    None when there is no state to state (no dated-era evidence — the
+    annotation makes no longitudinal claim rather than guessing one).
+
+    `current_band`/`current_band_corners` are the pattern's pooled
+    present, reduced by the caller from the pattern's own instances:
+    the loudest gap band among them and how many corners sit at it.
+    """
+    if state is None:
+        return None
+    line = TENDENCY_STATE_LINES[state].format(
+        eras_fired=eras_fired, eras_total=eras_total,
+    )
+    if current_band is not None:
+        corners = (
+            f"{current_band_corners} corner"
+            + ("s" if current_band_corners != 1 else "")
+        )
+        line += f" Currently {current_band} at {corners}."
+    return line
+
+
 def principles_for_fundamental(fundamental_id: str) -> tuple[CoachingPrinciple, ...]:
     return tuple(sorted(
         (p for p in PRINCIPLES.values() if p.fundamental == fundamental_id),

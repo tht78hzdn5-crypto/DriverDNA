@@ -26,6 +26,8 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from driverdna.coaching.engine import GAP_BANDS
+from driverdna.coaching.ontology import tendency_line
 from driverdna.model.taxonomy import FUNDAMENTALS
 
 #: Foundations first, higher-order skills after — the Driver Model pyramid's
@@ -455,6 +457,30 @@ def _reading_md(reading: dict[str, Any] | None) -> list[str]:
     return lines
 
 
+def _tendency_line(pattern: dict[str, Any]) -> str | None:
+    """A55 Stage 1: the pattern's era sentence, or None when the
+    annotation states nothing. The words are the ontology's
+    (`coaching/ontology.py`'s tendency_line); this only reduces the
+    pattern's own instances to their loudest gap band and the corner
+    count at it — data reduction, not wording."""
+    if pattern.get("tendency_state") is None:
+        return None
+    bands = [i.get("gap_band") for i in pattern.get("instances") or []]
+    bands = [b for b in bands if b in GAP_BANDS]
+    current_band = (
+        max(bands, key=GAP_BANDS.index) if bands else None
+    )
+    return tendency_line(
+        state=pattern["tendency_state"],
+        eras_fired=pattern["eras_fired"],
+        eras_total=pattern["eras_total"],
+        current_band=current_band,
+        current_band_corners=(
+            sum(1 for b in bands if b == current_band) if current_band else 0
+        ),
+    )
+
+
 def _coaching_rollup_md(rollup: dict[str, Any] | None) -> list[str]:
     if not rollup or not rollup.get("patterns"):
         return []
@@ -472,6 +498,9 @@ def _coaching_rollup_md(rollup: dict[str, Any] | None) -> list[str]:
         )
         if p.get("drill"):
             lines.append(f"    - _Try this:_ {p['drill']}")
+        line = _tendency_line(p)
+        if line:
+            lines.append(f"    - _Tendency:_ {line}")
     strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
     if strengths:
         lines += ["", "### Holding up across tracks", ""]
@@ -564,10 +593,15 @@ def render_driver_html(payload: dict[str, Any]) -> str:
                 f"<br><small><b>Try this:</b> {html.escape(p['drill'])}</small>"
                 if p.get("drill") else ""
             )
+            line = _tendency_line(p)
+            tendency = (
+                f"<br><small><b>Tendency:</b> {html.escape(line)}</small>"
+                if line else ""
+            )
             parts.append(
                 f"<li><b>{html.escape(p['coaching_expression'])}</b> — "
                 f"{html.escape(p['fundamental'].replace('_', ' '))}, "
-                f"{p['n_tracks']} tracks, {p['n_instances']} corners{drill}</li>"
+                f"{p['n_tracks']} tracks, {p['n_instances']} corners{drill}{tendency}</li>"
             )
         parts.append("</ul>")
         strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
