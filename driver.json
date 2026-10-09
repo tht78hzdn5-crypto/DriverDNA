@@ -78,7 +78,7 @@
      }
     ],
     "lines": [],
-    "note": "Confidence is the mean of these four ratios, each capped at 1.0 (model `dm-v2`). A term at its floor is saturated \u2014 more of it buys exactly nothing. Current ceiling for a measured fundamental: **60.2%** (a proxy fundamental is additionally capped at 50%).",
+    "note": "Confidence is the mean of these four ratios, each capped at 1.0 (model `dm-v3`). A term at its floor is saturated \u2014 more of it buys exactly nothing. Current ceiling for a measured fundamental: **60.2%** (a proxy fundamental is additionally capped at 50%).",
     "title": "Driver Model confidence"
    },
    {
@@ -1368,7 +1368,7 @@
      },
      "consistency": {
       "n": 596,
-      "value": 0.344,
+      "value": 0.658,
       "weight": 0.25
      },
      "opportunity": {
@@ -1381,9 +1381,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Braking",
-    "score": 80.52,
+    "score": 88.37,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "commitment": {
     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
@@ -1395,7 +1396,7 @@
      },
      "consistency": {
       "n": 94,
-      "value": 0.0,
+      "value": 0.7292,
       "weight": 0.4167
      },
      "opportunity": {
@@ -1408,9 +1409,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Commitment",
-    "score": 56.1,
+    "score": 86.48,
     "signal_status": "proxy",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "consistency": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
@@ -1422,7 +1424,7 @@
      },
      "consistency": {
       "n": 2017,
-      "value": 0.3431,
+      "value": 0.6893,
       "weight": 1.0
      },
      "opportunity": {
@@ -1435,9 +1437,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Consistency",
-    "score": 34.31,
+    "score": 68.93,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "corner_exit": {
     "basis_reason": null,
@@ -1449,7 +1452,7 @@
      },
      "consistency": {
       "n": 472,
-      "value": 0.1635,
+      "value": 0.6974,
       "weight": 0.25
      },
      "opportunity": {
@@ -1462,9 +1465,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Corner exit",
-    "score": 65.19,
+    "score": 78.54,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "rotation": {
     "basis_reason": null,
@@ -1476,7 +1480,7 @@
      },
      "consistency": {
       "n": 866,
-      "value": 0.3552,
+      "value": 0.7214,
       "weight": 0.25
      },
      "opportunity": {
@@ -1489,9 +1493,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Rotation",
-    "score": 60.17,
+    "score": 69.33,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "vehicle_management": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
@@ -1503,7 +1508,7 @@
      },
      "consistency": {
       "n": 83,
-      "value": 0.0,
+      "value": 0.7052,
       "weight": 1.0
      },
      "opportunity": {
@@ -1516,9 +1521,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Vehicle mgmt",
-    "score": 0.0,
+    "score": 70.52,
     "signal_status": "proxy",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "vision": {
     "basis_reason": null,
@@ -1529,7 +1535,8 @@
     "label": "Vision",
     "score": null,
     "signal_status": "no_signal",
-    "trend": "unavailable"
+    "trend": "unavailable",
+    "trend_reason": null
    }
   },
   "driver": "owner",
@@ -1547,23 +1554,7 @@
      "confidence": 0.6017,
      "evidence_count": 12,
      "fundamental": "braking",
-     "score": 80.52,
-     "signal_status": "measured"
-    },
-    {
-     "basis_reason": null,
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "corner_exit",
-     "score": 65.19,
-     "signal_status": "measured"
-    },
-    {
-     "basis_reason": null,
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "rotation",
-     "score": 60.17,
+     "score": 88.37,
      "signal_status": "measured"
     },
     {
@@ -1571,15 +1562,15 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "commitment",
-     "score": 56.1,
+     "score": 86.48,
      "signal_status": "proxy"
     },
     {
-     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "basis_reason": null,
      "confidence": 0.6017,
      "evidence_count": 12,
-     "fundamental": "consistency",
-     "score": 34.31,
+     "fundamental": "corner_exit",
+     "score": 78.54,
      "signal_status": "measured"
     },
     {
@@ -1587,18 +1578,34 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "vehicle_management",
-     "score": 0.0,
+     "score": 70.52,
      "signal_status": "proxy"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 69.33,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "consistency",
+     "score": 68.93,
+     "signal_status": "measured"
     }
    ],
    "reading_version": "read-v1",
-   "separation_points": 46.21,
+   "separation_points": 19.44,
    "strongest": {
     "basis_reason": null,
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "braking",
-    "score": 80.52,
+    "score": 88.37,
     "signal_status": "measured"
    },
    "verdict_reason": null,
@@ -1607,13 +1614,13 @@
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "consistency",
-    "score": 34.31,
+    "score": 68.93,
     "signal_status": "measured"
    }
   },
-  "scoring_model_version": "dm-v2",
+  "scoring_model_version": "dm-v3",
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 9
+ "payload_version": 10
 }

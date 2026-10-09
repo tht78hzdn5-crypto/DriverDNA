@@ -95,3 +95,47 @@ def pg_schema_optional(backend, request):
     if backend != "postgres":
         return None
     return request.getfixturevalue("pg_schema")
+
+
+# --- fast tier ("smoke") ---------------------------------------------------
+#
+# AGENTS.md's start-of-session rule costs a full-suite baseline run
+# (~313 s on the reference host, far worse on a starved one) before any
+# work begins. The smoke tier is the documented subset for that baseline:
+# `python -m pytest -m smoke` covers the scoring engine, the Driver
+# Model reading/history surface, census, determinism, and the coaching
+# engine — the parts whose breakage poisons everything downstream — in
+# a small fraction of the full runtime. It is a selection, not a
+# reduction: every test it marks still runs in the full suite, and no
+# test is smoke-only.
+#
+# Applied centrally here, keyed on file name, so adding a test to a
+# listed file joins the tier automatically and no test file needs a
+# marker edit. The heaviest single tests inside listed files — the
+# endpoint/CLI passes that each ingest a full synthetic cohort to
+# exercise one integration surface — are excluded by name; they remain
+# full-suite tests. Measured exclusions (2026-10-08 audit durations):
+# census CLI artifact 13.7 s, score-history endpoint 12.6 s / 8.0 s.
+_SMOKE_FILES = {
+    "test_agent_contract.py",
+    "test_census.py",
+    "test_coaching_cv_calibration.py",
+    "test_coaching_engine.py",
+    "test_model_reading.py",
+    "test_ordering_determinism.py",
+    "test_score_history.py",
+    "test_scoring.py",
+    "test_scoring_calibration.py",
+    "test_scoring_saturation.py",
+}
+_SMOKE_EXCLUDED_TESTS = {
+    "test_census_cli_writes_the_artifact",
+    "test_score_history_endpoint_passes_through_unchanged",
+    "test_score_history_endpoint_cold_start_matches_unavailable_shape",
+}
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if item.path.name in _SMOKE_FILES and item.name not in _SMOKE_EXCLUDED_TESTS:
+            item.add_marker(pytest.mark.smoke)

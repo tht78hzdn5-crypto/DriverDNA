@@ -55,9 +55,15 @@ driverdna = ["ui/static/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+# -rs: skips always print their reasons, so a local green can never
+# silently omit the browser/Postgres-gated tests (CI passes -rs too).
+# Fast tier: `python -m pytest -m smoke` runs the engine + scoring +
+# coaching essentials marked in tests/conftest.py — a small fraction of
+# the full suite, for the run-a-baseline-every-session rule in AGENTS.md.
+addopts = "-q --strict-markers -rs"
 markers = [
     "browser: needs a real Chromium via Playwright and the built SPA",
+    "smoke: fast tier - engine, scoring and coaching essentials (see tests/conftest.py)",
 ]
 
 [tool.ruff]

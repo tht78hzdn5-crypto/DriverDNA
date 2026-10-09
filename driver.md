@@ -5,11 +5,11 @@
 
 ## Where you stand
 
-- **Strongest: braking** — 80.5 (confidence 0.60, 12 laps)
-- **Weakest: consistency** — 34.3 (confidence 0.60, 12 laps)
+- **Strongest: braking** — 88.4 (confidence 0.60, 12 laps)
+- **Weakest: consistency** — 68.9 (confidence 0.60, 12 laps)
     - Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.
 
-_46.2 points apart. Ranked within this driver only — never against other drivers, and never against an absolute standard. Only measured fundamentals can take a verdict slot._
+_19.4 points apart. Ranked within this driver only — never against other drivers, and never against an absolute standard. Only measured fundamentals can take a verdict slot._
 
 
 ## Work on this everywhere (cross-track patterns)
