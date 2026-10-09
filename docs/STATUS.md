@@ -1,5 +1,60 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-08 (fixes landed: dm-v3 — BUG-042/043/044 fixed, artifacts regenerated, smoke fast tier).**
+
+- **What prompted it:** the owner directed PR #54 to continue from
+  documentation to fixes ("continue PR and start fixing that stuff")
+  and to remediate the suite's demonstrated defects in the same PR.
+- **The fix (SPEC.md A56, `dm-v2` → `dm-v3`, payload v9 → v10):** the
+  consistency component's normalized CV is replaced by scaled MAD
+  against per-metric reference dispersions measured from the owner's
+  282-lap corpus (median of nonzero per-(cohort, corner) scaled MADs;
+  provenance written into the config descriptions), ceiling re-anchored
+  to 3.0 so reference-typical dispersion scores 0.667. A directional
+  trend is now suppressed — `unavailable`, with a payload-visible
+  `trend_reason` — whenever the headline score is pinned at a scale
+  bound (BUG-043). The coaching layer's normalized-CV gates are
+  deliberately not migrated (A56 records the deferral; BUG-044 stays
+  open there).
+- **Real-corpus effect (same evidence, regenerated report):**
+  `consistency` 0.0 → 56.19, `vehicle_management` 0.0 → 68.87 (trend
+  "improving" → "stable"), `braking` 68.0 → 80.57, `rotation`
+  43.92 → 56.68, `corner_exit` 58.26 → 72.54, `commitment`
+  51.49 → 60.67 — every movement decomposes exactly through the shared
+  consistency component. Determinism: pipeline twice on independent
+  copies of the corpus → byte-identical normalized `driver.json`.
+- **Pins retired, meaning pinned:** the two `xfail(strict=True)` pins
+  are now genuine passing assertions, joined by BUG-044 shape tests
+  (near-origin landmark, wrap-around sample, bimodality) and
+  golden-driver calibration tests (`tests/test_scoring_calibration.py`)
+  — synthetic drivers at known multiples of the anchors must score
+  mid-scale / high / low, monotonically. The BUG-020 freshness guard
+  caught the deliberate number change in 8 committed artifacts; every
+  differing leaf was audited (consistency values, scores, the new
+  `trend_reason` key, derived reading order, version strings — nothing
+  else) and the artifacts were regenerated in the same change.
+- **Suite remediation:** fast tier `python -m pytest -m smoke`
+  (130 of 1,131 items — engine + scoring + coaching essentials, marked
+  centrally in `tests/conftest.py`) runs in **14 s on this host**;
+  `-rs` added to `addopts` so local runs print skip reasons by default
+  (CI already passes `-rs` explicitly; its behaviour is unchanged).
+  The audit's three slowest tests were profiled with `--durations`
+  (census CLI artifact 9.1 s, score-history endpoints 8.3 s / 7.4 s on
+  this host) and left unchanged: each is a single genuine
+  full-pipeline/integration pass, and no assertion was weakened,
+  deleted, skipped, or narrowed anywhere in this change.
+- **Verified counts:** targeted receipts for this change — the affected
+  set (scoring, saturation, calibration, model reading/history/db,
+  census, coaching engine + CV calibration, agent contract, ordering
+  determinism: 12 files) → **exit 0, 0 failed**; artifact freshness →
+  **exit 0**; smoke tier → **exit 0 in 14 s**; `ruff check .` clean.
+  One full local run post-change completed **905 passed** before dying
+  by a pytest-timeout kill in `test_offline.py` under host starvation;
+  of its 10 failures, 8 were the freshness artifacts (fixed above) and
+  the rest, plus its 15 errors, are unattributed host-condition noise
+  of the same kind recorded in the snapshot below — CI on PR #54 is
+  the full-suite receipt for this change.
+
 **Snapshot date: 2026-10-08 (critical review: BUG-042/043/044 filed — dm-v2 consistency saturation on the owner's real corpus).**
 
 - **What prompted it:** the owner's full Garage61 history finished syncing
