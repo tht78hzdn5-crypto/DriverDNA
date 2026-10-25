@@ -423,6 +423,12 @@ def test_google_callback_invalidates_prior_session_for_existing_user(db_path, tm
     assert r2.status_code == 200
 
     # Old cookie must now be rejected — epoch was bumped by the OAuth sign-in.
+    # Clear the jar first: a per-request cookie does NOT override a jar
+    # cookie of the same name, it travels alongside it, and which duplicate
+    # the server parses is TestClient-version-dependent (CI red on
+    # starlette 1.10, green on 1.7, same code). With the jar cleared the old
+    # cookie is the only value sent, on every version.
+    client.cookies.clear()
     assert client.get("/api/driver", cookies={auth.SESSION_COOKIE: old_cookie}).status_code == 401
 
 
