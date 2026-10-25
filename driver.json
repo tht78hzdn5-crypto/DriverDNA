@@ -1383,6 +1383,7 @@
     "label": "Braking",
     "score": 80.52,
     "signal_status": "measured",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "commitment": {
@@ -1410,6 +1411,7 @@
     "label": "Commitment",
     "score": 56.1,
     "signal_status": "proxy",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "consistency": {
@@ -1437,6 +1439,7 @@
     "label": "Consistency",
     "score": 34.31,
     "signal_status": "measured",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "corner_exit": {
@@ -1464,6 +1467,7 @@
     "label": "Corner exit",
     "score": 65.19,
     "signal_status": "measured",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "rotation": {
@@ -1491,6 +1495,7 @@
     "label": "Rotation",
     "score": 60.17,
     "signal_status": "measured",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "vehicle_management": {
@@ -1518,6 +1523,7 @@
     "label": "Vehicle mgmt",
     "score": 0.0,
     "signal_status": "proxy",
+    "speculative_guess": null,
     "trend": "unavailable"
    },
    "vision": {
@@ -1529,6 +1535,7 @@
     "label": "Vision",
     "score": null,
     "signal_status": "no_signal",
+    "speculative_guess": null,
     "trend": "unavailable"
    }
   },
@@ -1615,5 +1622,5 @@
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 9
+ "payload_version": 10
 }
