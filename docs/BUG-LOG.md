@@ -71,6 +71,15 @@ Writing that down is the point.
 
 ## Fixed
 
+### BUG-045 — Auth session-rotation test red in CI: per-request cookie duplicates jar cookie
+- **Status**: fixed · **Severity**: breaks (CI only; no app defect) · **Found**: 2026-10-24
+- **Symptom**: `tests/test_auth_api.py::test_google_callback_invalidates_prior_session_for_existing_user` failed in CI (pytest 3.11 and 3.12) with `assert 200 == 401`, while passing locally. It left one red pytest job on PRs #54 and #56.
+- **Root cause**: The test's final check passed the old session cookie per-request on a TestClient whose jar already held the newer cookie from the Google login. A per-request cookie does not override a jar cookie of the same name: the request carries both values, and which duplicate the server parses is TestClient-version-dependent (starlette 1.7: jar first, per-request last, so the old cookie parsed and the test passed; starlette 1.10: per-request first, jar last, so the new cookie parsed and the test failed). CI resolves a newer starlette via unpinned deps; the local venv had 1.7.
+- **Blast radius**: Test-only. The app's session invalidation is correct: with a fresh client the old cookie returns 401, and the DB epoch matches the new cookie. No user-facing or security impact.
+- **How it was caught**: CI red on PRs #54 and #56; diagnosed by logging the Cookie header the server received (two values for one name) and decoding both payloads.
+- **How it was fixed**: Clear the client cookie jar before the final assertion so the old cookie is the only value sent, on every TestClient version. No app code changed, and the assertion itself is unchanged, not weakened.
+- **Numbering note**: BUG-042–044 are held by unmerged PR #54, so this entry takes BUG-045.
+
 ### BUG-041 — Chat grounding rejects finding IDs with parentheses and unclassified incidents
 - **Status**: fixed · **Severity**: breaks · **Found**: 2026-08-20
 - **Symptom**: The AI chat gets stuck on "thinking..." and eventually fails with "response rejected by the grounding contract... unknown evidence ID cited".
