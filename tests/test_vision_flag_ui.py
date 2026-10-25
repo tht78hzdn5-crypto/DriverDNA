@@ -32,10 +32,15 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 CHROME = chromium_executable()
 GUESS = "Eyes drop to the apex too late; say out loud where you are looking at turn-in."
 
-pytestmark = pytest.mark.skipif(
-    CHROME is None or not (STATIC / "index.html").exists(),
-    reason="Playwright/Chromium or the built SPA is absent",
-)
+pytestmark = [
+    # Selected by marker in CI's browser-tests job; without this the test
+    # is deselected there and merely skipped in the pytest job — run nowhere.
+    pytest.mark.browser,
+    pytest.mark.skipif(
+        CHROME is None or not (STATIC / "index.html").exists(),
+        reason="Playwright/Chromium or the built SPA is absent",
+    ),
+]
 
 
 def _free_port() -> int:
