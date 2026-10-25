@@ -71,6 +71,19 @@ Writing that down is the point.
 
 ## Fixed
 
+### BUG-046 — Vision tier blank and incident speculative attach dead: payload read output_json off coach_history, which never returns it
+- **Status**: fixed · **Severity**: breaks (missing UI content; no wrong numbers) · **Found**: 2026-10-24
+- **Symptom**: The Driver Model view's Vision tier showed only the honest `insufficient_reason` and never the A54 red-flagged speculative guess the UI already renders (`ui/src/views/model.jsx`), because the payload never supplied `beliefs.vision.speculative_guess`. The same defect silently disabled the incident path: `incidents_section` read `latest["output_json"]` off `db.coach_history`, which returns only output_pk/provider/plan_titles, so the read raised KeyError into a bare `except: pass` and every incident's guess stayed None.
+- **Root cause**: Retrieval/assembly mismatch, not a missing feature. The UI and the A54 decision existed; the payload assembly read from a history accessor that never carried the stored AI output.
+- **Blast radius**: Display only. No engine number was wrong or moved; no score or confidence for vision ever existed. Any stored coach run's incident explanations were silently dropped from payloads.
+- **How it was caught**: Code inspection during the A54 vision work, not by a test — no test covered either attach path.
+- **How it was fixed**:
+  1. New `Database.latest_coach_output` retrieval (latest run by output_pk, optionally cohort-scoped, corrupt JSON yields None) used by both the beliefs attach and the incident attach; the bare except is gone.
+  2. `driver_model_section` attaches `speculative_guess` (None default) to every belief, gated at read time to no_signal beliefs only.
+  3. Coach output schema gains an optional `fundamental_guesses` section (text only; validator rejects measured/proxy fundamentals, score/confidence keys, percentages, and empty guesses); the system prompt (coach-v4) directs guesses there.
+  4. `PAYLOAD_VERSION` 9 → 10. Note: unmerged PR #54 also claims payload v10 (for trend_reason); whichever merges second must reconcile the two shapes into one version.
+- **Numbering note**: BUG-042–044 are held by unmerged PR #54.
+
 ### BUG-045 — Auth session-rotation test red in CI: per-request cookie duplicates jar cookie
 - **Status**: fixed · **Severity**: breaks (CI only; no app defect) · **Found**: 2026-10-24
 - **Symptom**: `tests/test_auth_api.py::test_google_callback_invalidates_prior_session_for_existing_user` failed in CI (pytest 3.11 and 3.12) with `assert 200 == 401`, while passing locally. It left one red pytest job on PRs #54 and #56.

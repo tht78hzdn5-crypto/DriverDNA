@@ -34,7 +34,7 @@ from driverdna.model.scoring import (
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 9  # +driver_model.{reading,beliefs[].components,basis_reason} (A51)
+PAYLOAD_VERSION = 10  # +driver_model.beliefs[].speculative_guess, repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -83,6 +83,24 @@ def _components_dict(belief, config: DriverDNAConfig) -> dict[str, Any]:
     }
 
 
+def _fundamental_guesses(db: Database, *, driver: str) -> dict[str, str]:
+    """Latest stored AI guesses for no_signal fundamentals, by fundamental
+    id. Driver-wide: the driver-model section is pooled across cohorts, so
+    the freshest coach run for the driver (any cohort) is the source. The
+    caller enforces the no_signal gate; this helper only reads."""
+    latest = db.latest_coach_output(driver=driver)
+    guesses: dict[str, str] = {}
+    if not latest:
+        return guesses
+    entries = latest.get("fundamental_guesses")
+    if isinstance(entries, list):
+        for entry in entries:
+            if (isinstance(entry, dict) and entry.get("fundamental_id")
+                    and isinstance(entry.get("guess"), str)):
+                guesses[entry["fundamental_id"]] = entry["guess"]
+    return guesses
+
+
 def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) -> dict[str, Any]:
     """Per-fundamental beliefs (M6, dm-v1) — driver-level, pooled across ALL
     of the driver's cohorts, so it is identical across every cohort payload
@@ -95,6 +113,7 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
     validator code needed). AI may explain a score; it never adjusts one.
     """
     beliefs = compute_all_beliefs(db, driver=driver, config=config)
+    guesses = _fundamental_guesses(db, driver=driver)
     return {
         "driver": driver,
         "scoring_model_version": SCORING_MODEL_VERSION,
@@ -121,6 +140,14 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
                 "evidence_count": b.evidence_count,
                 "trend": b.trend,
                 "insufficient_reason": b.insufficient_reason,
+                # A54: a stored AI guess for a no_signal fundamental
+                # travels here for the UI's red entertainment flag. Never
+                # a score, never a confidence, and never attached to a
+                # measured/proxy belief — the engine's numbers stand alone.
+                "speculative_guess": (
+                    guesses.get(fid)
+                    if b.signal_status.value == "no_signal" else None
+                ),
                 **_components_dict(b, config),
             }
             for fid, b in beliefs.items()
@@ -136,22 +163,23 @@ def incidents_section(
     would need N and go through the finding gates like everything else."""
     from driverdna.coaching.ontology import PRINCIPLES
     from driverdna.incidents.coaching import eligible_principle_for
-    import json
 
     events = db.incidents_for_cohort(driver=driver, car=car, track=track)
     
-    # Load latest AI speculation if available
-    history = db.coach_history(driver=driver, car=car, track=track)
+    # Load latest AI speculation if available. Read through
+    # latest_coach_output, not coach_history: the latter returns plan
+    # titles only, so the previous read of latest["output_json"] raised
+    # KeyError into the bare except and the attach was silently dead
+    # (BUG-046). No bare except here: a corrupt or misshaped stored run
+    # yields no guesses, never a crash, and never a swallowed logic bug.
+    latest = db.latest_coach_output(driver=driver, car=car, track=track)
     speculative_explanations = {}
-    if history:
-        latest = history[-1]
-        try:
-            out = json.loads(latest["output_json"])
-            for ie in out.get("incident_explanations", []):
-                if ie.get("incident_id") and ie.get("explanation"):
-                    speculative_explanations[ie["incident_id"]] = ie["explanation"]
-        except Exception:
-            pass
+    explanations = latest.get("incident_explanations") if latest else None
+    if isinstance(explanations, list):
+        for ie in explanations:
+            if (isinstance(ie, dict) and ie.get("incident_id")
+                    and ie.get("explanation")):
+                speculative_explanations[ie["incident_id"]] = ie["explanation"]
 
     for e in events:
         # Deterministic: the engine decides eligibility, never the AI.
