@@ -144,6 +144,54 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
             )
         check_numbers(str(ie.get("explanation", "")), where)
 
+    # A54 workstream 2: guesses for no_signal fundamentals (today: vision).
+    # The section is optional — older outputs predate it — but when present
+    # it is held to the tri-state rule mechanically: text only, never a
+    # score, a confidence, or a percentage, and only for fundamentals the
+    # payload itself marks no_signal.
+    no_signal_ids = {
+        fid for fid, b in
+        report.get("driver_model", {}).get("beliefs", {}).items()
+        if b.get("signal_status") == "no_signal"
+    }
+    guesses = output.get("fundamental_guesses")
+    if guesses is not None:
+        if not isinstance(guesses, list):
+            violations.append("fundamental_guesses: must be a list")
+        else:
+            for i, g in enumerate(guesses):
+                where = f"fundamental_guesses[{i}]"
+                if not isinstance(g, dict):
+                    violations.append(f"{where}: must be an object")
+                    continue
+                fid = g.get("fundamental_id")
+                if fid not in no_signal_ids:
+                    violations.append(
+                        f"{where}: fundamental {fid!r} is not a no_signal "
+                        "fundamental — guesses are only for unmeasured "
+                        "fundamentals"
+                    )
+                guess = g.get("guess")
+                if not isinstance(guess, str) or not guess.strip():
+                    violations.append(
+                        f"{where}: guess must be non-empty text"
+                    )
+                    continue
+                if "score" in g or "confidence" in g:
+                    violations.append(
+                        f"{where}: a guess carries no score or confidence "
+                        "key — the tri-state rule forbids numbers for "
+                        "no_signal fundamentals"
+                    )
+                percent_claims = [c for c in numeric_claims(guess)
+                                  if c[1] == "%"]
+                if percent_claims:
+                    violations.append(
+                        f"{where}: percentage language {percent_claims!r} "
+                        "in a no_signal guess — forbidden"
+                    )
+                check_numbers(guess, where)
+
     for i, step in enumerate(output["coaching_plan"]):
         where = f"coaching_plan[{i}]"
         if not step.get("title"):

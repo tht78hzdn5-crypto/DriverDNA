@@ -1868,6 +1868,34 @@ class Database:
             })
         return history
 
+    def latest_coach_output(
+        self, *, driver: str, car: str | None = None, track: str | None = None
+    ) -> dict[str, Any] | None:
+        """Parsed output_json of the driver's latest coach run (highest
+        output_pk), optionally scoped to one cohort. None when no run
+        exists or the stored JSON is corrupt. This is the retrieval the
+        payload's speculative-guess attach reads: coach_history
+        deliberately returns plan titles only, so reading output_json off
+        it silently yields nothing (BUG-046)."""
+        query = """SELECT output_json FROM coach_outputs
+                   WHERE driver=? AND owner_user_pk=?"""
+        params: list[Any] = [driver, self.user_pk]
+        if car is not None:
+            query += " AND car=?"
+            params.append(car)
+        if track is not None:
+            query += " AND track=?"
+            params.append(track)
+        query += " ORDER BY output_pk DESC LIMIT 1"
+        row = self.conn.execute(query, params).fetchone()
+        if row is None:
+            return None
+        try:
+            output = json.loads(row["output_json"])
+        except (json.JSONDecodeError, TypeError):
+            return None
+        return output if isinstance(output, dict) else None
+
     # --- annotations and chat transcripts -----------------------------------
 
     def annotate_finding(
