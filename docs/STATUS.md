@@ -1,5 +1,105 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-08 (fixes landed: dm-v3 — BUG-042/043/044 fixed, artifacts regenerated, smoke fast tier).**
+
+- **What prompted it:** the owner directed PR #54 to continue from
+  documentation to fixes ("continue PR and start fixing that stuff")
+  and to remediate the suite's demonstrated defects in the same PR.
+- **The fix (SPEC.md A56, `dm-v2` → `dm-v3`, payload v9 → v10):** the
+  consistency component's normalized CV is replaced by scaled MAD
+  against per-metric reference dispersions measured from the owner's
+  282-lap corpus (median of nonzero per-(cohort, corner) scaled MADs;
+  provenance written into the config descriptions), ceiling re-anchored
+  to 3.0 so reference-typical dispersion scores 0.667. A directional
+  trend is now suppressed — `unavailable`, with a payload-visible
+  `trend_reason` — whenever the headline score is pinned at a scale
+  bound (BUG-043). The coaching layer's normalized-CV gates are
+  deliberately not migrated (A56 records the deferral; BUG-044 stays
+  open there).
+- **Real-corpus effect (same evidence, regenerated report):**
+  `consistency` 0.0 → 56.19, `vehicle_management` 0.0 → 68.87 (trend
+  "improving" → "stable"), `braking` 68.0 → 80.57, `rotation`
+  43.92 → 56.68, `corner_exit` 58.26 → 72.54, `commitment`
+  51.49 → 60.67 — every movement decomposes exactly through the shared
+  consistency component. Determinism: pipeline twice on independent
+  copies of the corpus → byte-identical normalized `driver.json`.
+- **Pins retired, meaning pinned:** the two `xfail(strict=True)` pins
+  are now genuine passing assertions, joined by BUG-044 shape tests
+  (near-origin landmark, wrap-around sample, bimodality) and
+  golden-driver calibration tests (`tests/test_scoring_calibration.py`)
+  — synthetic drivers at known multiples of the anchors must score
+  mid-scale / high / low, monotonically. The BUG-020 freshness guard
+  caught the deliberate number change in 8 committed artifacts; every
+  differing leaf was audited (consistency values, scores, the new
+  `trend_reason` key, derived reading order, version strings — nothing
+  else) and the artifacts were regenerated in the same change.
+- **Suite remediation:** fast tier `python -m pytest -m smoke`
+  (130 of 1,131 items — engine + scoring + coaching essentials, marked
+  centrally in `tests/conftest.py`) runs in **14 s on this host**;
+  `-rs` added to `addopts` so local runs print skip reasons by default
+  (CI already passes `-rs` explicitly; its behaviour is unchanged).
+  The audit's three slowest tests were profiled with `--durations`
+  (census CLI artifact 9.1 s, score-history endpoints 8.3 s / 7.4 s on
+  this host) and left unchanged: each is a single genuine
+  full-pipeline/integration pass, and no assertion was weakened,
+  deleted, skipped, or narrowed anywhere in this change.
+- **Verified counts:** targeted receipts for this change — the affected
+  set (scoring, saturation, calibration, model reading/history/db,
+  census, coaching engine + CV calibration, agent contract, ordering
+  determinism: 12 files) → **exit 0, 0 failed**; artifact freshness →
+  **exit 0**; smoke tier → **exit 0 in 14 s**; `ruff check .` clean.
+  One full local run post-change completed **905 passed** before dying
+  by a pytest-timeout kill in `test_offline.py` under host starvation;
+  of its 10 failures, 8 were the freshness artifacts (fixed above) and
+  the rest, plus its 15 errors, are unattributed host-condition noise
+  of the same kind recorded in the snapshot below — CI on PR #54 is
+  the full-suite receipt for this change.
+
+**Snapshot date: 2026-10-08 (critical review: BUG-042/043/044 filed — dm-v2 consistency saturation on the owner's real corpus).**
+
+- **What prompted it:** the owner's full Garage61 history finished syncing
+  (282 laps, 5 cohorts, 3 cars) and the report showed `consistency` at
+  **0.0 with 100% confidence** and `vehicle_management` at **0.0 with
+  trend "improving"**. The owner directed a critical investigation of the
+  scores, the tests that missed them, and the suite itself.
+- **What was measured (engine run against a copy of the live DB;
+  independently replicated from the payload side, identical numbers):**
+  the consistency component's pooled normalized CV is **2.3898** against
+  `consistency_cv_ceiling` 2.0, so the linear map clamps to exactly 0.0.
+  Saturation is broad-based (five of nine unit means above the ceiling;
+  pooled is still 1.84 with the worst unit removed), the reference-CV
+  anchors are medians from a smaller 2026-07-21 sample, and the '% lap'
+  unit's tail is a statistic pathology of its own (BUG-044: CV divides
+  by landmark position; one wrap-around apex sample at Silverstone C18
+  alone contributes a normalized ~95). `braking`'s consistency component
+  is likewise zeroed (pooled 3.466); its score survives on the other
+  two components.
+- **Filed:** BUG-042 (saturation, silent-wrong, open), BUG-043 (trend
+  can assert "improving" for a saturated 0.0 belief, open), BUG-044
+  (CV unsuited to '% lap' position metrics, open). Pinned by
+  `tests/test_scoring_saturation.py` — two `xfail(strict=True)` tests
+  asserting the constitution's behaviour, tripwires for the fix.
+- **Deliberately NOT done:** no engine number changed. Rescoring needs
+  a SPEC amendment and a `dm-v3` bump (AGENTS.md); this change
+  documents and pins only.
+- **Verified counts:** targeted receipt for this change —
+  `python -m pytest tests/test_scoring.py tests/test_scoring_saturation.py
+  tests/test_model_reading.py tests/test_score_history.py
+  tests/test_census.py tests/test_agent_contract.py -q` → **82 passed,
+  2 xfailed (the new pins), 0 failed**; `ruff check` clean. A full-suite
+  baseline (`-m "not browser"`) was started before any change on this
+  host and ran far past the 313 s reference in docs below: the host is
+  memory-starved (no swap, ~0.6 GB available of 8 GB) and the pytest
+  main thread sits in disk-wait (D state) at ~14% CPU — the suite's
+  wall-clock here is I/O-bound, not compute-bound. That run was later
+  terminated (SIGTERM) at ~40 min / ~65% progress; its progress output
+  showed 1 failure and a cluster of 8 errors whose identities and
+  tracebacks were never captured — unexplained red on pre-change code,
+  recorded in PR #54's receipts, with a full-suite run on a healthy
+  host still owed. Suite cost also
+  concentrates in full-pipeline/endpoint tests (slowest measured:
+  census CLI artifact 13.7 s, score-history endpoint 12.6 s / 8.0 s).
+
 **Snapshot date: 2026-08-20 (BUG-041 fixed: Chat grounding rejects finding IDs with parentheses and unclassified incidents).**
 
 - **What prompted it:** User reported the AI chat hanging at "thinking..." and eventually failing with a "response rejected by the grounding contract" error.

@@ -396,7 +396,7 @@ class RetentionConfig(_Section):
 
 
 class ModelConfig(_Section):
-    """Driver Model deterministic scoring (M6, model `dm-v2`).
+    """Driver Model deterministic scoring (M6, model `dm-v3`).
 
     A fundamental's score is a weighted aggregation of principle-adherence
     rate, normalized vs-self opportunity, and consistency
@@ -419,8 +419,9 @@ class ModelConfig(_Section):
     )
     weight_consistency: float = Field(
         default=0.25,
-        description="Score weight for consistency (coefficient of variation "
-        "of the fundamental's metrics across laps).",
+        description="Score weight for consistency (robust lap-to-lap "
+        "dispersion of the fundamental's metrics; dm-v3's scaled-MAD "
+        "statistic, SPEC.md A56).",
     )
     opportunity_ceiling_s: float = Field(
         default=1.0,
@@ -462,7 +463,11 @@ class ModelConfig(_Section):
         "so no unit dominates the pooled signal purely by being counted in "
         "small numbers. Values are the observed median raw CV per unit across "
         "the project's real committed multi-car/multi-track telemetry "
-        "(2026-07-21), not guessed; see SPEC.md's Milestone 6 amendment.",
+        "(2026-07-21), not guessed; see SPEC.md's Milestone 6 amendment. "
+        "Scoring superseded this table in dm-v3 (A56: per-metric dispersion "
+        "anchors below); it is retained because the coaching layer's "
+        "normalized-CV gates (M7, same_lap_twice) still divide by it — a "
+        "separate code path A56 deliberately did not migrate.",
     )
     consistency_cv_ceiling: float = Field(
         default=2.0,
@@ -470,7 +475,82 @@ class ModelConfig(_Section):
         "multiples of a metric's own unit-typical CV (after dividing by "
         "consistency_unit_reference_cv; dm-v2) — considered maximally "
         "inconsistent (scores 0); scaled linearly from 0 (scores 100) to this "
-        "ceiling. 1.0 (exactly unit-typical) scores 50.",
+        "ceiling. 1.0 (exactly unit-typical) scores 50. Retained as the "
+        "coaching layer's band anchor (cv_band_major is calibrated to it, "
+        "tests/test_coaching_cv_calibration.py); dm-v3 scoring uses "
+        "consistency_dispersion_ceiling instead (A56).",
+    )
+    consistency_metric_reference_dispersion: dict[str, float] = Field(
+        default={
+            "abs_active_ratio": 0.18121,
+            "apex_dist_pct": 0.44219,
+            "brake_application_rate": 0.40338,
+            "brake_peak": 0.1339,
+            "brake_point_dist_pct": 0.41386,
+            "brake_release_duration_s": 0.23474,
+            "coast_s": 0.7413,
+            "exit_accel_ms2": 0.57825,
+            "full_throttle_dist_pct": 0.43762,
+            "min_speed_kmh": 9.28766,
+            "steering_corrections": 2.2239,
+            "steering_smoothness_dps2": 97.71206,
+            "throttle_brake_overlap_s": 0.19768,
+            "throttle_modulation_count": 1.4826,
+            "throttle_pickup_dist_pct": 0.56852,
+            "trail_brake_overlap_s": 0.48184,
+            "turn_in_dist_pct": 0.3019,
+            "yaw_peak_rate": 0.04593,
+        },
+        description="Per-metric typical lap-to-lap dispersion for dm-v3's "
+        "consistency statistic (SPEC.md A56): the scaled MAD (1.4826 * "
+        "median absolute deviation from the sample median, in the metric's "
+        "native units) a repeatable driver shows on that metric. Measured "
+        "2026-10-08 from the owner's synced Garage61 corpus — 282 laps, 5 "
+        "cohorts, 3 cars, the project's largest real corpus: for each "
+        "metric, the median of its nonzero per-(cohort, corner) scaled-MAD "
+        "values (nonzero because zero-inflated metrics — counts, activity "
+        "ratios — have a median sample that never varies at all, which "
+        "would anchor the unit to 'any variation is infinitely abnormal'; "
+        "a sample that never varies still normalizes to exactly 0 against "
+        "this anchor). Keyed by metric name (metrics/technique.py), not "
+        "unit: metrics sharing a unit differ in natural magnitude (coast_s "
+        "vs brake_release_duration_s), and dm-v2's per-unit CV anchors "
+        "could not express that. A metric with no entry falls back to "
+        "consistency_unit_reference_dispersion for its unit.",
+    )
+    consistency_unit_reference_dispersion: dict[str, float] = Field(
+        default={
+            "% lap": 0.42892,
+            "km/h": 9.28766,
+            "rad/s": 0.04593,
+            "deg/s^2": 97.71206,
+            "m/s^2": 0.57825,
+            "fraction": 0.15198,
+            "fraction/s": 0.40338,
+            "s": 0.27181,
+            "count": 1.4826,
+        },
+        description="Per-unit fallback for "
+        "consistency_metric_reference_dispersion (dm-v3, A56): the same "
+        "measured statistic — median of nonzero per-(cohort, corner) "
+        "scaled-MAD values from the same 2026-10-08 corpus — pooled per "
+        "unit instead of per metric. Used only for a metric with no "
+        "per-metric entry; a sample whose metric and unit both lack an "
+        "anchor is skipped rather than normalized against a guess.",
+    )
+    consistency_dispersion_ceiling: float = Field(
+        default=3.0,
+        description="Ceiling for dm-v3's pooled consistency signal, "
+        "expressed in multiples of each metric's own reference dispersion "
+        "(after dividing by consistency_metric_reference_dispersion) — "
+        "considered maximally inconsistent (component 0); scaled linearly "
+        "from 0 dispersion (component 1) to this ceiling, so exactly "
+        "reference-typical dispersion (pooled 1.0) scores 0.667. Set at "
+        "3.0 in dm-v3 (A56): the floor is reserved for a driver three "
+        "times as dispersed as typical in every unit at once. dm-v2's 2.0 "
+        "ceiling, applied to the CV statistic, put the owner's real "
+        "282-lap corpus at pooled 2.39 and clamped both consistency-only "
+        "beliefs to exactly 0.0 (BUG-042).",
     )
     min_evidence_for_score: int = Field(
         default=5,
@@ -550,8 +630,10 @@ class CoachingConfig(_Section):
     Detector-gated principles reuse `detectors.min_trigger_rate` — one floor
     for "is this a pattern," not duplicated here. `commitment_cv_floor` and
     `consistency_cv_floor` gate the two principles with no detector
-    (trust_the_proxy, same_lap_twice): a coefficient of variation (same
-    definition as ModelConfig's) crossing the floor is their trigger.
+    (trust_the_proxy, same_lap_twice): a coefficient of variation (the
+    statistic dm-v2's scoring used; the coaching layer retains it after
+    dm-v3 moved scoring to absolute dispersion, SPEC.md A56) crossing the
+    floor is their trigger.
 
     Gap bands are absolute, versioned thresholds, never invented per-call
     (docs/COACHING.md, "Gap bands — mechanics"): seconds-based bands score
@@ -601,9 +683,13 @@ class CoachingConfig(_Section):
         default=2.00,
         description="same_lap_twice's normalized-CV floor for major tone "
         "(coach-onto-v4). Deliberately equal to "
-        "config.model.consistency_cv_ceiling: that is the point dm-v2 already "
-        "scores this component zero, so the two layers agree on what 'as bad "
-        "as it gets' means. See cv_band_moderate for the scale.",
+        "config.model.consistency_cv_ceiling: under dm-v2 that was also "
+        "the point the scoring layer scored this component zero, so the "
+        "two layers agreed on what 'as bad as it gets' means. dm-v3 (A56) "
+        "re-based scoring on absolute dispersion; the coaching scale "
+        "keeps its own normalized-CV ceiling rather than silently "
+        "following, so the equality is now a coaching-layer choice, not "
+        "a cross-layer agreement. See cv_band_moderate for the scale.",
     )
     commitment_cv_floor: float = Field(
         default=0.15,

@@ -34,7 +34,7 @@ from driverdna.model.scoring import (
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 10  # +driver_model.beliefs[].speculative_guess, repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
+PAYLOAD_VERSION = 11  # +driver_model.beliefs[].trend_reason (A56) and beliefs[].speculative_guess with repaired incident speculative attach (BUG-046); v10: each addition alone; v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -139,6 +139,7 @@ def driver_model_section(db: Database, *, driver: str, config: DriverDNAConfig) 
                 "confidence": b.confidence,
                 "evidence_count": b.evidence_count,
                 "trend": b.trend,
+                "trend_reason": b.trend_reason,
                 "insufficient_reason": b.insufficient_reason,
                 # A54: a stored AI guess for a no_signal fundamental
                 # travels here for the UI's red entertainment flag. Never

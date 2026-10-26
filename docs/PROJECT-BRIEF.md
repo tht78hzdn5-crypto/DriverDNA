@@ -258,6 +258,71 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-08 — `consistency`'s CV statistic replaced with absolute
+  robust dispersion; trend gate for bound-pinned scores (`dm-v3`,
+  SPEC.md A56).** Prompted by the owner's full Garage61 history
+  finishing its sync (282 laps, 5 cohorts, 3 cars) and the critical
+  review that followed (PR #54), which filed BUG-042/043/044 with
+  `xfail(strict=True)` pins and deliberately changed no number. The
+  owner then directed the fix. Mechanism, verified by two independent
+  computations that agree to the digit: dm-v2's pooled normalized CV
+  on the corpus is 2.3898 against the 2.0 ceiling, so both
+  consistency-only beliefs (`consistency`, `vehicle_management`)
+  clamped to exactly 0.0 at up to 100% confidence. Reading the top
+  contributors back to raw values split the defect in two: CV divides
+  by the sample's own mean, so a position metric's reading tracks
+  where its landmark sits (Brands Hatch C10: sub-half-point brake-
+  point scatter, normalized ~110× because the mean is 0.57% of lap)
+  and one wrap-around sample manufactures ~95× (Silverstone C18 apex
+  0.013 among ~94–99); and the 2026-07-21 anchors were medians from a
+  smaller sample, so a realistic multi-car corpus sat past the ceiling
+  by construction.
+  <br><br>
+  Options considered for the statistic: (1) *robust CV* (scaled MAD /
+  sample median) — fixes the single-sample fragility but keeps the
+  position dependence BUG-044 indicted (the same absolute scatter at
+  0.3% of lap still reads ~165× worse than at 50%); rejected.
+  (2) *Absolute scaled MAD against per-unit anchors* — sound for
+  '% lap', but metrics sharing a unit differ in natural magnitude
+  (`coast_s` ~0.7 s typical dispersion vs `brake_release_duration_s`
+  ~0.23 s), so a per-unit absolute anchor systematically misreads the
+  larger-magnitude metrics (measured: rotation's 's' unit pooled 5.96
+  under per-unit anchors); rejected in favour of (3) *absolute scaled
+  MAD against per-metric anchors* — adopted. Anchors are fixed config
+  constants with stated provenance, not recomputed live (the A21
+  reasoning, unchanged): measured 2026-10-08 from the 282-lap corpus
+  itself — the project's largest real corpus — as each metric's
+  median of nonzero per-(cohort, corner) scaled-MAD values (nonzero
+  because zero-inflated metrics have a median sample that never
+  varies; a never-varying sample still normalizes to exactly 0).
+  Ceiling re-anchored to 3.0 so reference-typical (pooled 1.0) scores
+  0.667 and the floor requires 3× typical dispersion in every unit at
+  once. Two estimator details are part of the statistic, not
+  afterthoughts: a resolution floor (majority-tied samples have
+  MAD exactly 0 despite visible variation — the full-corpus
+  brake_peak pool is the measured case — so dispersion falls back to
+  the sample's smallest nonzero deviation), and the all-zero skip,
+  kept from dm-v2 but restated as an evidence rule (an all-zero sample
+  records an event that never occurred; its repeatability is not
+  measurable). Sn/Qn estimators were evaluated and rejected: both
+  also collapse to 0 at the tie densities real zero-inflated metrics
+  produce, and Qn's order statistic lands on the last tied zero in
+  the measured full-pool case. The calibration is pinned by the
+  meaning-ward tests the audit found absent
+  (`tests/test_scoring_calibration.py`): synthetic drivers at known
+  multiples of the anchors must score mid-scale / high / low,
+  monotonically — the suite previously asserted only the formula, at
+  any calibration, which is how 0.0-at-100%-confidence shipped green.
+  BUG-043's fix is a gate, not a band tweak: a directional trend is
+  suppressed (trend `unavailable` + payload-visible `trend_reason`)
+  whenever the headline score is pinned at a scale bound. Real-corpus
+  effect is in SPEC.md's Milestone 6 dm-v3 note; every belief's
+  movement decomposes exactly through the shared consistency
+  component. **Deliberately not migrated**: the M7 coaching layer's
+  `same_lap_twice` normalized-CV gates — the A21 deferral, repeated
+  knowingly and recorded in BUG-044, so the pathology's coaching reach
+  stays visible as open work rather than being silently half-fixed.
+
 - **2026-08-09 — CI quality gates adopted; "no linter, no formatter, no
   type checker" re-decided (SPEC.md A47).** `main` had no merge gate
   (unprotected; `tests.yml` triggers on `push`, so CI only ever reported
