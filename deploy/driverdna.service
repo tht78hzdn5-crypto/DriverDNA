@@ -28,7 +28,8 @@ User=driverdna
 Group=driverdna
 
 # Secrets live here (0600, owned by driverdna): DRIVERDNA_SESSION_SECRET,
-# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GEMINI_API_KEY, GARAGE61_TOKEN.
+# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GARAGE61_CLIENT_ID,
+# GARAGE61_CLIENT_SECRET, GEMINI_API_KEY, GARAGE61_TOKEN.
 # Never in the DB, never in config TOML, never in logs.
 EnvironmentFile=/etc/driverdna/driverdna.env
 
