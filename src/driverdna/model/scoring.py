@@ -1,4 +1,4 @@
-"""dm-v1: the deterministic, versioned per-fundamental scoring model (M6b).
+"""The deterministic, versioned per-fundamental scoring model (M6b).
 
 A pure function of a driver's accumulated evidence (already persisted by
 M1-M5) to (score 0-100, confidence 0-1, evidence_count, trend) per
@@ -19,15 +19,18 @@ weighted per `config.model`:
                 (vs-principle signal: how often the flagged pattern occurs).
   opportunity - normalized median seconds lost vs the robust per-corner
                 baseline, on the fundamental's own phases (vs-self signal).
-  consistency - normalized coefficient of variation on the fundamental's own
-                metrics (lap-to-lap repeatability of the same technique), each
-                metric's raw CV first divided by its own unit's typical scale
-                (config.model.consistency_unit_reference_cv) before pooling -
-                see "Per-unit consistency normalization (dm-v2)" below.
-                The "consistency" fundamental itself has no metrics of its
-                own by design (module docstring, taxonomy.py) - it pools
-                every MEASURED technique's metrics instead, matching its
-                description ("pooled across every measured technique").
+  consistency - robust absolute dispersion on the fundamental's own
+                metrics (lap-to-lap repeatability of the same technique):
+                each metric's scaled MAD, divided by that metric's own
+                reference dispersion
+                (config.model.consistency_metric_reference_dispersion)
+                before pooling - see "Absolute robust dispersion (dm-v3)"
+                below. (dm-v1/dm-v2 used the coefficient of variation
+                here instead.) The "consistency" fundamental itself has
+                no metrics of its own by design (module docstring,
+                taxonomy.py) - it pools every MEASURED technique's metrics
+                instead, matching its description ("pooled across every
+                measured technique").
 
 A fundamental with no detectors, or no phases, has that component silently
 absent - the weight is never applied by force, it is redistributed
@@ -87,6 +90,50 @@ for the full record, including the correction to the original (inaccurate)
 layer note (`same_lap_twice` / `CoachingConfig.consistency_cv_floor`,
 SPEC.md's Milestone 7 section) is a different code path and is NOT resolved
 by this change.
+
+Absolute robust dispersion (dm-v3, built 2026-10-08): two defects in the
+dm-v2 statistic, both measured on the owner's real 282-lap corpus
+(BUG-042/BUG-044). First, CV divides a sample's dispersion by that
+sample's own mean, so for a *position* metric it measures where the
+landmark sits as much as how much it moves: Brands Hatch C10's brake
+points scatter under half a percentage point, but the landmark sits at
+0.57% of lap, so the normalized value read ~110x; one wrap-around apex
+sample at Silverstone C18 (0.013 among ~94-99) manufactured a normalized
+~95 from a single lap. Second, against anchors that were medians of a
+smaller 2026-07-21 sample, a realistic multi-car corpus pooled 2.3898
+against the 2.0 ceiling, so `consistency` and `vehicle_management` both
+clamped to exactly 0.0 - the value the scale assigns the worst driver
+it can express, reported at 100% confidence. dm-v3 removes the sample
+mean from the statistic entirely: each (corner, metric) sample
+contributes its scaled MAD (1.4826 * median absolute deviation from the
+sample median - a robust estimator, so one anomalous landmark moves a
+sample's reading by a bounded amount, never by orders of magnitude;
+with a resolution floor for majority-tied samples, whose MAD is exactly
+0 despite visible variation - see `_scaled_mad`), normalized by that metric's own reference dispersion
+(`config.model.consistency_metric_reference_dispersion`: the metric's
+typical scaled MAD, measured 2026-10-08 from the same 282-lap corpus,
+per-metric because metrics sharing a unit differ in natural magnitude;
+per-unit fallback in `consistency_unit_reference_dispersion`). The
+two-level pooling is unchanged. The ceiling is re-anchored to
+`consistency_dispersion_ceiling` (3.0) so the reference-typical driver
+(pooled 1.0) scores 0.667 and the floor requires three times typical
+dispersion in every unit at once. On the corpus that exposed the
+defects, the consistency component moves 0.0 -> 0.56 and
+vehicle_management's 0.0 -> 0.69, with per-cohort pooled dispersion
+spreading 1.09-1.65 - the statistic discriminates again. A real formula
+change for the same evidence, so SCORING_MODEL_VERSION bumps
+dm-v2 -> dm-v3 (SPEC.md A56). The coaching layer's `same_lap_twice`
+gates keep the dm-v2 normalized-CV statistic - a different code path,
+deferred exactly as the dm-v2 change deferred it, and recorded in A56.
+
+Trend saturation gate (dm-v3, BUG-043): under dm-v2 a belief whose
+headline score was clamped at exactly 0.0 could still report trend
+"improving", because `_trend`'s date-halves straddled the clamp (bucket
+scores 0.0 and 7.88; headline 0.0). A number pinned at a scale bound
+cannot express a direction. `compute_belief` now suppresses a
+directional trend whenever the headline score sits at a bound (0.0 or
+100.0), reporting trend "unavailable" with the reason on the belief
+(`trend_reason`, payload-visible) instead of asserting the direction.
 """
 
 from __future__ import annotations
@@ -110,7 +157,7 @@ from driverdna.model.taxonomy import (
 )
 from driverdna.pipeline import phase_windows_from_stored
 
-SCORING_MODEL_VERSION = "dm-v2"
+SCORING_MODEL_VERSION = "dm-v3"
 
 
 @dataclass(frozen=True)
@@ -133,6 +180,12 @@ class Belief:
     #: which are missing AND why. Distinct from `insufficient_reason`, which
     #: means there is no score at all; this one accompanies a real number.
     basis_reason: str | None = None
+    #: Set when a directional trend was suppressed because the headline
+    #: score is pinned at a scale bound (BUG-043, dm-v3): the trend reads
+    #: "unavailable" and this says why, in the payload next to the trend.
+    #: None whenever the trend stands as computed (or was unavailable for
+    #: the ordinary too-few-dated-laps reason).
+    trend_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -247,37 +300,70 @@ def _opportunity_component(
     return _Component(normalized, n_total)
 
 
+#: 1.4826 makes the median absolute deviation a consistent estimator of
+#: the standard deviation for normally distributed data - the constant is
+#: what lets a scaled MAD be read in the same "spread" terms as a std
+#: without inheriting std's sensitivity to a single extreme sample.
+_MAD_CONSISTENCY_CONSTANT = 1.4826
+
+
+def _scaled_mad(values: Any) -> float:
+    """Robust absolute dispersion of one (corner, metric) sample, in the
+    metric's native units: scaled median absolute deviation from the
+    sample median. No division by the sample's own location - the
+    property BUG-044 showed the dm-v2 statistic (CV) lacked.
+
+    Resolution floor: when the MAD is exactly 0 but the sample is not
+    constant - possible when a majority of laps share the median value
+    exactly (zero-inflated metrics; exactly-repeated synthetic laps) -
+    the dispersion is the sample's smallest nonzero absolute deviation,
+    scaled by the same constant. Reporting exactly 0 there would claim
+    perfect repeatability for a sample that visibly varies; the floor
+    is the finest dispersion the sample itself can express."""
+    arr = np.asarray(values, dtype=float)
+    median = float(np.median(arr))
+    deviations = np.abs(arr - median)
+    mad = float(np.median(deviations))
+    if mad == 0.0:
+        nonzero = deviations[deviations > 0]
+        if nonzero.size:
+            mad = float(np.min(nonzero))
+    return _MAD_CONSISTENCY_CONSTANT * mad
+
+
 def _consistency_component(
     db: Database, driver: str, cohorts: list[tuple[str, str]],
     fundamental_id: str, config: DriverDNAConfig,
     lap_pks: frozenset[int] | None = None,
     cache: "_CohortCache | None" = None,
 ) -> _Component:
-    """dm-v2: each metric's raw CV is divided by its own unit's typical scale
-    (module docstring, "Per-unit consistency normalization") before pooling,
-    so a naturally-high-CV unit (a small-integer count) cannot dominate a
-    naturally-low-CV unit (a % lap position) purely by scale.
+    """dm-v3: each (corner, metric) sample contributes its scaled MAD -
+    a robust absolute dispersion in the metric's native units - divided
+    by that metric's own reference dispersion
+    (`config.model.consistency_metric_reference_dispersion`, the metric's
+    typical scaled MAD; module docstring, "Absolute robust dispersion"),
+    so a metric's reading never depends on where its values happen to
+    sit (BUG-044: CV divided by the sample mean, so a brake point at
+    0.57% of lap with sub-point scatter read ~110x typical) and one
+    anomalous sample cannot dominate (a median-based estimator moves by
+    a bounded amount when a single lap's landmark wraps to the origin).
 
-    Pooling is two-level - mean within each unit, then mean across units -
-    not a single flat mean over every (corner, metric) sample. A flat mean
-    was tried during development and rejected against real fixture data: a
-    unit with many contributing corners/metrics (e.g. "% lap", with 5 metrics
-    per corner) dominates a flat pool purely by sample count, and dividing by
-    a very small reference (a "% lap" CV's reference is ~0.007) amplifies any
-    one genuinely inconsistent corner into a normalized value large enough to
-    crush the whole pooled mean - observed on real data, a single corner's
-    varying entry/exit points swung the flat-pooled score to 0 regardless of
-    every other corner's real consistency. Giving each unit equal weight
-    keeps that corner's real signal inside its own "% lap" average instead of
-    overwhelming every other unit's. A median (within or across units) was
-    also tried and rejected: with as few as one corner's worth of metrics in
-    a pool, the median just selects whichever metric ranks middle, which need
-    not be the one actually varying - mean keeps every sample proportionally
-    represented."""
+    Pooling is two-level - mean within each unit, then mean across
+    units - not a single flat mean over every (corner, metric) sample,
+    retained from dm-v2: a flat mean lets a unit with many contributing
+    corners/metrics (e.g. "% lap", with 5 metrics per corner) dominate
+    purely by sample count. Giving each unit equal weight keeps one
+    corner's real signal inside its own unit's average instead of
+    overwhelming every other unit's. A median (within or across units)
+    was also tried and rejected under dm-v2: with as few as one corner's
+    worth of metrics in a pool, the median just selects whichever metric
+    ranks middle, which need not be the one actually varying - mean
+    keeps every sample proportionally represented."""
     metric_names = _scoring_metric_names(fundamental_id)
     if not metric_names:
         return _Component(None, 0)
-    reference = config.model.consistency_unit_reference_cv
+    metric_reference = config.model.consistency_metric_reference_dispersion
+    unit_reference = config.model.consistency_unit_reference_dispersion
     by_unit: dict[str, list[float]] = {}
     n_total = 0
     reusable = cache is not None and cache.lap_pks == lap_pks
@@ -290,20 +376,32 @@ def _consistency_component(
             for metric, values in metrics.items():
                 if metric not in metric_names or len(values) < 2:
                     continue
-                arr = np.asarray(values, dtype=float)
-                mean = float(np.mean(arr))
-                if mean == 0:
+                if not np.any(np.asarray(values, dtype=float)):
+                    # An all-zero sample records that the measured event
+                    # never occurred on any lap (e.g. ABS never active):
+                    # the repeatability of an event that never happened
+                    # is not measurable, so the sample carries no
+                    # dispersion evidence. (dm-v2 skipped the same
+                    # samples as a side effect of CV's mean denominator;
+                    # dm-v3 keeps the skip on evidence grounds, stated
+                    # here rather than inherited silently.)
                     continue
-                cv = float(np.std(arr, ddof=1) / abs(mean))
                 unit = METRIC_DEFS[metric][0]
-                normalized = cv / reference.get(unit, 1.0)
+                reference = metric_reference.get(
+                    metric, unit_reference.get(unit, 0.0))
+                if reference <= 0:
+                    # No measured anchor for this metric (or its unit):
+                    # skip the sample rather than normalize against a
+                    # guess (philosophy #3).
+                    continue
+                normalized = _scaled_mad(values) / reference
                 by_unit.setdefault(unit, []).append(normalized)
                 n_total += len(values)
     if not by_unit:
         return _Component(None, 0)
     unit_means = [float(np.mean(values)) for values in by_unit.values()]
     pooled = float(np.mean(unit_means))
-    ceiling = config.model.consistency_cv_ceiling
+    ceiling = config.model.consistency_dispersion_ceiling
     normalized = max(0.0, min(1.0, 1.0 - pooled / ceiling)) if ceiling > 0 else 0.0
     return _Component(normalized, n_total)
 
@@ -673,15 +771,31 @@ def compute_belief(
         )
 
     confidence = _confidence(db, driver, cohorts, evidence_count, signal_status, config)
+    rounded_score = round(score, 2)
+    trend = _trend(db, driver, fundamental_id, cohorts, config, earlier_cache=earlier_cache, recent_cache=recent_cache)
+    trend_reason = None
+    if trend in ("improving", "declining") and rounded_score in (0.0, 100.0):
+        # BUG-043: a headline score pinned at a scale bound is a clamp,
+        # not a measurement with room to move - the bucket delta that
+        # produced a direction straddles the bound (one bucket clamped,
+        # the other not) and asserts a trajectory the headline number
+        # cannot express. Suppress the direction and say so, in the
+        # payload, rather than emitting the pair (0.0, "improving").
+        trend_reason = (
+            f"trend suppressed: the headline score is pinned at the scale "
+            f"bound ({rounded_score}), so no direction is asserted"
+        )
+        trend = "unavailable"
     return Belief(
         fundamental=fundamental_id, signal_status=signal_status,
-        score=round(score, 2), confidence=round(confidence, 4),
+        score=rounded_score, confidence=round(confidence, 4),
         evidence_count=evidence_count,
-        trend=_trend(db, driver, fundamental_id, cohorts, config, earlier_cache=earlier_cache, recent_cache=recent_cache),
+        trend=trend,
         insufficient_reason=None,
         scoring_model_version=SCORING_MODEL_VERSION, taxonomy_version=TAXONOMY_VERSION,
         components=components,
         basis_reason=_basis_reason(fundamental_id, components),
+        trend_reason=trend_reason,
     )
 
 

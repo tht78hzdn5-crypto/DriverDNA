@@ -622,6 +622,62 @@ findings; see the clarification there.
   this change**: the separate, structurally similar M7 coaching-layer note
   below (`same_lap_twice` / `CoachingConfig.consistency_cv_floor`) — a
   different code path, still open.
+- **dm-v2 defects resolved: absolute robust dispersion, dm-v3
+  (2026-10-08, A56).** Two defects, both measured on the owner's real
+  synced corpus (282 laps, 5 cohorts, 3 cars) during the 2026-10-08
+  critical review (BUG-042/BUG-044). (1) *Statistic validity*: CV
+  divides a sample's dispersion by that sample's own mean, so for a
+  *position* metric it measures where the landmark sits as much as how
+  much it moves — Brands Hatch C10's brake points scatter under half a
+  percentage point yet normalized to ~110× because the landmark sits at
+  0.57% of lap; one wrap-around apex sample at Silverstone C18 (0.013
+  among ~94–99) manufactured a normalized ~95 from a single lap.
+  (2) *Calibration*: against reference anchors that were medians from a
+  smaller 2026-07-21 sample, the real corpus pooled 2.3898 against the
+  2.0 ceiling, so `consistency` and `vehicle_management` both read
+  exactly 0.0 — the value the scale assigns the worst driver it can
+  express — at 100% confidence, unflagged. Fixed: the consistency
+  component now measures dispersion absolutely. Each (corner, metric)
+  sample contributes its scaled MAD (1.4826 × median absolute deviation
+  from the sample median; robust, so one anomalous landmark moves a
+  reading by a bounded amount; a resolution floor covers majority-tied
+  samples whose MAD is exactly 0 despite visible variation — see
+  `model/scoring.py`'s `_scaled_mad`), normalized by that metric's own
+  reference dispersion (`config.model.consistency_metric_reference_
+  dispersion`: the metric's typical scaled MAD, measured 2026-10-08
+  from the same 282-lap corpus as the median of its nonzero
+  per-(cohort, corner) scaled-MAD values; per-metric because metrics
+  sharing a unit differ in natural magnitude — `coast_s` vs
+  `brake_release_duration_s`; per-unit fallback in
+  `consistency_unit_reference_dispersion`). Two-level pooling (mean
+  within unit, then across units) is unchanged. An all-zero sample
+  carries no dispersion evidence and is skipped — the event it measures
+  never occurred on any lap (dm-v2 skipped the same samples as a side
+  effect of CV's denominator; dm-v3 states the rule on evidence
+  grounds). The ceiling is re-anchored
+  (`consistency_dispersion_ceiling` = 3.0) so the reference-typical
+  driver (pooled 1.0) scores 0.667 and the floor requires three times
+  typical dispersion in every unit at once. Real-corpus effect (same
+  evidence, dm-v2 → dm-v3): `consistency` 0.0 → 56.19,
+  `vehicle_management` 0.0 → 68.87, `braking` 68.0 → 80.57,
+  `rotation` 43.92 → 56.68, `corner_exit` 58.26 → 72.54,
+  `commitment` 51.49 → 60.67 — every movement decomposes exactly
+  through the shared consistency component, the only arithmetic that
+  changed. Per-cohort pooled dispersion spreads 1.09–1.65, so the
+  statistic discriminates again. Also fixed here (BUG-043): a belief
+  whose headline score is pinned at a scale bound (0.0 or 100.0) no
+  longer asserts a directional trend — `_trend`'s date-halves can
+  straddle a clamp and manufacture a direction the headline cannot
+  express (the corpus's `vehicle_management` read 0.0 / "improving");
+  the trend now reads `unavailable` with a payload-visible
+  `trend_reason` (payload v10). Real formula change for the same
+  evidence, so `SCORING_MODEL_VERSION` bumps `dm-v2` → `dm-v3` per
+  the Scoring Contract (condition 2). Full record: PROJECT-BRIEF.md's
+  decision log. **Not resolved by this change**: the M7 coaching
+  layer's `same_lap_twice` gates keep the dm-v2 normalized-CV
+  statistic — a different code path, deferred exactly as A21 deferred
+  it; BUG-044's pathology therefore still reaches coaching gates and
+  remains open there.
   <br><br>
   *Original v1 note (2026-07-20), preserved for the record:* the
   `consistency` fundamental's coefficient of variation pools each metric's
@@ -2996,6 +3052,12 @@ Accepted at owner plan review; rationale recorded in the review:
 
 - **A54** (2026-08-20, owner decision): **Principle refined:** philosophy #3 ("Insufficient data over guessing") is relaxed for explicit entertainment purposes. The AI layer is permitted to generate "Speculative Scores" for NO_SIGNAL fundamentals (e.g., Vision) and "Speculative Classifications" for ambiguous incidents. These guesses must be visually isolated in the UI with a prominent red flag warning that they lack concrete grounding.
 
+- **A55** (2026-10-08, owner-approved — drafted in docs/COACHING-FUNDAMENTALS-REVIEW.md §6 and ratified by the owner's approval of that review's §5 proposal): **Tendency layer.** A *tendency* is a deterministic, versioned (`TENDENCY_MODEL_VERSION`), per-(driver, coaching-principle) longitudinal state — one of `new / recurring / persistent / improving / resolved / dormant` — computed from era-bucketed coaching eligibility and strength complements, where eras are the A36 date-ordered lap buckets. Every tendency state ships with eras_fired/eras_total, first_seen/last_seen, per-era gap band in the principle's own magnitude_kind, and evidence IDs, and is decomposable to the era instances that produced it. The AI layer may reference tendency state only as payload data under the existing grounding contract; it may not assert recurrence, progress, or resolution that the payload does not state. Speculative (A54) content never contributes to tendency state. Tendency thresholds live in config. This adds an aggregation over existing measurements; it creates no new measurement kind and changes no existing score.
+
+  **Stage 1 (shipped with this amendment): era recurrence in the driver rollup.** Each fault pattern in `coaching_rollup` carries `eras_fired`/`eras_total`/`tendency_state`, computed by running the existing per-cohort eligibility on each era's laps alone, and the driver report renders one tendency line per shown pattern (words in `coaching/ontology.py`). Stage 1 implements four of the six states — `new`, `recurring`, `persistent`, `resolved`; `improving` (per-era band trend) and `dormant` (era-distance shading of `resolved`) arrive with Stage 2, as do first_seen/last_seen, per-era bands, era evidence IDs, and the `driver_tendencies` table. Two semantics decisions, made where the proposal was ambiguous and recorded here: (1) `resolved` = fired in at least one era and absent from the most recent era — Stage 1 does not require the strength complement or a consecutive-absence count; (2) below A36's availability floor for a multi-era split, the whole dated history is a single era (which can only ever read `new`), and undated laps belong to no era — an era is a claim about when, and an undated lap has no when. `persistent` = fired in the most recent era and in at least `config.coaching.tendency_persistent_min_share` (default 0.5) of all eras. PAYLOAD_VERSION 11 → 12 for the additive annotation on the merged shape (v11 + era fields).
+
+- **A56** (2026-10-08, `consistency` absolute robust dispersion + trend saturation gate, `dm-v3`): numbered A56 because A55 is reserved by the coaching-fundamentals review's draft amendment (PR #55, unratified at the time of this change). The critical review of the owner's synced 282-lap corpus filed BUG-042/043/044 against dm-v2: the consistency component's pooled normalized CV measured 2.3898 against the 2.0 ceiling, clamping `consistency` and `vehicle_management` to exactly 0.0 at full confidence; CV itself is the wrong statistic for '% lap' position metrics (it divides by the landmark's own position — a sub-point scatter at a near-origin landmark read ~110×, and one wrap-around sample manufactured ~95×); and a belief clamped at 0.0 could still report trend "improving" because the trend's date-halves straddle the clamp. `_consistency_component` now measures dispersion absolutely: per (corner, metric) scaled MAD (robust; resolution floor for majority-tied samples), normalized per metric against measured reference dispersions (`model.consistency_metric_reference_dispersion`, provenance: the 2026-10-08 282-lap corpus, median of nonzero per-sample scaled MADs; per-unit fallback table), pooled two levels as before, mapped through a re-anchored ceiling (`model.consistency_dispersion_ceiling` = 3.0; reference-typical pooled 1.0 scores 0.667). All-zero samples are skipped on stated evidence grounds (the measured event never occurred), not as a denominator side effect. `compute_belief` suppresses a directional trend when the headline score is pinned at a scale bound, emitting trend `unavailable` plus a payload-visible `trend_reason` (payload v11). Refines non-negotiable #4 the way A21 did: decomposability includes the statistic being *valid for the quantity it measures* — a score decomposable to real numbers whose dispersion measure divides by the landmark's position is still opaque about what it claims. `dm-v2` → `dm-v3` per the Scoring Contract (condition 2 — a real formula change for the same evidence). The dm-v2 config fields (`consistency_unit_reference_cv`, `consistency_cv_ceiling`) are retained: the M7 coaching layer's normalized-CV gates still consume them, and migrating that layer is deliberately NOT part of this amendment (the A21 deferral, repeated knowingly). Full record, including rejected alternatives (robust CV, per-unit absolute anchors, Sn/Qn estimators) and the calibration's golden-driver tests, in PROJECT-BRIEF.md's decision log.
+
 - **A57** (2026-10-08): **The entry-phase coaching tranche: three measured
   techniques gain principles; a fifth gate type; measured-over-proxy
   presentation precedence.** The coaching fundamentals review
@@ -3007,8 +3069,8 @@ Accepted at owner plan review; rationale recorded in the review:
   `cp.brake_point_selection.same_marker` (`brake_point_selection`).
   `ONTOLOGY_VERSION` `coach-onto-v4` → `coach-onto-v5`. `PAYLOAD_VERSION`
   unchanged (no field added or removed — a candidate is a candidate).
-  `SCORING_MODEL_VERSION` unchanged at `dm-v2`, and structurally cannot
-  change: dm-v2 reads `config.model.*` only; every new threshold is
+  `SCORING_MODEL_VERSION` unchanged by this tranche, and structurally cannot
+  change: the scoring model reads `config.model.*` only; every new threshold is
   `config.coaching.*`.
 
   **The gate.** None of the four existing gate types fits a fault that is a

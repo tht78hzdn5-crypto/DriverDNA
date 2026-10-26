@@ -93,16 +93,30 @@ def _evidence(history: list[dict]) -> tuple[str, ...]:
 def vs_self_findings(
     db: Database, *, driver: str, car: str, track: str,
     windows_by_corner: dict[str, PhaseWindows], config: DriverDNAConfig,
+    lap_pks: frozenset[int] | None = None,
 ) -> list[Finding]:
+    # `lap_pks` (A55 Stage 1, era recurrence) restricts to one era's laps,
+    # the same mechanism M6 trend uses via the db tables' own fragment —
+    # None means no restriction (every pre-A55 caller), an empty set
+    # matches nothing. The fragment is built here rather than imported:
+    # db._lap_pk_filter targets an aliased `laps l`, this query is not.
+    if lap_pks is None:
+        pk_clause, pk_params = "", []
+    elif not lap_pks:
+        pk_clause, pk_params = " AND 1=0", []
+    else:
+        ordered = sorted(lap_pks)
+        pk_clause = f" AND lap_pk IN ({','.join('?' * len(ordered))})"
+        pk_params = ordered
     laps = db.conn.execute(
         # `, lap_pk` is a correctness tie-break, not tidiness: the tercile
         # split below slices `laps[:third]` / `laps[-third:]` out of this
         # order, so laps sharing a duration would otherwise land in the fast
         # or slow group by whatever order storage happened to return.
-        """SELECT lap_pk, duration_s, session_key FROM laps
-           WHERE role='self' AND driver=? AND car=? AND track=? AND owner_user_pk=?
+        f"""SELECT lap_pk, duration_s, session_key FROM laps
+           WHERE role='self' AND driver=? AND car=? AND track=? AND owner_user_pk=?{pk_clause}
            ORDER BY duration_s, lap_pk""",
-        (driver, car, track, db.user_pk),
+        (driver, car, track, db.user_pk, *pk_params),
     ).fetchall()
     n_laps = len(laps)
     third = max(1, n_laps // 3)
@@ -118,7 +132,7 @@ def vs_self_findings(
                 continue
             history = db.phase_history(
                 car=car, track=track, corner_id=corner_id, phase=phase,
-                role="self", driver=driver,
+                role="self", driver=driver, lap_pks=lap_pks,
             )
             if not history:
                 continue

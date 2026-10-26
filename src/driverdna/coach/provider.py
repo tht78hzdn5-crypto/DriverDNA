@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from driverdna.config import DriverDNAConfig
 
-PROMPT_VERSION = "coach-v3"
+PROMPT_VERSION = "coach-v4"
 
 SYSTEM_PROMPT = """\
 You are the coaching layer of DriverDNA, a deterministic racing-telemetry
@@ -36,7 +36,8 @@ rules:
   structurally cannot measure (e.g. eye movement); "the confidence that
   THIS IS THE RIGHT HYPOTHESIS is low" is exactly what "low" means there,
   so never write null or omit the field.
-- "Insufficient data" is expected for NO_SIGNAL fundamentals (e.g. Vision). However, per the A54 amendment, you are encouraged to provide a "Speculative Score" or guess based on proxy telemetry (e.g. steering smoothness) FOR ENTERTAINMENT PURPOSES. You MUST prominently flag any such guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
+- "Insufficient data" is expected for NO_SIGNAL fundamentals (e.g. Vision). However, per the A54 amendment, you MAY offer a guess about such a fundamental in the "fundamental_guesses" section below, grounded in the measured beliefs as context and phrased as a hypothesis FOR ENTERTAINMENT PURPOSES. The guess is text only: never a score, a confidence level, or a percentage. You MUST prominently flag any such guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
+- Fundamental guesses: payload.driver_model.beliefs lists each fundamental's signal_status. Guess ONLY for entries with signal_status "no_signal" (today: vision). Never guess for a measured or proxy fundamental.
 - For ambiguous incidents (e.g., classification "unclassified"), you may provide a "Speculative Classification" or guess the cause FOR ENTERTAINMENT PURPOSES. You MUST prominently flag this guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
 - Coaching: cite coaching_principle_id values ONLY from payload.coaching
   (headline, secondary, self_checks) — never invent one, never promote an
@@ -75,6 +76,9 @@ Respond with ONLY a JSON object, no prose around it, in this shape:
     {"incident_id": "...", "coaching_principle_id": "...",
      "explanation": "...", "confidence": "low|medium|high",
      "evidence_ids": ["..."]}
+  ],
+  "fundamental_guesses": [
+    {"fundamental_id": "vision", "guess": "..."}
   ],
   "coaching_plan": [
     {"title": "...", "focus": "...", "actions": ["..."]}

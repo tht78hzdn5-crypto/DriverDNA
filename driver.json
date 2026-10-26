@@ -78,7 +78,7 @@
      }
     ],
     "lines": [],
-    "note": "Confidence is the mean of these four ratios, each capped at 1.0 (model `dm-v2`). A term at its floor is saturated \u2014 more of it buys exactly nothing. Current ceiling for a measured fundamental: **60.2%** (a proxy fundamental is additionally capped at 50%).",
+    "note": "Confidence is the mean of these four ratios, each capped at 1.0 (model `dm-v3`). A term at its floor is saturated \u2014 more of it buys exactly nothing. Current ceiling for a measured fundamental: **60.2%** (a proxy fundamental is additionally capped at 50%).",
     "title": "Driver Model confidence"
    },
    {
@@ -185,6 +185,8 @@
     "coaching_principle_id": "cp.coasting.always_working",
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
     "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "rotation",
     "gate_reason": null,
     "instances": [
@@ -285,13 +287,16 @@
     "shown": true,
     "signal_status": "measured",
     "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
-    "technique": "coasting"
+    "technique": "coasting",
+    "tendency_state": null
    },
    {
     "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
     "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "corner_exit",
     "gate_reason": null,
     "instances": [
@@ -342,13 +347,16 @@
     "shown": true,
     "signal_status": "measured",
     "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
-    "technique": "throttle_pickup"
+    "technique": "throttle_pickup",
+    "tendency_state": null
    },
    {
     "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
     "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "rotation",
     "gate_reason": null,
     "instances": [
@@ -469,13 +477,16 @@
     "shown": true,
     "signal_status": "measured",
     "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
-    "technique": "turn_in"
+    "technique": "turn_in",
+    "tendency_state": null
    },
    {
     "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
     "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
     "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
     "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -506,13 +517,16 @@
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
-    "technique": "pedal_overlap"
+    "technique": "pedal_overlap",
+    "tendency_state": null
    },
    {
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
     "coaching_principle_id": "cp.repeatability.same_lap_twice",
     "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
     "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "consistency",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -623,13 +637,16 @@
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
-    "technique": "repeatability"
+    "technique": "repeatability",
+    "tendency_state": null
    },
    {
     "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
     "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
     "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
     "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "eras_fired": 0,
+    "eras_total": 0,
     "fundamental": "rotation",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -660,7 +677,8 @@
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
-    "technique": "rotation_efficiency"
+    "technique": "rotation_efficiency",
+    "tendency_state": null
    }
   ],
   "strengths": [
@@ -1374,7 +1392,8 @@
     "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
     "technique": "turn_in"
    }
-  ]
+  ],
+  "tendency_version": "tendency-v1"
  },
  "cohorts": [
   {
@@ -1510,7 +1529,7 @@
      },
      "consistency": {
       "n": 596,
-      "value": 0.344,
+      "value": 0.658,
       "weight": 0.25
      },
      "opportunity": {
@@ -1523,9 +1542,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Braking",
-    "score": 80.52,
+    "score": 88.37,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "commitment": {
     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
@@ -1537,7 +1558,7 @@
      },
      "consistency": {
       "n": 94,
-      "value": 0.0,
+      "value": 0.7292,
       "weight": 0.4167
      },
      "opportunity": {
@@ -1550,9 +1571,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Commitment",
-    "score": 56.1,
+    "score": 86.48,
     "signal_status": "proxy",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "consistency": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
@@ -1564,7 +1587,7 @@
      },
      "consistency": {
       "n": 2017,
-      "value": 0.3431,
+      "value": 0.6893,
       "weight": 1.0
      },
      "opportunity": {
@@ -1577,9 +1600,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Consistency",
-    "score": 34.31,
+    "score": 68.93,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "corner_exit": {
     "basis_reason": null,
@@ -1591,7 +1616,7 @@
      },
      "consistency": {
       "n": 472,
-      "value": 0.1635,
+      "value": 0.6974,
       "weight": 0.25
      },
      "opportunity": {
@@ -1604,9 +1629,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Corner exit",
-    "score": 65.19,
+    "score": 78.54,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "rotation": {
     "basis_reason": null,
@@ -1618,7 +1645,7 @@
      },
      "consistency": {
       "n": 866,
-      "value": 0.3552,
+      "value": 0.7214,
       "weight": 0.25
      },
      "opportunity": {
@@ -1631,9 +1658,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Rotation",
-    "score": 60.17,
+    "score": 69.33,
     "signal_status": "measured",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "vehicle_management": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
@@ -1645,7 +1674,7 @@
      },
      "consistency": {
       "n": 83,
-      "value": 0.0,
+      "value": 0.7052,
       "weight": 1.0
      },
      "opportunity": {
@@ -1658,9 +1687,11 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Vehicle mgmt",
-    "score": 0.0,
+    "score": 70.52,
     "signal_status": "proxy",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    },
    "vision": {
     "basis_reason": null,
@@ -1671,7 +1702,9 @@
     "label": "Vision",
     "score": null,
     "signal_status": "no_signal",
-    "trend": "unavailable"
+    "speculative_guess": null,
+    "trend": "unavailable",
+    "trend_reason": null
    }
   },
   "driver": "owner",
@@ -1689,23 +1722,7 @@
      "confidence": 0.6017,
      "evidence_count": 12,
      "fundamental": "braking",
-     "score": 80.52,
-     "signal_status": "measured"
-    },
-    {
-     "basis_reason": null,
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "corner_exit",
-     "score": 65.19,
-     "signal_status": "measured"
-    },
-    {
-     "basis_reason": null,
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "rotation",
-     "score": 60.17,
+     "score": 88.37,
      "signal_status": "measured"
     },
     {
@@ -1713,15 +1730,15 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "commitment",
-     "score": 56.1,
+     "score": 86.48,
      "signal_status": "proxy"
     },
     {
-     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "basis_reason": null,
      "confidence": 0.6017,
      "evidence_count": 12,
-     "fundamental": "consistency",
-     "score": 34.31,
+     "fundamental": "corner_exit",
+     "score": 78.54,
      "signal_status": "measured"
     },
     {
@@ -1729,18 +1746,34 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "vehicle_management",
-     "score": 0.0,
+     "score": 70.52,
      "signal_status": "proxy"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 69.33,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "consistency",
+     "score": 68.93,
+     "signal_status": "measured"
     }
    ],
    "reading_version": "read-v1",
-   "separation_points": 46.21,
+   "separation_points": 19.44,
    "strongest": {
     "basis_reason": null,
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "braking",
-    "score": 80.52,
+    "score": 88.37,
     "signal_status": "measured"
    },
    "verdict_reason": null,
@@ -1749,13 +1782,13 @@
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "consistency",
-    "score": 34.31,
+    "score": 68.93,
     "signal_status": "measured"
    }
   },
-  "scoring_model_version": "dm-v2",
+  "scoring_model_version": "dm-v3",
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 9
+ "payload_version": 12
 }

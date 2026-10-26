@@ -217,6 +217,8 @@ def test_version_pins_entry_phase_tranche():
     # gains no field (a candidate is a candidate) and the scoring
     # model cannot move — every new threshold is config.coaching.*.
     # Literal pins: self-consistent checks would pass a silent revert.
+    # The payload/scoring pins track the merged main (v12 / dm-v3),
+    # not the tranche's own base (v9 / dm-v2).
     assert ONTOLOGY_VERSION == "coach-onto-v5"
-    assert PAYLOAD_VERSION == 9
-    assert SCORING_MODEL_VERSION == "dm-v2"
+    assert PAYLOAD_VERSION == 12
+    assert SCORING_MODEL_VERSION == "dm-v3"
