@@ -1,5 +1,13 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-26 (salvage: first-time-signup dead ends BUG-047/048/049 fixed, from closed PR #29).**
+
+- **The fix:** `open_db` gained a `create_if_missing` flag used only by register, so a genuinely cold deployment has a browser-only path to its first account (BUG-047); driver home's zero-cohort empty state now renders `<SyncPanel>` whenever the store is reachable (BUG-048); `/api/auth/status`'s `garage61_linked` reflects the `GARAGE61_TOKEN` env fallback and the Import tab's Garage61 Sync section renders whenever sync is usable (BUG-049). SPA bundle rebuilt. Zero engine/scoring code touched, no version bump.
+- **Verified counts (local):** `pytest tests/test_register_cold_start.py tests/test_auth_api.py tests/test_cockpit_api.py` → 56 passed, 0 failed. `ruff check` clean on the changed Python files; `eslint` 0 errors (6 pre-existing warnings elsewhere); `vite build` clean. Full suite runs in CI on the PR.
+- **Note:** BUG numbers renumbered from the original 028/029/030, which are taken on main by other bugs. Full record: `docs/BUG-LOG.md` BUG-047/048/049.
+
+---
+
 **Snapshot date: 2026-10-08 (fixes landed: dm-v3 — BUG-042/043/044 fixed, artifacts regenerated, smoke fast tier).**
 
 - **What prompted it:** the owner directed PR #54 to continue from
