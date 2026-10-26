@@ -531,7 +531,7 @@ numbers. `_severity` is a private sort key and must stay one — a number with
 no unit has no business in the payload, where the grounding validator would
 let the AI cite it.
 
-## The entry-phase tranche: metric-statistic gates (2026-10-08, SPEC.md A56)
+## The entry-phase tranche: metric-statistic gates (2026-10-08, SPEC.md A57)
 
 The fundamentals review (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found
 seven measured techniques with no principle — measured, scored, and silent.

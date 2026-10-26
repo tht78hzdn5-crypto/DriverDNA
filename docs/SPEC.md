@@ -2996,7 +2996,7 @@ Accepted at owner plan review; rationale recorded in the review:
 
 - **A54** (2026-08-20, owner decision): **Principle refined:** philosophy #3 ("Insufficient data over guessing") is relaxed for explicit entertainment purposes. The AI layer is permitted to generate "Speculative Scores" for NO_SIGNAL fundamentals (e.g., Vision) and "Speculative Classifications" for ambiguous incidents. These guesses must be visually isolated in the UI with a prominent red flag warning that they lack concrete grounding.
 
-- **A56** (2026-10-08): **The entry-phase coaching tranche: three measured
+- **A57** (2026-10-08): **The entry-phase coaching tranche: three measured
   techniques gain principles; a fifth gate type; measured-over-proxy
   presentation precedence.** The coaching fundamentals review
   (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found seven measured techniques

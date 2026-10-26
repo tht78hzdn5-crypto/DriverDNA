@@ -1,4 +1,4 @@
-"""coach-onto-v5 (SPEC.md A56): the entry-phase principles.
+"""coach-onto-v5 (SPEC.md A57): the entry-phase principles.
 
 Tranche 1 of the coaching-ontology expansion (docs/COACHING-FUNDAMENTALS-
 REVIEW.md §3): three braking techniques were measured and scored but had

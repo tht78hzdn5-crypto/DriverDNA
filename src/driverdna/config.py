@@ -629,7 +629,7 @@ class CoachingConfig(_Section):
     braking_zone_peak_floor: float = Field(
         default=0.50,
         description="Scope guard for the MetricStatGate entry principles "
-        "(coach-onto-v5, SPEC.md A56): a corner is only in scope for "
+        "(coach-onto-v5, SPEC.md A57): a corner is only in scope for "
         "trail-braking / brake-application coaching when its median "
         "brake_peak reaches this — half pedal, a substantial braking "
         "event rather than a brush. Below it there is no application to "
@@ -640,7 +640,7 @@ class CoachingConfig(_Section):
     trail_brake_overlap_floor_s: float = Field(
         default=0.10,
         description="cp.trail_braking.carry_the_brake's trigger "
-        "(coach-onto-v5, SPEC.md A56): a corner (in scope per "
+        "(coach-onto-v5, SPEC.md A57): a corner (in scope per "
         "braking_zone_peak_floor) whose MEDIAN trail_brake_overlap_s sits "
         "at or below this is a corner where the brake is fully released "
         "before the steering starts — 0.10 s is six samples at 60 Hz, "
@@ -652,7 +652,7 @@ class CoachingConfig(_Section):
     brake_application_rate_floor: float = Field(
         default=0.35,
         description="cp.brake_application.get_to_peak's trigger "
-        "(coach-onto-v5, SPEC.md A56): a corner (in scope per "
+        "(coach-onto-v5, SPEC.md A57): a corner (in scope per "
         "braking_zone_peak_floor) whose MEDIAN brake_application_rate "
         "(fraction of pedal per second, brake_start to peak) sits at or "
         "below this is a squeeze, not an application — peak pressure "
@@ -665,7 +665,7 @@ class CoachingConfig(_Section):
     brake_point_iqr_floor_pct: float = Field(
         default=1.0,
         description="cp.brake_point_selection.same_marker's trigger "
-        "(coach-onto-v5, SPEC.md A56): a corner whose brake_point_dist_pct "
+        "(coach-onto-v5, SPEC.md A57): a corner whose brake_point_dist_pct "
         "INTERQUARTILE RANGE reaches this — the middle half of the "
         "driver's brake points spans a full percent of the lap, which is "
         "a brake point chosen by feel rather than a marker. IQR, not the "

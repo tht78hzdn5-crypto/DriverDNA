@@ -1,6 +1,6 @@
 # DriverDNA - Status & Decision Log
 
-**Snapshot date: 2026-10-08 (coach-onto-v5: entry-phase coaching tranche, SPEC.md A56).**
+**Snapshot date: 2026-10-08 (coach-onto-v5: entry-phase coaching tranche, SPEC.md A57).**
 
 - **What shipped:** three measured braking techniques that had metrics and
   scores but no coaching principle — `trail_braking`, `brake_application`,

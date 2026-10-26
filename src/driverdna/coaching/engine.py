@@ -35,7 +35,7 @@ but callers must keep phrasing it tentatively regardless of band — the
 candidate carries `signal_status` precisely so that stays enforceable
 downstream (validator, artifact, AI prompt), not silently dropped.
 
-coach-onto-v5 (SPEC.md A56): `MetricStatGate` principles (median/IQR of
+coach-onto-v5 (SPEC.md A57): `MetricStatGate` principles (median/IQR of
 one metric against a config floor, optional guard metric) join the gate
 family, banding on their phase like MetricCVGate's single-metric shape.
 And a presentation-only precedence: where the measured brake-point
@@ -565,7 +565,7 @@ def _severity(candidate: CoachingCandidate, cfg) -> float:
     return candidate.magnitude / ceiling if ceiling > 0 else 0.0
 
 
-#: A56 measured-over-proxy precedence (presentation only).
+#: A57 measured-over-proxy precedence (presentation only).
 #: `cp.brake_point_selection.same_marker` (measured: IQR of
 #: brake_point_dist_pct) and `cp.entry_commitment.trust_the_proxy`
 #: (proxy: raw CV of the SAME metric) read one piece of evidence with two

@@ -1,4 +1,4 @@
-"""Regression pins for the entry-phase tranche (SPEC.md A56, PR #56)
+"""Regression pins for the entry-phase tranche (SPEC.md A57, PR #56)
 that tests/test_coaching_entry_phase.py does not already cover.
 
 Deliberately NOT duplicated here (already pinned there):
@@ -183,7 +183,7 @@ def test_same_marker_carries_no_braking_guard(db):
 
 
 def test_same_marker_candidate_bands_on_entry_loss(db):
-    # SPEC A56: all three principles band on the entry phase's
+    # SPEC A57: all three principles band on the entry phase's
     # cumulative loss. The existing test asserts only n; the banding
     # itself — the statistic is the trigger, the seconds are the tone —
     # is pinned for trail and application but not here.

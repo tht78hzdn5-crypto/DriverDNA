@@ -122,7 +122,7 @@ def build_coaching_rollup(
         cohort_strengths = eligible_strengths(
             db, driver=driver, car=car, track=track, config=config,
         )
-        # A56: the same measured-over-proxy presentation precedence as
+        # A57: the same measured-over-proxy presentation precedence as
         # select_coaching — where the measured brake-point principle has
         # a verdict at a corner in this cohort, the proxy's instance for
         # that corner is not listed here either.

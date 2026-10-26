@@ -47,7 +47,7 @@ class MetricCVGate:
 @dataclass(frozen=True)
 class MetricStatGate:
     """Eligible where a per-corner statistic of one metric crosses a
-    floor (coach-onto-v5, SPEC.md A56) — for measured techniques whose
+    floor (coach-onto-v5, SPEC.md A57) — for measured techniques whose
     fault is a LEVEL or a SPREAD of a metric rather than a detector
     pattern or a coefficient of variation.
 
@@ -368,7 +368,7 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             ),
             evidence_binding=(),
         ),
-        # --- coach-onto-v5 (SPEC.md A56): the entry-phase tranche. Three
+        # --- coach-onto-v5 (SPEC.md A57): the entry-phase tranche. Three
         # measured braking techniques that had metrics and scores but no
         # principle. Appended, not interleaved: nothing above this line
         # changed, so every v4 eligibility outcome is reproducible from
