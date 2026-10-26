@@ -102,6 +102,8 @@ This is the load-bearing step. Run it on the VM (which can reach Supabase).
    GARAGE61_TOKEN=...                # required for driverdna sync
    GOOGLE_CLIENT_ID=...              # optional — enables Google OAuth login
    GOOGLE_CLIENT_SECRET=...          # optional — required only if GOOGLE_CLIENT_ID is set
+   GARAGE61_CLIENT_ID=...            # optional — enables Garage61 OAuth login + per-user sync
+   GARAGE61_CLIENT_SECRET=...
    EOF
    sudo chmod 0600 /etc/driverdna/driverdna.env
    ```
