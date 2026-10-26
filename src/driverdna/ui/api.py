@@ -410,7 +410,10 @@ def create_app(
         session_epoch = datetime.utcnow().isoformat()
         password_hash = auth.hash_password(body.password)
 
-        with open_db(request) as db:
+        # A cold deployment (no DB file yet) must still let its first driver
+        # register — the only other way to create the file is
+        # `/api/laps/upload`, which requires being logged in already.
+        with open_db(request, create_if_missing=True) as db:
             existing = db.conn.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone()
             if existing:
                 throttle.record_failure(key)
@@ -932,6 +935,14 @@ def create_app(
                     garage61_linked = row is not None
             except Exception:
                 pass
+            if not garage61_linked:
+                # No per-user OAuth token stored, but a bare env token still
+                # makes sync usable (Garage61Client() falls back to it) — the
+                # same fallback `/api/garage61/status` already reports. Without
+                # this, a token-only deployment (no OAuth app registered) never
+                # shows the Import tab's Garage61 Sync section at all.
+                import os
+                garage61_linked = bool(os.environ.get("GARAGE61_TOKEN", "").strip())
 
         return {
             "required": session_secret is not None,
@@ -981,7 +992,10 @@ def create_app(
             )
             return None
 
-    def open_db(request: Request | None = None, *, check_same_thread: bool = True) -> Database:
+    def open_db(
+        request: Request | None = None, *, check_same_thread: bool = True,
+        create_if_missing: bool = False,
+    ) -> Database:
         if _is_pg and _pool is None:
             raise HTTPException(503, detail="database unavailable — check server logs")
         # A hosted store has no file to stat and creates its schema on
@@ -989,7 +1003,7 @@ def create_app(
         # for the SQLite case; an empty hosted store surfaces as the normal
         # no-cohorts empty state instead.
         reason = missing_reason(db_path)
-        if reason:
+        if reason and not create_if_missing:
             raise HTTPException(404, detail=f"{reason} — run `driverdna import` first")
         user_pk = request.state.user_pk if hasattr(getattr(request, "state", None), "user_pk") else 1
         if _pool is not None:
