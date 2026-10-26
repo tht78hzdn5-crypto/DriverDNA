@@ -53,13 +53,18 @@ def test_reset_password_changes_password_and_clears_token(app: TestClient, db_pa
     token = link.split("token=")[1]
     
     # Attempt reset with invalid token
-    resp = app.post("/api/auth/reset-password", json={"token": "invalid", "new_password": "newpass"})
+    resp = app.post("/api/auth/reset-password", json={"token": "invalid", "new_password": "newpass1!"})
     assert resp.status_code == 400
-    
-    # Attempt reset with valid token
-    resp = app.post("/api/auth/reset-password", json={"token": token, "new_password": "newpass"})
+
+    # Attempt reset with too-short password
+    resp = app.post("/api/auth/reset-password", json={"token": token, "new_password": "short"})
+    assert resp.status_code == 400
+    assert "8 characters" in resp.json()["detail"]
+
+    # Attempt reset with valid token and valid password
+    resp = app.post("/api/auth/reset-password", json={"token": token, "new_password": "newpass1!"})
     assert resp.status_code == 200
-    
+
     # Attempt reset again with same token
-    resp = app.post("/api/auth/reset-password", json={"token": token, "new_password": "newer"})
+    resp = app.post("/api/auth/reset-password", json={"token": token, "new_password": "another1!"})
     assert resp.status_code == 400
