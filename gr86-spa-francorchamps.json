@@ -1653,7 +1653,7 @@
      },
      "consistency": {
       "n": 596,
-      "value": 0.658,
+      "value": 0.344,
       "weight": 0.25
      },
      "opportunity": {
@@ -1666,10 +1666,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Braking",
-    "score": 88.37,
+    "score": 80.52,
     "signal_status": "measured",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "commitment": {
     "basis_reason": "Scored on consistency and opportunity alone. This fundamental has no detectors of its own, so adherence can never be measured for it.",
@@ -1681,7 +1681,7 @@
      },
      "consistency": {
       "n": 94,
-      "value": 0.7292,
+      "value": 0.0,
       "weight": 0.4167
      },
      "opportunity": {
@@ -1694,10 +1694,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Commitment",
-    "score": 86.48,
+    "score": 56.1,
     "signal_status": "proxy",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "consistency": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
@@ -1709,7 +1709,7 @@
      },
      "consistency": {
       "n": 2017,
-      "value": 0.6893,
+      "value": 0.3431,
       "weight": 1.0
      },
      "opportunity": {
@@ -1722,10 +1722,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Consistency",
-    "score": 68.93,
+    "score": 34.31,
     "signal_status": "measured",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "corner_exit": {
     "basis_reason": null,
@@ -1737,7 +1737,7 @@
      },
      "consistency": {
       "n": 472,
-      "value": 0.6974,
+      "value": 0.1635,
       "weight": 0.25
      },
      "opportunity": {
@@ -1750,10 +1750,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Corner exit",
-    "score": 78.54,
+    "score": 65.19,
     "signal_status": "measured",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "rotation": {
     "basis_reason": null,
@@ -1765,7 +1765,7 @@
      },
      "consistency": {
       "n": 866,
-      "value": 0.7214,
+      "value": 0.3552,
       "weight": 0.25
      },
      "opportunity": {
@@ -1778,10 +1778,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Rotation",
-    "score": 69.33,
+    "score": 60.17,
     "signal_status": "measured",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "vehicle_management": {
     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it. Only 1 of its 4 techniques carries a telemetry signal \u2014 slip_management, tire_utilization and weight_transfer cannot be observed.",
@@ -1793,7 +1793,7 @@
      },
      "consistency": {
       "n": 83,
-      "value": 0.7052,
+      "value": 0.0,
       "weight": 1.0
      },
      "opportunity": {
@@ -1806,10 +1806,10 @@
     "evidence_count": 12,
     "insufficient_reason": null,
     "label": "Vehicle mgmt",
-    "score": 70.52,
+    "score": 0.0,
     "signal_status": "proxy",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    },
    "vision": {
     "basis_reason": null,
@@ -1820,8 +1820,8 @@
     "label": "Vision",
     "score": null,
     "signal_status": "no_signal",
-    "trend": "unavailable",
-    "trend_reason": null
+    "speculative_guess": null,
+    "trend": "unavailable"
    }
   },
   "driver": "owner",
@@ -1839,7 +1839,23 @@
      "confidence": 0.6017,
      "evidence_count": 12,
      "fundamental": "braking",
-     "score": 88.37,
+     "score": 80.52,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "corner_exit",
+     "score": 65.19,
+     "signal_status": "measured"
+    },
+    {
+     "basis_reason": null,
+     "confidence": 0.6017,
+     "evidence_count": 12,
+     "fundamental": "rotation",
+     "score": 60.17,
      "signal_status": "measured"
     },
     {
@@ -1847,15 +1863,15 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "commitment",
-     "score": 86.48,
+     "score": 56.1,
      "signal_status": "proxy"
     },
     {
-     "basis_reason": null,
+     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
      "confidence": 0.6017,
      "evidence_count": 12,
-     "fundamental": "corner_exit",
-     "score": 78.54,
+     "fundamental": "consistency",
+     "score": 34.31,
      "signal_status": "measured"
     },
     {
@@ -1863,34 +1879,18 @@
      "confidence": 0.5,
      "evidence_count": 12,
      "fundamental": "vehicle_management",
-     "score": 70.52,
+     "score": 0.0,
      "signal_status": "proxy"
-    },
-    {
-     "basis_reason": null,
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "rotation",
-     "score": 69.33,
-     "signal_status": "measured"
-    },
-    {
-     "basis_reason": "Scored on consistency alone. This fundamental has no detectors and no phase windows of its own, so adherence and opportunity can never be measured for it.",
-     "confidence": 0.6017,
-     "evidence_count": 12,
-     "fundamental": "consistency",
-     "score": 68.93,
-     "signal_status": "measured"
     }
    ],
    "reading_version": "read-v1",
-   "separation_points": 19.44,
+   "separation_points": 46.21,
    "strongest": {
     "basis_reason": null,
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "braking",
-    "score": 88.37,
+    "score": 80.52,
     "signal_status": "measured"
    },
    "verdict_reason": null,
@@ -1899,11 +1899,11 @@
     "confidence": 0.6017,
     "evidence_count": 12,
     "fundamental": "consistency",
-    "score": 68.93,
+    "score": 34.31,
     "signal_status": "measured"
    }
   },
-  "scoring_model_version": "dm-v3",
+  "scoring_model_version": "dm-v2",
   "taxonomy_version": "pyramid-v1"
  },
  "findings": [
