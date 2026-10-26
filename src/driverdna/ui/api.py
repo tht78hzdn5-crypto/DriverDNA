@@ -526,7 +526,10 @@ def create_app(
     def reset_password(body: ResetPasswordBody, request: Request) -> dict[str, str]:
         import hashlib
         from datetime import datetime
-        
+
+        if len(body.new_password) < 8:
+            raise HTTPException(400, detail="password must be at least 8 characters")
+
         token_hash = hashlib.sha256(body.token.encode()).hexdigest()
         now = datetime.utcnow().isoformat()
         
