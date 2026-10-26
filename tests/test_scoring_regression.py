@@ -162,8 +162,8 @@ def test_scoring_model_version_is_dm_v3():
     assert SCORING_MODEL_VERSION == "dm-v3"
 
 
-def test_payload_version_is_11():
-    # v11 is the payload that carries trend_reason (A56) and
-    # speculative_guess (BUG-046). Same reasoning: a literal pin,
-    # not a round-trip.
-    assert PAYLOAD_VERSION == 11
+def test_payload_version_is_12():
+    # v12 is the payload that carries trend_reason (A56),
+    # speculative_guess (BUG-046), and the tendency era fields (A55).
+    # Same reasoning: a literal pin, not a round-trip.
+    assert PAYLOAD_VERSION == 12
