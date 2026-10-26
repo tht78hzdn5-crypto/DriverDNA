@@ -348,3 +348,85 @@ def test_report_says_each_coaching_expression_once_per_section(tmp_path):
         section = md.split(f"### {label}", 1)[1].split("###", 1)[0]
         expression = _lede_principle(payload, fundamental)["coaching_expression"]
         assert section.count(expression) == 1
+
+
+def _store_coach_run(db, *, guesses=(), explanations=()):
+    output = {
+        "measured_priorities": [],
+        "coaching_priorities": [],
+        "coaching_plan": [],
+        "hypotheses": [],
+        "incident_explanations": list(explanations),
+        "fundamental_guesses": list(guesses),
+    }
+    db.store_coach_output(
+        driver="owner", car="TestCar", track="SynthRing",
+        payload_version=9, prompt_version="test", model="test",
+        output_json=json.dumps(output),
+    )
+
+
+def test_vision_belief_carries_stored_speculative_guess():
+    """A54 workstream 2: with a stored AI guess for vision, the payload
+    includes beliefs.vision.speculative_guess. Without a stored run, the
+    field is None and the belief stays honestly no_signal with no score.
+    The guess must not move any engine number."""
+    with _build_db() as db:
+        before = build_cohort_payload(db, **COHORT, config=CONFIG)
+        vision = before["driver_model"]["beliefs"]["vision"]
+        assert vision["score"] is None
+        assert vision["signal_status"] == "no_signal"
+        assert vision.get("speculative_guess") is None
+
+        guess = ("Eyes drop to the apex too late; say out loud where "
+                 "you are looking at turn-in.")
+        _store_coach_run(db, guesses=[
+            {"fundamental_id": "vision", "guess": guess},
+        ])
+        after = build_cohort_payload(db, **COHORT, config=CONFIG)
+        vision_after = after["driver_model"]["beliefs"]["vision"]
+        assert vision_after["speculative_guess"] == guess
+        assert vision_after["score"] is None
+        assert vision_after["signal_status"] == "no_signal"
+        for fid, belief in before["driver_model"]["beliefs"].items():
+            stripped = {k: v for k, v in belief.items()
+                        if k != "speculative_guess"}
+            stripped_after = {k: v for k, v in
+                              after["driver_model"]["beliefs"][fid].items()
+                              if k != "speculative_guess"}
+            assert stripped == stripped_after
+
+
+def test_incident_speculative_guess_comes_from_latest_coach_run():
+    """The incident path reads its guess from the same stored AI outputs.
+    It previously read output_json off coach_history, which never returns
+    that key, so the attach was silently dead."""
+    with _build_db() as db:
+        lap_pk = db.conn.execute(
+            "SELECT lap_pk FROM laps WHERE role='self' LIMIT 1"
+        ).fetchone()["lap_pk"]
+        with db.conn:
+            db.conn.execute(
+                """INSERT INTO incidents (lap_pk, owner_user_pk, kinds,
+                    classification, confidence, corner_id, span_start,
+                    span_end, onset, min_speed_kmh, peak_yaw_rate,
+                    rationale, detail)
+                   VALUES (?, 1, 'spin', 'trail_brake_oversteer', 'high',
+                           'C01', 10, 20, 10, 50.0, 0.5, 'test', '{}')""",
+                (lap_pk,),
+            )
+        incident_pk = db.conn.execute(
+            "SELECT incident_pk FROM incidents"
+        ).fetchone()["incident_pk"]
+        _store_coach_run(db, explanations=[{
+            "incident_id": f"incident:{incident_pk}",
+            "coaching_principle_id": "cp.brake_release.finish_the_front",
+            "explanation": "Test guess for entertainment purposes.",
+            "confidence": "low",
+            "evidence_ids": [f"incident:{incident_pk}"],
+        }])
+        payload = build_cohort_payload(db, **COHORT, config=CONFIG)
+        events = payload["incidents"]["events"]
+        assert len(events) == 1
+        assert events[0]["speculative_guess"] == (
+            "Test guess for entertainment purposes.")

@@ -86,7 +86,7 @@ def _valid_output(payload):
 
 
 def test_payload_carries_report_and_history(db, payload):
-    assert payload["prompt_version"] == "coach-v3"
+    assert payload["prompt_version"] == "coach-v4"
     assert payload["report"]["cohort"]["n_laps"] == 12
     assert payload["focus_history"] == []
     shown, evidence = evidence_universe(payload["report"])
@@ -347,3 +347,63 @@ def test_coach_cli_requires_key_for_claude_provider(tmp_path, monkeypatch):
     )
     assert result.exit_code == 2
     assert "ANTHROPIC_API_KEY" in result.output
+
+
+def _output_with_guesses(payload, guesses):
+    output = _valid_output(payload)
+    output["fundamental_guesses"] = guesses
+    return output
+
+
+def test_fundamental_guess_for_vision_accepted(payload):
+    output = _output_with_guesses(payload, [{
+        "fundamental_id": "vision",
+        "guess": "Eyes drop to the apex too late; say out loud where "
+                 "you are looking at turn-in.",
+    }])
+    validated = validate_coach_output(json.dumps(output), payload["report"])
+    assert validated["fundamental_guesses"][0]["fundamental_id"] == "vision"
+
+
+def test_fundamental_guess_for_measured_fundamental_rejected(payload):
+    output = _output_with_guesses(payload, [
+        {"fundamental_id": "braking", "guess": "Braking looks fine."},
+    ])
+    with pytest.raises(CoachValidationError):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_fundamental_guess_with_score_or_confidence_rejected(payload):
+    for extra in ({"score": 42}, {"confidence": "low"}):
+        output = _output_with_guesses(payload, [{
+            "fundamental_id": "vision", "guess": "A guess.", **extra,
+        }])
+        with pytest.raises(CoachValidationError):
+            validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_fundamental_guess_with_percentage_rejected(payload):
+    output = _output_with_guesses(payload, [{
+        "fundamental_id": "vision", "guess": "Vision is 30% confident.",
+    }])
+    with pytest.raises(CoachValidationError):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_fundamental_guess_empty_rejected(payload):
+    output = _output_with_guesses(payload, [
+        {"fundamental_id": "vision", "guess": "  "},
+    ])
+    with pytest.raises(CoachValidationError):
+        validate_coach_output(json.dumps(output), payload["report"])
+
+
+def test_fundamental_guesses_section_optional(payload):
+    validated = validate_coach_output(
+        json.dumps(_valid_output(payload)), payload["report"])
+    assert "fundamental_guesses" not in validated
+
+
+def test_prompt_carries_fundamental_guesses_section():
+    from driverdna.coach.provider import SYSTEM_PROMPT
+    assert "fundamental_guesses" in SYSTEM_PROMPT
