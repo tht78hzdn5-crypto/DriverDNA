@@ -3057,3 +3057,89 @@ Accepted at owner plan review; rationale recorded in the review:
   **Stage 1 (shipped with this amendment): era recurrence in the driver rollup.** Each fault pattern in `coaching_rollup` carries `eras_fired`/`eras_total`/`tendency_state`, computed by running the existing per-cohort eligibility on each era's laps alone, and the driver report renders one tendency line per shown pattern (words in `coaching/ontology.py`). Stage 1 implements four of the six states — `new`, `recurring`, `persistent`, `resolved`; `improving` (per-era band trend) and `dormant` (era-distance shading of `resolved`) arrive with Stage 2, as do first_seen/last_seen, per-era bands, era evidence IDs, and the `driver_tendencies` table. Two semantics decisions, made where the proposal was ambiguous and recorded here: (1) `resolved` = fired in at least one era and absent from the most recent era — Stage 1 does not require the strength complement or a consecutive-absence count; (2) below A36's availability floor for a multi-era split, the whole dated history is a single era (which can only ever read `new`), and undated laps belong to no era — an era is a claim about when, and an undated lap has no when. `persistent` = fired in the most recent era and in at least `config.coaching.tendency_persistent_min_share` (default 0.5) of all eras. PAYLOAD_VERSION 11 → 12 for the additive annotation on the merged shape (v11 + era fields).
 
 - **A56** (2026-10-08, `consistency` absolute robust dispersion + trend saturation gate, `dm-v3`): numbered A56 because A55 is reserved by the coaching-fundamentals review's draft amendment (PR #55, unratified at the time of this change). The critical review of the owner's synced 282-lap corpus filed BUG-042/043/044 against dm-v2: the consistency component's pooled normalized CV measured 2.3898 against the 2.0 ceiling, clamping `consistency` and `vehicle_management` to exactly 0.0 at full confidence; CV itself is the wrong statistic for '% lap' position metrics (it divides by the landmark's own position — a sub-point scatter at a near-origin landmark read ~110×, and one wrap-around sample manufactured ~95×); and a belief clamped at 0.0 could still report trend "improving" because the trend's date-halves straddle the clamp. `_consistency_component` now measures dispersion absolutely: per (corner, metric) scaled MAD (robust; resolution floor for majority-tied samples), normalized per metric against measured reference dispersions (`model.consistency_metric_reference_dispersion`, provenance: the 2026-10-08 282-lap corpus, median of nonzero per-sample scaled MADs; per-unit fallback table), pooled two levels as before, mapped through a re-anchored ceiling (`model.consistency_dispersion_ceiling` = 3.0; reference-typical pooled 1.0 scores 0.667). All-zero samples are skipped on stated evidence grounds (the measured event never occurred), not as a denominator side effect. `compute_belief` suppresses a directional trend when the headline score is pinned at a scale bound, emitting trend `unavailable` plus a payload-visible `trend_reason` (payload v11). Refines non-negotiable #4 the way A21 did: decomposability includes the statistic being *valid for the quantity it measures* — a score decomposable to real numbers whose dispersion measure divides by the landmark's position is still opaque about what it claims. `dm-v2` → `dm-v3` per the Scoring Contract (condition 2 — a real formula change for the same evidence). The dm-v2 config fields (`consistency_unit_reference_cv`, `consistency_cv_ceiling`) are retained: the M7 coaching layer's normalized-CV gates still consume them, and migrating that layer is deliberately NOT part of this amendment (the A21 deferral, repeated knowingly). Full record, including rejected alternatives (robust CV, per-unit absolute anchors, Sn/Qn estimators) and the calibration's golden-driver tests, in PROJECT-BRIEF.md's decision log.
+
+- **A57** (2026-10-08): **The entry-phase coaching tranche: three measured
+  techniques gain principles; a fifth gate type; measured-over-proxy
+  presentation precedence.** The coaching fundamentals review
+  (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found seven measured techniques
+  with metrics, scores, and no principle — the ontology could never speak
+  them. Tranche 1 covers the three entry-phase braking techniques:
+  `cp.trail_braking.carry_the_brake` (technique `trail_braking`),
+  `cp.brake_application.get_to_peak` (`brake_application`), and
+  `cp.brake_point_selection.same_marker` (`brake_point_selection`).
+  `ONTOLOGY_VERSION` `coach-onto-v4` → `coach-onto-v5`. `PAYLOAD_VERSION`
+  unchanged (no field added or removed — a candidate is a candidate).
+  `SCORING_MODEL_VERSION` unchanged by this tranche, and structurally cannot
+  change: the scoring model reads `config.model.*` only; every new threshold is
+  `config.coaching.*`.
+
+  **The gate.** None of the four existing gate types fits a fault that is a
+  level or a spread of one metric: no detector exists for these techniques,
+  no vs-self finding isolates them, and a coefficient of variation is the
+  wrong statistic — for `brake_point_dist_pct` it divides by a mean that can
+  approach zero (the BUG-042/043/044 pathology), and overlap/rate faults are
+  levels, not variabilities. `MetricStatGate` therefore states one statistic
+  of one metric — **median** or **interquartile range** — crossing a config
+  floor in a stated direction, with an optional guard (a second metric's
+  median) scoping the corner in or out entirely: out of scope yields neither
+  a candidate nor a strength, because the corner is not being judged, not
+  being praised. The IQR is the dispersion for brake points deliberately: it
+  is in the metric's own units (% lap), robust to outliers, and never
+  divides by a mean. All three principles band on the entry phase's
+  cumulative loss — the statistic is the trigger, the seconds are the tone,
+  the `trust_the_proxy` shape.
+
+  **The thresholds** (all `config.coaching`, each documented in its field
+  description with its anchor): `braking_zone_peak_floor` 0.50 (the scope
+  guard: a substantial braking event, ~30th percentile of per-corner median
+  `brake_peak`); `trail_brake_overlap_floor_s` 0.10 (median overlap at/below
+  this is effectively never braking while steering — six samples at 60 Hz;
+  ~13th percentile among substantial-braking corners, whose median overlap
+  otherwise runs 0.45 s at p25); `brake_application_rate_floor` 0.35
+  fraction/s (~17th percentile of per-corner median rate among the same
+  corners); `brake_point_iqr_floor_pct` 1.0 (% lap; ~73rd percentile of
+  per-corner IQR across corners with ≥ 8 laps). Anchors are the owner's
+  282-lap corpus of 2026-10-08; moving a threshold means restating its
+  anchor, the A52 rule.
+
+  **Interaction, decided explicitly.** `same_marker` and
+  `cp.entry_commitment.trust_the_proxy` read the same evidence
+  (`brake_point_dist_pct` at a corner) with different statistics and
+  different conviction. Left alone they would double-speak — and worse, the
+  proxy's *strength* ("your braking points are settled") can hold at a
+  corner where the measured principle is faulting the same brake points,
+  because a large absolute spread around a large mean is a small CV. The
+  rule: **where the measured principle has any verdict at a corner —
+  candidate or strength — the proxy is not presented for that corner**, in
+  both presentation paths (`select_coaching`, the driver rollup). One voice
+  per piece of evidence; the measured voice wins; the proxy remains the
+  fallback where a proxy belongs (too few laps to state an IQR, or the
+  measured statistic below its evidence bar). The rule lives in
+  presentation, **not** eligibility: `eligible_principles` still returns
+  both, pinned by test, because eligibility is the engine's evidence record
+  and presentation is a separate decision. The other interactions needed no
+  rule: `carry_the_brake` vs `cp.brake_release.finish_the_front` are the
+  same lesson read off different evidence (release *shape* vs overlap
+  *duration*) and reinforce; vs `cp.turn_in.one_commitment` they address
+  different inputs (foot vs hands) at the same corner without contradiction;
+  `get_to_peak` is the squeeze at the start of the pedal where
+  `finish_the_front` is the taper at its end.
+
+  **Effect on the owner's real corpus** (282 laps, 5 cohorts, regenerated
+  2026-10-08). All three principles fire and all three reach the driver
+  rollup: `carry_the_brake` faults at 4 corners / 3 tracks (all moderate)
+  and clears as a strength at 44 corners / 5 tracks; `get_to_peak` faults at
+  6 corners / 4 tracks (major at Indianapolis C12 and Summit Point C01,
+  n = 156) and clears at 39 / 5; `same_marker` faults at 11 corners /
+  4 tracks (major at Indianapolis C12 and Summit Point C01) and clears at
+  47 / 5. The proxy yields exactly where designed: its fault instances go
+  4 → 2 (Brands Hatch C01 and C03, where `same_marker` has verdicts; C10
+  and Summit Point C24 still present, the measured principle being silent
+  there), and its strength instances 62 → 6 — the settled-brake-point claim
+  is now spoken by the measured principle instead. Every other v4 pattern's
+  rollup counts are unchanged, all five cohort headlines are unchanged, and
+  every Driver Model belief (score and confidence) is byte-identical, as it
+  must be: nothing here touches a measurement. Two full report generations
+  on the corpus are byte-identical (determinism). On the fixture corpus the
+  committed artifacts regenerate with only the ontology version, a
+  `get_to_peak` strength group on the GR86 cohort, and ordering moving.

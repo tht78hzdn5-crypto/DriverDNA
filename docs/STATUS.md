@@ -61,6 +61,30 @@
 - **What shipped:** Every fault pattern in `coaching_rollup` now carries `eras_fired` / `eras_total` / `tendency_state` (`tendency-v1`), computed by running the existing per-cohort eligibility on each era's laps alone, eras being A36's date-ordered equal-count buckets reused verbatim. States shipped: `new / recurring / persistent / resolved` (`improving`/`dormant`, the `driver_tendencies` table, and prompt wiring are Stages 2–3). The driver report renders one tendency line per shown pattern, words in `coaching/ontology.py`. PAYLOAD_VERSION 9 → 10 (additive). One new threshold: `coaching.tendency_persistent_min_share` (0.5). The only reach into existing code is an optional `lap_pks` on `eligible_principles` / `eligible_strengths` / `vs_self_findings` — the M6 trend mechanism — with a pinning test that the full-set restriction is byte-identical to no restriction.
 - **No existing number moved:** on the owner's real 282-lap corpus, before/after payloads are identical in `driver_model` (beliefs incl. consistency 0.0 / vehicle_management 0.0 — the BUG-042/043/044 family, untouched here), `cross_track_rollups`, `census`, rollup strengths, and every pattern field except the three annotation fields. Coasting annotates 6/6 eras, `persistent`; pedal overlap annotates `resolved` (4/6, absent from the most recent era).
 - **Verified counts:** 16 affected test files (incl. the new `tests/test_coaching_tendency.py`, 25 tests): **239 passed, 1 skipped, 0 failed** — the skip is `tests/test_api.py`'s `@requires_postgres` variant (no local Postgres configured; conftest `requires_postgres`). Environment: this host, venv Python 3.12.3, SQLite in-memory backend, `PYTHONPATH=<worktree>/src`. `ruff check` clean on every changed file. Full-suite runs on this host stall in the disk-wait state documented in PR #54, so the last verified full-suite result remains the 2026-08-20 reference below (1057 passed / 19 skipped / 26 deselected, Python 3.14 venv); a healthy-host full run is still owed and CI's five jobs are the merge gate for this PR.
+**Snapshot date: 2026-10-08 (coach-onto-v5: entry-phase coaching tranche, SPEC.md A57).**
+
+- **What shipped:** three measured braking techniques that had metrics and
+  scores but no coaching principle — `trail_braking`, `brake_application`,
+  `brake_point_selection` — now speak as `cp.trail_braking.carry_the_brake`,
+  `cp.brake_application.get_to_peak`, `cp.brake_point_selection.same_marker`.
+  New gate type `MetricStatGate` (median / IQR of one metric, config floor,
+  optional guard metric) in `coaching/ontology.py` + `coaching/engine.py`;
+  four thresholds in `config.coaching` with per-corner corpus-percentile
+  anchors in their descriptions. Measured-over-proxy presentation
+  precedence: where `same_marker` has any verdict at a corner,
+  `cp.entry_commitment.trust_the_proxy` is not presented for that corner
+  (`select_coaching` + rollup; eligibility untouched).
+- **Verified on the owner's corpus** (282 laps, 5 cohorts): all three
+  principles fire (faults at 4 / 6 / 11 corners; strengths at 44 / 39 / 47);
+  proxy fault instances 4 → 2 and strength instances 62 → 6, exactly at
+  measured-verdict corners; all five cohort headlines unchanged; every
+  belief score/confidence identical; two report generations byte-identical.
+- **Sequencing note:** this branch is based on `main` at PR #53. The
+  fundamentals review it implements lives in PR #55
+  (`docs/COACHING-FUNDAMENTALS-REVIEW.md`) and the BUG-042/043/044 entries
+  it cross-references live on the scoring investigation's branch; merge
+  order may require a rebase, and the cross-references resolve as those land.
+
 **Snapshot date: 2026-10-08 (critical review: BUG-042/043/044 filed — dm-v2 consistency saturation on the owner's real corpus).**
 
 - **What prompted it:** the owner's full Garage61 history finished syncing

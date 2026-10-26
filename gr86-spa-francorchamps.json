@@ -32,7 +32,7 @@
    "thin_evidence": false
   },
   "headline_reason": null,
-  "ontology_version": "coach-onto-v4",
+  "ontology_version": "coach-onto-v5",
   "secondary": [
    {
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
@@ -686,6 +686,252 @@
     "technique": "pedal_overlap"
    },
    {
+    "coaching_principle_id": "cp.brake_application.get_to_peak",
+    "driving_principle": "A braking zone is spent at whatever pressure the pedal has reached. A slow squeeze spends its first half below the tire's limit \u2014 track the corner never gives back \u2014 and the peak, when it finally arrives, has less room left to work in. Decisiveness belongs at the start of the pedal; finesse belongs at the release.",
+    "fundamental": "braking",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:11",
+       "obs:25",
+       "obs:40",
+       "obs:54",
+       "obs:67",
+       "obs:84",
+       "obs:98",
+       "obs:111",
+       "obs:126",
+       "obs:140",
+       "obs:155"
+      ],
+      "n": 11,
+      "observed": 1.256,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:56",
+       "obs:69",
+       "obs:87",
+       "obs:100",
+       "obs:113",
+       "obs:128",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": 0.3981,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:29",
+       "obs:44",
+       "obs:58",
+       "obs:71",
+       "obs:89",
+       "obs:102",
+       "obs:115",
+       "obs:130",
+       "obs:145",
+       "obs:159"
+      ],
+      "n": 11,
+      "observed": 0.4344,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 9,
+      "observed": 0.8462,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:20",
+       "obs:35",
+       "obs:49",
+       "obs:61",
+       "obs:77",
+       "obs:93",
+       "obs:106",
+       "obs:119",
+       "obs:134",
+       "obs:150",
+       "obs:164"
+      ],
+      "n": 11,
+      "observed": 0.9679,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:39",
+       "obs:53",
+       "obs:66",
+       "obs:82",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:139",
+       "obs:154",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": 0.4148,
+      "observed_kind": "metric_median"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "You get to peak pressure decisively \u2014 the braking zone is spent at the tire's limit, not on the way to it.",
+    "technique": "brake_application"
+   },
+   {
+    "coaching_principle_id": "cp.brake_point_selection.same_marker",
+    "driving_principle": "Everything downstream \u2014 peak pressure, release, turn-in \u2014 keys off where braking starts. A brake point chosen by feel each lap turns every later input into a new experiment; a physical marker makes the whole entry repeatable, which is why schools teach markers before they teach speed.",
+    "fundamental": "braking",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:11",
+       "obs:25",
+       "obs:40",
+       "obs:54",
+       "obs:67",
+       "obs:84",
+       "obs:98",
+       "obs:111",
+       "obs:126",
+       "obs:140",
+       "obs:155"
+      ],
+      "n": 11,
+      "observed": 0.2733,
+      "observed_kind": "metric_iqr"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:56",
+       "obs:69",
+       "obs:87",
+       "obs:100",
+       "obs:113",
+       "obs:128",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": 0.5119,
+      "observed_kind": "metric_iqr"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:29",
+       "obs:44",
+       "obs:58",
+       "obs:71",
+       "obs:89",
+       "obs:102",
+       "obs:115",
+       "obs:130",
+       "obs:145",
+       "obs:159"
+      ],
+      "n": 11,
+      "observed": 0.1606,
+      "observed_kind": "metric_iqr"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 9,
+      "observed": 0.1487,
+      "observed_kind": "metric_iqr"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:20",
+       "obs:35",
+       "obs:49",
+       "obs:61",
+       "obs:77",
+       "obs:93",
+       "obs:106",
+       "obs:119",
+       "obs:134",
+       "obs:150",
+       "obs:164"
+      ],
+      "n": 11,
+      "observed": 0.1878,
+      "observed_kind": "metric_iqr"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:39",
+       "obs:53",
+       "obs:66",
+       "obs:82",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:139",
+       "obs:154",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": 0.3658,
+      "observed_kind": "metric_iqr"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "Your brake point is a marker, not a mood \u2014 braking starts in the same place lap after lap.",
+    "technique": "brake_point_selection"
+   },
+   {
     "coaching_principle_id": "cp.brake_release.finish_the_front",
     "driving_principle": "Front tires can't both decelerate and steer at the limit. Releasing brake pressure well before turn-in unloads the front axle before it has finished slowing the car, so there's no grip left to rotate.",
     "fundamental": "braking",
@@ -737,129 +983,6 @@
     "signal_status": "measured",
     "strength_expression": "Your brake release is doing its job \u2014 the fronts stay loaded into the corner instead of being dropped at turn-in.",
     "technique": "brake_release"
-   },
-   {
-    "coaching_principle_id": "cp.entry_commitment.trust_the_proxy",
-    "driving_principle": "Brake-point timing is an indirect stand-in for entry commitment, not a direct measurement of it \u2014 a moving brake point can mean the driver is protecting margin rather than driving to the corner's actual limit.",
-    "fundamental": "commitment",
-    "instances": [
-     {
-      "corner_id": "C01",
-      "evidence_ids": [
-       "obs:11",
-       "obs:25",
-       "obs:40",
-       "obs:54",
-       "obs:67",
-       "obs:84",
-       "obs:98",
-       "obs:111",
-       "obs:126",
-       "obs:140",
-       "obs:155"
-      ],
-      "n": 11,
-      "observed": 0.0416,
-      "observed_kind": "coefficient_of_variation"
-     },
-     {
-      "corner_id": "C03",
-      "evidence_ids": [
-       "obs:13",
-       "obs:27",
-       "obs:42",
-       "obs:56",
-       "obs:69",
-       "obs:87",
-       "obs:100",
-       "obs:113",
-       "obs:128",
-       "obs:143",
-       "obs:157"
-      ],
-      "n": 11,
-      "observed": 0.0116,
-      "observed_kind": "coefficient_of_variation"
-     },
-     {
-      "corner_id": "C05",
-      "evidence_ids": [
-       "obs:15",
-       "obs:29",
-       "obs:44",
-       "obs:58",
-       "obs:71",
-       "obs:89",
-       "obs:102",
-       "obs:115",
-       "obs:130",
-       "obs:145",
-       "obs:159"
-      ],
-      "n": 11,
-      "observed": 0.0039,
-      "observed_kind": "coefficient_of_variation"
-     },
-     {
-      "corner_id": "C06",
-      "evidence_ids": [
-       "obs:16",
-       "obs:30",
-       "obs:45",
-       "obs:72",
-       "obs:90",
-       "obs:103",
-       "obs:131",
-       "obs:146",
-       "obs:160"
-      ],
-      "n": 9,
-      "observed": 0.0033,
-      "observed_kind": "coefficient_of_variation"
-     },
-     {
-      "corner_id": "C10",
-      "evidence_ids": [
-       "obs:20",
-       "obs:35",
-       "obs:49",
-       "obs:61",
-       "obs:77",
-       "obs:93",
-       "obs:106",
-       "obs:119",
-       "obs:134",
-       "obs:150",
-       "obs:164"
-      ],
-      "n": 11,
-      "observed": 0.002,
-      "observed_kind": "coefficient_of_variation"
-     },
-     {
-      "corner_id": "C14",
-      "evidence_ids": [
-       "obs:24",
-       "obs:39",
-       "obs:53",
-       "obs:66",
-       "obs:82",
-       "obs:97",
-       "obs:110",
-       "obs:125",
-       "obs:139",
-       "obs:154",
-       "obs:168"
-      ],
-      "n": 11,
-      "observed": 0.0032,
-      "observed_kind": "coefficient_of_variation"
-     }
-    ],
-    "n_corners": 6,
-    "signal_status": "proxy",
-    "strength_expression": "Your braking points are settled lap to lap \u2014 which reads as entry commitment, though this one is inferred from brake point rather than measured directly.",
-    "technique": "entry_commitment"
    },
    {
     "coaching_principle_id": "cp.repeatability.same_lap_twice",
@@ -1037,6 +1160,129 @@
     "signal_status": "measured",
     "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
     "technique": "throttle_pickup"
+   },
+   {
+    "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+    "driving_principle": "Braking and steering draw on one front-tire budget. Releasing the brake completely before turn-in unloads the nose at the exact moment it needs load to bite and rotate; carrying a shrinking brake pressure past turn-in keeps the front planted while the steering takes over the budget.",
+    "fundamental": "braking",
+    "instances": [
+     {
+      "corner_id": "C01",
+      "evidence_ids": [
+       "obs:11",
+       "obs:25",
+       "obs:40",
+       "obs:54",
+       "obs:67",
+       "obs:84",
+       "obs:98",
+       "obs:111",
+       "obs:126",
+       "obs:140",
+       "obs:155"
+      ],
+      "n": 11,
+      "observed": 1.9333,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C03",
+      "evidence_ids": [
+       "obs:13",
+       "obs:27",
+       "obs:42",
+       "obs:56",
+       "obs:69",
+       "obs:87",
+       "obs:100",
+       "obs:113",
+       "obs:128",
+       "obs:143",
+       "obs:157"
+      ],
+      "n": 11,
+      "observed": 1.9,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C05",
+      "evidence_ids": [
+       "obs:15",
+       "obs:29",
+       "obs:44",
+       "obs:58",
+       "obs:71",
+       "obs:89",
+       "obs:102",
+       "obs:115",
+       "obs:130",
+       "obs:145",
+       "obs:159"
+      ],
+      "n": 11,
+      "observed": 1.6667,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C06",
+      "evidence_ids": [
+       "obs:16",
+       "obs:30",
+       "obs:45",
+       "obs:72",
+       "obs:90",
+       "obs:103",
+       "obs:131",
+       "obs:146",
+       "obs:160"
+      ],
+      "n": 9,
+      "observed": 0.6167,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C10",
+      "evidence_ids": [
+       "obs:20",
+       "obs:35",
+       "obs:49",
+       "obs:61",
+       "obs:77",
+       "obs:93",
+       "obs:106",
+       "obs:119",
+       "obs:134",
+       "obs:150",
+       "obs:164"
+      ],
+      "n": 11,
+      "observed": 0.4167,
+      "observed_kind": "metric_median"
+     },
+     {
+      "corner_id": "C14",
+      "evidence_ids": [
+       "obs:24",
+       "obs:39",
+       "obs:53",
+       "obs:66",
+       "obs:82",
+       "obs:97",
+       "obs:110",
+       "obs:125",
+       "obs:139",
+       "obs:154",
+       "obs:168"
+      ],
+      "n": 11,
+      "observed": 2.8833,
+      "observed_kind": "metric_median"
+     }
+    ],
+    "n_corners": 6,
+    "signal_status": "measured",
+    "strength_expression": "You're carrying the brake into the corner \u2014 the front stays loaded through turn-in instead of being unloaded before it.",
+    "technique": "trail_braking"
    },
    {
     "coaching_principle_id": "cp.coasting.always_working",
