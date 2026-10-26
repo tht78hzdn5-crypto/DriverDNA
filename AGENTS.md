@@ -117,6 +117,7 @@ One agent works at a time. The rules below ensure cheap handoffs.
   directly for a genuine hotfix; agents may not, ever.
   **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
   session by landing its PR, or saying plainly why not.
+- Branch/PR hygiene: see `docs/PROJECT-BRIEF.md` (2026-10-26).
 - Branch naming: `gemini/<topic>`, `antigravity/<topic>`, `claude/<topic>`.
 - **A red check won't block you — nothing will.** Fix it before the next
   commit anyway. If `main` is red, fix it before starting new work.

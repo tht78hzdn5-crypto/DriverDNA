@@ -258,6 +258,18 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-26 — Branch/PR hygiene adopted.** The clean state is the norm:
+  no open PRs, no branches besides `main`, no worktrees besides the live
+  and regression trees. A branch exists only while its work is in flight,
+  and a PR stays open only while it is being worked (under review, awaiting
+  CI, or being revised). Every PR ends merged or closed, never idle. When a
+  PR lands or closes, its branch is deleted local and remote in the same
+  step (`gh pr merge --delete-branch` on merge); temporary worktrees are
+  removed when their PR lands. A session ends by returning to the clean
+  state, or saying plainly what is still in flight and why. The full text
+  lives here because the contract test caps `AGENTS.md` under 11,000 chars;
+  `AGENTS.md` carries a pointer to this entry.
+
 - **2026-10-08 — `consistency`'s CV statistic replaced with absolute
   robust dispersion; trend gate for bound-pinned scores (`dm-v3`,
   SPEC.md A56).** Prompted by the owner's full Garage61 history
