@@ -26,6 +26,7 @@ from __future__ import annotations
 import html
 from typing import Any
 
+from driverdna.attribution.ranker import PHASE_LABELS
 from driverdna.coaching.engine import GAP_BANDS
 from driverdna.coaching.ontology import tendency_line
 from driverdna.model.taxonomy import FUNDAMENTALS
@@ -262,6 +263,103 @@ def _findings_rows_md(findings: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _format_lap_time(seconds: float) -> str:
+    """m:ss.mmm — the only lap-time format the reports print."""
+    total_ms = round(seconds * 1000)
+    minutes, rem_ms = divmod(total_ms, 60000)
+    return f"{minutes}:{rem_ms // 1000:02d}.{rem_ms % 1000:03d}"
+
+
+def _summary_sentences(payload: dict[str, Any]) -> list[str]:
+    """Plain-English summary sentences for the cohort report's top.
+
+    Presentation only: every value comes from the payload itself — lap
+    counts, durations, cumulative loss, shown vs-reference gaps, the
+    coaching headline. Nothing is measured here, nothing is invented:
+    a missing piece is stated as missing, never filled in.
+    """
+    c = payload["cohort"]
+    durations = c.get("lap_durations_s") or []
+    incomplete = c.get("lap_incomplete") or [False] * len(durations)
+    complete = [d for d, inc in zip(durations, incomplete, strict=True) if not inc]
+    if c.get("n_sessions"):
+        scope = f"{c['n_laps']} laps across {c['n_sessions']} sessions"
+    else:
+        scope = f"{c['n_laps']} laps (no session metadata)"
+    first = f"{scope} at {c['car']} @ {c['track']}."
+    if complete:
+        first += f" Best lap {_format_lap_time(min(complete))}."
+    else:
+        first += " No complete laps recorded."
+    sentences = [first]
+    loss = payload.get("cumulative_loss") or {}
+    by_phase = loss.get("by_phase") or {}
+    if by_phase:
+        phase, value = max(by_phase.items(), key=lambda kv: kv[1])
+        sentences.append(
+            f"Most of the typical loss sits in the "
+            f"{PHASE_LABELS.get(phase, phase)} phase ({value:.3f} s/lap)."
+        )
+    by_class = loss.get("by_class") or {}
+    if by_class:
+        cls, value = max(by_class.items(), key=lambda kv: kv[1])
+        sentences.append(
+            f"{cls.capitalize()} corners carry the largest share "
+            f"({value:.3f} s/lap)."
+        )
+    gaps = [
+        f for f in payload.get("findings") or []
+        if f.get("source") == "vs-reference" and f.get("shown")
+        and f.get("kind") == "gap"
+    ]
+    if gaps:
+        biggest = max(
+            gaps, key=lambda f: (f.get("details") or {}).get("gap_median_s", 0.0)
+        )
+        details = biggest.get("details") or {}
+        phase = PHASE_LABELS.get(biggest.get("phase"), biggest.get("phase"))
+        sentences.append(
+            "Against the reference laps, the biggest typical gap is "
+            f"{biggest['corner_id']} {phase} "
+            f"({details.get('gap_median_s', 0.0):+.3f} s)."
+        )
+    else:
+        sentences.append("There is no reference comparison for this cohort.")
+    return sentences
+
+
+def _summary_headline(payload: dict[str, Any]) -> str | None:
+    coaching = payload.get("coaching") or {}
+    return (coaching.get("headline") or {}).get("coaching_expression")
+
+
+def _summary_block_md(payload: dict[str, Any]) -> list[str]:
+    """The Summary section's Markdown lines, ending with a blank line."""
+    sentences = _summary_sentences(payload)
+    lines = [sentences[0], ""]
+    if len(sentences) > 1:
+        lines += [" ".join(sentences[1:]), ""]
+    headline = _summary_headline(payload)
+    if headline:
+        lines += [f"> **{headline}**", ""]
+    return lines
+
+
+def _summary_block_html(payload: dict[str, Any]) -> str:
+    """The Summary section's HTML — same sentences, same order as Markdown."""
+    sentences = _summary_sentences(payload)
+    parts = [f"<p>{html.escape(sentences[0])}</p>"]
+    if len(sentences) > 1:
+        parts.append(f"<p>{html.escape(' '.join(sentences[1:]))}</p>")
+    headline = _summary_headline(payload)
+    if headline:
+        parts.append(
+            "<div class='lede'>"
+            f"<p class='say'>{html.escape(headline)}</p></div>"
+        )
+    return "".join(parts)
+
+
 def render_cohort_markdown(payload: dict[str, Any]) -> str:
     c = payload["cohort"]
     lines = [
@@ -272,9 +370,11 @@ def render_cohort_markdown(payload: dict[str, Any]) -> str:
         "sources are never blended, and every finding keeps its own source "
         "tag, N, spread, and evidence IDs.",
         "",
-        "## Findings",
+        "## Summary",
         "",
     ]
+    lines += _summary_block_md(payload)
+    lines += ["## Findings", ""]
     shown = [f for f in payload["findings"] if f["shown"] and not f.get("annotation")]
     annotated = [f for f in payload["findings"] if f["shown"] and f.get("annotation")]
     suppressed = [f for f in payload["findings"] if not f["shown"]]
@@ -349,6 +449,8 @@ def render_cohort_html(payload: dict[str, Any]) -> str:
         f"<p>Laps: {c['n_laps']} · sessions: {c['n_sessions']} · payload "
         f"v{payload['payload_version']}. Grouped by racing fundamental; "
         "sources are never blended.</p>",
+        "<h2>Summary</h2>",
+        _summary_block_html(payload),
         "<h2>Findings</h2>",
     ]
     ledes = _coaching_ledes(payload.get("coaching"))

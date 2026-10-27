@@ -2,6 +2,14 @@
 
 Laps: 11 · sessions: 3 · payload v12. Grouped by racing fundamental; sources are never blended, and every finding keeps its own source tag, N, spread, and evidence IDs.
 
+## Summary
+
+11 laps across 3 sessions at GR86 @ Spa-Francorchamps. Best lap 2:51.250.
+
+Most of the typical loss sits in the mid-corner phase (1.688 s/lap). Medium corners carry the largest share (1.668 s/lap). There is no reference comparison for this cohort.
+
+> **You're a passenger in the coasting zone. The car must always be working—either braking, turning, or driving.**
+
 ## Findings
 
 ### Braking
