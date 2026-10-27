@@ -230,15 +230,19 @@ jobs:
   # the job is still allowed to fail for real, visibly, it just can't block
   # a merge.
   #
-  # 59 pre-existing findings (spot-checked, not real bugs: dynamic
+  # 58 pre-existing findings (spot-checked, not real bugs: dynamic
   # attributes on a class built via object.__new__ bypassing __init__,
   # Optional-narrowing on loosely-typed dicts, an exception-named loop
   # variable mypy's scope check flags on principle) are pinned in
-  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 59
+  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 58
   # findings is a different, larger task than adding a gate. The gate
   # itself is a ratchet: it never demands the baseline improve, but it
   # fails the moment a push adds a new finding on top of it, so a real type
   # error can't slip in silently just because the count was never zero.
+  # The baseline file holds just the count: the step below compares it
+  # numerically, so a full mypy output dump in the file breaks the
+  # comparison (a UTF-16 Windows dump did exactly that before this change,
+  # and the job then passed vacuously on every run).
   mypy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
