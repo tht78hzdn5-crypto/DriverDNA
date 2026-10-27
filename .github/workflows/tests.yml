@@ -163,6 +163,32 @@ jobs:
         working-directory: ui
         run: npm run lint
 
+  # SPA unit tests — Vitest over the pure modules (format, order, pyramid,
+  # api). No jsdom: component tests are a later step needing jsdom +
+  # testing-library, and nothing here needs a DOM. Advisory for now: like
+  # the audit job, it runs on every push/PR but is not yet a required
+  # check in the ruleset — that promotion is the owner's call.
+  vitest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install SPA dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: vitest
+        working-directory: ui
+        run: npm test
+
   # Mechanises the AGENTS.md non-negotiable that secrets (GARAGE61_TOKEN,
   # ANTHROPIC_API_KEY, GEMINI_API_KEY, DRIVERDNA_DATABASE_URL) are env-only
   # and never persisted — previously trusted to review alone. The pinned
