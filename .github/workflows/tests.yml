@@ -83,7 +83,14 @@ jobs:
         # status and a failing suite would report green.
         run: |
           set -o pipefail
-          python -m pytest -rs -m "not browser" | tee pytest-output.txt
+          # Coverage runs on the 3.12 leg only: measuring on both matrix
+          # legs would double the suite's cost for the same number, and the
+          # 3.12 leg is the one whose report the ratchet step below reads.
+          cov_args=""
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            cov_args="--cov=driverdna --cov-report=xml:coverage.xml"
+          fi
+          python -m pytest -rs -m "not browser" $cov_args | tee pytest-output.txt
 
       # A green run is not proof the Postgres backend was exercised: if the
       # service container never came up, every dual-backend test would skip and
@@ -99,6 +106,33 @@ jobs:
             exit 1
           fi
           echo "Postgres backend exercised: no backend-configuration skips."
+
+      # Coverage ratchet, mirroring the mypy ratchet: the baseline is the
+      # measured total of the non-browser suite on main, 91% (2026-10-27:
+      # SQLite-only, no local Postgres, and 8 Gemini provider tests
+      # erroring on this VM's proxy env — all three make the local number
+      # conservative, so CI, which runs Postgres and has no such proxy
+      # vars, should measure equal or higher). The gate fails only on a
+      # drop, never demands improvement; a rise prints a notice suggesting
+      # a baseline update. Compared in whole percent, so sub-point moves do
+      # not trip it. If coverage.xml is missing the step fails — a missing
+      # report must never read as a pass.
+      - name: Coverage ratchet
+        if: matrix.python-version == '3.12'
+        run: |
+          if [ ! -f coverage.xml ]; then
+            echo "::error::coverage.xml is missing — the coverage run did not produce a report."
+            exit 1
+          fi
+          total=$(python3 -c "import xml.etree.ElementTree as ET; print(round(float(ET.parse('coverage.xml').getroot().get('line-rate')) * 100))")
+          baseline=$(cat ci/coverage-baseline.txt)
+          echo "coverage: $total% (baseline: $baseline%)"
+          if [ "$total" -lt "$baseline" ]; then
+            echo "::error::coverage ($total%) is below the baseline ($baseline%)."
+            exit 1
+          elif [ "$total" -gt "$baseline" ]; then
+            echo "::notice::coverage ($total%) is above the baseline ($baseline%). Consider raising ci/coverage-baseline.txt."
+          fi
 
       # Beck-style "AI cheating" detector (TDD guardrail, 2026-07-27).
       # If a push modifies files under tests/ but touches nothing under
