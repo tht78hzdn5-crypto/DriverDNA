@@ -59,10 +59,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
 
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      # Python deps come from uv.lock, not a fresh pip resolve: `uv sync
+      # --frozen` installs exactly the locked set and fails if the lock is
+      # out of sync with pyproject.toml, so CI can never silently test
+      # different versions than the lock records. --python pins the
+      # setup-python interpreter: uv would otherwise pick from PATH, which
+      # must not silently substitute a different version on a matrix leg.
+      # (No pip cache: pip installs only the uv binary itself here.)
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: Test
         env:
@@ -90,7 +98,7 @@ jobs:
           if [ "${{ matrix.python-version }}" = "3.12" ]; then
             cov_args="--cov=driverdna --cov-report=xml:coverage.xml"
           fi
-          python -m pytest -rs -m "not browser" $cov_args | tee pytest-output.txt
+          .venv/bin/python -m pytest -rs -m "not browser" $cov_args | tee pytest-output.txt
 
       # A green run is not proof the Postgres backend was exercised: if the
       # service container never came up, every dual-backend test would skip and
@@ -175,7 +183,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - uses: actions/setup-node@v4
         with:
@@ -183,11 +190,15 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Install Python package
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: ruff check
-        run: python -m ruff check --output-format=github .
+        run: .venv/bin/python -m ruff check --output-format=github .
 
       - name: Install SPA dependencies
         working-directory: ui
@@ -287,14 +298,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter. The locked mypy
+      # version is what the baseline count in ci/mypy-baseline.txt was
+      # measured against, so a mypy upgrade must re-measure the baseline.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: mypy (ratchet against ci/mypy-baseline.txt)
         run: |
-          python -m mypy src/driverdna | tee mypy-output.txt
+          .venv/bin/python -m mypy src/driverdna | tee mypy-output.txt
           mypy_exit=${PIPESTATUS[0]}
           if [ "$mypy_exit" -gt 1 ]; then
             echo "::error::mypy exited $mypy_exit (a fatal/config error, not a normal type-error report) — see the log above."
@@ -334,7 +350,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - uses: actions/setup-node@v4
         with:
@@ -342,13 +357,17 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Install Python package
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: Install Chromium via Playwright
         env:
           PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
-        run: python -m playwright install chromium --with-deps
+        run: .venv/bin/python -m playwright install chromium --with-deps
 
       - name: Build SPA
         working-directory: ui
@@ -376,7 +395,7 @@ jobs:
         # under `set -o pipefail` — no silent empty run either.
         run: |
           set -o pipefail
-          python -m pytest -rs -m browser | tee browser-test-output.txt
+          .venv/bin/python -m pytest -rs -m browser | tee browser-test-output.txt
 
       - name: Confirm browser tests actually ran
         run: |
