@@ -15,6 +15,13 @@ on:
 permissions:
   contents: read
 
+# One run per ref: a new push supersedes the run it replaces instead of
+# stacking behind it. Deliberately absent from gemini-assistant.yml, whose
+# comment-triggered runs must not be cancelled mid-task.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
