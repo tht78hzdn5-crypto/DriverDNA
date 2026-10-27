@@ -1,5 +1,12 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-27 (PR #68 merged: CI quality gates + vite 8 / vitest 4).**
+
+- **What shipped:** mypy as a required check with its ratchet repaired (baseline 58); coverage ratchet at 91% (3.12 leg only); Dependabot weekly (uv, npm, github-actions); advisory audit job; `uv.lock` with CI installing from it; concurrency on `tests.yml` only; vitest job + 26 SPA unit tests (advisory). The audit gate was cleared by upgrading vite 5 → 8.3.5 and vitest 2 → 4.1.12 (React stays 18, the pin-commit overrides dropped); the audit job reports 0 vulnerabilities. No `src/driverdna` change, no model version bump.
+- **Verified counts:** CI on PR #68, read via `gh pr checks 68`: all 8 jobs pass in both the push and pull_request runs (pytest 3.11, pytest 3.12, lint, mypy, browser-tests, secrets, vitest, audit). Baselines read from the repo: `ci/mypy-baseline.txt` 58, `ci/coverage-baseline.txt` 91. UI versions read from `ui/package.json`: vite 8.3.5, vitest 4.1.12, plugin-react 6.1.2, react 18.3.1. Audit job log read directly: pip-audit "No known vulnerabilities found", npm audit "found 0 vulnerabilities". Local receipts on this host: `npm test` in `ui/` → 26 passed (4 files); `uv sync --frozen --extra dev` into a scratch env succeeds and its Python imports `driverdna` from this tree. No full-suite count is claimed here; the suite's receipt is CI's pytest jobs above.
+
+---
+
 **Snapshot date: 2026-10-26 (salvage: first-time-signup dead ends BUG-047/048/049 fixed, from closed PR #29).**
 
 - **The fix:** `open_db` gained a `create_if_missing` flag used only by register, so a genuinely cold deployment has a browser-only path to its first account (BUG-047); driver home's zero-cohort empty state now renders `<SyncPanel>` whenever the store is reachable (BUG-048); `/api/auth/status`'s `garage61_linked` reflects the `GARAGE61_TOKEN` env fallback and the Import tab's Garage61 Sync section renders whenever sync is usable (BUG-049). SPA bundle rebuilt. Zero engine/scoring code touched, no version bump.

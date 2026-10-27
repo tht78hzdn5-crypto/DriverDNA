@@ -2445,8 +2445,8 @@ Accepted at owner plan review; rationale recorded in the review:
     `GARAGE61_TOKEN`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`/
     `DRIVERDNA_DATABASE_URL` are env-only and never persisted — previously
     enforced by review alone.
-  - **mypy**, advisory, scoped to `src/driverdna` (93.6% already
-    return-annotated). 59 findings, spot-checked across every distinct
+  - **mypy**, required since 2026-10-27 (PR #68), scoped to `src/driverdna`
+    (93.6% already return-annotated). 58 findings, spot-checked across every distinct
     error class and none were real bugs (dynamic `_pool`/`_pool_raw`
     attributes on a `Database` instance built via `object.__new__`
     bypassing `__init__`; an exception-named `for e in ids:` loop variable
@@ -2456,14 +2456,14 @@ Accepted at owner plan review; rationale recorded in the review:
     `ci/mypy-baseline.txt` as a **ratchet**, not `continue-on-error: true`
     — that flag is exactly what hid defect (1) above, so repeating it here
     immediately after fixing it there would be self-defeating. The job can
-    fail for real and stay visibly red; it simply isn't in the
-    required-checks list, so it can't block a merge. Fails only when the
-    count exceeds the pinned baseline, never demands the existing 59 be
+    fail for real and stay visibly red; it is in the
+    required-checks list since 2026-10-27 (PR #68), so it blocks a merge. Fails only when the
+    count exceeds the pinned baseline, never demands the existing 58 be
     fixed.
   - **Branch protection on `main`** (owner-executed via GitHub's UI — no
     tool in this session can write repo rulesets): require the PR + status
     checks (`pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
-    `secrets` — not `mypy`), owner on the bypass list for direct hotfix
+    `secrets`, `mypy`), owner on the bypass list for direct hotfix
     pushes. Lands last, after every other check is proven green in a real
     run.
 
@@ -2501,7 +2501,9 @@ Accepted at owner plan review; rationale recorded in the review:
   binding by convention, not backed by a ruleset, and is written more
   emphatically for exactly that reason — an agent reading it should treat
   it as absolute regardless of whether GitHub would actually stop a
-  violation.
+  violation. Update 2026-10-27: this paragraph's premise is superseded —
+  ruleset "main protection" is active (verified via the GitHub API), and
+  mypy joined its required checks with PR #68.
 
 - **A48** (2026-08-10): **Fundamentals read as landmarks, and the feedback
   section reads as coaching** (owner-directed: the fundamental names should
