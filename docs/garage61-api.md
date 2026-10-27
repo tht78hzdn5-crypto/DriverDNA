@@ -60,7 +60,11 @@ as built against a moving target, not a frozen contract.
 ## Base URL, versioning, auth
 
 - Base URL: `https://garage61.net/api/v1`
-- Auth: `Authorization: Bearer <GARAGE61_TOKEN>` on every request.
+- Auth: `Authorization: Bearer <GARAGE61_TOKEN>` on every request. The
+  bearer value may instead be a Muse vault surrogate (CLI `sync
+  --use-stored-credential`): it resolves to the real key only on approved
+  egress to garage61.net and is never persisted. The API sees the real
+  key either way.
 - Missing header → `401 {"message": "Missing authorization: supply a
   Bearer token in the Authorization header."}`
 - Invalid/garbage token → `401 {"message": "Bad authentication: operation

@@ -46,7 +46,7 @@ never only here.
 - Multi-user since A32: every query on a partitioned table filters
   `owner_user_pk`, and `laps.driver` is a data label, never the tenant key.
 - Secrets (`GARAGE61_TOKEN`, `ANTHROPIC_API_KEY`, `DRIVERDNA_DATABASE_URL`,
-  `GEMINI_API_KEY`) are env-only: never persisted, printed, or logged. The
+  `GEMINI_API_KEY`) are env-only, bar the CLI sync: never persisted, printed, or logged. The
   database URL carries a password, so it is redacted before any connection error
   reaches a log or an HTTP body — and there is deliberately no bare
   `DATABASE_URL` fallback.
