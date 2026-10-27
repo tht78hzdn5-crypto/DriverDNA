@@ -406,3 +406,71 @@ jobs:
             exit 1
           fi
           echo "Browser tests exercised: no Chromium/SPA-absent skips."
+
+  # Dependency audit — pip-audit for the locked Python set, npm audit for
+  # the SPA. Advisory, not a required check: it runs on every push/PR so
+  # findings are visible, but promoting it to required is the owner's call
+  # (see the PR description). The two tools do not share a severity model,
+  # so the fail bar differs per side, deliberately:
+  # - pip-audit reports no severity at all (its JSON carries id,
+  #   fix_versions, aliases, description — no CVSS), so the Python side
+  #   fails on ANY finding. Accepted findings go in ci/audit-ignores.txt
+  #   (one ID per line, # comments allowed), expanded to --ignore-vuln
+  #   flags; an ID added there must name why it is accepted in the commit
+  #   that adds it.
+  # - npm audit reports severity natively, so the SPA side uses
+  #   --audit-level=high and fails only on high/critical. npm audit has no
+  #   ignore flag: an npm finding is fixed by upgrading, and while the job
+  #   is advisory an unfixable high only reddens this job, it blocks
+  #   nothing.
+  # Local-verification gap: npm audit cannot run in this VM (the egress
+  # proxy 403s the audit-endpoint POST), so CI is its first real exercise;
+  # the Python side was verified locally against the exported lockfile
+  # (clean on 2026-10-27).
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Export locked Python requirements
+        run: |
+          python -m pip install uv
+          uv export --frozen --format requirements.txt --extra dev --no-emit-project -o requirements-audit.txt
+
+      - name: pip-audit (fails on any finding)
+        run: |
+          python -m pip install pip-audit
+          ignore_args=()
+          if [ -f ci/audit-ignores.txt ]; then
+            while IFS= read -r id; do
+              case "$id" in
+                ''|'#'*) ;;
+                *) ignore_args+=(--ignore-vuln "$id") ;;
+              esac
+            done < ci/audit-ignores.txt
+          fi
+          python -m pip_audit -r requirements-audit.txt "${ignore_args[@]}"
+
+      # always(): a Python-side failure must not hide the npm result, and
+      # vice versa — the job still fails overall if either side fails.
+      - name: Install SPA dependencies
+        if: always()
+        working-directory: ui
+        run: npm ci
+
+      - name: npm audit (fails on high/critical only)
+        if: always()
+        working-directory: ui
+        run: npm audit --audit-level=high
