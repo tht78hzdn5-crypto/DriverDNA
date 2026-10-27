@@ -266,14 +266,13 @@ jobs:
       - name: gitleaks detect
         run: gitleaks detect --no-banner --redact --exit-code 1
 
-  # mypy, advisory (SPEC.md A47) — NOT continue-on-error, deliberately.
-  # continue-on-error is exactly what let the browser-tests job sit red and
-  # unread for an unknown stretch of history (see that job's comment
-  # below); the same mistake here would be pointless self-sabotage right
-  # after fixing it there. Advisory instead comes from Phase 6/branch
-  # protection simply never adding "mypy" to the required-checks list —
-  # the job is still allowed to fail for real, visibly, it just can't block
-  # a merge.
+  # mypy, a required check (SPEC.md A47) — NOT continue-on-error,
+  # deliberately. continue-on-error is exactly what let the browser-tests
+  # job sit red and unread for an unknown stretch of history (see that
+  # job's comment below); the same mistake here would be pointless
+  # self-sabotage right after fixing it there. Required since ruleset
+  # "main protection" (20615531) gained the mypy context: the job fails
+  # for real, visibly, and blocks a merge.
   #
   # 58 pre-existing findings (spot-checked, not real bugs: dynamic
   # attributes on a class built via object.__new__ bypassing __init__,
