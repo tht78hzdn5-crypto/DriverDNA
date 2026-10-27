@@ -258,6 +258,20 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-27 — CI quality gates landed (PR #68, 3d2afb4).** mypy is now a
+  required check, and its ratchet is repaired: `ci/mypy-baseline.txt` holds
+  the bare count 58 (it had held a UTF-16 Windows dump, which broke the
+  numeric comparison and let the job pass vacuously). Coverage ratchet at
+  91% (3.12 leg only; fails on a drop or a missing report). Dependabot
+  weekly (uv, npm, github-actions). Advisory audit job (pip-audit on the
+  locked set, `npm audit --audit-level=high`). `uv.lock`, with CI
+  installing from it (`uv sync --frozen`). Concurrency on `tests.yml`
+  only. Vitest job + 26 SPA unit tests (advisory). The audit gate was
+  cleared by upgrading vite 5 → 8.3.5 and vitest 2 → 4.1.12 (React stays
+  18); the audit job reports 0 vulnerabilities. Ruleset "main
+  protection" (20615531) now requires mypy alongside the five existing
+  checks; vitest and audit stay advisory.
+
 - **2026-10-26 — Branch/PR hygiene adopted.** The clean state is the norm:
   no open PRs, no branches besides `main`, no worktrees besides the live
   and regression trees. A branch exists only while its work is in flight,

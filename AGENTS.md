@@ -77,9 +77,9 @@ milestones, `CLAUDE.md`'s "Current status" says where the build stands, and
 
 ## Commands
 
-- Install: `python3 -m pip install -e ".[dev]"`
-- Test: `python3 -m pytest`
-- Lint: `python3 -m ruff check .` (Python); `npm run lint` in `ui/` (SPA)
+- Install: `pip install uv && uv sync --frozen --extra dev` (`.venv/bin/python` after)
+- Test: `.venv/bin/python -m pytest`
+- Lint: `.venv/bin/python -m ruff check .` (Python); `npm run lint` in `ui/` (SPA)
 - CLI: `driverdna --help`
 - Commands given to the owner (Windows shell) must be PowerShell-ready: full paths, no bash-only syntax (`&&`, `$(...)`, POSIX env vars). Use `;` to chain, `$env:NAME` for env vars.
 
@@ -108,18 +108,16 @@ One agent works at a time. The rules below ensure cheap handoffs.
 - **Every agent goes through a PR to `main` — no direct pushes, ever, no
   exceptions for urgency or a trivial diff** (owner instruction,
   2026-08-09, SPEC.md A47) — supersedes the 2026-07-21 direct-push rule.
-  **Convention, not a platform gate: GitHub is not enforcing this.** A
-  ruleset was blocked by a paid-plan restriction on private-repo Rulesets;
-  classic branch protection is untried. Nothing stops a direct push, so the
-  rule holds only because you follow it. Treat as blocking, though none
-  mechanically are: `pytest (3.11)`, `pytest (3.12)`, `lint`,
-  `browser-tests`, `secrets` (not `mypy`, advisory). Owner may push
-  directly for a genuine hotfix; agents may not, ever.
+  Ruleset "main protection" enforces this: deletion and non-fast-forward
+  pushes blocked, PR required, owner bypass for genuine hotfixes only.
+  Required checks: `pytest (3.11)`, `pytest (3.12)`, `lint`,
+  `browser-tests`, `secrets`, `mypy`. Owner may push directly for a
+  genuine hotfix; agents may not, ever.
   **Nothing is "done" until merged** (owner instruction, 2026-08-03) — end a
   session by landing its PR, or saying plainly why not.
 - Branch/PR hygiene: see `docs/PROJECT-BRIEF.md` (2026-10-26).
 - Branch naming: `gemini/<topic>`, `antigravity/<topic>`, `claude/<topic>`.
-- **A red check won't block you — nothing will.** Fix it before the next
+- **A red required check blocks the merge.** Fix it before the next
   commit anyway. If `main` is red, fix it before starting new work.
 
 ### Commit attribution
@@ -145,13 +143,16 @@ Co-Authored-By: Gemini CLI <noreply@google.com>
 
 ### What CI does and does not cover
 
-CI (`tests.yml`) runs five jobs on pushes/PRs, all merge gates except `mypy`:
-
-1. **`pytest`** (3.11 + 3.12): the suite minus `-m browser`, with a Postgres service container; fails if Postgres tests skip from missing infra.
-2. **`lint`**: `ruff check .` (Python) + `npm run lint` in `ui/` (SPA) — correctness rules only, no formatter (SPEC.md A47).
-3. **`secrets`**: gitleaks, pinned binary + checksum, full git history.
-4. **`browser-tests`** (3.12): installs Chromium, builds the SPA, runs every `pytest.mark.browser` test; fails if the skip guard still triggers.
-5. **`mypy`** (advisory): ratchet against `ci/mypy-baseline.txt` — fails on a new finding, but can't block a merge.
+CI (`tests.yml`) runs seven jobs on pushes/PRs. Required (ruleset "main
+protection"): `pytest` (3.11 + 3.12, suite minus `-m browser`, Postgres
+service container; fails if Postgres tests skip from missing infra), `lint`
+(`ruff check .` + `npm run lint` in `ui/`), `secrets` (gitleaks, pinned
+binary + checksum, full git history), `browser-tests` (3.12: installs
+Chromium, builds the SPA, runs every `pytest.mark.browser` test; fails if
+the skip guard still triggers), `mypy` (ratchet against
+`ci/mypy-baseline.txt`, fails on a new finding). Advisory (run, do not
+block): `vitest` (SPA unit tests) and `audit` (pip-audit on the locked
+set, `npm audit --audit-level=high`).
 
 ### Working with the durable docs
 
