@@ -8,7 +8,7 @@ or fundamental (no_signal), so `signal_status` here is never invented
 independently of M6's own tri-state rule — see test_coaching_ontology.py's
 cross-check.
 
-Gate descriptors (`DetectorGate`, `MetricCVGate`, `MetricStatGate`,
+Gate descriptors (`DetectorGate`, `MetricDispersionGate`, `MetricStatGate`,
 `FindingGate`, `AlwaysEligible`) are declarative: coaching/engine.py interprets them
 against a cohort's real DB rows. Keeping the gate as data alongside the
 principle (rather than a bespoke function per principle) is what makes
@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v5"
+ONTOLOGY_VERSION = "coach-onto-v6"
 
 
 @dataclass(frozen=True)
@@ -34,11 +34,21 @@ class DetectorGate:
 
 
 @dataclass(frozen=True)
-class MetricCVGate:
-    """Eligible where `metric`'s coefficient of variation on a corner
-    reaches `floor_key` (a CoachingConfig field name, resolved by the
-    engine — kept as a name, not a copied float, so the threshold has one
-    home in ConfigStore)."""
+class MetricDispersionGate:
+    """Eligible where `metric`'s normalized scaled-MAD dispersion on a
+    corner reaches `floor_key` (a CoachingConfig field name, resolved by
+    the engine — kept as a name, not a copied float, so the threshold has
+    one home in ConfigStore).
+
+    The statistic is dm-v3's (SPEC.md A56), migrated to coaching by A58
+    (BUG-044): per-metric scaled MAD divided by the metric's measured
+    reference dispersion, pooled two levels (mean within each unit, then
+    mean across units) when `metric` is "*". A coefficient of variation
+    is the wrong statistic here — it divides by the sample's own mean,
+    so a position metric's reading tracks where its landmark sits as
+    much as how much it moves. The old `MetricCVGate` is removed, not
+    kept alongside: two gate types reading the same evidence with
+    different statistics would double-speak."""
 
     metric: str
     floor_key: str
@@ -57,7 +67,7 @@ class MetricStatGate:
     metric whose mean approaches zero cannot explode it the way a CV
     does). `direction` is "below" (eligible at or under the floor) or
     "above" (eligible at or over it). `floor_key` names a
-    CoachingConfig field, resolved by the engine like MetricCVGate's.
+    CoachingConfig field, resolved by the engine like MetricDispersionGate's.
 
     `guard_metric`/`guard_floor_key` optionally scope the corner: the
     guard metric's median must reach the guard floor before the corner
@@ -91,7 +101,7 @@ class AlwaysEligible:
     headline" IS the trigger for a no_signal principle)."""
 
 
-Gate = DetectorGate | MetricCVGate | MetricStatGate | FindingGate | AlwaysEligible
+Gate = DetectorGate | MetricDispersionGate | MetricStatGate | FindingGate | AlwaysEligible
 
 
 @dataclass(frozen=True)
@@ -295,8 +305,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "input is pace you can't reliably reproduce under "
                 "pressure."
             ),
-            gate=MetricCVGate(metric="*", floor_key="consistency_cv_floor"),
-            band_phase=None,  # consistency is cross-cutting (taxonomy.py) — bands on its own CV
+            gate=MetricDispersionGate(metric="*", floor_key="consistency_dispersion_floor"),
+            band_phase=None,  # consistency is cross-cutting (taxonomy.py) — bands on its own dispersion
             coaching_expression=(
                 "Match a lap before you try to beat it — repeatability "
                 "comes before pace."
@@ -310,7 +320,7 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "You're repeating yourself — your inputs land in the same "
                 "place lap after lap, which is what makes pace reproducible."
             ),
-            evidence_binding=("pooled measured-metric coefficient of variation",),
+            evidence_binding=("pooled normalized scaled-MAD dispersion",),
         ),
         CoachingPrinciple(
             id="cp.entry_commitment.trust_the_proxy",
@@ -322,7 +332,7 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "brake point can mean the driver is protecting margin "
                 "rather than driving to the corner's actual limit."
             ),
-            gate=MetricCVGate(metric="brake_point_dist_pct", floor_key="commitment_cv_floor"),
+            gate=MetricDispersionGate(metric="brake_point_dist_pct", floor_key="commitment_dispersion_floor"),
             band_phase="entry",
             coaching_expression=(
                 "This might be about commitment more than outright speed "
@@ -338,7 +348,7 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "as entry commitment, though this one is inferred from brake "
                 "point rather than measured directly."
             ),
-            evidence_binding=("brake_point_dist_pct coefficient of variation",),
+            evidence_binding=("brake_point_dist_pct normalized scaled-MAD dispersion",),
         ),
         CoachingPrinciple(
             id="cp.eye_line.look_further",
@@ -469,8 +479,8 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             ),
             # IQR, never the CV: see config.brake_point_iqr_floor_pct.
             # Where this measured principle has any verdict at a corner,
-            # the entry-commitment PROXY (same metric, raw CV) is not
-            # presented for that corner — one voice per piece of
+            # the entry-commitment PROXY (same metric, dispersion gate) is
+            # not presented for that corner — one voice per piece of
             # evidence, and the measured voice wins. The selection-layer
             # rule lives in coaching/engine.py (select_coaching) and
             # coaching/rollup.py; eligibility itself is untouched.

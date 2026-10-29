@@ -1,7 +1,7 @@
 """M7b: deterministic eligibility, ranking, and gap-band tone.
 
 Real synthetic cohorts (not hand-built candidate objects) so the gate
-queries (detector rate, vs-self finding reuse, metric CV) run against the
+queries (detector rate, vs-self finding reuse, metric dispersion) run against the
 actual DB shape M2/M3/M6 already produce.
 """
 
@@ -10,7 +10,6 @@ import pytest
 
 from driverdna.coaching.engine import (
     CoachingCandidate,
-    _normalized_pooled_cv,
     eligible_principles,
     select_coaching,
 )
@@ -190,7 +189,7 @@ def test_finding_gate_absent_without_a_shown_finding(db):
     assert not any(c.principle_id == "cp.rotation_efficiency.carry_the_middle" for c in candidates)
 
 
-# --- MetricCVGate (trust_the_proxy, same_lap_twice) --------------------------
+# --- MetricDispersionGate (trust_the_proxy, same_lap_twice) -------------------
 
 
 def test_trust_the_proxy_eligible_on_real_brake_point_variation(db):
@@ -200,7 +199,7 @@ def test_trust_the_proxy_eligible_on_real_brake_point_variation(db):
     # stays valid) - lower the floor rather than distort the synthetic
     # corner geometry chasing an arbitrary default threshold.
     tuned = CONFIG.model_copy(deep=True)
-    tuned.coaching.commitment_cv_floor = 0.02
+    tuned.coaching.commitment_dispersion_floor = 0.02
     candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=tuned)
     proxy = [c for c in candidates if c.principle_id == "cp.entry_commitment.trust_the_proxy"]
     assert proxy
@@ -208,66 +207,30 @@ def test_trust_the_proxy_eligible_on_real_brake_point_variation(db):
     assert all(c.magnitude_kind == "seconds_lost" for c in proxy)  # bands on entry phase
 
 
-def test_same_lap_twice_bands_on_its_own_cv_not_seconds(db):
+def test_same_lap_twice_bands_on_its_own_dispersion_not_seconds(db):
     _braking_cv_cohort(db)
     candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=CONFIG)
     consistency = [c for c in candidates if c.principle_id == "cp.repeatability.same_lap_twice"]
     assert consistency
     for c in consistency:
-        assert c.magnitude_kind == "coefficient_of_variation"
-        assert not c.headline_eligible  # never competes for the seconds-ranked headline
+        assert c.magnitude_kind == "normalized_dispersion"
+        # Bands on its own statistic, not on entry seconds: this cohort's
+        # pooled dispersion is 1.85 (notable), where the old pooled CV read
+        # 1.22 (moderate). Headline eligibility follows the band, not the
+        # kind — a notable dispersion candidate enters the headline pool
+        # and ranks there by unit-free severity (see select_coaching), so
+        # the old "never competes for the headline" reading of this cohort
+        # does not survive the statistic change.
+        assert abs(c.magnitude - 1.8516) < 0.01
+        assert c.gap_band == "notable"
+        assert c.headline_eligible
 
 
-def test_cv_gate_absent_when_metrics_barely_vary(db):
-    _rotation_cohort(db)  # near-identical laps -> near-zero CV
+def test_dispersion_gate_absent_when_metrics_barely_vary(db):
+    _rotation_cohort(db)  # near-identical laps -> near-zero dispersion
     candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=CONFIG)
     assert not any(c.principle_id == "cp.repeatability.same_lap_twice" for c in candidates)
     assert not any(c.principle_id == "cp.entry_commitment.trust_the_proxy" for c in candidates)
-
-
-def test_same_lap_twice_per_unit_normalized_not_flat_mean():
-    """same_lap_twice must use per-unit normalized pooling, not a flat mean of raw CVs.
-
-    Five '% lap' metrics perfectly consistent (raw CV = 0) + one 'count' metric at
-    typical scale (raw CV ≈ 0.99). A flat mean gives ≈ 0.99/6 ≈ 0.165 (barely above
-    the 0.15 eligibility floor and in the moderate band). Per-unit normalization gives
-    (0.0 + 1.0) / 2 = 0.5 — a 3× difference, and a different gap band. This is the
-    exact coaching-layer analogue of the dm-v2 fix (SPEC.md A42).
-    """
-    reference = DriverDNAConfig().model.consistency_unit_reference_cv
-
-    pct_val = 10.0
-    # [0.148, 3.852]*4 → mean=2.0, std≈1.98, raw CV≈0.99 ≈ reference["count"]
-    count_vals = [0.148, 3.852] * 4
-
-    metric_table = {
-        "C01": {
-            "brake_point_dist_pct": [pct_val] * 8,        # "% lap", CV = 0
-            "turn_in_dist_pct": [pct_val] * 8,             # "% lap", CV = 0
-            "apex_dist_pct": [pct_val] * 8,                # "% lap", CV = 0
-            "throttle_pickup_dist_pct": [pct_val] * 8,     # "% lap", CV = 0
-            "full_throttle_dist_pct": [pct_val] * 8,       # "% lap", CV = 0
-            "steering_corrections": count_vals,             # "count", CV ≈ 0.99
-        }
-    }
-    metric_names = (
-        "brake_point_dist_pct", "turn_in_dist_pct", "apex_dist_pct",
-        "throttle_pickup_dist_pct", "full_throttle_dist_pct", "steering_corrections",
-    )
-
-    result = _normalized_pooled_cv(metric_table, "C01", metric_names, reference)
-    assert result is not None
-
-    # Per-unit: "% lap" unit mean = 0/0.007 = 0.0; "count" unit mean ≈ 1.0
-    # Across-unit mean = (0.0 + 1.0) / 2 = 0.5
-    assert 0.4 < result < 0.6, f"expected per-unit normalized ≈ 0.5, got {result}"
-
-    # A flat mean of raw CVs would be (5×0.0 + 0.99) / 6 ≈ 0.165 — significantly lower
-    flat = (5 * 0.0 + 0.99) / 6
-    assert abs(result - flat) > 0.2, (
-        f"per-unit result {result:.3f} is too close to flat mean {flat:.3f}; "
-        "normalization is not being applied"
-    )
 
 
 # --- select_coaching: headline / secondary / silent -------------------------
@@ -321,3 +284,19 @@ def test_thin_evidence_flag_reflects_the_configured_floor(db):
     candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=CONFIG)
     c = next(c for c in candidates if c.principle_id == "cp.brake_release.finish_the_front")
     assert c.thin_evidence
+
+
+# --- BUG-044 migration (A58): dispersion gates, end-to-end wiring --------
+
+
+def test_same_lap_twice_candidate_carries_normalized_dispersion(db):
+    """The migrated gate's wiring, through the real pipeline: on the
+    genuinely inconsistent braking cohort, `same_lap_twice` fires with
+    magnitude_kind "normalized_dispersion" — the dm-v3 statistic — never
+    "coefficient_of_variation"."""
+    _braking_cv_cohort(db)
+    candidates = eligible_principles(db, driver="owner", car="TestCar", track="SynthRing", config=CONFIG)
+    consistency = [c for c in candidates if c.principle_id == "cp.repeatability.same_lap_twice"]
+    assert consistency
+    for c in consistency:
+        assert c.magnitude_kind == "normalized_dispersion"
