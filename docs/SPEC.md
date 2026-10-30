@@ -2445,8 +2445,8 @@ Accepted at owner plan review; rationale recorded in the review:
     `GARAGE61_TOKEN`/`ANTHROPIC_API_KEY`/`GEMINI_API_KEY`/
     `DRIVERDNA_DATABASE_URL` are env-only and never persisted — previously
     enforced by review alone.
-  - **mypy**, advisory, scoped to `src/driverdna` (93.6% already
-    return-annotated). 59 findings, spot-checked across every distinct
+  - **mypy**, required since 2026-10-27 (PR #68), scoped to `src/driverdna`
+    (93.6% already return-annotated). 58 findings, spot-checked across every distinct
     error class and none were real bugs (dynamic `_pool`/`_pool_raw`
     attributes on a `Database` instance built via `object.__new__`
     bypassing `__init__`; an exception-named `for e in ids:` loop variable
@@ -2456,14 +2456,14 @@ Accepted at owner plan review; rationale recorded in the review:
     `ci/mypy-baseline.txt` as a **ratchet**, not `continue-on-error: true`
     — that flag is exactly what hid defect (1) above, so repeating it here
     immediately after fixing it there would be self-defeating. The job can
-    fail for real and stay visibly red; it simply isn't in the
-    required-checks list, so it can't block a merge. Fails only when the
-    count exceeds the pinned baseline, never demands the existing 59 be
+    fail for real and stay visibly red; it is in the
+    required-checks list since 2026-10-27 (PR #68), so it blocks a merge. Fails only when the
+    count exceeds the pinned baseline, never demands the existing 58 be
     fixed.
   - **Branch protection on `main`** (owner-executed via GitHub's UI — no
     tool in this session can write repo rulesets): require the PR + status
     checks (`pytest (3.11)`, `pytest (3.12)`, `lint`, `browser-tests`,
-    `secrets` — not `mypy`), owner on the bypass list for direct hotfix
+    `secrets`, `mypy`), owner on the bypass list for direct hotfix
     pushes. Lands last, after every other check is proven green in a real
     run.
 
@@ -2501,7 +2501,9 @@ Accepted at owner plan review; rationale recorded in the review:
   binding by convention, not backed by a ruleset, and is written more
   emphatically for exactly that reason — an agent reading it should treat
   it as absolute regardless of whether GitHub would actually stop a
-  violation.
+  violation. Update 2026-10-27: this paragraph's premise is superseded —
+  ruleset "main protection" is active (verified via the GitHub API), and
+  mypy joined its required checks with PR #68.
 
 - **A48** (2026-08-10): **Fundamentals read as landmarks, and the feedback
   section reads as coaching** (owner-directed: the fundamental names should
@@ -3143,3 +3145,112 @@ Accepted at owner plan review; rationale recorded in the review:
   on the corpus are byte-identical (determinism). On the fixture corpus the
   committed artifacts regenerate with only the ontology version, a
   `get_to_peak` strength group on the GR86 cohort, and ordering moving.
+
+- **A58** (2026-10-29): **The BUG-044 coaching migration: both CV gates move
+  onto dm-v3's absolute-robust statistic; `MetricCVGate` is removed.**
+  A56 fixed the scoring layer and deliberately deferred the coaching layer,
+  which pooled the same dm-v2 normalized CVs through the same reference
+  table — so the pathology (a near-origin landmark reading ~110×, a
+  wrap-around sample ~95×) still reached coaching gates. This amendment
+  closes that deferral. `ONTOLOGY_VERSION` `coach-onto-v5` →
+  `coach-onto-v6`. `PAYLOAD_VERSION` unchanged (no field added or removed —
+  a candidate is a candidate; `magnitude_kind` takes a new string value,
+  not a new field). `SCORING_MODEL_VERSION` unchanged: no scoring code or
+  threshold moves, and the coaching layer only *reads* the A56 anchor
+  table. `TENDENCY_MODEL_VERSION` unchanged.
+
+  **The statistic.** Per-metric scaled MAD — 1.4826 × median absolute
+  deviation from the sample median, with the resolution floor for
+  majority-tied samples — divided by that metric's own measured reference
+  dispersion, pooled two levels (mean within each unit, then mean across
+  units) so no unit dominates by metric count. It is dm-v3's statistic,
+  not a second implementation: the engine imports
+  `model.scoring._scaled_mad` directly. Skip rules mirror scoring exactly:
+  fewer than 2 values, an all-zero sample (the measured event never
+  occurred), and a metric with no anchor (reference ≤ 0) carry no
+  dispersion evidence. The driver's data is untouched: the statistic
+  changed, nothing was filtered or winsorized. On BUG-044's three measured
+  shapes, at gate level: Brands Hatch C10 brake points
+  [0.24, 0.24, 0.30, 0.76, 1.27] read ~0.215 (old pooled CV ~110×);
+  Silverstone C18 apex [99.0, 98.4, 0.013, 93.9] reads ~8.55 (old ~95× —
+  loose, truly, not manufactured); Brands Hatch C01 bimodal brake points
+  [0.81, 9.27, 1.13, 1.52, 10.92] read ~2.54 (old ~143×). The pooling
+  structure is pinned separately: five constant '% lap' metrics plus
+  `steering_corrections` [0.148, 3.852]×4 pool to ~0.617, where a flat mean
+  would give ~0.206.
+
+  **The anchors: reused, not re-measured — verified, not assumed.** The
+  plan left this open by design. Reuse won on measured evidence: on the
+  owner's current 851-lap corpus (2026-10-29), per-metric current medians
+  run 0.84×–1.27× the A56 282-lap anchors (worst: `yaw_peak_rate` 1.27,
+  `steering_corrections` 1.17, `brake_peak` 1.16; `brake_point_dist_pct`
+  0.43451 vs 0.41386 anchor, ratio 1.05). The pooled dispersion
+  distribution over 321 corners is sane on the reused scale: median 1.207,
+  p75 1.636, ≥1.15 at 54.5%, ≥1.50 at 31.2%, ≥2.00 at 17.1%; brake-point
+  dispersion over 290 corners: median 1.050, ≥1.15 at 44.8%. Re-measuring
+  would also have forked the one anchor table both layers read; a
+  coaching-specific table is a decision for a later amendment, not
+  something this migration smuggles in. The threshold descriptions
+  restate these anchors the way A52/A57 demand.
+
+  **The gates.** `MetricCVGate` is deleted, not kept alongside:
+  `MetricDispersionGate(metric, floor_key)` replaces it, `floor_key`
+  still naming a `CoachingConfig` field so each threshold keeps one home
+  in ConfigStore. `cp.repeatability.same_lap_twice` takes
+  `MetricDispersionGate(metric="*", floor_key=
+  "consistency_dispersion_floor")`, keeps `band_phase=None` (bands on its
+  own value), and its `magnitude_kind` becomes `normalized_dispersion`,
+  rendered "× typical" in the report and the SPA (seconds stay "s").
+  `cp.entry_commitment.trust_the_proxy` takes
+  `MetricDispersionGate(metric="brake_point_dist_pct", floor_key=
+  "commitment_dispersion_floor")`, keeps `band_phase="entry"` (bands on
+  entry seconds, kind stays `seconds_lost`): the statistic is the trigger,
+  the seconds are the tone, exactly the A57 shape. Measured-over-proxy
+  presentation precedence (`same_marker` suppresses the proxy) is
+  unchanged — it lives in presentation, never in eligibility. The old
+  fields (`consistency_cv_floor`, `commitment_cv_floor`,
+  `cv_band_moderate/notable/major`) stay in `CoachingConfig` for
+  stored-config compatibility (`extra="forbid"` refuses stored TOML files
+  naming fields the model no longer knows); no gate reads them, and their
+  descriptions say so.
+
+  **The thresholds** (all `config.coaching`, each documented in its field
+  description with its anchor): `consistency_dispersion_floor` 1.15,
+  `dispersion_band_moderate` 1.15, `dispersion_band_notable` 1.50,
+  `dispersion_band_major` 2.00, `commitment_dispersion_floor` 1.15. The
+  values carry A52's stated intents onto the new scale — moderate at 15%
+  above reference-typical, major at twice typical — but the major band's
+  old equality with `consistency_cv_ceiling` is gone, deliberately: dm-v3
+  re-based scoring on a 3.0 dispersion ceiling (A56), and 2.00 is now a
+  coaching tone choice, not a cross-layer agreement. (It numerically
+  equals the old dm-v2 ceiling; that is coincidence across two different
+  scales, not continuity.)
+
+  **Effect on the owner's real corpus** (851 self laps, 20 cohorts,
+  regenerated 2026-10-29, default config). The Driver Model report is
+  byte-identical — every belief (score and confidence) unchanged, as it
+  must be: nothing here touches a measurement. Every non-migrated
+  principle's candidates and strengths are identical (0 mismatches).
+  `same_lap_twice` candidates go 292 → 175 (major 168 → 55, notable
+  68 → 45, moderate 56 → 75): 120 lost, 3 gained, 100 band-changed, 72
+  same-band with a new value. The 3 gained corners are the reverse
+  direction of the fix — genuinely dispersed corners the CV understated
+  because their landmark sits at a large mean. Strengths mirror exactly:
+  29 → 146 (+120 from lost candidates, −3 to gained ones).
+  `trust_the_proxy` candidates go 24 → 75: gained 54 (45 from strengths,
+  9 thin-evidence corners at n < 8 that previously had neither a
+  candidate nor a strength), lost 3, 0 band changes — bands ride
+  unchanged entry seconds. Strengths go 178 → 115: lost 66 (45 to
+  candidates, 21 to nothing where the gate now fires but the corner has
+  no entry loss to band on — e.g. Charlotte C06, dispersion 3.28, mid+exit
+  loss only — so neither a candidate nor a strength exists there),
+  gained 3. All 20 cohort headlines change; before, every one was
+  `same_lap_twice` on a CV of 2.37–17.22; after, 9 stay `same_lap_twice`
+  (on dispersions 1.56–8.66) and 11 go to seconds principles. The cause is
+  the ranking key, not a ranking change: severity is magnitude over the
+  kind's own major floor, and inflated CV severities (up to 8.6×) seized
+  every headline before. Two full report generations are byte-identical
+  before and after (determinism). Superseded tests are named in the PR
+  description, per the amendment rule: the old CV calibration file, the
+  CV pooling test, the CV banding test, and the CV kind assertions in
+  the headline tests — replaced, not edited to pass.

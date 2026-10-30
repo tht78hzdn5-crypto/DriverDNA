@@ -1,0 +1,5 @@
+# Accepted pip-audit findings, one vulnerability ID per line.
+# Blank lines and #-comments are ignored. Each ID added here must name
+# why it is accepted in the commit that adds it (unfixable, false
+# positive, dev-only exposure, ...). This file feeds --ignore-vuln flags
+# only; npm audit has no ignore flag, so it does not apply to the SPA side.

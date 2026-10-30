@@ -15,6 +15,13 @@ on:
 permissions:
   contents: read
 
+# One run per ref: a new push supersedes the run it replaces instead of
+# stacking behind it. Deliberately absent from gemini-assistant.yml, whose
+# comment-triggered runs must not be cancelled mid-task.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
@@ -52,10 +59,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
 
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      # Python deps come from uv.lock, not a fresh pip resolve: `uv sync
+      # --frozen` installs exactly the locked set and fails if the lock is
+      # out of sync with pyproject.toml, so CI can never silently test
+      # different versions than the lock records. --python pins the
+      # setup-python interpreter: uv would otherwise pick from PATH, which
+      # must not silently substitute a different version on a matrix leg.
+      # (No pip cache: pip installs only the uv binary itself here.)
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: Test
         env:
@@ -76,7 +91,14 @@ jobs:
         # status and a failing suite would report green.
         run: |
           set -o pipefail
-          python -m pytest -rs -m "not browser" | tee pytest-output.txt
+          # Coverage runs on the 3.12 leg only: measuring on both matrix
+          # legs would double the suite's cost for the same number, and the
+          # 3.12 leg is the one whose report the ratchet step below reads.
+          cov_args=""
+          if [ "${{ matrix.python-version }}" = "3.12" ]; then
+            cov_args="--cov=driverdna --cov-report=xml:coverage.xml"
+          fi
+          .venv/bin/python -m pytest -rs -m "not browser" $cov_args | tee pytest-output.txt
 
       # A green run is not proof the Postgres backend was exercised: if the
       # service container never came up, every dual-backend test would skip and
@@ -92,6 +114,33 @@ jobs:
             exit 1
           fi
           echo "Postgres backend exercised: no backend-configuration skips."
+
+      # Coverage ratchet, mirroring the mypy ratchet: the baseline is the
+      # measured total of the non-browser suite on main, 91% (2026-10-27:
+      # SQLite-only, no local Postgres, and 8 Gemini provider tests
+      # erroring on this VM's proxy env — all three make the local number
+      # conservative, so CI, which runs Postgres and has no such proxy
+      # vars, should measure equal or higher). The gate fails only on a
+      # drop, never demands improvement; a rise prints a notice suggesting
+      # a baseline update. Compared in whole percent, so sub-point moves do
+      # not trip it. If coverage.xml is missing the step fails — a missing
+      # report must never read as a pass.
+      - name: Coverage ratchet
+        if: matrix.python-version == '3.12'
+        run: |
+          if [ ! -f coverage.xml ]; then
+            echo "::error::coverage.xml is missing — the coverage run did not produce a report."
+            exit 1
+          fi
+          total=$(python3 -c "import xml.etree.ElementTree as ET; print(round(float(ET.parse('coverage.xml').getroot().get('line-rate')) * 100))")
+          baseline=$(cat ci/coverage-baseline.txt)
+          echo "coverage: $total% (baseline: $baseline%)"
+          if [ "$total" -lt "$baseline" ]; then
+            echo "::error::coverage ($total%) is below the baseline ($baseline%)."
+            exit 1
+          elif [ "$total" -gt "$baseline" ]; then
+            echo "::notice::coverage ($total%) is above the baseline ($baseline%). Consider raising ci/coverage-baseline.txt."
+          fi
 
       # Beck-style "AI cheating" detector (TDD guardrail, 2026-07-27).
       # If a push modifies files under tests/ but touches nothing under
@@ -134,7 +183,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - uses: actions/setup-node@v4
         with:
@@ -142,11 +190,15 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Install Python package
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: ruff check
-        run: python -m ruff check --output-format=github .
+        run: .venv/bin/python -m ruff check --output-format=github .
 
       - name: Install SPA dependencies
         working-directory: ui
@@ -155,6 +207,32 @@ jobs:
       - name: eslint
         working-directory: ui
         run: npm run lint
+
+  # SPA unit tests — Vitest over the pure modules (format, order, pyramid,
+  # api). No jsdom: component tests are a later step needing jsdom +
+  # testing-library, and nothing here needs a DOM. Advisory for now: like
+  # the audit job, it runs on every push/PR but is not yet a required
+  # check in the ruleset — that promotion is the owner's call.
+  vitest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install SPA dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: vitest
+        working-directory: ui
+        run: npm test
 
   # Mechanises the AGENTS.md non-negotiable that secrets (GARAGE61_TOKEN,
   # ANTHROPIC_API_KEY, GEMINI_API_KEY, DRIVERDNA_DATABASE_URL) are env-only
@@ -188,24 +266,27 @@ jobs:
       - name: gitleaks detect
         run: gitleaks detect --no-banner --redact --exit-code 1
 
-  # mypy, advisory (SPEC.md A47) — NOT continue-on-error, deliberately.
-  # continue-on-error is exactly what let the browser-tests job sit red and
-  # unread for an unknown stretch of history (see that job's comment
-  # below); the same mistake here would be pointless self-sabotage right
-  # after fixing it there. Advisory instead comes from Phase 6/branch
-  # protection simply never adding "mypy" to the required-checks list —
-  # the job is still allowed to fail for real, visibly, it just can't block
-  # a merge.
+  # mypy, a required check (SPEC.md A47) — NOT continue-on-error,
+  # deliberately. continue-on-error is exactly what let the browser-tests
+  # job sit red and unread for an unknown stretch of history (see that
+  # job's comment below); the same mistake here would be pointless
+  # self-sabotage right after fixing it there. Required since ruleset
+  # "main protection" (20615531) gained the mypy context: the job fails
+  # for real, visibly, and blocks a merge.
   #
-  # 59 pre-existing findings (spot-checked, not real bugs: dynamic
+  # 58 pre-existing findings (spot-checked, not real bugs: dynamic
   # attributes on a class built via object.__new__ bypassing __init__,
   # Optional-narrowing on loosely-typed dicts, an exception-named loop
   # variable mypy's scope check flags on principle) are pinned in
-  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 59
+  # ci/mypy-baseline.txt rather than fixed outright — cleaning up 58
   # findings is a different, larger task than adding a gate. The gate
   # itself is a ratchet: it never demands the baseline improve, but it
   # fails the moment a push adds a new finding on top of it, so a real type
   # error can't slip in silently just because the count was never zero.
+  # The baseline file holds just the count: the step below compares it
+  # numerically, so a full mypy output dump in the file breaks the
+  # comparison (a UTF-16 Windows dump did exactly that before this change,
+  # and the job then passed vacuously on every run).
   mypy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -216,14 +297,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
-      - name: Install
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter. The locked mypy
+      # version is what the baseline count in ci/mypy-baseline.txt was
+      # measured against, so a mypy upgrade must re-measure the baseline.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: mypy (ratchet against ci/mypy-baseline.txt)
         run: |
-          python -m mypy src/driverdna | tee mypy-output.txt
+          .venv/bin/python -m mypy src/driverdna | tee mypy-output.txt
           mypy_exit=${PIPESTATUS[0]}
           if [ "$mypy_exit" -gt 1 ]; then
             echo "::error::mypy exited $mypy_exit (a fatal/config error, not a normal type-error report) — see the log above."
@@ -263,7 +349,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - uses: actions/setup-node@v4
         with:
@@ -271,13 +356,17 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
 
-      - name: Install Python package
-        run: python -m pip install -e ".[dev]"
+      # See the pytest job: Python deps come from uv.lock via `uv sync
+      # --frozen`, pinned to the setup-python interpreter.
+      - name: Install from lockfile
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev --python "$pythonLocation/bin/python"
 
       - name: Install Chromium via Playwright
         env:
           PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
-        run: python -m playwright install chromium --with-deps
+        run: .venv/bin/python -m playwright install chromium --with-deps
 
       - name: Build SPA
         working-directory: ui
@@ -305,7 +394,7 @@ jobs:
         # under `set -o pipefail` — no silent empty run either.
         run: |
           set -o pipefail
-          python -m pytest -rs -m browser | tee browser-test-output.txt
+          .venv/bin/python -m pytest -rs -m browser | tee browser-test-output.txt
 
       - name: Confirm browser tests actually ran
         run: |
@@ -316,3 +405,71 @@ jobs:
             exit 1
           fi
           echo "Browser tests exercised: no Chromium/SPA-absent skips."
+
+  # Dependency audit — pip-audit for the locked Python set, npm audit for
+  # the SPA. Advisory, not a required check: it runs on every push/PR so
+  # findings are visible, but promoting it to required is the owner's call
+  # (see the PR description). The two tools do not share a severity model,
+  # so the fail bar differs per side, deliberately:
+  # - pip-audit reports no severity at all (its JSON carries id,
+  #   fix_versions, aliases, description — no CVSS), so the Python side
+  #   fails on ANY finding. Accepted findings go in ci/audit-ignores.txt
+  #   (one ID per line, # comments allowed), expanded to --ignore-vuln
+  #   flags; an ID added there must name why it is accepted in the commit
+  #   that adds it.
+  # - npm audit reports severity natively, so the SPA side uses
+  #   --audit-level=high and fails only on high/critical. npm audit has no
+  #   ignore flag: an npm finding is fixed by upgrading, and while the job
+  #   is advisory an unfixable high only reddens this job, it blocks
+  #   nothing.
+  # Local-verification gap: npm audit cannot run in this VM (the egress
+  # proxy 403s the audit-endpoint POST), so CI is its first real exercise;
+  # the Python side was verified locally against the exported lockfile
+  # (clean on 2026-10-27).
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Export locked Python requirements
+        run: |
+          python -m pip install uv
+          uv export --frozen --format requirements.txt --extra dev --no-emit-project -o requirements-audit.txt
+
+      - name: pip-audit (fails on any finding)
+        run: |
+          python -m pip install pip-audit
+          ignore_args=()
+          if [ -f ci/audit-ignores.txt ]; then
+            while IFS= read -r id; do
+              case "$id" in
+                ''|'#'*) ;;
+                *) ignore_args+=(--ignore-vuln "$id") ;;
+              esac
+            done < ci/audit-ignores.txt
+          fi
+          python -m pip_audit -r requirements-audit.txt "${ignore_args[@]}"
+
+      # always(): a Python-side failure must not hide the npm result, and
+      # vice versa — the job still fails overall if either side fails.
+      - name: Install SPA dependencies
+        if: always()
+        working-directory: ui
+        run: npm ci
+
+      - name: npm audit (fails on high/critical only)
+        if: always()
+        working-directory: ui
+        run: npm audit --audit-level=high

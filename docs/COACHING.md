@@ -462,7 +462,7 @@ anything. `CoachingPrinciple` now also carries `strength_expression`.
 **Where the signal comes from — and the trap.** It is tempting to read the
 `negligible` gap band as "does this well". It is not. A `CoachingCandidate`
 exists **only where a gate cleared** — the detector triggers above
-`min_trigger_rate`, the CV sits above its floor. `negligible` therefore means
+`min_trigger_rate`, the dispersion sits above its floor. `negligible` therefore means
 *the fault pattern is present and costs almost no time*. Reading it as a
 strength would praise a driver for the exact thing they are worst at.
 
@@ -491,15 +491,16 @@ Three rules keep a strength as honest as a finding:
 
 ## Gap bands live on the normalized scale (2026-08-16, SPEC.md A52)
 
-`same_lap_twice` bands on a **per-unit normalized** pooled CV, not a raw one.
-That scale has fixed anchors, and every threshold compared against it must be
-read in those terms:
+`same_lap_twice` bands on a **per-unit normalized** pooled dispersion, not a
+raw one. That scale has fixed anchors, and every threshold compared against
+it must be read in those terms. The history below is A52's; the current
+statistic is A58's (see the A58 section at the end of this document):
 
 | value | meaning |
 |---|---|
 | `0.0` | perfectly repeatable |
-| `1.0` | **exactly unit-typical** — dm-v2 scores this component 50 |
-| `2.0` | `consistency_cv_ceiling` — dm-v2 scores it 0 |
+| `1.0` | **exactly reference-typical** — dm-v3 scores this component 0.667 |
+| `2.0` | `dispersion_band_major` — the coaching tone choice for "major" |
 
 So `1.15` means "15% above typical", and `0.15` means "85% *better* than
 typical". A42 changed the quantity from raw to normalized CV, updated these
@@ -507,14 +508,20 @@ descriptions, and left the numbers at their raw-CV values — which is how a
 driver with exactly average consistency came to be told, at every corner,
 that their repeatability was a "major" problem (BUG-029).
 
-**If you touch a CV threshold, state which anchor it sits against.** The
-`major` band is deliberately *equal to* `consistency_cv_ceiling` so the
-coaching layer and the Driver Model agree on what "as bad as it gets" means;
-breaking that equality is a decision, not a tuning.
+**If you touch a dispersion threshold, state which anchor it sits against.**
+The `major` band used to be deliberately *equal to*
+`consistency_cv_ceiling` so the coaching layer and the Driver Model agreed
+on what "as bad as it gets" means; A56 re-based scoring on a 3.0 dispersion
+ceiling and A58 moved coaching onto the dispersion scale with its own 2.00
+major band, so that equality is gone — 2.00 is a coaching tone choice, not
+a cross-layer agreement, and breaking it further is a decision, not a
+tuning.
 
-`commitment_cv_floor` is **not** on this scale. `trust_the_proxy` gates on a
-single metric, so `_corner_candidate` takes the raw-CV path and never
-normalizes. Its `0.15` is a raw CV and is correct as written.
+`commitment_dispersion_floor` is **not** on the pooled scale.
+`trust_the_proxy` gates on a single metric, so `_corner_candidate` takes
+the single-metric path and never pools. Its `1.15` is a normalized scaled-MAD
+dispersion — 15% above typical for `brake_point_dist_pct` — and replaces the
+old raw-CV `commitment_cv_floor` of 0.15 (A58).
 
 ### Any band can headline
 
@@ -526,10 +533,12 @@ them to work on it (BUG-030). It now depends on band alone.
 Ranking across kinds needs `_severity`: each magnitude as a multiple of the
 `major` floor **for its own kind**, which is unit-free and therefore
 comparable. Ranking on raw `magnitude` would compare seconds against a
-coefficient of variation and always pick the CV, purely because CVs are bigger
-numbers. `_severity` is a private sort key and must stay one — a number with
-no unit has no business in the payload, where the grounding validator would
-let the AI cite it.
+normalized dispersion and always pick the dispersion, purely because
+dispersions are bigger numbers. `_severity` is a private sort key and must
+stay one — a number with no unit has no business in the payload, where the
+grounding validator would let the AI cite it. (This is exactly the distortion
+BUG-044's inflated CVs caused before A58: severities up to 8.6× seized every
+cohort headline.)
 
 ## The entry-phase tranche: metric-statistic gates (2026-10-08, SPEC.md A57)
 
@@ -557,7 +566,7 @@ All three principles band on the entry phase's cumulative loss, the
 tone. Thresholds live in `config.coaching` with their corpus anchors written
 into their descriptions (per-corner percentiles over the owner's 282 laps) —
 if you move one, restate its anchor the way the A52 section above demands
-for CV thresholds.
+for dispersion thresholds.
 
 **Measured-over-proxy precedence.** `same_marker` and `trust_the_proxy`
 read the same evidence — `brake_point_dist_pct` at a corner — with different
@@ -569,3 +578,39 @@ proxy remains the fallback exactly where a proxy belongs — corners where
 the measured statistic cannot be stated (too few laps for an IQR) or has
 not cleared its evidence bar. Eligibility is deliberately *not* where this
 rule lives: `eligible_principles` still returns both, and a test pins that.
+
+## The BUG-044 coaching migration: dispersion gates (2026-10-29, SPEC.md A58)
+
+A56 fixed the scoring layer's CV pathology and deliberately deferred the
+coaching layer. This migration closes that deferral: `same_lap_twice` and
+`trust_the_proxy` move off dm-v2 normalized CVs onto dm-v3's statistic —
+per-metric scaled MAD normalized by the A56 reference dispersions, pooled
+two levels — and `MetricCVGate` is deleted, replaced by
+`MetricDispersionGate`. `ONTOLOGY_VERSION` is now `coach-onto-v6`.
+
+What changes in what the driver sees:
+
+- `same_lap_twice` magnitudes read "× typical" (seconds stay "s"). A value
+  of 2.0 means twice reference-typical dispersion across the pooled
+  metrics — not a CV, not seconds, and not comparable to either as a raw
+  number. The headline ranking already handles that: `_severity` divides
+  each magnitude by its own kind's major floor.
+- The old CV magnitudes are gone because they were the defect: a
+  near-origin brake landmark read ~110×, a wrap-around apex ~95×, and
+  those severities seized every cohort headline. On the 851-lap corpus,
+  all 20 headlines change; 9 stay `same_lap_twice` (now on dispersions
+  1.56–8.66) and 11 go to seconds principles.
+- `trust_the_proxy` fires more often (24 → 75 candidates): brake-point
+  dispersion genuinely above typical at a large-mean landmark used to read
+  as a small raw CV and stay silent. Its bands are unchanged — they ride
+  entry seconds, which the migration does not touch.
+- Corners can now have *neither* a proxy candidate *nor* a proxy strength:
+  where the gate fires but the corner has no entry loss to band on, there
+  is nothing to say in either direction. That is the strict complement
+  working as designed, not a gap — a strength claims settled brake points,
+  and a fired gate forbids that claim.
+
+The A56 anchors are reused, verified on the current corpus (per-metric
+medians 0.84×–1.27× the anchors). The full record — statistic, anchors
+decision with evidence, thresholds, corpus numbers — is SPEC.md A58; the
+defect register entry is `docs/BUG-LOG.md` BUG-044.

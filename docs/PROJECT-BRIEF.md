@@ -258,6 +258,41 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-29 — BUG-044 coaching migration (SPEC.md A58, PR #76, merged 2026-10-29).**
+  Both CV gates move onto dm-v3's statistic: `same_lap_twice` and
+  `trust_the_proxy` now read `MetricDispersionGate` (per-metric scaled MAD
+  normalized by the A56 reference dispersions, pooled two levels);
+  `MetricCVGate` is deleted and `ONTOLOGY_VERSION` goes `coach-onto-v5` →
+  `coach-onto-v6`. Anchors reused, not re-measured: on the 851-lap corpus
+  per-metric medians run 0.84×–1.27× the A56 anchors, and the pooled
+  distribution stays discriminating (median 1.207; ≥1.15 at 54.5%, ≥1.50 at
+  31.2%, ≥2.00 at 17.1%). Thresholds keep A52's intents on the new scale
+  (moderate 1.15, notable 1.50, major 2.00); the major band's old equality
+  with `consistency_cv_ceiling` is gone — 2.00 is a coaching tone choice,
+  not a cross-layer agreement, since dm-v3 scoring re-based on a 3.0
+  ceiling. Old CV config fields are retained for stored-config
+  compatibility only (pydantic `extra="forbid"`); no gate reads them.
+  Corpus effect (20 cohorts): `same_lap_twice` 292 → 175 candidates,
+  `trust_the_proxy` 24 → 75; all 20 headlines change; Driver Model report
+  byte-identical; non-migrated principles identical. The SPA renders the
+  new kind as "× typical" (rebuilt bundle committed); live click
+  verification is still owed and flagged in the PR, per the PR #66
+  precedent. `STATUS.md` untouched: its 2026-10-08 snapshot describes
+  pre-migration state and stays accurate as history.
+
+- **2026-10-27 — CI quality gates landed (PR #68, 3d2afb4).** mypy is now a
+  required check, and its ratchet is repaired: `ci/mypy-baseline.txt` holds
+  the bare count 58 (it had held a UTF-16 Windows dump, which broke the
+  numeric comparison and let the job pass vacuously). Coverage ratchet at
+  91% (3.12 leg only; fails on a drop or a missing report). Dependabot
+  weekly (uv, npm, github-actions). Advisory audit job (pip-audit on the
+  locked set, `npm audit --audit-level=high`). `uv.lock`, with CI
+  installing from it (`uv sync --frozen`). Concurrency on `tests.yml`
+  only. Vitest job + 26 SPA unit tests (advisory). The audit gate was
+  cleared by upgrading vite 5 → 8.3.5 and vitest 2 → 4.1.12 (React stays
+  18); the audit job reports 0 vulnerabilities. Ruleset "main
+  protection" (20615531) now requires mypy alongside the five existing
+  checks; vitest and audit stay advisory.
 - **2026-10-27 — CLI sync may resolve its Garage61 token from the Muse vault surrogate.** `driverdna sync --use-stored-credential` resolves the bearer value from authd's surrogate endpoint (`custom.garage61`) instead of `GARAGE61_TOKEN`, prompted by the 2026-10-27 full sync dying on a network timeout with its env token dying with the process. The surrogate is not the credential: it resolves to the real key only on approved egress to garage61.net, is carried in memory only, and any resolution failure degrades to the usual no-token error. The opt-in is deliberately explicit and CLI-only: `Garage61Client` defaults to env-only, so the requires-token tests pass on hosts with and without a configured credential, and the web UI's multi-user paths never touch the owner's stored credential (BUG-033 tenancy reasoning unchanged). Outside the Muse runtime the authd socket is absent and behavior is exactly env-only. `AGENTS.md`'s env-only line now reads "bar the CLI sync"; the full rule lives here and in the client docstring.
 
 - **2026-10-26 — Branch/PR hygiene adopted.** The clean state is the norm:

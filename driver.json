@@ -178,7 +178,7 @@
  "coaching_rollup": {
   "min_tracks": 2,
   "n_cohorts": 2,
-  "ontology_version": "coach-onto-v5",
+  "ontology_version": "coach-onto-v6",
   "patterns": [
    {
     "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
@@ -535,8 +535,8 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C01",
       "gap_band": "moderate",
-      "magnitude": 1.4001,
-      "magnitude_kind": "coefficient_of_variation",
+      "magnitude": 1.1719,
+      "magnitude_kind": "normalized_dispersion",
       "n": 198,
       "track": "Spa-Francorchamps"
      },
@@ -544,70 +544,10 @@
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C02",
-      "gap_band": "major",
-      "magnitude": 2.7236,
-      "magnitude_kind": "coefficient_of_variation",
+      "gap_band": "notable",
+      "magnitude": 1.8357,
+      "magnitude_kind": "normalized_dispersion",
       "n": 104,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C03",
-      "gap_band": "moderate",
-      "magnitude": 1.361,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 198,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C04",
-      "gap_band": "moderate",
-      "magnitude": 1.3686,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 148,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C05",
-      "gap_band": "moderate",
-      "magnitude": 1.2627,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 198,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C08",
-      "gap_band": "moderate",
-      "magnitude": 1.4278,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 120,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C10",
-      "gap_band": "moderate",
-      "magnitude": 1.2358,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 197,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C11",
-      "gap_band": "moderate",
-      "magnitude": 1.3857,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 89,
       "track": "Spa-Francorchamps"
      },
      {
@@ -615,24 +555,14 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C13",
       "gap_band": "moderate",
-      "magnitude": 1.3954,
-      "magnitude_kind": "coefficient_of_variation",
+      "magnitude": 1.3756,
+      "magnitude_kind": "normalized_dispersion",
       "n": 63,
-      "track": "Spa-Francorchamps"
-     },
-     {
-      "car": "GR86",
-      "coaching_principle_id": "cp.repeatability.same_lap_twice",
-      "corner_id": "C14",
-      "gap_band": "moderate",
-      "magnitude": 1.3518,
-      "magnitude_kind": "coefficient_of_variation",
-      "n": 198,
       "track": "Spa-Francorchamps"
      }
     ],
     "n_cohorts": 1,
-    "n_instances": 10,
+    "n_instances": 3,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
@@ -1084,10 +1014,37 @@
      {
       "car": "GR86",
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C03",
+      "n": 198,
+      "observed": 1.0994,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C04",
+      "n": 148,
+      "observed": 1.0782,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C05",
+      "n": 198,
+      "observed": 0.8785,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C06",
       "n": 162,
-      "observed": 1.1312,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.6717,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      },
      {
@@ -1095,8 +1052,17 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C07",
       "n": 78,
-      "observed": 0.9461,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.497,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C08",
+      "n": 120,
+      "observed": 1.0633,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      },
      {
@@ -1104,8 +1070,26 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C09",
       "n": 128,
-      "observed": 0.9821,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.8758,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C10",
+      "n": 197,
+      "observed": 0.8116,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C11",
+      "n": 89,
+      "observed": 0.8215,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      },
      {
@@ -1113,8 +1097,17 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C12",
       "n": 59,
-      "observed": 0.8488,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.5556,
+      "observed_kind": "normalized_dispersion",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.repeatability.same_lap_twice",
+      "corner_id": "C14",
+      "n": 198,
+      "observed": 0.9865,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      },
      {
@@ -1122,8 +1115,8 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C15",
       "n": 18,
-      "observed": 0.9587,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.6315,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      },
      {
@@ -1131,13 +1124,13 @@
       "coaching_principle_id": "cp.repeatability.same_lap_twice",
       "corner_id": "C16",
       "n": 59,
-      "observed": 0.8984,
-      "observed_kind": "coefficient_of_variation",
+      "observed": 0.4989,
+      "observed_kind": "normalized_dispersion",
       "track": "Spa-Francorchamps"
      }
     ],
     "n_cohorts": 1,
-    "n_instances": 6,
+    "n_instances": 13,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
