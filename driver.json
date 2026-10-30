@@ -178,7 +178,7 @@
  "coaching_rollup": {
   "min_tracks": 2,
   "n_cohorts": 2,
-  "ontology_version": "coach-onto-v8",
+  "ontology_version": "coach-onto-v9",
   "patterns": [
    {
     "band_before": null,
@@ -758,6 +758,87 @@
    }
   ],
   "strengths": [
+   {
+    "band_before": null,
+    "clearing_streak": 0,
+    "coaching_expression": "You're leaning on the ABS through the braking zone \u2014 the tire is past peak grip and the system is doing the stopping for you. Back the pedal off until the ABS stays quiet; the car stops shorter just under the threshold than it does through it.",
+    "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+    "current_band": null,
+    "drill": "Next session: on one corner, brake a fraction lighter each lap until the ABS stops firing, then hold that pressure. If the car runs long, you went too light \u2014 add pressure back in small steps, never all at once.",
+    "drill_followup": null,
+    "driving_principle": "The ABS firing is the tire saying it cannot take more brake. Past peak grip, extra pedal does not stop the car shorter \u2014 the system has to release and reapply to keep the tire rolling, and each cycle is distance spent managing the brake instead of slowing the car. Brake just under the point where ABS wakes up, and the tire stays at peak grip the whole way in. Note the boundary: ABS is the only part of car control this instrument measures. Tire wear, slip angle, and weight moving across the axles have no channel in the telemetry, so this principle speaks only for braking at the ABS threshold.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
+    "fundamental": "vehicle_management",
+    "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
+    "instances": [
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C01",
+      "n": 11,
+      "observed": 0.2423,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C03",
+      "n": 11,
+      "observed": 0.2372,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C05",
+      "n": 11,
+      "observed": 0.1286,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C06",
+      "n": 9,
+      "observed": 0.0,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C10",
+      "n": 11,
+      "observed": 0.0,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     },
+     {
+      "car": "GR86",
+      "coaching_principle_id": "cp.abs_usage.stay_off_the_abs",
+      "corner_id": "C14",
+      "n": 11,
+      "observed": 0.1693,
+      "observed_kind": "metric_median",
+      "track": "Spa-Francorchamps"
+     }
+    ],
+    "last_seen_era": null,
+    "n_cohorts": 1,
+    "n_instances": 6,
+    "n_tracks": 1,
+    "shown": false,
+    "signal_status": "measured",
+    "strength_expression": "Your braking stays under the ABS threshold \u2014 the tires stay at peak grip all the way into the corner.",
+    "technique": "abs_usage",
+    "tendency_state": null,
+    "tendency_variant": null
+   },
    {
     "band_before": null,
     "clearing_streak": 0,

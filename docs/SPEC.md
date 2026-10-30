@@ -3606,3 +3606,174 @@ Accepted at owner plan review; rationale recorded in the review:
   `focus_history` payload assertion (replaced by a tendencies-section
   assertion), and the accepted-output test (renamed to observe via
   `db.coach_history`) — all moved, not weakened.
+
+- **A62** (2026-10-30): **Tranche 4 vehicle management + the stat
+  banding path.** The coaching fundamentals review
+  (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found one measured
+  vehicle-management technique with a metric, a score, and no
+  principle: `abs_usage`. This tranche gives it one principle,
+  `cp.abs_usage.stay_off_the_abs` (`MetricStatGate` on the per-corner
+  MEDIAN `abs_active_ratio`, direction above, floor
+  `abs_active_ratio_floor = 0.25`), and nothing else: tire
+  utilization, weight transfer, and slip management stay no_signal
+  (no channel in the Garage61 CSV contract), and
+  `vehicle_management` remains proxy-scored (ABS only) until a real
+  channel exists — the tranche adds voice, not signal, and the
+  principle's words say so ("ABS is the only part of car control
+  this instrument measures").
+
+  **Anchor.** Owner's 885-lap corpus (2026-10-30): per-corner median
+  ABS ratio across the 295 corners with >= 2 laps runs p25 0.000,
+  p50 0.000, p75 0.223, p90 0.407, max 0.795; 0.25 sits just above the
+  75th percentile and fires on 66/295 corners. No guard: the metric
+  exists only where a braking event exists, so absence already
+  silences the gate. Per-car shares of braking samples with ABS
+  active are uneven (Ray FF1600 0.000, MX-5 Cup 0.914) — a channel
+  property of the cars, not adjusted for. No suppression rule vs any
+  braking principle: ABS ratio (threshold crossing under braking)
+  and brake application/release (how peak is reached, how the pedal
+  comes off) are different measurements with different drills, so
+  both speak (reinforce, not precedence).
+
+  **The contradiction (BUG-052).** The principle could not file
+  under the shipped taxonomy, three links: (1) a stat-gate principle
+  needs a band phase, because with `band_phase=None` the engine's
+  banding block fell into an else branch reading `dispersion`, a
+  variable assigned only in the `MetricDispersionGate` branch — an
+  unbound name, a crash at report time for any stat gate with None;
+  (2) the invariant test requires a set `band_phase` to be in
+  `FUNDAMENTALS[fundamental].phases`, and `vehicle_management` has
+  no phases (`Fundamental` defaults `phases=()`); (3) giving the
+  fundamental phases (the `("entry",)` workaround) filed cleanly but
+  moved the `vehicle_management` belief 66.15 → 77.1 on the corpus
+  copy, because the phase mapping feeds the opportunity component
+  (absent None → 0.849 included, renormalized). The owner declined
+  that scoring change on 2026-10-30 ("keep scoring frozen"), so the
+  tranche resumed on an accepted design instead of the workaround.
+
+  **The banding path (the design, accepted 2026-10-30).** The field
+  comment already named the missing mode ("None = band by CV", stale
+  since A58 replaced CV with dispersion): None was always meant to
+  mean "band by the gate's own statistic, not by seconds." The
+  engine now dispatches on gate type when `band_phase is None`:
+  dispersion gate keeps dispersion banding (unchanged,
+  `magnitude_kind="normalized_dispersion"`); stat gate gets new stat
+  banding (magnitude is the gate's own statistic,
+  `magnitude_kind="gate_statistic"`, band from §scale below); any
+  other gate with None raises a loud `ValueError` naming the
+  principle, replacing the latent crash. No shipped principle
+  occupies the error state (the only None-banded shipped principle
+  is `same_lap_twice`, a dispersion gate; no_signal principles never
+  reach the candidate loop).
+
+  **The scale.** Bands use the standard vocabulary, so headline
+  eligibility (notable/major), secondary listing, silent counting,
+  `_BAND_RANK`, and the tendency layer's "loudest band in the
+  principle's own magnitude_kind" all work unchanged. The scale is
+  multiples of the gate floor (`stat_band_notable_multiple` 1.5,
+  `stat_band_major_multiple` 2.0, both `config.coaching.*`),
+  mirroring the dispersion scale's structure with the floor as the
+  1.0x point: direction above reads stat/floor, direction below
+  reads floor/stat, a non-positive statistic under a below-direction
+  gate is the maximal fault (major directly, no division), and a
+  floor at or below zero falls back to moderate (documented, never
+  a crash or an invented scale; shipped stat-banded principles are
+  pinned to nonzero floors by test). A firing stat-banded candidate
+  is never negligible — firing implies the statistic crossed its
+  floor, so the ratio is >= 1.0 — where seconds banding can produce
+  negligible candidates (gate fires, seconds loss tiny), because the
+  statistic is both trigger and tone. Worked ABS example (floor
+  0.25): moderate 0.25–0.375, notable 0.375–0.5, major >= 0.5.
+
+  **Rendering and severity.** The coaching report and the SPA
+  `magnitudeText` gain explicit `gate_statistic` branches rendering
+  the statistic as a bare formatted value; the principle's words
+  carry the unit (a generic kind cannot know any future metric's
+  unit, so metric-aware rendering is rejected complexity). Live-click
+  verification of the SPA branch is owed and flagged in the PR per
+  the PR #66/#76 precedent. `_severity` is unchanged: its else branch
+  already covers non-seconds kinds, dividing by the dispersion major
+  floor — so a statistic in [0, 1] scores severity <= 0.5 while any
+  seconds-major or dispersion-major scores >= 1.0, and within one
+  band a seconds or dispersion candidate outranks a stat-banded one.
+  In practice the ABS principle headlines only in cohorts where no
+  seconds/dispersion major exists; measured on the corpus, it
+  headlines in 0 of 20 cohorts, and no cohort headline changes at
+  all under stat banding. That matches its status (one technique's
+  fault inside a proxy fundamental) and is stated here, not
+  discovered later.
+
+  **The surfacing change, with actuals.** Seconds banding surfaced
+  only firing corners that also had entry loss at moderate or above:
+  30 ABS items on the 885-lap corpus copy (25 moderate, 5 notable,
+  magnitudes 0.051–0.346 s). Stat banding surfaces every firing
+  corner (all >= moderate by construction): 66 items (30 moderate,
+  18 notable, 18 major, magnitudes 0.251–0.795). The 36 newly
+  presented split into 14 previously silent-negligible and 22
+  previously invisible (no entry loss to band on). The growth is
+  accepted, not tuned away: the fault is the ABS reliance itself,
+  not the seconds it cost, and re-anchoring the floor to cut
+  presentation would tune the instrument to the report. The floor
+  stays corpus-anchored.
+
+  **Versions.** `ONTOLOGY_VERSION` `coach-onto-v8` → `coach-onto-v9`
+  (the new principle, same as any tranche). `PAYLOAD_VERSION`
+  unchanged: `magnitude_kind` is an existing string field carried as
+  data by the payload, the rollup, and the tendency summaries, none
+  of which validates it against an enum — a third possible value is
+  data, not schema (the A57 "candidates are candidates" reasoning).
+  `SCORING_MODEL_VERSION` unchanged (dm-v3), structurally as well as
+  by measurement: the taxonomy is untouched (`vehicle_management`
+  keeps `phases=()`), so the opportunity component still returns
+  None for it, and every new threshold is `config.coaching.*` while
+  scoring reads `config.model.*` only (the A60 precedent).
+  `TENDENCY_MODEL_VERSION` unchanged: the rollup annotates fault
+  patterns regardless of kind, and eras carry the kind as data.
+  **Scoring-frozen proof** (a checked claim, not an assumption): the
+  Driver Model report is byte-identical before/after against both
+  baselines (pristine main and the entry-banded WIP), with
+  `vehicle_management` pinned in all three (prior measurement 66.15,
+  66.2 as displayed); two stat-banded coaching generations are
+  byte-identical (determinism). Any belief movement would have been
+  a stop-and-report failure, not a number to explain away.
+
+  **Honest absence, held.** The car-control detector design
+  concluded honest absence with evidence, adopted here, not
+  re-litigated: no vehicle model in any channel (wheelbase, tire
+  stiffness, aero absent), so expected yaw for given steering +
+  speed is uncomputable; no capability reference (reference laps are
+  role-isolated, never enter self trends); per-sample re-analysis is
+  impossible (`lap_samples_legacy` holds 0 rows; API `source_file`
+  values are IDs, not CSVs, so a new sample-level metric cannot be
+  backfilled on 885 laps); incident-level balance is already
+  classified (understeer_off 40, power_on_oversteer 23,
+  trail_brake_oversteer 11, lift_off_oversteer 3; max per-cohort
+  recurrence 6, at Mercedes Charlotte C05) and routed to existing
+  principles (understeer_off → one_commitment, power_on/lift_off →
+  roll_it_on, trail_brake → brake_release) — a principle duplicating
+  it would double-speak on <= 6 events; `yaw_peak_rate` alone is
+  "rotation achieved", not balance, without a model. Weight transfer
+  as teaching survives only as prose inside other principles where
+  the physics genuinely is the overlap of forces: `pedal_overlap`
+  already says it "confuses the weight transfer the car needs to
+  plant one axle at a time" and `brake_release` already says it
+  "unloads the front axle" — confirmed, not duplicated, and no
+  weight-transfer principle is added.
+
+  **Restated tests, named (unmerged WIP, not shipped tests).** The
+  WIP tests in `test_coaching_vehicle.py` were written for the
+  seconds-banded shape and are restated to the new contract —
+  revision of unmerged work to a new intended behavior, not editing
+  a test to pass: the shape test (`band_phase` "entry" → None); the
+  heavy-braking test (`seconds_lost` → `gate_statistic`, magnitude
+  1.0, band major, entry-loss warp dropped — surfacing no longer
+  needs entry loss); the middling-ratio test (kind
+  `gate_statistic`, warp dropped); the rollup test (warp dropped);
+  the reinforce helper (the ABS fabricated candidate wears
+  `gate_statistic`, the kind the engine actually produces).
+  New: `test_coaching_stat_banding.py` (band scale both directions
+  with boundary values, zero-statistic major, degenerate-floor
+  moderate, firing-never-negligible, the dispatch ValueError, the
+  nonzero-floor pin, severity flow-through). The invariant test
+  passes unchanged — no amendment to it is needed or legitimate,
+  since it constrains only non-None values.
