@@ -229,7 +229,7 @@ Writing that down is the point.
 - **How it was fixed**: Clear the client cookie jar before the final assertion so the old cookie is the only value sent, on every TestClient version. No app code changed, and the assertion itself is unchanged, not weakened.
 - **Numbering note**: BUG-042–044 are held by unmerged PR #54, so this entry takes BUG-045.
 ### BUG-044 — CV is the wrong dispersion statistic for '% lap' position metrics
-- **Status**: fixed 2026-10-08 (scoring layer; coaching layer still open — see Fix) · **SPEC**: A56 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
+- **Status**: fixed 2026-10-08 (scoring layer) and 2026-10-29 (coaching layer — see Fix) · **SPEC**: A56, A58 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus
 - **Symptom**: the largest normalized CVs in the live corpus are all
   `_dist_pct` landmark metrics: `brake_point_dist_pct` at **149.2×**
   reference (Brands Hatch C01, n=5) and **110.1×** (C10, n=5);
@@ -276,7 +276,34 @@ Writing that down is the point.
   across metric types; nobody re-asked whether CV suits each type.
 - **Pinned by**: `tests/test_scoring_saturation.py::test_brake_point_near_origin_is_not_a_dispersion_explosion`, `::test_wrap_around_sample_cannot_manufacture_a_corner_verdict`, and `::test_bimodal_brake_points_read_as_poor_not_absurd` — this entry's three measured shapes (near-origin landmark, wrap-around sample, bimodality) as scorer-level tests on the real values quoted above, added with the fix. (The gap recorded when this entry was filed — no scorer-level fixture with a near-origin landmark — is closed by stubbing `self_metric_table` directly, the pattern test_scoring.py already used; no synthetic-lap builder was needed.)
 
-- **Fix**: dm-v3 (SPEC.md A56) adopted the direction recorded below: dispersion is now absolute and robust — each (corner, metric) sample contributes its scaled MAD (1.4826 × median absolute deviation from the sample median, with a resolution floor for majority-tied samples), normalized by that metric's own measured reference dispersion. No sample mean is ever a denominator, so landmark position cannot masquerade as dispersion (C10's sample now normalizes to ~0.21), and the estimator is median-based, so one wrap-around sample moves a reading by a bounded amount (C18's apex sample ~8.6× its metric anchor — loose, truly — not ~95×). The driver's data is untouched: the statistic changed, nothing was filtered or winsorized. **Still open**: the coaching layer's `same_lap_twice` gates pool the same dm-v2 normalized CVs through the same reference table, so this pathology still reaches coaching gates; migrating that layer was deliberately deferred (A56), as A21 deferred it before.
+- **Fix**: dm-v3 (SPEC.md A56) adopted the direction recorded below: dispersion is now absolute and robust — each (corner, metric) sample contributes its scaled MAD (1.4826 × median absolute deviation from the sample median, with a resolution floor for majority-tied samples), normalized by that metric's own measured reference dispersion. No sample mean is ever a denominator, so landmark position cannot masquerade as dispersion (C10's sample now normalizes to ~0.21), and the estimator is median-based, so one wrap-around sample moves a reading by a bounded amount (C18's apex sample ~8.6× its metric anchor — loose, truly — not ~95×). The driver's data is untouched: the statistic changed, nothing was filtered or winsorized. **Still open at A56, closed by A58**: the coaching layer's
+`same_lap_twice` gates pooled the same dm-v2 normalized CVs through the
+same reference table, so this pathology still reached coaching gates;
+migrating that layer was deliberately deferred (A56), as A21 deferred it
+before.
+
+- **Coaching migration (2026-10-29, SPEC.md A58).** Both CV gates
+  migrated: `same_lap_twice` (pooled) and `trust_the_proxy`
+  (`brake_point_dist_pct`) now read `MetricDispersionGate` — per-metric
+  scaled MAD normalized by the A56 reference dispersions, pooled two
+  levels, reusing `model.scoring._scaled_mad` rather than a second
+  implementation. `MetricCVGate` is deleted; `ONTOLOGY_VERSION`
+  `coach-onto-v5` → `coach-onto-v6`; `SCORING_MODEL_VERSION` unchanged
+  (Driver Model report byte-identical on the 851-lap corpus). Anchors
+  reused, verified on the current corpus (per-metric medians 0.84×–1.27×
+  the A56 anchors). The old CV config fields are retained for
+  stored-config compatibility only; no gate reads them. Corpus effect
+  (20 cohorts, default config): `same_lap_twice` candidates 292 → 175,
+  strengths 29 → 146; `trust_the_proxy` candidates 24 → 75, strengths
+  178 → 115; all 20 cohort headlines change (before, every headline was
+  `same_lap_twice` on a CV of 2.37–17.22 — inflated severities seizing
+  the headline slot). Pinned by
+  `tests/test_coaching_cv_migration.py` (the three BUG-044 shapes at gate
+  level) and `tests/test_coaching_dispersion_calibration.py` (bands,
+  floors, and fixture spread on the new scale); the old CV calibration
+  file is superseded and deleted. Every non-migrated principle's
+  candidates and strengths are identical before/after, and two report
+  generations are byte-identical on each side.
 
 ### BUG-043 — Trend can read "improving" for a belief saturated at exactly 0.0
 - **Status**: fixed 2026-10-08 · **SPEC**: A56 · **Severity**: silent-wrong · **Found**: 2026-10-08, critical review of the owner's synced corpus

@@ -7,7 +7,7 @@ from driverdna.coaching.ontology import (
     AlwaysEligible,
     DetectorGate,
     FindingGate,
-    MetricCVGate,
+    MetricDispersionGate,
     principles_for_fundamental,
 )
 from driverdna.metrics.detectors import run_detectors
@@ -62,9 +62,9 @@ def test_detector_gates_reference_the_techniques_own_detector():
             assert p.gate.detector in TECHNIQUES[p.technique].detectors, p.id
 
 
-def test_metric_cv_gates_reference_real_metrics_or_wildcard():
+def test_metric_dispersion_gates_reference_real_metrics_or_wildcard():
     for p in PRINCIPLES.values():
-        if isinstance(p.gate, MetricCVGate):
+        if isinstance(p.gate, MetricDispersionGate):
             assert p.gate.metric == "*" or p.gate.metric in METRIC_DEFS, p.id
 
 

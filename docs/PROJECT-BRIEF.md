@@ -258,6 +258,28 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-29 — BUG-044 coaching migration (SPEC.md A58, PR pending).**
+  Both CV gates move onto dm-v3's statistic: `same_lap_twice` and
+  `trust_the_proxy` now read `MetricDispersionGate` (per-metric scaled MAD
+  normalized by the A56 reference dispersions, pooled two levels);
+  `MetricCVGate` is deleted and `ONTOLOGY_VERSION` goes `coach-onto-v5` →
+  `coach-onto-v6`. Anchors reused, not re-measured: on the 851-lap corpus
+  per-metric medians run 0.84×–1.27× the A56 anchors, and the pooled
+  distribution stays discriminating (median 1.207; ≥1.15 at 54.5%, ≥1.50 at
+  31.2%, ≥2.00 at 17.1%). Thresholds keep A52's intents on the new scale
+  (moderate 1.15, notable 1.50, major 2.00); the major band's old equality
+  with `consistency_cv_ceiling` is gone — 2.00 is a coaching tone choice,
+  not a cross-layer agreement, since dm-v3 scoring re-based on a 3.0
+  ceiling. Old CV config fields are retained for stored-config
+  compatibility only (pydantic `extra="forbid"`); no gate reads them.
+  Corpus effect (20 cohorts): `same_lap_twice` 292 → 175 candidates,
+  `trust_the_proxy` 24 → 75; all 20 headlines change; Driver Model report
+  byte-identical; non-migrated principles identical. The SPA renders the
+  new kind as "× typical" (rebuilt bundle committed); live click
+  verification is still owed and flagged in the PR, per the PR #66
+  precedent. `STATUS.md` untouched: its 2026-10-08 snapshot describes
+  pre-migration state and stays accurate as history.
+
 - **2026-10-27 — CI quality gates landed (PR #68, 3d2afb4).** mypy is now a
   required check, and its ratchet is repaired: `ci/mypy-baseline.txt` holds
   the bare count 58 (it had held a UTF-16 Windows dump, which broke the

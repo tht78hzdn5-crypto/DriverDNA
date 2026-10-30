@@ -42,6 +42,14 @@ And a presentation-only precedence: where the measured brake-point
 principle has any verdict at a corner, the entry-commitment proxy — same
 metric, weaker statistic — is not presented for that corner. It lives in
 `select_coaching` and in coaching/rollup.py, never in eligibility.
+
+coach-onto-v6 (SPEC.md A58, BUG-044 coaching migration): `MetricCVGate`
+is gone. Both CV gates migrate to `MetricDispersionGate`, which reads
+dm-v3's statistic — per-metric scaled MAD normalized by the measured
+reference dispersions (`config.model.consistency_metric_reference_dispersion`,
+reused, not re-measured) — pooled two levels like the old CV pooling.
+The CV fields stay in config for stored-file compatibility but no gate
+reads them.
 """
 
 from __future__ import annotations
@@ -56,12 +64,13 @@ from driverdna.coaching.ontology import (
     AlwaysEligible,
     DetectorGate,
     FindingGate,
-    MetricCVGate,
+    MetricDispersionGate,
     MetricStatGate,
 )
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.metrics.technique import METRIC_DEFS
+from driverdna.model.scoring import _scaled_mad
 from driverdna.model.taxonomy import TECHNIQUES, SignalStatus
 from driverdna.pipeline import phase_windows_from_stored
 
@@ -81,7 +90,7 @@ class CoachingCandidate:
     corner_id: str | None  # None for no_signal (cohort-wide, never per-corner)
     gap_band: str | None  # None only for no_signal (no band at all)
     magnitude: float | None
-    magnitude_kind: str | None  # "seconds_lost" | "coefficient_of_variation" | None
+    magnitude_kind: str | None  # "seconds_lost" | "normalized_dispersion" | None
     n: int
     thin_evidence: bool
     evidence_ids: tuple[str, ...]
@@ -97,14 +106,34 @@ def _cohort_windows_by_corner(db: Database, car: str, track: str) -> dict:
     return {cid: phase_windows_from_stored(w) for cid, w in stored.items()}
 
 
-def _cv(values: list[float]) -> float | None:
-    if len(values) < 2:
-        return None
-    arr = np.asarray(values, dtype=float)
-    mean = float(np.mean(arr))
-    if mean == 0:
-        return None
-    return float(np.std(arr, ddof=1) / abs(mean))
+def _dispersion_inputs(
+    metric_table: dict,
+    corner_id: str,
+    metric_names: tuple[str, ...],
+    metric_reference: dict[str, float],
+    unit_reference: dict[str, float],
+) -> dict[str, list[float]]:
+    """{metric: values} that carry dispersion evidence at this corner.
+
+    Skip rules mirror dm-v3 scoring exactly: fewer than 2 values, an
+    all-zero sample (the measured event never occurred), and a metric
+    with no anchor (reference <= 0) are skipped rather than normalized
+    against a guess. The single source of these rules for both the
+    pooled value and the contributing-lap count, so the two can never
+    disagree about what counted."""
+    inputs: dict[str, list[float]] = {}
+    for name in metric_names:
+        values = metric_table.get(corner_id, {}).get(name, [])
+        if len(values) < 2:
+            continue
+        if not np.any(np.asarray(values, dtype=float)):
+            continue
+        unit = METRIC_DEFS[name][0]
+        reference = metric_reference.get(name, unit_reference.get(unit, 0.0))
+        if reference <= 0:
+            continue
+        inputs[name] = values
+    return inputs
 
 
 def _metric_stat(values: list[float], stat: str) -> float | None:
@@ -157,30 +186,34 @@ def _stat_gate_metrics(gate: MetricStatGate) -> tuple[str, ...]:
     return (gate.metric,)
 
 
-def _normalized_pooled_cv(
+def _normalized_pooled_dispersion(
     metric_table: dict,
     corner_id: str,
     metric_names: tuple[str, ...],
+    metric_reference: dict[str, float],
     unit_reference: dict[str, float],
 ) -> float | None:
-    """Per-unit normalized CV pooling for same_lap_twice (SPEC.md A42).
+    """Per-unit normalized dispersion pooling for the migrated gates
+    (SPEC.md A58, coach-onto-v6).
 
-    Coaching-layer analogue of dm-v2's _consistency_component: each metric's
-    raw CV is divided by its unit's typical scale before pooling, then pooled
-    two levels — mean within each unit, then mean across units — so no unit
-    dominates purely by having many contributing metrics (e.g. five '% lap'
-    metrics each with tiny natural CV would swamp one 'count' metric with large
-    natural CV under a flat mean, making a genuinely inconsistent count look
-    consistent). Returns None when no metric has a computable CV."""
+    The dm-v3 statistic, reused — not a second implementation: each
+    metric's scaled MAD (`model.scoring._scaled_mad`: 1.4826 * median
+    absolute deviation, resolution floor for majority-tied samples)
+    divided by its own measured reference dispersion
+    (`config.model.consistency_metric_reference_dispersion`, per-unit
+    fallback), then pooled two levels — mean within each unit, then mean
+    across units — so no unit dominates purely by having many
+    contributing metrics. A CV divided by the sample's own mean; this
+    never divides by a location, so a landmark near the lap origin
+    cannot explode it (BUG-044). Returns None when no metric carries
+    dispersion evidence."""
+    inputs = _dispersion_inputs(
+        metric_table, corner_id, metric_names, metric_reference, unit_reference)
     by_unit: dict[str, list[float]] = {}
-    for name in metric_names:
-        values = metric_table.get(corner_id, {}).get(name, [])
-        raw_cv = _cv(values)
-        if raw_cv is None:
-            continue
+    for name, values in inputs.items():
         unit = METRIC_DEFS[name][0]
-        normalized = raw_cv / unit_reference.get(unit, 1.0)
-        by_unit.setdefault(unit, []).append(normalized)
+        reference = metric_reference.get(name, unit_reference.get(unit, 0.0))
+        by_unit.setdefault(unit, []).append(_scaled_mad(values) / reference)
     if not by_unit:
         return None
     unit_means = [float(np.mean(vals)) for vals in by_unit.values()]
@@ -197,12 +230,17 @@ def _seconds_band(seconds: float, cfg) -> str:
     return "negligible"
 
 
-def _cv_band(cv: float, cfg) -> str:
-    if cv >= cfg.cv_band_major:
+def _dispersion_band(value: float, cfg) -> str:
+    """Gap band for a normalized dispersion value (SPEC.md A58): the
+    scale is the dm-v3 one, 1.0 = exactly reference-typical, so the
+    thresholds carry A52's stated intents onto the new statistic —
+    moderate at 15% above typical, notable midway up, major at twice
+    typical."""
+    if value >= cfg.dispersion_band_major:
         return "major"
-    if cv >= cfg.cv_band_notable:
+    if value >= cfg.dispersion_band_notable:
         return "notable"
-    if cv >= cfg.cv_band_moderate:
+    if value >= cfg.dispersion_band_moderate:
         return "moderate"
     return "negligible"
 
@@ -300,7 +338,8 @@ def eligible_principles(
                     detector_table=detector_table, metric_table=metric_table,
                     findings_by_corner_phase=findings_by_corner_phase,
                     loss=loss, cfg=cfg, min_trigger_rate=config.detectors.min_trigger_rate,
-                    unit_reference=config.model.consistency_unit_reference_cv,
+                    metric_reference=config.model.consistency_metric_reference_dispersion,
+                    unit_reference=config.model.consistency_unit_reference_dispersion,
                     lap_pks=lap_pks,
                 )
                 if candidate is not None:
@@ -321,7 +360,7 @@ def eligible_principles(
 def _corner_candidate(
     db, principle, corner_id, *, driver, car, track,
     detector_table, metric_table, findings_by_corner_phase, loss, cfg, min_trigger_rate,
-    unit_reference: dict[str, float],
+    metric_reference: dict[str, float], unit_reference: dict[str, float],
     lap_pks: frozenset[int] | None = None,
 ) -> CoachingCandidate | None:
     gate = principle.gate
@@ -340,28 +379,17 @@ def _corner_candidate(
             return None
         n = finding.n
         evidence_ids = finding.evidence_ids
-    elif isinstance(gate, MetricCVGate):
+    elif isinstance(gate, MetricDispersionGate):
         metric_names = _ALL_MEASURED_METRICS if gate.metric == "*" else (gate.metric,)
-        if gate.metric == "*":
-            # per-unit normalized pooling (A42) — same two-level logic as dm-v2's
-            # _consistency_component: prevents any unit dominating by metric count
-            cv = _normalized_pooled_cv(metric_table, corner_id, metric_names, unit_reference)
-        else:
-            raw_cvs = [
-                _cv(metric_table.get(corner_id, {}).get(name, []))
-                for name in metric_names
-            ]
-            valid = [c for c in raw_cvs if c is not None]
-            cv = float(np.mean(valid)) if valid else None
-        if cv is None:
+        inputs = _dispersion_inputs(
+            metric_table, corner_id, metric_names, metric_reference, unit_reference)
+        dispersion = _normalized_pooled_dispersion(
+            metric_table, corner_id, metric_names, metric_reference, unit_reference)
+        if dispersion is None:
             return None
-        n = sum(
-            len(metric_table.get(corner_id, {}).get(name, []))
-            for name in metric_names
-            if _cv(metric_table.get(corner_id, {}).get(name, [])) is not None
-        )
+        n = sum(len(values) for values in inputs.values())
         floor = getattr(cfg, gate.floor_key)
-        if cv < floor:
+        if dispersion < floor:
             return None
         evidence_ids = _metric_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
@@ -392,9 +420,11 @@ def _corner_candidate(
         band = _seconds_band(magnitude, cfg)
         magnitude_kind = "seconds_lost"
     else:
-        magnitude = cv  # only reachable via MetricCVGate with band_phase=None (same_lap_twice)
-        band = _cv_band(magnitude, cfg)
-        magnitude_kind = "coefficient_of_variation"
+        # Only reachable via MetricDispersionGate with band_phase=None
+        # (same_lap_twice): the statistic is the trigger AND the tone.
+        magnitude = dispersion
+        band = _dispersion_band(magnitude, cfg)
+        magnitude_kind = "normalized_dispersion"
 
     return CoachingCandidate(
         principle_id=principle.id, signal_status=principle.signal_status,
@@ -432,7 +462,8 @@ class CoachingStrength:
 def _corner_strength(
     db, principle, corner_id, *, driver, car, track,
     detector_table, metric_table, findings_by_corner_phase,
-    cfg, min_trigger_rate, unit_reference: dict[str, float],
+    cfg, min_trigger_rate, metric_reference: dict[str, float],
+    unit_reference: dict[str, float],
     lap_pks: frozenset[int] | None = None,
 ) -> CoachingStrength | None:
     """The strict complement of `_corner_candidate`: a record where there IS
@@ -457,26 +488,16 @@ def _corner_strength(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
             detector=gate.detector, lap_pks=lap_pks,
         )
-    elif isinstance(gate, MetricCVGate):
+    elif isinstance(gate, MetricDispersionGate):
         metric_names = _ALL_MEASURED_METRICS if gate.metric == "*" else (gate.metric,)
-        if gate.metric == "*":
-            cv = _normalized_pooled_cv(metric_table, corner_id, metric_names, unit_reference)
-        else:
-            valid = [
-                c for c in (
-                    _cv(metric_table.get(corner_id, {}).get(name, []))
-                    for name in metric_names
-                ) if c is not None
-            ]
-            cv = float(np.mean(valid)) if valid else None
-        if cv is None or cv >= getattr(cfg, gate.floor_key):
+        inputs = _dispersion_inputs(
+            metric_table, corner_id, metric_names, metric_reference, unit_reference)
+        dispersion = _normalized_pooled_dispersion(
+            metric_table, corner_id, metric_names, metric_reference, unit_reference)
+        if dispersion is None or dispersion >= getattr(cfg, gate.floor_key):
             return None
-        n = sum(
-            len(metric_table.get(corner_id, {}).get(name, []))
-            for name in metric_names
-            if _cv(metric_table.get(corner_id, {}).get(name, [])) is not None
-        )
-        observed, kind = cv, "coefficient_of_variation"
+        n = sum(len(values) for values in inputs.values())
+        observed, kind = dispersion, "normalized_dispersion"
         evidence_ids = _metric_evidence_ids(
             db, driver=driver, car=car, track=track, corner_id=corner_id,
             metric_names=metric_names, lap_pks=lap_pks,
@@ -565,7 +586,8 @@ def eligible_strengths(
                 detector_table=detector_table, metric_table=metric_table,
                 findings_by_corner_phase=findings_by_corner_phase,
                 cfg=cfg, min_trigger_rate=config.detectors.min_trigger_rate,
-                unit_reference=config.model.consistency_unit_reference_cv,
+                metric_reference=config.model.consistency_metric_reference_dispersion,
+                unit_reference=config.model.consistency_unit_reference_dispersion,
                 lap_pks=lap_pks,
             )
             if found is not None:
@@ -582,7 +604,7 @@ def _severity(candidate: CoachingCandidate, cfg) -> float:
     multiple of the `major` floor for its own `magnitude_kind`.
 
     Unit-free by construction, which is the only way seconds and a
-    coefficient of variation can share one ranking. Deliberately a private
+    normalized dispersion can share one ranking. Deliberately a private
     sort key and never a payload field: it has no unit, so surfacing it would
     put a meaningless number in front of the driver and — worse — into the
     grounding validator's number pool, where the AI could cite it.
@@ -592,7 +614,7 @@ def _severity(candidate: CoachingCandidate, cfg) -> float:
     if candidate.magnitude_kind == "seconds_lost":
         ceiling = cfg.gap_band_major_s
     else:
-        ceiling = cfg.cv_band_major
+        ceiling = cfg.dispersion_band_major
     return candidate.magnitude / ceiling if ceiling > 0 else 0.0
 
 

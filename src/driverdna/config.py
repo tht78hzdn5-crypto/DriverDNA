@@ -465,9 +465,10 @@ class ModelConfig(_Section):
         "the project's real committed multi-car/multi-track telemetry "
         "(2026-07-21), not guessed; see SPEC.md's Milestone 6 amendment. "
         "Scoring superseded this table in dm-v3 (A56: per-metric dispersion "
-        "anchors below); it is retained because the coaching layer's "
-        "normalized-CV gates (M7, same_lap_twice) still divide by it — a "
-        "separate code path A56 deliberately did not migrate.",
+        "anchors below); the coaching layer's normalized-CV gates (M7, "
+        "same_lap_twice) were its last consumer, and A58 migrated them to "
+        "the dispersion anchors too, so nothing reads this table now. It "
+        "is retained for stored-config compatibility only.",
     )
     consistency_cv_ceiling: float = Field(
         default=2.0,
@@ -475,10 +476,12 @@ class ModelConfig(_Section):
         "multiples of a metric's own unit-typical CV (after dividing by "
         "consistency_unit_reference_cv; dm-v2) — considered maximally "
         "inconsistent (scores 0); scaled linearly from 0 (scores 100) to this "
-        "ceiling. 1.0 (exactly unit-typical) scores 50. Retained as the "
-        "coaching layer's band anchor (cv_band_major is calibrated to it, "
-        "tests/test_coaching_cv_calibration.py); dm-v3 scoring uses "
-        "consistency_dispersion_ceiling instead (A56).",
+        "ceiling. 1.0 (exactly unit-typical) scores 50. Retained for "
+        "stored-config compatibility; dm-v3 scoring uses "
+        "consistency_dispersion_ceiling instead (A56), and the coaching "
+        "layer's band anchor is now dispersion_band_major (A58). The old "
+        "cv_band_major calibration to this ceiling no longer governs any "
+        "gate.",
     )
     consistency_metric_reference_dispersion: dict[str, float] = Field(
         default={
@@ -628,19 +631,20 @@ class CoachingConfig(_Section):
     ontology `coach-onto-v1`; docs/COACHING.md).
 
     Detector-gated principles reuse `detectors.min_trigger_rate` — one floor
-    for "is this a pattern," not duplicated here. `commitment_cv_floor` and
-    `consistency_cv_floor` gate the two principles with no detector
-    (trust_the_proxy, same_lap_twice): a coefficient of variation (the
-    statistic dm-v2's scoring used; the coaching layer retains it after
-    dm-v3 moved scoring to absolute dispersion, SPEC.md A56) crossing the
-    floor is their trigger.
+    for "is this a pattern," not duplicated here. `commitment_dispersion_floor`
+    and `consistency_dispersion_floor` gate the two principles with no
+    detector (trust_the_proxy, same_lap_twice): a normalized scaled-MAD
+    dispersion (dm-v3's statistic, SPEC.md A56, migrated to coaching by
+    A58) crossing the floor is their trigger. The old CV fields
+    (`commitment_cv_floor`, `consistency_cv_floor`, `cv_band_*`) are
+    retained for stored-config compatibility only; no gate reads them.
 
     Gap bands are absolute, versioned thresholds, never invented per-call
     (docs/COACHING.md, "Gap bands — mechanics"): seconds-based bands score
     the phase's `cumulative_loss` for every principle that maps to a phase;
     `same_lap_twice` has no phase (consistency is cross-cutting, per
-    taxonomy.py) and bands on its own CV instead — the CV-band thresholds
-    exist for that one principle. Below the moderate floor is negligible
+    taxonomy.py) and bands on its own normalized dispersion instead — the
+    dispersion-band thresholds exist for that one principle. Below the moderate floor is negligible
     (silent, never surfaced); moderate is quiet (mentioned only if asked);
     notable/major are loud (the headline candidate pool).
     """
@@ -663,7 +667,9 @@ class CoachingConfig(_Section):
     )
     cv_band_moderate: float = Field(
         default=1.15,
-        description="same_lap_twice's normalized-CV floor for moderate tone "
+        description="Superseded by A58 (SPEC.md): retained for stored-config "
+        "compatibility; no gate reads this field. "
+        "same_lap_twice's normalized-CV floor for moderate tone "
         "(coach-onto-v4, SPEC.md A52). Each metric's CV is divided by its "
         "unit's typical scale (config.model.consistency_unit_reference_cv) "
         "before pooling, so the scale runs: 0 = perfectly repeatable, 1.0 = "
@@ -675,13 +681,17 @@ class CoachingConfig(_Section):
     )
     cv_band_notable: float = Field(
         default=1.50,
-        description="same_lap_twice's normalized-CV floor for notable tone "
+        description="Superseded by A58 (SPEC.md): retained for stored-config "
+        "compatibility; no gate reads this field. "
+        "same_lap_twice's normalized-CV floor for notable tone "
         "(coach-onto-v4); midway from unit-typical (1.0) to the ceiling "
         "(2.0). See cv_band_moderate for the scale.",
     )
     cv_band_major: float = Field(
         default=2.00,
-        description="same_lap_twice's normalized-CV floor for major tone "
+        description="Superseded by A58 (SPEC.md): retained for stored-config "
+        "compatibility; no gate reads this field. "
+        "same_lap_twice's normalized-CV floor for major tone "
         "(coach-onto-v4). Deliberately equal to "
         "config.model.consistency_cv_ceiling: under dm-v2 that was also "
         "the point the scoring layer scored this component zero, so the "
@@ -693,14 +703,18 @@ class CoachingConfig(_Section):
     )
     commitment_cv_floor: float = Field(
         default=0.15,
-        description="trust_the_proxy's trigger: brake_point_dist_pct's raw "
+        description="Superseded by A58 (SPEC.md): retained for stored-config "
+        "compatibility; no gate reads this field. "
+        "trust_the_proxy's trigger: brake_point_dist_pct's raw "
         "coefficient of variation for this corner must reach this floor "
         "before the entry-commitment proxy principle is eligible. Single "
         "metric — no unit normalization needed.",
     )
     consistency_cv_floor: float = Field(
         default=1.15,
-        description="same_lap_twice's trigger (coach-onto-v4, SPEC.md A52): a "
+        description="Superseded by A58 (SPEC.md): retained for stored-config "
+        "compatibility; no gate reads this field. "
+        "same_lap_twice's trigger (coach-onto-v4, SPEC.md A52): a "
         "corner's per-unit normalized pooled CV must reach this floor before "
         "the principle is eligible. Each metric's raw CV is first divided by "
         "its unit's typical scale (config.model.consistency_unit_reference_cv), "
@@ -711,6 +725,60 @@ class CoachingConfig(_Section):
         "value was still 0.15, i.e. 85% BETTER than typical, which let every "
         "corner through the gate. Equal to cv_band_moderate: a CV candidate "
         "that exists is at least moderate.",
+    )
+    consistency_dispersion_floor: float = Field(
+        default=1.15,
+        description="same_lap_twice's trigger (coach-onto-v6, SPEC.md A58): "
+        "a corner's per-unit normalized pooled scaled-MAD dispersion must "
+        "reach this floor before the principle is eligible. Each metric's "
+        "scaled MAD (dm-v3, A56) is first divided by its own reference "
+        "dispersion (config.model.consistency_metric_reference_dispersion, "
+        "fallback per-unit), then pooled two levels — mean within each "
+        "unit, then mean across units — so no unit dominates purely by "
+        "metric count. On that scale 1.0 is exactly reference-typical, so "
+        "1.15 = '15% above typical variability'. Equal to "
+        "dispersion_band_moderate: a dispersion candidate that exists is "
+        "at least moderate. Anchors verified on the owner's 851-lap corpus "
+        "(2026-10-29): per-metric current medians run 0.84x-1.27x the A56 "
+        "anchors, so the A56 table is reused, not re-measured.",
+    )
+    dispersion_band_moderate: float = Field(
+        default=1.15,
+        description="same_lap_twice's normalized-dispersion floor for "
+        "moderate tone (coach-onto-v6, SPEC.md A58): 1.15 is '15% above "
+        "reference-typical dispersion' on the dm-v3 scale (1.0 = exactly "
+        "typical). Replaces cv_band_moderate's 1.15, same stated intent, "
+        "new statistic.",
+    )
+    dispersion_band_notable: float = Field(
+        default=1.50,
+        description="same_lap_twice's normalized-dispersion floor for "
+        "notable tone (coach-onto-v6, SPEC.md A58); midway from "
+        "reference-typical (1.0) toward the major band. See "
+        "dispersion_band_moderate for the scale.",
+    )
+    dispersion_band_major: float = Field(
+        default=2.00,
+        description="same_lap_twice's normalized-dispersion floor for major "
+        "tone (coach-onto-v6, SPEC.md A58): twice reference-typical "
+        "dispersion. Replaces cv_band_major's 2.00, same value, new "
+        "statistic — the value is a coaching tone choice, not the dm-v3 "
+        "scoring ceiling (3.0). See dispersion_band_moderate for the "
+        "scale.",
+    )
+    commitment_dispersion_floor: float = Field(
+        default=1.15,
+        description="trust_the_proxy's trigger (coach-onto-v6, SPEC.md A58): "
+        "brake_point_dist_pct's normalized scaled-MAD dispersion for this "
+        "corner must reach this floor before the entry-commitment proxy "
+        "principle is eligible. Single metric — its own reference "
+        "dispersion (0.41386 % lap, A56; current-corpus median 0.43451, "
+        "ratio 1.05) is the normalizer. 1.15 = '15% above typical', the "
+        "same stated intent as the pooled floor; on the current corpus "
+        "about 45% of corners clear it before measured-over-proxy "
+        "suppression. Replaces commitment_cv_floor's raw-CV 0.15, whose "
+        "meaning depended on where the brake point sits (the BUG-044 "
+        "defect).",
     )
     braking_zone_peak_floor: float = Field(
         default=0.50,

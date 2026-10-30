@@ -119,7 +119,7 @@ def pg_schema_optional(backend, request):
 _SMOKE_FILES = {
     "test_agent_contract.py",
     "test_census.py",
-    "test_coaching_cv_calibration.py",
+    "test_coaching_dispersion_calibration.py",  # A58 replacement for test_coaching_cv_calibration.py
     "test_coaching_engine.py",
     "test_model_reading.py",
     "test_ordering_determinism.py",

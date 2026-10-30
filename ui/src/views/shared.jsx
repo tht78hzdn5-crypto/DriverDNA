@@ -319,7 +319,7 @@ export function SourceLegend() {
 // a score, magnitude, or confidence — a hypothesis, labelled as one.
 function magnitudeText(kind, value) {
   if (kind === "seconds_lost") return `${fmt(value)} s`;
-  if (kind === "coefficient_of_variation") return `CV ${fmt(value, 2)}`;
+  if (kind === "normalized_dispersion") return `${fmt(value, 2)}× typical`;
   return null;
 }
 
