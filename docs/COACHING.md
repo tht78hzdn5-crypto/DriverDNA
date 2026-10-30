@@ -660,3 +660,54 @@ resolved states when an era closes with the absence continued.
 The full record — era rules, state partition, K anchoring, payload
 measurement, version bumps, and what is left open (raw-lap retention
 tier, era-size UI, dormant/resolved report listing) — is SPEC.md A59.
+
+## The steering/throttle tranche: metric-statistic gates, rotation and exit (2026-10-30, SPEC.md A60)
+
+Tranche 1 (A57) gave the three entry-phase braking techniques a voice. This
+tranche gives the remaining measured-but-voiceless techniques one:
+`cp.steering_smoothness.smooth_hands` (rotation),
+`cp.throttle_modulation.one_squeeze` and `cp.exit_acceleration.commit_early`
+(corner exit). `ONTOLOGY_VERSION` is now `coach-onto-v8`; the twelve v7
+principles are byte-for-byte untouched, so every v7 eligibility outcome is
+reproducible from them alone.
+
+**The same gate, no new machinery.** All three are `MetricStatGate` on a
+per-corner median, following A57 exactly: steering roughness is median RMS
+steering acceleration turn-in to apex at or above 500 deg/s²; throttle
+modulation is median stab-and-lift count at or above 1.0; weak exit is
+median exit acceleration at or below 1.25 m/s². Thresholds live in
+`config.coaching` with their corpus anchors written into their descriptions
+(per-corner percentiles over the owner's 851 laps) — if you move one,
+restate its anchor the way the A52 section above demands for dispersion
+thresholds.
+
+**What was deliberately not built.** `full_throttle_dist_pct` stays out of
+the exit gate even though it is the most obvious "earliest full throttle"
+number: it reads lap position, not technique — Brands Hatch medians run
+10.2 → 93.8 across C01→C09 — so leveling it across corners would fault late
+corners for being late. The exit gate reads `exit_accel_ms2` only, and its
+words say "get to full throttle earlier" qualitatively. The corner-type
+confound in `exit_accel_ms2` itself (fast corners read lower regardless of
+driver) is handled by the band: the tone comes from exit cumulative_loss
+seconds, so a weak-accel trigger only surfaces where real exit loss exists.
+
+**Measured-over-detector precedence.** `one_squeeze` and `roll_it_on` read
+the same evidence — stab-and-lift between pickup and full throttle — with
+different statistics: the detector flags any modulated lap at trigger rate
+≥ 0.5; the measured principle fires when the median lap modulates. Where
+the measured principle has any verdict at a corner (candidate or strength),
+the detector is not presented for that corner, in either presentation path
+(`select_coaching`, the driver rollup). One voice per piece of evidence; the
+measured voice wins; the detector remains the fallback exactly where a
+detector belongs — corners where the measured statistic cannot be stated or
+has not cleared its evidence bar. Eligibility is deliberately not where this
+rule lives: `eligible_principles` still returns both, and a test pins that.
+A plain consequence: the detector's strength voice is fully subsumed (a
+trigger rate below 0.5 implies a median of 0), while its candidate voice
+survives exactly in the thin-evidence zone — on the owner corpus, its rollup
+fault instances go 53 → 8 and its strength instances 173 → 0.
+
+The two reinforce pairs needed no rule: `smooth_hands` vs `one_commitment`
+measure different things (RMS steering acceleration vs correction count)
+with different drills, and `commit_early` vs the throttle pair is outcome vs
+input shape — so both voices speak at the same corner.

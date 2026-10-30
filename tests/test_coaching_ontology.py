@@ -113,12 +113,14 @@ def test_principles_for_fundamental():
         "cp.turn_in.one_commitment",
         "cp.coasting.always_working",
         "cp.rotation_efficiency.carry_the_middle",
+        "cp.steering_smoothness.smooth_hands",
     }
 
 
 def test_nine_seed_principles():
     # The seed set was nine at M7a. coach-onto-v5 (SPEC.md A57) grows the
-    # inventory by deliberate amendment — the entry-phase tranche — so
-    # the pin moves with it: this test asserts the ontology is exactly
-    # the reviewed set, and the reviewed set is now twelve.
-    assert len(PRINCIPLES) == 12
+    # inventory by deliberate amendment — the entry-phase tranche — and
+    # coach-onto-v8 (SPEC.md A60) grows it again — the steering/throttle
+    # tranche — so the pin moves with it: this test asserts the ontology
+    # is exactly the reviewed set, and the reviewed set is now fifteen.
+    assert len(PRINCIPLES) == 15

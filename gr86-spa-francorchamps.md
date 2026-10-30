@@ -39,11 +39,11 @@ Most of the typical loss sits in the mid-corner phase (1.688 s/lap). Medium corn
 
 ### Corner exit
 
-> **You're stabbing the throttle and lifting. Roll it on smoothly and progressively—if you have to lift, you got greedy too early.**
+> **You're stabbing at the throttle on exit instead of squeezing it on. Feed it in once, progressively, from pickup to full throttle — every lift in between costs drive.**
 >
-> A lift after picking up throttle means the pickup point was a guess, not a commitment — the car had to give back grip mid-application it never should have been asked for.
+> The throttle is a commitment, not a question. Each lift-and-stab between pickup and full throttle unloads the rear, then asks it to take load again — the car never settles, and the exit speed that should carry down the straight is spent managing the weight transfer instead. One progressive squeeze lets the rear load once and stay loaded.
 >
-> _Try this:_ Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle — no stabs, no lifts.
+> _Try this:_ Next session: on one corner, count your throttle applications out loud. It should be one. If you lift mid-exit, you picked the throttle up too early — wait for the car to settle, then commit.
 
 | source | finding | s | n | spread | evidence |
 |---|---|---|---|---|---|

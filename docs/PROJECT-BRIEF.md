@@ -258,6 +258,30 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-30 — Steering/throttle coaching tranche (SPEC.md A60, PR pending).**
+  Three measured techniques gain principles on the A57 `MetricStatGate`
+  pattern, no new gate or metric: `cp.steering_smoothness.smooth_hands`
+  (median `steering_smoothness_dps2` ≥ 500, mid band),
+  `cp.throttle_modulation.one_squeeze` (median `throttle_modulation_count`
+  ≥ 1.0, exit band), `cp.exit_acceleration.commit_early` (median
+  `exit_accel_ms2` ≤ 1.25, exit band); `ONTOLOGY_VERSION` `coach-onto-v7` →
+  `coach-onto-v8`, payload and scoring unchanged. Anchors measured on the
+  851-lap corpus (per-corner medians: dps2 p75 484, modulation p90 1, exit
+  accel p25 1.286). Precedence, A57's shape one pair over: where
+  `one_squeeze` has any verdict at a corner, `cp.throttle_pickup.roll_it_on`
+  is not presented there (both presentation paths; eligibility untouched);
+  the detector's strength voice is fully subsumed (rate < 0.5 implies median
+  0) and its candidate voice survives only in the thin-evidence zone (rollup
+  fault instances 53 → 8, strengths 173 → 0). `smooth_hands` vs
+  `one_commitment` and `commit_early` vs the throttle pair reinforce, no
+  rule. Deliberately not gated: `full_throttle_dist_pct` reads lap position
+  (Brands Hatch 10.2 → 93.8 across C01→C09), so the exit gate reads
+  `exit_accel_ms2` only. Corpus effect (20 cohorts): new candidates 54 / 41
+  / 38, new strengths 160 / 178 / 194; all pre-existing principles identical;
+  16/20 headlines unchanged, the 4 changes all suppression-driven and
+  explained in A60; Driver Model report byte-identical. Rebased onto Stage 2
+  (1fcf332) before review; landing order satisfied (Stage 2 is in).
+
 - **2026-10-30 — Stage 2 tendency persistence (SPEC.md A59, PR pending).**
   A36's re-cut buckets are replaced by fixed eras (per-driver lap blocks,
   default 500, never re-cut, frozen summaries on close) and the projection
