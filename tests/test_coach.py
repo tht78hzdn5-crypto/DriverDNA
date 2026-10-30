@@ -86,9 +86,10 @@ def _valid_output(payload):
 
 
 def test_payload_carries_report_and_history(db, payload):
-    assert payload["prompt_version"] == "coach-v4"
+    assert payload["prompt_version"] == "coach-v5"
     assert payload["report"]["cohort"]["n_laps"] == 12
-    assert payload["focus_history"] == []
+    assert payload["tendencies"]["tendency_version"] == "tendency-v3"
+    assert payload["tendencies"]["principles"] == []
     shown, evidence = evidence_universe(payload["report"])
     assert shown and evidence
 
@@ -283,14 +284,15 @@ def test_malformed_json_rejected(payload):
         validate_coach_output("here is your plan!", payload["report"])
 
 
-def test_accepted_output_enters_focus_history(db, payload):
+def test_accepted_output_enters_coach_history(db, payload):
+    # A61 removes focus_history from the payload; accepted outputs stay
+    # observable via the coach_history table (chat and the CLI read it).
     output = validate_coach_output(json.dumps(_valid_output(payload)), payload["report"])
     db.store_coach_output(
         **COHORT, payload_version=payload["report"]["payload_version"],
         prompt_version="coach-v1", model="mock", output_json=json.dumps(output),
     )
-    payload2 = build_coach_payload(db, **COHORT, config=CONFIG)
-    assert payload2["focus_history"] == [
+    assert db.coach_history(**COHORT) == [
         {"output_pk": 1, "provider": "claude", "plan_titles": ["Commit to one entry"]}
     ]
 

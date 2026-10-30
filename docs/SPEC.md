@@ -3505,3 +3505,104 @@ Accepted at owner plan review; rationale recorded in the review:
   weakened. An early draft named the new principles after their fundamentals
   (`cp.rotation.*`, `cp.corner_exit.*`); the ontology test pins
   `cp.<technique>.*` namespacing, so the ids were corrected before review.
+
+- **A61** (2026-10-30): **Stage 3 — narration + session dimension.** Two
+  changes, one version bump each, no ontology or scoring change.
+
+  **Narration: exactly one new instruction class.** The coach prompt
+  (coach-v4 → v5) and the chat prompt (chat-v3 → v4) each gain one bullet:
+  when `payload.tendencies.principles` / `bundle.tendencies.principles`
+  marks a cited principle recurring or persistent, acknowledge the history
+  in one short clause using tendency fields only; when resolved,
+  acknowledge the fix in one short clause; never claim a tendency,
+  recurrence, or progress not present in that section. The validator is
+  unchanged: ineligible principles and out-of-pool numbers were already
+  mechanical rejections, and tendency states arrive as payload data. The
+  rule is constitutional by construction — the engine states the history
+  (state, eras_fired, first_seen_era, session_states); the AI only
+  narrates engine-stated history, and the section it narrates from is
+  exactly the persisted projection (pinned by test: the coach section's
+  (principle, side) set equals the projection's, and some ontology
+  principle is absent, so absence is representable). The instruction is
+  73 words on each prompt; the output schema is unchanged (no new
+  fields), so output length is structurally unchanged — the clause
+  constraint bounds added output rather than inviting lecture. The
+  mocked provider's output is canned and cannot measure real length, so
+  the plan §8 acceptance read — Bob reading one real coach output
+  against the new prompt — is still owed before merge.
+
+  **`focus_history` removed from the coach payload.** A59's review found
+  the field functionally inert: the coach prompt never mentioned it, so
+  nothing instructed the model to use it. All downstream consumers were
+  checked before removal: the coach payload builder (the only producer),
+  the coach tests (the only payload readers), and chat/CLI — which read
+  the `coach_history` table directly, not the payload field. No consumer
+  broke; accepted outputs stay observable via `db.coach_history` (the
+  coach test now observes through the table instead of the payload).
+  The coach payload gains the driver-level `tendencies` section in its
+  place, and the chat bundle gains the same section. Both are read-only
+  from the last rollup refresh — the coach/chat paths deliberately do
+  not refresh, so a coach run or chat open never writes era state; the
+  driver payload is the refresh point, as it was for the per-cohort
+  `coaching.tendencies` rows.
+
+  **The session dimension: a second partition, state-changing.** Eras
+  partition laps by time (fixed blocks); sessions partition them by
+  outing, and tendency states are now computed over both — a state can
+  change on the session dimension alone, which is why the tendency
+  version bumps (v2 → v3) even though no partition function changed.
+  Definition: a session is a dated self lap's `session_key` group; a
+  session's date is its earliest lap date; sessions order by (date, min
+  lap_pk). Position splits each session's laps, ordered by (lap_date,
+  lap_pk), at ceil(n/2): early is the first half, late the rest. Visit
+  splits sessions at a track by first session date: a session starting
+  on the track's first session date is first_visit, later sessions are
+  return_visit. A session never splits across visit classes — its date
+  is its first lap date, so a midnight-crossing session keeps one class,
+  and a same-day later session is still first-visit: no gap threshold
+  exists in the data to group sessions into occasions, and the calendar
+  date is the threshold-free occasion boundary. Excluded from the
+  dimension, by design: undated laps (in no era, so in no slice), laps
+  with no session_key, and laps in undated sessions (a session with no
+  dated lap has no date to order by). Slice summaries freeze at era
+  close as a `slices` key in summary_json, with evidence lists stripped
+  to counts (slice states need fired/band/strength/evaluated only; full
+  ID lists stay in the era summary). Pre-Stage-3 closed summaries gain
+  exactly that key on first v3 refresh — every other field byte-identical
+  (pinned by test) — and the open era's slices compute live. Per-row
+  slice states live in `driver_tendencies.session_states_json`
+  (migration 020); a slice with no signal stores state null explicitly,
+  not omitted, so consumers distinguish "no signal" from "missing".
+  `first_seen_era` recomputes from era membership on the first v3
+  refresh (era assignment is unchanged by this stage, so values carry);
+  v2 rows remain in the table but are never read (the version filter).
+
+  **Versions.** `TENDENCY_MODEL_VERSION` v2 → v3 (state semantics
+  change, per the Stage 2 decision rule). `PAYLOAD_VERSION` 13 → 14
+  (payload-shape change: tendencies rows gain `session_states`, the
+  coach payload and chat bundle gain top-level `tendencies`, the coach
+  payload drops `focus_history`). `ONTOLOGY_VERSION` unchanged
+  (coach-onto-v8 — prompt instructions are not ontology words, and the
+  session dimension adds no ontology variants). `SCORING_MODEL_VERSION`
+  unchanged (dm-v3).
+
+  **Effect on the owner's real corpus** (885 self laps, 867 dated, 856
+  in the session dimension, regenerated 2026-10-30, default config).
+  Full-era states are unchanged from v2: 27 rows, all persistent — the
+  dimension adds information without moving a full-era state. Two rows
+  diverge on a slice, both `carry_the_middle` (fault and strength):
+  full persistent, first_visit null (0/2 eras) — first-visit slices are
+  thin for CARRY, which needs a fast/slow baseline inside one cohort
+  and first sessions rarely supply one; the dimension correctly reports
+  no signal rather than inventing one. Early, late, and return_visit
+  slices read persistent for all 27 rows. The Driver Model section is
+  byte-identical between v2 and v3 payloads, and the full driver payload
+  diff is exactly the version pins plus the per-row `session_states`
+  additions — no other field moves. Driver payload 948,025 → 959,727
+  bytes (+1.2%). Two full payload generations (driver and coach) are
+  byte-identical. Superseded/renamed tests are named in the PR
+  description, per the amendment rule: the version pins (coach-v5,
+  chat-v4, tendency-v3, payload v14, migration count 19 → 20), the
+  `focus_history` payload assertion (replaced by a tendencies-section
+  assertion), and the accepted-output test (renamed to observe via
+  `db.coach_history`) — all moved, not weakened.

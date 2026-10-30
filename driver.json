@@ -1812,7 +1812,7 @@
     "tendency_variant": null
    }
   ],
-  "tendency_version": "tendency-v2"
+  "tendency_version": "tendency-v3"
  },
  "cohorts": [
   {
@@ -2209,11 +2209,11 @@
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 13,
+ "payload_version": 14,
  "tendencies": {
   "era_size_laps": 500,
   "eras": [],
   "principles": [],
-  "tendency_version": "tendency-v2"
+  "tendency_version": "tendency-v3"
  }
 }

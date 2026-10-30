@@ -120,12 +120,14 @@ def _fault_records(fired_eras, total, bands=None, clearing=None):
 # --- versions ------------------------------------------------------------
 
 
-def test_tendency_version_is_v2_and_ontology_is_v8_and_payload_is_v13():
-    # A60 moves the ontology pin v7 → v8; tendency and payload pins are
-    # unchanged by this tranche.
-    assert TENDENCY_MODEL_VERSION == "tendency-v2"
+def test_tendency_version_is_v3_and_ontology_is_v8_and_payload_is_v14():
+    # A60 moves the ontology pin v7 → v8. A61 moves tendency v2 → v3
+    # (session dimension is state-changing) and payload v13 → v14
+    # (tendencies rows gain session_states; coach payload and chat
+    # bundle gain tendencies; coach payload drops focus_history).
+    assert TENDENCY_MODEL_VERSION == "tendency-v3"
     assert ONTOLOGY_VERSION == "coach-onto-v8"
-    assert PAYLOAD_VERSION == 13
+    assert PAYLOAD_VERSION == 14
 
 
 # --- migration 019 ---------------------------------------------------------
@@ -133,7 +135,7 @@ def test_tendency_version_is_v2_and_ontology_is_v8_and_payload_is_v13():
 
 def test_migration_019_creates_tendency_tables():
     db = Database.open(":memory:")
-    assert db.schema_version == len(MIGRATIONS) == 19
+    assert db.schema_version == len(MIGRATIONS) == 20
     tables = {
         r["name"] for r in db.conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
@@ -164,7 +166,7 @@ def test_migration_from_018_applies_cleanly(tmp_path, monkeypatch):
             )
     monkeypatch.undo()
     with Database.open(db_path) as db:
-        assert db.schema_version == 19
+        assert db.schema_version == 20
         row = db.conn.execute(
             "SELECT fundamental FROM driver_beliefs WHERE driver='owner'"
         ).fetchone()
@@ -547,9 +549,9 @@ def test_driver_payload_tendencies_section():
     cfg = _config()
     set_era_size(db, "owner", 12)
     payload = build_driver_payload(db, cfg)
-    assert payload["payload_version"] == 13
+    assert payload["payload_version"] == 14
     section = payload["tendencies"]
-    assert section["tendency_version"] == "tendency-v2"
+    assert section["tendency_version"] == "tendency-v3"
     assert section["era_size_laps"] == 12
     assert [(e["era_index"], e["status"], e["n_laps"]) for e in section["eras"]] == [
         (0, "closed", 12), (1, "closed", 12),

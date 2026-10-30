@@ -162,8 +162,11 @@ def test_scoring_model_version_is_dm_v3():
     assert SCORING_MODEL_VERSION == "dm-v3"
 
 
-def test_payload_version_is_13():
-    # v12 is the payload that carries trend_reason (A56),
-    # speculative_guess (BUG-046), and the tendency era fields (A55).
-    # Same reasoning: a literal pin, not a round-trip.
-    assert PAYLOAD_VERSION == 13
+def test_payload_version_is_14():
+    # v14 is the payload that carries session_states on tendencies rows
+    # and a top-level tendencies section on the coach payload and chat
+    # bundle, with focus_history removed from the coach payload (A61),
+    # on top of trend_reason (A56), speculative_guess (BUG-046), and
+    # the tendency era fields (A55). Same reasoning: a literal pin, not
+    # a round-trip.
+    assert PAYLOAD_VERSION == 14
