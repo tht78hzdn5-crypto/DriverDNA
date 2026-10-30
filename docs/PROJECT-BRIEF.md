@@ -258,7 +258,7 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
-- **2026-10-29 — BUG-044 coaching migration (SPEC.md A58, PR pending).**
+- **2026-10-29 — BUG-044 coaching migration (SPEC.md A58, PR #76, merged 2026-10-29).**
   Both CV gates move onto dm-v3's statistic: `same_lap_twice` and
   `trust_the_proxy` now read `MetricDispersionGate` (per-metric scaled MAD
   normalized by the A56 reference dispersions, pooled two levels);
@@ -293,6 +293,7 @@ in `AGENTS.md`). Newest first.
   18); the audit job reports 0 vulnerabilities. Ruleset "main
   protection" (20615531) now requires mypy alongside the five existing
   checks; vitest and audit stay advisory.
+- **2026-10-27 — CLI sync may resolve its Garage61 token from the Muse vault surrogate.** `driverdna sync --use-stored-credential` resolves the bearer value from authd's surrogate endpoint (`custom.garage61`) instead of `GARAGE61_TOKEN`, prompted by the 2026-10-27 full sync dying on a network timeout with its env token dying with the process. The surrogate is not the credential: it resolves to the real key only on approved egress to garage61.net, is carried in memory only, and any resolution failure degrades to the usual no-token error. The opt-in is deliberately explicit and CLI-only: `Garage61Client` defaults to env-only, so the requires-token tests pass on hosts with and without a configured credential, and the web UI's multi-user paths never touch the owner's stored credential (BUG-033 tenancy reasoning unchanged). Outside the Muse runtime the authd socket is absent and behavior is exactly env-only. `AGENTS.md`'s env-only line now reads "bar the CLI sync"; the full rule lives here and in the client docstring.
 
 - **2026-10-26 — Branch/PR hygiene adopted.** The clean state is the norm:
   no open PRs, no branches besides `main`, no worktrees besides the live

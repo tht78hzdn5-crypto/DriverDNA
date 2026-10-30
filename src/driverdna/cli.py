@@ -325,9 +325,16 @@ def sync(
         help="Only laps driven in the last N days. Negative values select "
              "seasons instead (-1 current, -2 current+previous, -3, -4).",
     ),
+    use_stored: bool = typer.Option(
+        False, "--use-stored-credential",
+        help="Resolve the Garage61 token from the Muse vault surrogate "
+             "instead of GARAGE61_TOKEN. The CLI sync is the owner's own "
+             "tool; the stored credential is never offered to the web UI's "
+             "multi-user paths.",
+    ),
 ) -> None:
     """Incremental self-lap ingest from the Garage61 API (requires
-    GARAGE61_TOKEN). Reference laps stay on `import` — M0b found other-
+    GARAGE61_TOKEN or --use-stored-credential). Reference laps stay on `import` — M0b found other-
     drivers' laps aren't fetchable with this token (docs/garage61-api.md).
 
     Since A28 this pulls EVERY lap per cohort (`group=none`), not one
@@ -344,7 +351,7 @@ def sync(
     if after is not None:
         after = _validate_after(after)
     try:
-        client = Garage61Client()
+        client = Garage61Client(use_stored_credential=use_stored)
     except RuntimeError as e:
         typer.echo(f"error: {e}")
         raise typer.Exit(code=2) from None
@@ -365,7 +372,8 @@ def sync(
         except Garage61AuthError:
             typer.echo(
                 "error: Garage61 sign-in expired — reconnect via the "
-                "OAuth flow (#/import) or set a fresh GARAGE61_TOKEN."
+                "OAuth flow (#/import), set a fresh GARAGE61_TOKEN, or "
+                "re-run with --use-stored-credential."
             )
             raise typer.Exit(code=2) from None
         if not summaries:

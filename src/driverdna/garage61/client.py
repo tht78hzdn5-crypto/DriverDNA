@@ -2,8 +2,10 @@
 
 Built from M0b's observed behavior plus Garage61's own OpenAPI specification
 (docs/garage61-api.md) — nothing here assumes anything neither source states.
-`GARAGE61_TOKEN` is read from the environment only (never persisted, printed,
-or logged); a `transport` can be injected for testing so no test ever calls
+`GARAGE61_TOKEN` is read from the environment, or — only when the caller
+explicitly opts in (`use_stored_credential`) — the token is resolved from
+the Muse vault surrogate; in neither case is it persisted, printed, or
+logged. A `transport` can be injected for testing so no test ever calls
 the live API.
 
 Confirmed capabilities this client relies on:
@@ -41,6 +43,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -56,6 +59,83 @@ GROUP_ALL_LAPS = "none"
 #: `limit`'s documented maximum AND default (spec). M0b observed values above
 #: this silently falling back rather than erroring, which matches a cap.
 MAX_PAGE_SIZE = 1000
+
+#: Name of the Muse vault credential holding the Garage61 token, and the
+#: authd endpoint that issues a short-lived surrogate for it. This path only
+#: functions inside the Muse runtime: everywhere else (CI, a dev machine,
+#: the owner's PC) the socket is absent and resolution degrades to None,
+#: leaving behavior exactly env-only. The surrogate is not the credential —
+#: it resolves to the real key only on approved egress to garage61.net — so
+#: it is carried in memory only, like any other bearer value.
+STORED_CREDENTIAL_NAME = "custom.garage61"
+_AUTHD_SURROGATE_PATH = "/v1/credentials/surrogate"
+_AUTHD_TIMEOUT_S = 5.0
+
+
+def _authd_surrogate_response(socket_path: str) -> str:
+    """Raw authd surrogate-endpoint response body (raises on any failure)."""
+    body = json.dumps(
+        {"name": STORED_CREDENTIAL_NAME}, separators=(",", ":")
+    ).encode("utf-8")
+    request = (
+        f"POST {_AUTHD_SURROGATE_PATH} HTTP/1.1\r\n"
+        "Host: authd.local\r\n"
+        "Content-Type: application/json\r\n"
+        f"Content-Length: {len(body)}\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    ).encode("ascii") + body
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+        conn.settimeout(_AUTHD_TIMEOUT_S)
+        conn.connect(socket_path)
+        conn.sendall(request)
+        chunks = []
+        while True:
+            chunk = conn.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    raw = b"".join(chunks)
+    header_bytes, sep, response_body = raw.partition(b"\r\n\r\n")
+    if not sep:
+        raise RuntimeError("authd returned a malformed HTTP response")
+    status_line = header_bytes.splitlines()[0].decode("iso-8859-1", errors="replace")
+    parts = status_line.split(" ", 2)
+    if len(parts) < 2 or not parts[1].isdigit() or int(parts[1]) != 200:
+        raise RuntimeError(f"authd surrogate endpoint returned: {status_line}")
+    return response_body.decode("utf-8", errors="replace")
+
+
+def _request_stored_token() -> str | None:
+    """Bearer value from the Muse vault surrogate, or None.
+
+    Never raises and never logs a value: every failure mode (no socket,
+    timeout, malformed response, missing entry, wrong placement, a
+    non-surrogate value) degrades to None so the caller raises its usual
+    no-token error. The socket path is read at call time so tests can
+    redirect it.
+    """
+    try:
+        payload = json.loads(
+            _authd_surrogate_response(
+                os.environ.get("JARVIS_AUTHD_SOCK", "/run/hatch/auth/authd.sock")
+            )
+        )
+    except Exception:
+        return None
+    try:
+        for entry in payload.get("credentials", []):
+            if entry.get("name") != "access_token":
+                continue
+            if entry.get("placement") != "bearer_header":
+                return None
+            surrogate = str(entry.get("surrogate", "")).strip()
+            if not surrogate.startswith("hsurr:"):
+                return None
+            return surrogate
+    except Exception:
+        return None
+    return None
 
 
 def _bool_param(value: bool) -> str:
@@ -162,13 +242,23 @@ def _raise_for_status(status: int, body: bytes, *, context: str) -> None:
 class Garage61Client:
     """Thin, observed-behavior-only wrapper over the Garage61 API v1."""
 
-    def __init__(self, *, token: str | None = None, transport: Transport | None = None):
+    def __init__(
+        self,
+        *,
+        token: str | None = None,
+        transport: Transport | None = None,
+        use_stored_credential: bool = False,
+    ):
         if transport is None:
             token = token or os.environ.get("GARAGE61_TOKEN")
+            if not token and use_stored_credential:
+                token = _request_stored_token()
             if not token:
                 raise RuntimeError(
-                    "GARAGE61_TOKEN is not set. `sync` requires it (env only; "
-                    "never persisted or logged). Manual `import` works without it."
+                    "GARAGE61_TOKEN is not set and no stored Garage61 "
+                    "credential was available. `sync` requires one of them "
+                    "(neither is persisted or logged). Manual `import` "
+                    "works without it."
                 )
             transport = _UrllibTransport(token=token)
         self._transport = transport
