@@ -35,7 +35,7 @@ from driverdna.model.scoring import (
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 13  # +tendencies section (driver payload and per-cohort coaching payloads) (A59); v12: +coaching_rollup.patterns[].{eras_fired,eras_total,tendency_state} (A55); v11: +driver_model.beliefs[].trend_reason (A56) and beliefs[].speculative_guess with repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
+PAYLOAD_VERSION = 14  # +tendencies rows carry session_states; coach payload and chat bundle gain a top-level tendencies section; coach payload drops focus_history (A61); v13: +tendencies section (driver payload and per-cohort coaching payloads) (A59); v12: +coaching_rollup.patterns[].{eras_fired,eras_total,tendency_state} (A55); v11: +driver_model.beliefs[].trend_reason (A56) and beliefs[].speculative_guess with repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",

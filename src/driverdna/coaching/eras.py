@@ -1,5 +1,6 @@
-"""Stage 2 (docs/SPEC.md A59): fixed eras, frozen era summaries, and the
-persisted tendency projection.
+"""Stage 3 (docs/SPEC.md A61) extends Stage 2 with a second, state-changing
+partition: the session dimension. Stage 2 (docs/SPEC.md A59): fixed eras,
+frozen era summaries, and the persisted tendency projection.
 
 Stage 1 annotated rollup patterns with era states computed from A36's
 re-cut date buckets. Stage 2 replaces that with fixed eras:
@@ -42,7 +43,12 @@ from driverdna.coaching.ontology import PRINCIPLES, tendency_variant
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 
-TENDENCY_MODEL_VERSION = "tendency-v2"
+TENDENCY_MODEL_VERSION = "tendency-v3"
+
+# The session dimension's slices, in payload order. Position slices
+# (early/late) split each session; visit slices (first_visit/
+# return_visit) split sessions at a track by first session date.
+SESSION_SLICES = ("early", "late", "first_visit", "return_visit")
 
 
 @dataclass(frozen=True)
@@ -361,6 +367,99 @@ def _compute_era_summary(
     }
 
 
+def session_slices(db: Database, driver: str) -> dict[int, dict[str, str]]:
+    """The session dimension (A61): lap_pk -> {"position", "visit"}.
+
+    Sessions are dated self laps grouped by session_key. A session's
+    date is its earliest lap date; sessions order by (date, min lap_pk).
+    Position splits each session's laps, ordered by (lap_date, lap_pk),
+    at ceil(n/2): early is the first half, late the rest. Visit splits
+    sessions at a track by first session date: a session starting on
+    the track's first session date is first_visit, later sessions are
+    return_visit. A session never splits across visit classes — its
+    date is its first lap date, so a midnight-crossing session keeps
+    one class, and a same-day later session is still first-visit: no
+    gap threshold exists in the data to group sessions into occasions,
+    and the calendar date is the threshold-free occasion boundary.
+
+    Excluded, by design: undated laps (in no era, so in no slice),
+    laps with no session_key, and laps in undated sessions (a session
+    with no dated lap has no date to order by). The dimension covers
+    the same dated-session laps the era machinery covers, minus the
+    sessionless ones — on the owner corpus, 856 of 885 self laps.
+    """
+    rows = db.conn.execute(
+        "SELECT lap_pk, session_key, lap_date, track FROM laps"
+        " WHERE role='self' AND driver=? AND owner_user_pk=?"
+        " AND lap_date IS NOT NULL AND session_key IS NOT NULL"
+        " ORDER BY lap_date, lap_pk",
+        (driver, db.user_pk),
+    ).fetchall()
+    sessions: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        session = sessions.setdefault(str(row["session_key"]), {
+            "track": str(row["track"]), "laps": [], "date": str(row["lap_date"]),
+        })
+        session["laps"].append(int(row["lap_pk"]))
+        session["date"] = min(session["date"], str(row["lap_date"]))
+    first_date: dict[str, str] = {}
+    for session in sessions.values():
+        track = session["track"]
+        if track not in first_date or session["date"] < first_date[track]:
+            first_date[track] = session["date"]
+    slices: dict[int, dict[str, str]] = {}
+    for session in sessions.values():
+        laps = session["laps"]
+        split = (len(laps) + 1) // 2
+        visit = ("first_visit" if session["date"] == first_date[session["track"]]
+                 else "return_visit")
+        for i, lap_pk in enumerate(laps):
+            slices[lap_pk] = {
+                "position": "early" if i < split else "late",
+                "visit": visit,
+            }
+    return slices
+
+
+def _compute_slice_summaries(
+    db: Database, *, driver: str, era_lap_pks: frozenset[int],
+    lap_cohorts: dict[int, tuple[str, str]],
+    session_lap_slices: dict[int, dict[str, str]], config: DriverDNAConfig,
+) -> dict[str, Any]:
+    """One era's per-slice summaries: the same machinery as
+    `_compute_era_summary` run over each slice's laps, with evidence
+    lists stripped to counts. Slice states need fired/band/strength/
+    evaluated only; full ID lists stay in the era summary, and a slice
+    summary never invents a principle the era summary lacks — it only
+    re-partitions the era's own laps."""
+    out: dict[str, Any] = {}
+    for name in SESSION_SLICES:
+        if name in ("early", "late"):
+            pks = frozenset(
+                pk for pk in era_lap_pks
+                if session_lap_slices.get(pk, {}).get("position") == name
+            )
+        else:
+            pks = frozenset(
+                pk for pk in era_lap_pks
+                if session_lap_slices.get(pk, {}).get("visit") == name
+            )
+        summary = _compute_era_summary(
+            db, driver=driver, era_lap_pks=pks, lap_cohorts=lap_cohorts,
+            config=config,
+        )
+        out[name] = {"principles": {
+            pid: {
+                **{k: v for k, v in entry.items()
+                   if k not in ("evidence", "strength_evidence")},
+                "evidence_count": len(entry["evidence"]),
+                "strength_evidence_count": len(entry["strength_evidence"]),
+            }
+            for pid, entry in summary["principles"].items()
+        }}
+    return out
+
+
 def era_count(db: Database, driver: str) -> int:
     """Number of eras for a driver. Eras are never empty (the open era
     is created lazily on its first lap) and never deleted, so this is
@@ -380,7 +479,9 @@ def refresh_eras(
     (lap_date, lap_pk) order), closing eras as they fill with a frozen
     summary each. Returns every era with membership and summary
     (None for the open era). Idempotent: a second call with no new laps
-    writes nothing and returns the same eras."""
+    writes nothing and returns the same eras — except the one-time A61
+    backfill, which adds a `slices` key to pre-Stage-3 closed
+    summaries and nothing else."""
     setting_size = get_era_size(db, driver, config)
     dated = db.dated_self_laps(driver)
     assigned = {
@@ -399,6 +500,7 @@ def refresh_eras(
         for r in rows
     }
     lap_cohorts = _lap_cohorts(db, driver)
+    session_lap_slices = session_slices(db, driver)
     with db.conn:
         for lap_pk in unassigned:
             if open_era is None:
@@ -430,6 +532,11 @@ def refresh_eras(
                     db, driver=driver, era_lap_pks=member_pks,
                     lap_cohorts=lap_cohorts, config=config,
                 )
+                summary["slices"] = _compute_slice_summaries(
+                    db, driver=driver, era_lap_pks=member_pks,
+                    lap_cohorts=lap_cohorts,
+                    session_lap_slices=session_lap_slices, config=config,
+                )
                 db.conn.execute(
                     "UPDATE tendency_eras SET status='closed',"
                     " summary_json=? WHERE owner_user_pk=? AND driver=?"
@@ -438,6 +545,28 @@ def refresh_eras(
                      db.user_pk, driver, era_index),
                 )
                 open_era = None
+    # A61 backfill: pre-Stage-3 closed summaries have no `slices` key.
+    # Add exactly that key, computed from the era's own laps — every
+    # other field is untouched, so the frozen summary stays frozen.
+    with db.conn:
+        for row in _era_rows(db, driver):
+            if row["status"] != "closed" or row["summary"] is None:
+                continue
+            if "slices" in row["summary"]:
+                continue
+            member_pks = _era_lap_pks(db, driver, row["era_index"])
+            summary = dict(row["summary"])
+            summary["slices"] = _compute_slice_summaries(
+                db, driver=driver, era_lap_pks=member_pks,
+                lap_cohorts=lap_cohorts,
+                session_lap_slices=session_lap_slices, config=config,
+            )
+            db.conn.execute(
+                "UPDATE tendency_eras SET summary_json=?"
+                " WHERE owner_user_pk=? AND driver=? AND era_index=?",
+                (json.dumps(summary, sort_keys=True),
+                 db.user_pk, driver, row["era_index"]),
+            )
     eras = _era_rows(db, driver)
     for era in eras:
         era["lap_pks"] = _era_lap_pks(db, driver, era["era_index"])
@@ -448,17 +577,20 @@ def refresh_eras(
 # --- the persisted projection -------------------------------------------------
 
 
-def _era_records(
+def _records_from_principles(
     eras: list[dict[str, Any]], summaries: dict[int, dict[str, Any]],
+    extract,
 ) -> dict[str, list[EraPrincipleRecord]]:
-    """Per-principle era records from per-era summaries (frozen for
-    closed eras, live for the open era — the caller computes each once
-    and passes them in)."""
+    """Per-principle records from per-era principle entries, where
+    `extract` selects the entry dict from a summary (the full summary
+    for eras, one slice's dict for slices). A principle with no entry
+    yields an unevaluated record — absence of evidence is not evidence
+    of a fix, in either partition."""
     records: dict[str, list[EraPrincipleRecord]] = {
         pid: [] for pid in PRINCIPLES
     }
     for era in eras:
-        principles = summaries[era["era_index"]]["principles"]
+        principles = extract(summaries[era["era_index"]])
         for pid in PRINCIPLES:
             entry = principles.get(pid)
             if entry is None:
@@ -477,10 +609,32 @@ def _era_records(
     return records
 
 
+def _era_records(
+    eras: list[dict[str, Any]], summaries: dict[int, dict[str, Any]],
+) -> dict[str, list[EraPrincipleRecord]]:
+    """Per-principle era records from per-era summaries (frozen for
+    closed eras, live for the open era — the caller computes each once
+    and passes them in)."""
+    return _records_from_principles(eras, summaries, lambda s: s["principles"])
+
+
+def _slice_records(
+    eras: list[dict[str, Any]], summaries: dict[int, dict[str, Any]],
+    slice_name: str,
+) -> dict[str, list[EraPrincipleRecord]]:
+    """Per-principle records from one session slice's per-era summaries
+    (frozen for closed eras, live for the open era)."""
+    return _records_from_principles(
+        eras, summaries,
+        lambda s: s.get("slices", {}).get(slice_name, {}).get("principles", {}),
+    )
+
+
 def _row_dict(
     *, principle_id: str, side: str, outcome: TendencyOutcome,
     per_era: dict[str, dict[str, Any]], evidence: dict[str, list[str]],
     computed_at: str | None,
+    session_states: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     principle = PRINCIPLES[principle_id]
     variant = tendency_variant(
@@ -503,6 +657,7 @@ def _row_dict(
         "current_band": outcome.current_band,
         "per_era": per_era,
         "evidence": evidence,
+        "session_states": session_states if session_states is not None else {},
         "variant": variant,
         "drill_followup": principle.drill_followup
         if outcome.state == "persistent" else None,
@@ -517,11 +672,14 @@ def refresh_tendencies(
     """Refresh-on-read for the tendency projection: assign and close
     eras, recompute states from summaries plus the open era live, and
     upsert `driver_tendencies` preserving `first_seen_era`. Returns the
-    projection rows (same shape as `read_tendencies`)."""
+    projection rows (same shape as `read_tendencies`). Slice states are
+    computed from the same summaries through the session partition, so
+    a state can change on the session dimension alone (A61)."""
     eras = refresh_eras(db, driver, config)
     if not eras:
         return []
     lap_cohorts = _lap_cohorts(db, driver)
+    session_lap_slices = session_slices(db, driver)
     summaries: dict[int, dict[str, Any]] = {}
     for era in eras:
         if era["status"] == "closed":
@@ -531,7 +689,15 @@ def refresh_tendencies(
                 db, driver=driver, era_lap_pks=era["lap_pks"],
                 lap_cohorts=lap_cohorts, config=config,
             )
+            summaries[era["era_index"]]["slices"] = _compute_slice_summaries(
+                db, driver=driver, era_lap_pks=era["lap_pks"],
+                lap_cohorts=lap_cohorts,
+                session_lap_slices=session_lap_slices, config=config,
+            )
     records = _era_records(eras, summaries)
+    slice_records = {
+        name: _slice_records(eras, summaries, name) for name in SESSION_SLICES
+    }
     cfg = config.coaching
     computed_at = datetime.now(timezone.utc).isoformat()
     existing = {
@@ -589,10 +755,28 @@ def refresh_tendencies(
                 if previous is not None \
                         and previous["first_seen_era"] is not None:
                     first_seen = previous["first_seen_era"]
+                session_states: dict[str, dict[str, Any]] = {}
+                for name in SESSION_SLICES:
+                    if side == "fault":
+                        slice_outcome = fault_tendency_state(
+                            slice_records[name][principle_id],
+                            persistent_min_share=cfg.tendency_persistent_min_share,
+                            resolved_min_eras=cfg.tendency_resolved_min_eras,
+                        )
+                    else:
+                        slice_outcome = strength_tendency_state(
+                            slice_records[name][principle_id],
+                            persistent_min_share=cfg.tendency_persistent_min_share,
+                        )
+                    session_states[name] = {
+                        "state": slice_outcome.state,
+                        "eras_fired": slice_outcome.eras_fired,
+                        "eras_total": slice_outcome.eras_total,
+                    }
                 row = _row_dict(
                     principle_id=principle_id, side=side, outcome=outcome,
                     per_era=per_era, evidence=evidence,
-                    computed_at=computed_at,
+                    computed_at=computed_at, session_states=session_states,
                 )
                 row["first_seen_era"] = first_seen
                 db.conn.execute(
@@ -600,8 +784,8 @@ def refresh_tendencies(
                     " principle_id, side, state, eras_fired, eras_total,"
                     " first_seen_era, last_seen_era, clearing_streak,"
                     " band_before, current_band, per_era_json, evidence_json,"
-                    " tendency_version, computed_at)"
-                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    " session_states_json, tendency_version, computed_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                     " ON CONFLICT(owner_user_pk, driver, principle_id, side,"
                     " tendency_version) DO UPDATE SET state=excluded.state,"
                     " eras_fired=excluded.eras_fired,"
@@ -613,6 +797,7 @@ def refresh_tendencies(
                     " current_band=excluded.current_band,"
                     " per_era_json=excluded.per_era_json,"
                     " evidence_json=excluded.evidence_json,"
+                    " session_states_json=excluded.session_states_json,"
                     " computed_at=excluded.computed_at",
                     (db.user_pk, driver, principle_id, side, outcome.state,
                      outcome.eras_fired, outcome.eras_total, first_seen,
@@ -620,6 +805,7 @@ def refresh_tendencies(
                      outcome.band_before, outcome.current_band,
                      json.dumps(per_era, sort_keys=True),
                      json.dumps(evidence, sort_keys=True),
+                     json.dumps(session_states, sort_keys=True),
                      TENDENCY_MODEL_VERSION, computed_at),
                 )
                 rows.append(row)
@@ -634,8 +820,8 @@ def read_tendencies(db: Database, driver: str) -> list[dict[str, Any]]:
     rows = db.conn.execute(
         "SELECT principle_id, side, state, eras_fired, eras_total,"
         " first_seen_era, last_seen_era, clearing_streak, band_before,"
-        " current_band, per_era_json, evidence_json, tendency_version,"
-        " computed_at FROM driver_tendencies"
+        " current_band, per_era_json, evidence_json, session_states_json,"
+        " tendency_version, computed_at FROM driver_tendencies"
         " WHERE owner_user_pk=? AND driver=? AND tendency_version=?"
         " ORDER BY principle_id, side",
         (db.user_pk, driver, TENDENCY_MODEL_VERSION),
@@ -656,6 +842,7 @@ def read_tendencies(db: Database, driver: str) -> list[dict[str, Any]]:
             per_era=json.loads(r["per_era_json"]),
             evidence=json.loads(r["evidence_json"]),
             computed_at=r["computed_at"],
+            session_states=json.loads(r["session_states_json"] or "{}"),
         ))
     return out
 
