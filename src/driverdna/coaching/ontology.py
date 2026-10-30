@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v8"
+ONTOLOGY_VERSION = "coach-onto-v9"
 
 
 @dataclass(frozen=True)
@@ -861,6 +861,63 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             evidence_binding=(
                 "exit_accel_ms2 median",
                 "exit cumulative_loss",
+            ),
+        ),
+        # One measured technique that had a metric and a score but no
+        # principle. Appended, not interleaved: nothing above this line
+        # changed, so every v8 eligibility outcome is reproducible from
+        # the principles above alone.
+        CoachingPrinciple(
+            id="cp.abs_usage.stay_off_the_abs",
+            technique="abs_usage", fundamental="vehicle_management",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "The ABS firing is the tire saying it cannot take "
+                "more brake. Past peak grip, extra pedal does not "
+                "stop the car shorter — the system has to release "
+                "and reapply to keep the tire rolling, and each cycle "
+                "is distance spent managing the brake instead of "
+                "slowing the car. Brake just under the point where "
+                "ABS wakes up, and the tire stays at peak grip the "
+                "whole way in. Note the boundary: ABS is the only "
+                "part of car control this instrument measures. Tire "
+                "wear, slip angle, and weight moving across the axles "
+                "have no channel in the telemetry, so this principle "
+                "speaks only for braking at the ABS threshold."
+            ),
+            # No suppression rule vs any braking principle (see
+            # SPEC.md A61): ABS ratio (threshold crossing under
+            # braking) and brake application/release (how peak is
+            # reached, how the pedal comes off) are different
+            # measurements with different drills — the two reinforce,
+            # so both speak.
+            gate=MetricStatGate(
+                metric="abs_active_ratio", stat="median",
+                direction="above",
+                floor_key="abs_active_ratio_floor",
+            ),
+            band_phase="entry",
+            coaching_expression=(
+                "You're leaning on the ABS through the braking zone "
+                "— the tire is past peak grip and the system is "
+                "doing the stopping for you. Back the pedal off "
+                "until the ABS stays quiet; the car stops shorter "
+                "just under the threshold than it does through it."
+            ),
+            drill=(
+                "Next session: on one corner, brake a fraction "
+                "lighter each lap until the ABS stops firing, then "
+                "hold that pressure. If the car runs long, you went "
+                "too light — add pressure back in small steps, never "
+                "all at once."
+            ),
+            strength_expression=(
+                "Your braking stays under the ABS threshold — the "
+                "tires stay at peak grip all the way into the corner."
+            ),
+            evidence_binding=(
+                "abs_active_ratio median",
+                "entry cumulative_loss",
             ),
         ),
     )

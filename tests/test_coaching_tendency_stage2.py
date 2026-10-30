@@ -120,13 +120,15 @@ def _fault_records(fired_eras, total, bands=None, clearing=None):
 # --- versions ------------------------------------------------------------
 
 
-def test_tendency_version_is_v3_and_ontology_is_v8_and_payload_is_v14():
+def test_tendency_version_is_v3_and_ontology_is_v9_and_payload_is_v14():
     # A60 moves the ontology pin v7 → v8. A61 moves tendency v2 → v3
     # (session dimension is state-changing) and payload v13 → v14
     # (tendencies rows gain session_states; coach payload and chat
     # bundle gain tendencies; coach payload drops focus_history).
+    # A61 moves the ontology pin v8 → v9; tendency and payload pins
+    # are unchanged by this tranche.
     assert TENDENCY_MODEL_VERSION == "tendency-v3"
-    assert ONTOLOGY_VERSION == "coach-onto-v8"
+    assert ONTOLOGY_VERSION == "coach-onto-v9"
     assert PAYLOAD_VERSION == 14
 
 

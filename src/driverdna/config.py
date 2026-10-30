@@ -871,6 +871,25 @@ class CoachingConfig(_Section):
         "acceleration across the 314 corners with >= 2 laps (p25 = "
         "1.286, p50 = 1.874, p75 = 2.391); 1.25 fires on 76/314 corners.",
     )
+    abs_active_ratio_floor: float = Field(
+        default=0.25,
+        description="cp.abs_usage.stay_off_the_abs's trigger "
+        "(coach-onto-v9, SPEC.md A61): a corner whose MEDIAN "
+        "abs_active_ratio (share of braking time with ABS active) "
+        "reaches this is a corner where the typical lap leans on ABS "
+        "— the tire is past peak grip and the system is doing the "
+        "stopping. No guard: the metric exists only where a braking "
+        "event exists, so absence already silences the gate, and the "
+        "band comes from entry cumulative_loss, so a trigger only "
+        "surfaces where real entry loss exists. Anchored to the "
+        "owner's 885-lap corpus (2026-10-30): just above the ~75th "
+        "percentile of per-corner median ABS ratio across the 295 "
+        "corners with >= 2 laps (p25 = 0.000, p50 = 0.000, p75 = "
+        "0.223, p90 = 0.407); 0.25 fires on 66/295 corners. Per-car "
+        "shares of braking samples with ABS active are uneven "
+        "(Ray FF1600 0.000, MX-5 Cup 0.914) — a channel property of "
+        "the cars, not adjusted for.",
+    )
     thin_evidence_floor_n: int = Field(
         default=8,
         description="Below this many contributing laps, an eligible "
