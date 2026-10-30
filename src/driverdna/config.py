@@ -831,6 +831,46 @@ class CoachingConfig(_Section):
         "percentile of per-corner IQR across the 64 corners with >= 8 "
         "laps (p50 = 0.54, p75 = 1.03).",
     )
+    steering_smoothness_floor_dps2: float = Field(
+        default=500.0,
+        description="cp.steering_smoothness.smooth_hands's trigger "
+        "(coach-onto-v8, SPEC.md A60): a corner whose MEDIAN "
+        "steering_smoothness_dps2 (RMS steering acceleration, turn-in "
+        "to apex) reaches this is a corner driven with rough hands — "
+        "the wheel is being worked mid-corner instead of placed once "
+        "and held. Anchored to the owner's 851-lap corpus (2026-10-29): "
+        "the ~75th percentile of per-corner median dps2 across the 267 "
+        "corners with >= 2 laps (p25 = 298, p50 = 385, p75 = 484, "
+        "p90 = 592); 500 fires on 62/267 corners.",
+    )
+    throttle_modulation_floor_count: float = Field(
+        default=1.0,
+        description="cp.throttle_modulation.one_squeeze's trigger "
+        "(coach-onto-v8, SPEC.md A60): a corner whose MEDIAN "
+        "throttle_modulation_count reaches this is a corner where the "
+        "typical lap stabs and lifts between pickup and full throttle "
+        "instead of squeezing once — the median, not the trigger rate, "
+        "because one bad lap is an event and the median says what the "
+        "driver usually does. Anchored to the owner's 851-lap corpus "
+        "(2026-10-29): the median count is 0 at p75 and 1 at p90 "
+        "across the 286 corners with >= 2 laps (225/286 corners sit at "
+        "exactly 0); 1.0 fires on 46/286 corners.",
+    )
+    exit_accel_floor_ms2: float = Field(
+        default=1.25,
+        description="cp.exit_acceleration.commit_early's trigger "
+        "(coach-onto-v8, SPEC.md A60): a corner whose MEDIAN "
+        "exit_accel_ms2 (mean longitudinal acceleration, apex to full "
+        "throttle) sits at or below this is a weak exit — the car is "
+        "not accelerating hard out of the corner. Deliberately NOT "
+        "full_throttle_dist_pct: that metric reads lap position, not "
+        "technique (Brands Hatch medians run 10.2 → 93.8 across "
+        "C01→C09), so leveling it across corners would fault late "
+        "corners for being late. Anchored to the owner's 851-lap corpus "
+        "(2026-10-29): the ~25th percentile of per-corner median exit "
+        "acceleration across the 314 corners with >= 2 laps (p25 = "
+        "1.286, p50 = 1.874, p75 = 2.391); 1.25 fires on 76/314 corners.",
+    )
     thin_evidence_floor_n: int = Field(
         default=8,
         description="Below this many contributing laps, an eligible "

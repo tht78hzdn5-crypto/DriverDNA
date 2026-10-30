@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v7"
+ONTOLOGY_VERSION = "coach-onto-v8"
 
 
 @dataclass(frozen=True)
@@ -714,6 +714,153 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             evidence_binding=(
                 "brake_point_dist_pct interquartile range",
                 "entry cumulative_loss",
+            ),
+        ),
+        # --- coach-onto-v8 (SPEC.md A60): the steering/throttle tranche.
+        # Three measured techniques that had metrics and scores but no
+        # principle. Appended, not interleaved: nothing above this line
+        # changed, so every v7 eligibility outcome is reproducible from
+        # the principles above alone.
+        CoachingPrinciple(
+            id="cp.steering_smoothness.smooth_hands",
+            technique="steering_smoothness", fundamental="rotation",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "Steering is a placement, not a negotiation. Every "
+                "correction mid-corner scrubs speed and unloads the "
+                "tire that is already doing the most work; a wheel "
+                "placed once and held lets the car settle onto its "
+                "line, and unwinding as the throttle goes back on "
+                "hands the grip budget from steering to acceleration "
+                "without a fight."
+            ),
+            # No suppression rule vs one_commitment (see SPEC.md A60):
+            # different metrics (RMS steering acceleration vs
+            # correction count), different drills (smooth the rate vs
+            # commit to one input) — the two reinforce, so both speak.
+            gate=MetricStatGate(
+                metric="steering_smoothness_dps2", stat="median",
+                direction="above",
+                floor_key="steering_smoothness_floor_dps2",
+            ),
+            band_phase="mid",
+            coaching_expression=(
+                "Your hands are working too hard through the middle "
+                "of the corner. Place the wheel once, hold it steady, "
+                "and unwind it gradually as you feed the throttle back "
+                "in — instead of correcting all the way to the apex."
+            ),
+            drill=(
+                "Next session: on one corner, turn in once and freeze "
+                "your hands until the car is pointed at the exit. If "
+                "you feel yourself adjusting mid-corner, move the "
+                "turn-in point between sessions — never the wheel "
+                "within one."
+            ),
+            strength_expression=(
+                "Your steering is calm through the middle of the "
+                "corner — one input, held steady, unwound as the "
+                "throttle goes on."
+            ),
+            evidence_binding=(
+                "steering_smoothness_dps2 median",
+                "mid cumulative_loss",
+            ),
+        ),
+        CoachingPrinciple(
+            id="cp.throttle_modulation.one_squeeze",
+            technique="throttle_modulation", fundamental="corner_exit",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "The throttle is a commitment, not a question. Each "
+                "lift-and-stab between pickup and full throttle "
+                "unloads the rear, then asks it to take load again — "
+                "the car never settles, and the exit speed that "
+                "should carry down the straight is spent managing "
+                "the weight transfer instead. One progressive squeeze "
+                "lets the rear load once and stay loaded."
+            ),
+            # Where this measured principle has any verdict at a corner,
+            # the roll_it_on DETECTOR (same evidence: stab-and-lift
+            # between pickup and full throttle) is not presented for
+            # that corner — one voice per piece of evidence, and the
+            # measured voice wins. The selection-layer rule lives in
+            # coaching/engine.py (select_coaching) and coaching/rollup.py;
+            # eligibility itself is untouched.
+            gate=MetricStatGate(
+                metric="throttle_modulation_count", stat="median",
+                direction="above",
+                floor_key="throttle_modulation_floor_count",
+            ),
+            band_phase="exit",
+            coaching_expression=(
+                "You're stabbing at the throttle on exit instead of "
+                "squeezing it on. Feed it in once, progressively, "
+                "from pickup to full throttle — every lift in between "
+                "costs drive."
+            ),
+            drill=(
+                "Next session: on one corner, count your throttle "
+                "applications out loud. It should be one. If you lift "
+                "mid-exit, you picked the throttle up too early — wait "
+                "for the car to settle, then commit."
+            ),
+            strength_expression=(
+                "Your throttle application is clean — one progressive "
+                "squeeze from pickup to full throttle."
+            ),
+            evidence_binding=(
+                "throttle_modulation_count median",
+                "exit cumulative_loss",
+            ),
+        ),
+        CoachingPrinciple(
+            id="cp.exit_acceleration.commit_early",
+            technique="exit_acceleration", fundamental="corner_exit",
+            signal_status=SignalStatus.MEASURED,
+            driving_principle=(
+                "An exit is spent at whatever acceleration the car "
+                "achieves, and the straight never gives back what the "
+                "exit gives away. A gentle run out of the corner — "
+                "late to full throttle, soft on the pedal — caps the "
+                "speed carried onto the straight no matter how good "
+                "the entry was."
+            ),
+            # No suppression rule vs throttle_modulation / roll_it_on
+            # (see SPEC.md A60): input shape vs outcome — different
+            # faults, different drills, so both speak. The gate reads
+            # exit_accel_ms2 ONLY: full_throttle_dist_pct is a
+            # lap-position metric (Brands Hatch medians 10.2 → 93.8
+            # across C01→C09) and must never be leveled across corners.
+            # The band comes from exit cumulative_loss, so a weak-accel
+            # trigger only surfaces where real exit loss exists — the
+            # corner-type confound (fast corners read lower regardless
+            # of driver) is sized, not hidden.
+            gate=MetricStatGate(
+                metric="exit_accel_ms2", stat="median",
+                direction="below", floor_key="exit_accel_floor_ms2",
+            ),
+            band_phase="exit",
+            coaching_expression=(
+                "You're soft on exit — the car isn't accelerating "
+                "hard out of the corner. Commit to full throttle "
+                "earlier and hold it there; every metre spent short "
+                "of full throttle is speed you never get back."
+            ),
+            drill=(
+                "Next session: on one corner, aim to be at full "
+                "throttle before the exit kerb and hold it to the next "
+                "braking zone. If the car runs wide, you went too "
+                "early — back it up half a car length, never a whole "
+                "corner."
+            ),
+            strength_expression=(
+                "Your exits are strong — you get to full throttle "
+                "early and the car accelerates hard out of the corner."
+            ),
+            evidence_binding=(
+                "exit_accel_ms2 median",
+                "exit cumulative_loss",
             ),
         ),
     )

@@ -219,8 +219,10 @@ def test_version_pins_entry_phase_tranche():
     # Literal pins: self-consistent checks would pass a silent revert.
     # The payload/scoring pins track the merged main (v13 / dm-v3),
     # not the tranche's own base (v9 / dm-v2). A58 moved the ontology
-    # pin to coach-onto-v6; A59 moves it to coach-onto-v7 and the
-    # payload pin to v13 (tendencies section). Scoring is unchanged.
-    assert ONTOLOGY_VERSION == "coach-onto-v7"
+    # pin to coach-onto-v6; A59 (Stage 2) moves it to coach-onto-v7 and
+    # the payload pin to v13 (tendencies section); A60 moves the
+    # ontology pin to coach-onto-v8. Payload and scoring are unchanged
+    # by this tranche.
+    assert ONTOLOGY_VERSION == "coach-onto-v8"
     assert PAYLOAD_VERSION == 13
     assert SCORING_MODEL_VERSION == "dm-v3"

@@ -652,6 +652,39 @@ def _proxy_presentable(principle_id: str, corner_id: str | None, covered: set[st
     return principle_id != _PROXY_PRINCIPLE_ID or corner_id not in covered
 
 
+#: A60 measured-over-detector precedence (presentation only). The same
+#: shape as A57, one pair over: `cp.throttle_modulation.one_squeeze`
+#: (measured: median modulation count) and `cp.throttle_pickup.roll_it_on`
+#: (detector: any stab-and-lift). Where the measured principle has any
+#: verdict at a corner — candidate or strength — the detector is not
+#: presented for that corner: one voice per piece of evidence, and the
+#: measured voice wins. Eligibility is untouched, and the detector
+#: still presents wherever the measured principle is silent (too few
+#: laps to state a median, or below its evidence bar) — this rule lives
+#: in the two presentation paths, select_coaching here and
+#: build_coaching_rollup in coaching/rollup.py, and nowhere else.
+_ROLL_IT_ON_ID = "cp.throttle_pickup.roll_it_on"
+_THROTTLE_MODULATION_ID = "cp.throttle_modulation.one_squeeze"
+
+
+def _modulation_verdict_corners(candidates, strengths) -> set[str]:
+    """Corners where the measured throttle-modulation principle has spoken,
+    in either direction, on this cohort's evidence."""
+    corners = {
+        c.corner_id for c in candidates
+        if c.principle_id == _THROTTLE_MODULATION_ID and c.corner_id is not None
+    }
+    corners |= {
+        s.corner_id for s in (strengths or [])
+        if s.principle_id == _THROTTLE_MODULATION_ID
+    }
+    return corners
+
+
+def _rollit_presentable(principle_id: str, corner_id: str | None, covered: set[str]) -> bool:
+    return principle_id != _ROLL_IT_ON_ID or corner_id not in covered
+
+
 def select_coaching(
     candidates: list[CoachingCandidate],
     strengths: list[CoachingStrength] | None = None,
@@ -663,6 +696,7 @@ def select_coaching(
     ties broken by (principle_id, corner_id) for reproducibility."""
     cfg = (config or DriverDNAConfig()).coaching
     covered = _measured_verdict_corners(candidates, strengths)
+    covered_modulation = _modulation_verdict_corners(candidates, strengths)
     # Band first, then severity within it (A52). Ranking on raw `magnitude`
     # across kinds would compare seconds against a coefficient of variation
     # and always pick the CV — not because it is worse, but because CVs are
@@ -672,7 +706,8 @@ def select_coaching(
     headline_pool = sorted(
         (c for c in candidates
          if c.headline_eligible
-         and _proxy_presentable(c.principle_id, c.corner_id, covered)),
+         and _proxy_presentable(c.principle_id, c.corner_id, covered)
+         and _rollit_presentable(c.principle_id, c.corner_id, covered_modulation)),
         key=lambda c: (
             # `gap_band` is None only for no_signal candidates, which are
             # never headline_eligible and so never reach here — `or ""` keeps
@@ -689,6 +724,7 @@ def select_coaching(
             c for c in candidates
             if c.gap_band in ("moderate", "notable", "major") and c is not headline
             and _proxy_presentable(c.principle_id, c.corner_id, covered)
+            and _rollit_presentable(c.principle_id, c.corner_id, covered_modulation)
         ),
         key=lambda c: (-(c.magnitude or 0.0), c.principle_id, c.corner_id or ""),
     )
@@ -702,6 +738,8 @@ def select_coaching(
     by_principle: dict[str, list[CoachingStrength]] = {}
     for s in strengths or []:
         if not _proxy_presentable(s.principle_id, s.corner_id, covered):
+            continue
+        if not _rollit_presentable(s.principle_id, s.corner_id, covered_modulation):
             continue
         by_principle.setdefault(s.principle_id, []).append(s)
     ranked_strengths = sorted(
