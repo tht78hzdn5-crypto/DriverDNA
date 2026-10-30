@@ -281,6 +281,25 @@ in `AGENTS.md`). Newest first.
   +1.2%. Open at PR time: the plan §8 acceptance read (Bob reads one real
   coach output against the new prompt; mocked output is canned).
 
+- **2026-10-30 — Tranche 4 vehicle management + stat banding path (SPEC.md A62, PR pending).**
+  The ABS principle (`cp.abs_usage.stay_off_the_abs`, median ABS ratio
+  floor 0.25) could not file under the shipped taxonomy: stat gates
+  need a band phase, the invariant test requires that phase to be one
+  of the fundamental's phases, and `vehicle_management` has no phases —
+  while `band_phase=None` crashed the engine for stat gates (BUG-052).
+  The `phases=("entry",)` workaround filed cleanly but moved the
+  `vehicle_management` belief 66.15 → 77.1; Bob declined the scoring
+  change on 2026-10-30 ("keep scoring frozen"), so the tranche resumed
+  on an accepted design instead: stat banding via the None dispatch —
+  magnitude is the gate's own statistic, band from multiples of its
+  floor (1.5/2.0), `magnitude_kind="gate_statistic"`, no taxonomy or
+  scoring change, beliefs byte-identical. Presentation growth
+  (entry-banded 30 → stat-banded ~66 items) accepted, not tuned away;
+  bare SPA value. Car-control detector design concluded honest absence
+  (no vehicle model, no sample backfill, incident balance already
+  routed); tire utilization, weight transfer, and slip management stay
+  no_signal.
+
 - **2026-10-30 — Steering/throttle coaching tranche (SPEC.md A60, PR pending).**
   Three measured techniques gain principles on the A57 `MetricStatGate`
   pattern, no new gate or metric: `cp.steering_smoothness.smooth_hands`

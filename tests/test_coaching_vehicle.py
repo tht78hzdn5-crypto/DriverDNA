@@ -1,4 +1,4 @@
-"""coach-onto-v9 (SPEC.md A61): the vehicle-management principle.
+"""coach-onto-v9 (SPEC.md A62): the vehicle-management principle.
 
 Tranche 4 of the coaching-ontology expansion (docs/COACHING-FUNDAMENTALS-
 REVIEW.md §3): `abs_usage` was the one measured vehicle-management
@@ -7,7 +7,7 @@ could never be spoken. This tranche gives it one `MetricStatGate`
 principle, `cp.abs_usage.stay_off_the_abs`, and nothing else: tire
 utilization, weight transfer, and slip management stay no_signal (no
 channel in the Garage61 CSV contract), and car control as a principle
-stays honestly absent — the detector design in SPEC.md A61 shows why
+stays honestly absent — the detector design in SPEC.md A62 shows why
 no over-rotation/understeer principle can be measured from the
 available channels, and incident-level balance is already classified
 and routed to existing principles.
@@ -22,6 +22,12 @@ test module imports another in this repo. `make_lap` carries no
 abs_active parameter (synthetic laps default it to all-False), so the
 ABS channel is set explicitly with dataclasses.replace — the same
 shape as the long_accel override in the steering/throttle file.
+
+Banding is by the gate's own statistic (band_phase None, SPEC.md A62
+stat banding): vehicle_management has no phases to band seconds on,
+so the statistic is both trigger and tone. The cohorts below carry no
+entry-loss warp — a firing corner must surface on the statistic
+alone, not on entry loss.
 """
 
 import dataclasses
@@ -31,7 +37,6 @@ import pytest
 
 from driverdna.coaching.engine import (
     CoachingCandidate,
-    CoachingStrength,
     eligible_principles,
     eligible_strengths,
     select_coaching,
@@ -161,7 +166,9 @@ def test_abs_principle_exists_with_the_ontology_shape():
     assert p.fundamental == "vehicle_management"
     assert p.signal_status is SignalStatus.MEASURED
     assert isinstance(p.gate, MetricStatGate)
-    assert p.band_phase == "entry"
+    # A62 stat banding: no phase to band seconds on (vehicle_management
+    # has no phases), so the principle bands on its own statistic.
+    assert p.band_phase is None
     assert p.coaching_expression and p.drill and p.strength_expression
     assert p.evidence_binding
 
@@ -187,20 +194,25 @@ def test_abs_gate_reads_ratio_not_brake_peak():
 
 
 def test_abs_fires_on_abs_heavy_braking(db):
-    _cohort(db, _abs_heavy_lap, n=8, warp_phase="entry")
+    _cohort(db, _abs_heavy_lap, n=8)
     found = _candidates(db, ABS)
     assert found, "a 1.0 median ABS ratio must clear the 0.25 floor"
     c = found[0]
     assert c.corner_id == "C01"
-    assert c.magnitude_kind == "seconds_lost"  # bands on the entry phase
+    # A62 stat banding: magnitude is the statistic itself, banded as a
+    # multiple of the floor — 1.0 / 0.25 = 4.0x, major.
+    assert c.magnitude_kind == "gate_statistic"
+    assert c.magnitude == 1.0
+    assert c.gap_band == "major"
     assert c.n == 8
     assert c.evidence_ids
 
 
 def test_abs_fires_on_a_middling_ratio(db):
-    _cohort(db, _abs_partial_lap, n=8, warp_phase="entry")
+    _cohort(db, _abs_partial_lap, n=8)
     found = _candidates(db, ABS)
     assert found, "a ~0.5 median ABS ratio must clear the 0.25 floor"
+    assert found[0].magnitude_kind == "gate_statistic"
 
 
 def test_abs_is_a_strength_on_clean_braking(db):
@@ -220,7 +232,7 @@ def test_abs_needs_two_laps_before_it_says_anything(db):
 
 
 def test_abs_appears_in_the_rollup_when_firing(db):
-    _cohort(db, _abs_heavy_lap, n=8, warp_phase="entry")
+    _cohort(db, _abs_heavy_lap, n=8)
     rollup = build_coaching_rollup(db, driver="owner", config=CONFIG)
     fault_ids = {p["coaching_principle_id"] for p in rollup["patterns"]}
     assert ABS in fault_ids
@@ -230,10 +242,14 @@ def test_abs_appears_in_the_rollup_when_firing(db):
 
 
 def _cand(principle_id, corner="C01", band="notable"):
+    # The ABS candidate carries the gate_statistic kind (A62 stat
+    # banding); placement is kind-agnostic, but the fabricated
+    # candidate should wear the kind the engine actually produces.
+    kind = "gate_statistic" if principle_id == ABS else "seconds_lost"
     return CoachingCandidate(
         principle_id=principle_id, signal_status=SignalStatus.MEASURED,
         corner_id=corner, gap_band=band, magnitude=0.2,
-        magnitude_kind="seconds_lost", n=20, thin_evidence=False,
+        magnitude_kind=kind, n=20, thin_evidence=False,
         evidence_ids=(), headline_eligible=band in ("notable", "major"),
     )
 

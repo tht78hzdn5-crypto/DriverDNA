@@ -766,6 +766,23 @@ class CoachingConfig(_Section):
         "scoring ceiling (3.0). See dispersion_band_moderate for the "
         "scale.",
     )
+    stat_band_notable_multiple: float = Field(
+        default=1.5,
+        description="Stat-banded principles' notable multiple (coach-onto-v9, "
+        "SPEC.md A62): a firing stat-gate statistic at or above this "
+        "multiple of its own gate floor reads notable. Mirrors the "
+        "dispersion scale's structure (notable at 1.50x) with the gate "
+        "floor as the 1.0x point, so the tone is comparable across "
+        "kinds without sharing a unit.",
+    )
+    stat_band_major_multiple: float = Field(
+        default=2.0,
+        description="Stat-banded principles' major multiple (coach-onto-v9, "
+        "SPEC.md A62): a firing stat-gate statistic at or above this "
+        "multiple of its own gate floor reads major. Moderate needs no "
+        "threshold — firing implies at least moderate, since firing "
+        "means the statistic crossed its floor.",
+    )
     commitment_dispersion_floor: float = Field(
         default=1.15,
         description="trust_the_proxy's trigger (coach-onto-v6, SPEC.md A58): "
@@ -874,14 +891,16 @@ class CoachingConfig(_Section):
     abs_active_ratio_floor: float = Field(
         default=0.25,
         description="cp.abs_usage.stay_off_the_abs's trigger "
-        "(coach-onto-v9, SPEC.md A61): a corner whose MEDIAN "
+        "(coach-onto-v9, SPEC.md A62): a corner whose MEDIAN "
         "abs_active_ratio (share of braking time with ABS active) "
         "reaches this is a corner where the typical lap leans on ABS "
         "— the tire is past peak grip and the system is doing the "
         "stopping. No guard: the metric exists only where a braking "
-        "event exists, so absence already silences the gate, and the "
-        "band comes from entry cumulative_loss, so a trigger only "
-        "surfaces where real entry loss exists. Anchored to the "
+        "event exists, so absence already silences the gate. The band "
+        "comes from the statistic itself (SPEC.md A62 stat banding: a "
+        "multiple of this floor), so a firing corner surfaces at "
+        "moderate or above on its own ABS reliance, not on entry loss. "
+        "Anchored to the "
         "owner's 885-lap corpus (2026-10-30): just above the ~75th "
         "percentile of per-corner median ABS ratio across the 295 "
         "corners with >= 2 laps (p25 = 0.000, p50 = 0.000, p75 = "

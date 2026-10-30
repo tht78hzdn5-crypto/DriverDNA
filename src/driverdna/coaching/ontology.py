@@ -119,7 +119,7 @@ class CoachingPrinciple:
     signal_status: SignalStatus
     driving_principle: str
     gate: Gate
-    band_phase: str | None  # phase to band via cumulative_loss; None = band by CV
+    band_phase: str | None  # phase to band via cumulative_loss; None = band by the gate's own statistic (dispersion for dispersion gates, the statistic itself for stat gates)
     coaching_expression: str | None = None  # measured/proxy only
     drill: str | None = None  # measured/proxy only
     #: What to say when the driver is CLEARING this principle's gate on real
@@ -886,7 +886,7 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 "speaks only for braking at the ABS threshold."
             ),
             # No suppression rule vs any braking principle (see
-            # SPEC.md A61): ABS ratio (threshold crossing under
+            # SPEC.md A62): ABS ratio (threshold crossing under
             # braking) and brake application/release (how peak is
             # reached, how the pedal comes off) are different
             # measurements with different drills — the two reinforce,
@@ -896,7 +896,10 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
                 direction="above",
                 floor_key="abs_active_ratio_floor",
             ),
-            band_phase="entry",
+            # A62 stat banding: vehicle_management has no phases to
+            # band seconds on, so the principle bands on its own
+            # statistic (see the None dispatch in engine.py).
+            band_phase=None,
             coaching_expression=(
                 "You're leaning on the ABS through the braking zone "
                 "— the tire is past peak grip and the system is "
@@ -917,7 +920,6 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             ),
             evidence_binding=(
                 "abs_active_ratio median",
-                "entry cumulative_loss",
             ),
         ),
     )

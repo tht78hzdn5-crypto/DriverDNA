@@ -224,7 +224,7 @@ def test_version_pins_entry_phase_tranche():
     # ontology pin to coach-onto-v8. Payload moves v13 -> v14 with
     # Stage 3 (A61: tendencies rows gain session_states, coach payload
     # and chat bundle gain tendencies, coach payload drops
-    # focus_history); scoring is unchanged by this stage. A61 moves
+    # focus_history); scoring is unchanged by this stage. A62 moves
     # the ontology pin to coach-onto-v9. Payload and scoring are
     # unchanged by this tranche.
     assert ONTOLOGY_VERSION == "coach-onto-v9"

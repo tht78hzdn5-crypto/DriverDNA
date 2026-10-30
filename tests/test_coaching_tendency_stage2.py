@@ -125,7 +125,7 @@ def test_tendency_version_is_v3_and_ontology_is_v9_and_payload_is_v14():
     # (session dimension is state-changing) and payload v13 → v14
     # (tendencies rows gain session_states; coach payload and chat
     # bundle gain tendencies; coach payload drops focus_history).
-    # A61 moves the ontology pin v8 → v9; tendency and payload pins
+    # A62 moves the ontology pin v8 → v9; tendency and payload pins
     # are unchanged by this tranche.
     assert TENDENCY_MODEL_VERSION == "tendency-v3"
     assert ONTOLOGY_VERSION == "coach-onto-v9"
