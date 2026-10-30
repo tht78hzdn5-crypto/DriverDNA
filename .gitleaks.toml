@@ -9,6 +9,16 @@
 # CSVs (tests/fixtures/) and hashed/minified Vite build output
 # (src/driverdna/ui/static/), neither of which is source this scan is
 # meant to cover.
+#
+# Regex allowlisted because a leak WAS found there and it is a false
+# positive (BUG-051): gitleaks' generic-api-key rule flags the
+# CoachingConfig field name `exit_accel_floor_ms2` (used as
+# `floor_key="exit_accel_floor_ms2"` in src/driverdna/coaching/ontology.py)
+# — a config-key name, not a credential, whose entropy crosses the rule's
+# threshold while every other floor_key value in the same file does not.
+# Allowlist regexes match against the flagged secret value, so the regex
+# names that exact value: it exempts this config-key name wherever it
+# appears as a finding, and nothing else.
 [extend]
 useDefault = true
 
@@ -16,4 +26,7 @@ useDefault = true
 paths = [
   '''tests/fixtures/.*''',
   '''src/driverdna/ui/static/.*''',
+]
+regexes = [
+  '''exit_accel_floor_ms2''',
 ]

@@ -93,6 +93,41 @@ Writing that down is the point.
 ---
 
 ## Fixed
+### BUG-051 — Gitleaks flags the new exit-acceleration threshold key as a generic API key, reddening the required secrets check
+- **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
+  in CI on PR #78 (tranche 3, SPEC.md A60): the `secrets` job failed on
+  both runs with "leaks found: 1".
+- **Symptom**: gitleaks 8.30.1 (pinned, checksummed) reports one
+  `generic-api-key` finding at `src/driverdna/coaching/ontology.py:841`,
+  in commit bc8f62e: `floor_key="exit_accel_floor_ms2"`.
+- **Root cause**: a false positive, not a leak. The value is a
+  `CoachingConfig` field name naming the exit-acceleration floor — the
+  same `floor_key="..."` shape every other gate in the file already uses
+  (brake, steering, throttle keys all pass) — but this one's entropy
+  crosses the generic rule's threshold while the others do not. Nothing
+  secret is present: no credential, token, or key material exists in the
+  file, and the redacted CI log shows only the assignment shape.
+- **Blast radius**: CI only. The `secrets` check is required by the main
+  protection ruleset, so PR #78 could not merge while it was red. No
+  engine number, test, or artifact is affected.
+- **Fix**: a narrow allowlist regex in `.gitleaks.toml` naming the exact
+  flagged value `exit_accel_floor_ms2` (allowlist regexes match the secret
+  value, so the first attempt — matching the whole `floor_key="..."`
+  assignment — did not exempt it and was corrected before pushing).
+  It exempts this config-key name wherever it appears as a finding, and
+  nothing else. Renaming the config
+  field was rejected: it would ripple through config, tests, and SPEC
+  for a scanner's entropy heuristic, and any replacement name could trip
+  the same rule. Allowlisting the whole file was rejected: it is source
+  the scan is meant to cover.
+- **How it was caught**: CI, not the suite — no test can pin a scanner
+  allowlist entry, so the pin is the `secrets` job itself going green on
+  the fix commit (verified locally first with the same pinned gitleaks
+  binary: 0 leaks over the full 272-commit history). The gap this
+  exposes: a new config-key name can redden CI with no local signal, so
+  any future `floor_key` value should be checked against gitleaks before
+  pushing.
+
 ### BUG-050 — Migration 019 breaks the v5-rewind blob tests: the rewind fixture's table drop list did not include the new tendency tables
 - **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
   in the affected-files suite run for Stage 2 (SPEC.md A59).
