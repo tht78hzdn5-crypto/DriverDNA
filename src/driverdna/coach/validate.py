@@ -211,6 +211,46 @@ def validate_coach_output(raw_text: str, report: dict[str, Any]) -> dict[str, An
                 violations.append(f"{where}: unknown evidence ID {e!r}")
         check_numbers(str(h.get("statement", "")), where)
 
+    # Coach-v6 repetition check: the same sentence across model-authored
+    # prose is rejected. Scoping is the point — only model-authored fields
+    # are checked (why, explanation, statement, focus, guess). Engine text
+    # is deliberately excluded: coaching expressions and plan actions
+    # routinely quote identical engine wording across corners, and
+    # rejecting that would punish the engine, not the model. Hypothesis
+    # basis is excluded for the same reason: it routinely restates finding
+    # language. The required entertainment-flag sentence is boilerplate,
+    # not repetition, and fragments under four words are too short to be
+    # a repeated claim. No length bound of any kind lives here: length is
+    # not the defect, repetition is.
+    _FLAG_PHRASE = "guess for entertainment purposes"
+    _seen_sentences: dict[str, str] = {}
+    for _section, _field in (
+        ("measured_priorities", "why"),
+        ("coaching_priorities", "why"),
+        ("incident_explanations", "explanation"),
+        ("coaching_plan", "focus"),
+        ("hypotheses", "statement"),
+        ("fundamental_guesses", "guess"),
+    ):
+        for _i, _entry in enumerate(output.get(_section) or []):
+            if not isinstance(_entry, dict):
+                continue
+            for _raw in re.split(r"(?<=[.!?])\s+", str(_entry.get(_field) or "")):
+                _sentence = (
+                    " ".join(_raw.split()).strip("\"'“”‘’").rstrip(".!?").lower()
+                )
+                if len(_sentence.split()) < 4 or _FLAG_PHRASE in _sentence:
+                    continue
+                _where = f"{_section}[{_i}].{_field}"
+                if _sentence in _seen_sentences:
+                    violations.append(
+                        f"repeated sentence across model-authored prose: "
+                        f"{_sentence!r} (first in {_seen_sentences[_sentence]}, "
+                        f"again in {_where})"
+                    )
+                else:
+                    _seen_sentences[_sentence] = _where
+
     if violations:
         raise CoachValidationError(violations)
     return output
