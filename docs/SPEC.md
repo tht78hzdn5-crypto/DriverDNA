@@ -3606,3 +3606,58 @@ Accepted at owner plan review; rationale recorded in the review:
   `focus_history` payload assertion (replaced by a tendencies-section
   assertion), and the accepted-output test (renamed to observe via
   `db.coach_history`) — all moved, not weakened.
+
+- **A63** (2026-10-30): **Coach-v6 — history narration rewritten,
+  repetition rejected mechanically.** Bob's direct statement on
+  2026-10-30 supersedes the build plan §9.3 premise ("shorter beats more
+  descriptive," an inference from older feedback that the descriptive
+  style lands as a lecture): after reading a simulated coach-v5 output,
+  he said the descriptive, detailed prose with concrete scenarios and
+  mental models is the kind of thing he wants to read. Length alone is
+  not a defect for him; repetition and generic filler are. Two
+  consequences follow. First, the plan §8 acceptance read transfers: it
+  was never satisfied by a real coach-v5 model run (the 2026-10-30 read
+  was a hand-written simulation from the real v5 payload, not a model
+  run), so Bob should read one real coach-v6 output before v6 merges —
+  mocked-provider output is canned and cannot serve as that read.
+  Second, the "lecture-length" check the plan §9.3 called for is
+  reframed, not built: no length bound, word cap, or lecture-length
+  check exists anywhere in v6, by design.
+
+  **Prompt (coach-v5 → v6, chat-v4 → v5).** The descriptive style
+  instruction ("encouraging, engaging, and highly descriptive...
+  concrete scenarios and detailed mental models") already exists on
+  both prompts and stays verbatim; v6 adds no descriptive instruction
+  on top. What changes is the history rule: the "one short clause"
+  bound is replaced by "state each principle's history once, in full,
+  where it matters most, and never restate it" (per entry on coach,
+  per turn on chat). Two new rules join it on both prompts:
+  anti-repetition (no sentence, explanation, or history restated; each
+  entry/turn must add something the others did not) and anti-filler (no
+  generic motivational content, no named-driver anecdotes, no aphorisms;
+  every sentence tied to payload/bundle data). The chat prompt carries
+  the same three rules in adapted form, so it bumps to chat-v5; the
+  chat validator is unchanged (the mechanical check below covers coach
+  output, where the JSON schema makes repetition checkable).
+
+  **Validator: a mechanical repetition check, not a length check.**
+  `coach/validate.py` now rejects an output in which the same sentence
+  appears more than once across model-authored prose (why, explanation,
+  statement, focus, guess). Scoping is the point and is pinned by test:
+  engine text is excluded — coaching expressions and plan actions
+  routinely quote identical engine wording across corners, and rejecting
+  that would punish the engine, not the model. Hypothesis basis is
+  excluded for the same reason (it routinely restates finding
+  language). The required entertainment-flag sentence is boilerplate,
+  not repetition, and fragments under four words are too short to be a
+  repeated claim. Grounding, eligibility, and no_signal rules are
+  untouched; the check adds rejections only.
+
+  **No other version moves.** Payload stays 14, tendency stays v3,
+  ontology stays coach-onto-v8, scoring stays dm-v3. Prompt changes
+  cannot move deterministic output, and corpus verification on the
+  owner corpus confirms it (firing counts, headlines, and beliefs
+  identical before/after; driver and cohort payloads byte-identical).
+  Superseded tests are named in the PR description, per the amendment
+  rule: the version pins (coach-v5 → v6, chat-v4 → v5) — all moved, not
+  weakened.

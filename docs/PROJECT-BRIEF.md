@@ -258,6 +258,24 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-30 — Coach-v6: history narration + mechanical repetition check (SPEC.md A63, PR pending).**
+  Bob's 2026-10-30 direct statement supersedes plan §9.3 ("shorter beats
+  more descriptive"): descriptive, detailed prose with concrete scenarios
+  and mental models is what he wants to read; length alone is not a
+  defect, repetition and generic filler are. Coach prompt v5 → v6, chat
+  v4 → v5: descriptive style instruction verbatim, history rule
+  rewritten (state each principle's history once, in full, where it
+  matters most; never restate), anti-repetition + anti-filler rules
+  added. Validator gains a mechanical repetition check over
+  model-authored fields only (why, explanation, statement, focus,
+  guess); engine expressions/actions and hypothesis basis excluded by
+  design; entertainment-flag sentence excluded; fragments under four
+  words ignored; no length cap anywhere. Payload 14, tendency v3,
+  ontology v8, scoring dm-v3 unchanged; deterministic output
+  byte-identical on the owner corpus. Open at PR time: the plan §8
+  acceptance read transfers from v5 (never satisfied by a real model
+  run) — Bob reads one real coach-v6 output before v6 merges.
+
 - **2026-10-30 — Stage 3: narration + session dimension (SPEC.md A61, PR pending).**
   Coach prompt gains exactly one tendency-acknowledgment instruction class
   (coach-v4 → v5); chat prompt gains the same class (chat-v3 → v4);

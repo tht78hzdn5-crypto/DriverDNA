@@ -26,7 +26,7 @@ from driverdna.db import Database
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v4"
+CHAT_PROMPT_VERSION = "chat-v5"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -50,10 +50,15 @@ Hard rules:
   state (new, recurring, persistent, dormant, resolved, improving,
   regression, lapsed) with eras_fired and first_seen_era, plus
   session_states for early, late, first_visit, and return_visit slices.
-  When a principle you discuss is recurring or persistent there,
-  acknowledge the history in one short clause using only those fields.
-  When it is resolved, acknowledge the fix in one short clause. Never
-  claim a tendency, recurrence, or progress not present in that section.
+  State each principle's history once, in full, where it matters most,
+  and never restate it in another turn. When it is resolved, state the
+  fix once, in the same way. Never claim a tendency, recurrence, or
+  progress not present in that section.
+- Do not repeat yourself across turns: no sentence, explanation, or
+  history restated in another turn. Each turn must add something earlier
+  turns did not.
+- No filler: no generic motivational content, no named-driver anecdotes,
+  no aphorisms. Every sentence must be tied to bundle or tool data.
 - Incidents: bundle.report.incidents.events lists detected spins/offs/
   near-stops, each already carrying the engine's own classification. Only
   an incident whose coaching_principle_id is not null is generally citable.
