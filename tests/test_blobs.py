@@ -217,6 +217,12 @@ def _v5_database_with_inline_blobs(db_path: Path) -> list[int]:
     raw.execute("DROP TABLE IF EXISTS reference_exclusions")
     raw.execute("DROP TABLE IF EXISTS garage61_tokens")
     raw.execute("DROP TABLE IF EXISTS driver_payload_cache")
+    # 019 (A59 Stage 2): the tendency tables must rewind too, or the
+    # reopened database re-applies 019 onto tables that already exist.
+    raw.execute("DROP TABLE IF EXISTS driver_tendency_settings")
+    raw.execute("DROP TABLE IF EXISTS tendency_eras")
+    raw.execute("DROP TABLE IF EXISTS tendency_era_laps")
+    raw.execute("DROP TABLE IF EXISTS driver_tendencies")
     try:
         raw.execute("ALTER TABLE laps DROP COLUMN owner_user_pk")
     except sqlite3.OperationalError:

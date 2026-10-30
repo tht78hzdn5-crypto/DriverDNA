@@ -258,6 +258,27 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-30 — Stage 2 tendency persistence (SPEC.md A59, PR pending).**
+  A36's re-cut buckets are replaced by fixed eras (per-driver lap blocks,
+  default 500, never re-cut, frozen summaries on close) and the projection
+  persists in `driver_tendencies` (migration 019), which keeps
+  `first_seen` across upserts — the deliberate departure from beliefs'
+  upsert-amnesia. States extend to improving (full band drop, held 2
+  eras), dormant (1 absent era), regression (full band rise, held 2
+  eras), and resolved via the strength complement at K = 2, anchored on
+  the corpus: 833 dated laps make 2 eras at 500, so K = 2 yields a
+  resolved state within one more era cycle while K = 3 would need 4
+  eras (~2000 laps). Payload v13 carries a `tendencies` section with
+  per-era references, not raw evidence IDs — the full IDs measured
+  44,668 ids / 546KB on the corpus, so the wire format switched while
+  the DB keeps the full lists. Versions: tendency-v2, coach-onto-v7,
+  payload v13; scoring unchanged (dm-v3, belief scores byte-identical).
+  On the corpus all 10 fault and 11 strength patterns read persistent
+  2/2; no dormant/resolved yet, correctly. Left open: raw-lap retention
+  tier (no deletion), era-size CLI/UI, dormant/resolved report listing.
+  Superseded Stage 1 tests replaced, not edited to pass; version pins
+  track the bump.
+
 - **2026-10-29 — BUG-044 coaching migration (SPEC.md A58, PR #76, merged 2026-10-29).**
   Both CV gates move onto dm-v3's statistic: `same_lap_twice` and
   `trust_the_proxy` now read `MetricDispersionGate` (per-metric scaled MAD

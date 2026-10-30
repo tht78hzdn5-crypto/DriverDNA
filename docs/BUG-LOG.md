@@ -93,6 +93,29 @@ Writing that down is the point.
 ---
 
 ## Fixed
+### BUG-050 — Migration 019 breaks the v5-rewind blob tests: the rewind fixture's table drop list did not include the new tendency tables
+- **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
+  in the affected-files suite run for Stage 2 (SPEC.md A59).
+- **Symptom**: `test_old_database_still_reads_its_blobs_before_draining` and
+  `test_draining_is_lossless_and_idempotent` failed on reopen with
+  `sqlite3.OperationalError: table driver_tendency_settings already exists`.
+- **Root cause**: the v5-rewind fixture (`tests/test_blobs.py`) simulates a
+  pre-006 database by deleting `schema_version` rows >= 6 and dropping
+  tables created by later migrations. Its drop list was last extended for
+  018's `driver_payload_cache` and did not include 019's four tables, so
+  the rewound file carried version 5 alongside existing tendency tables
+  and `_migrate` re-applied 019 onto them.
+- **Blast radius**: test-only. No production database is affected: no
+  shipped database contains 019 tables with a version below 19, and real
+  018 → 019 migration is pinned by the Stage 2 migration-path test.
+- **Fix**: the fixture drops `driver_tendency_settings`, `tendency_eras`,
+  `tendency_era_laps`, and `driver_tendencies`, restoring the rewind
+  shape; the two existing tests pin it.
+- **How it was caught**: the suite — but note the gap it exposes: nothing
+  enforces that the fixture's drop list tracks `MIGRATIONS`. Every future
+  migration that adds a table must extend that list, as 018 did and 019
+  initially did not.
+
 ### BUG-047 — A cold deployment had no browser-only path to its first account
 - **Status**: fixed (2026-10-26) · **Severity**: breaks · **Found**: 2026-08-16,
   during a manual E2E walkthrough of "new user signs up, imports via Garage61,

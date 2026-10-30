@@ -178,15 +178,20 @@
  "coaching_rollup": {
   "min_tracks": 2,
   "n_cohorts": 2,
-  "ontology_version": "coach-onto-v6",
+  "ontology_version": "coach-onto-v7",
   "patterns": [
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
+    "current_band": null,
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "drill_followup": null,
     "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": null,
     "instances": [
@@ -281,6 +286,7 @@
       "track": "Laguna Seca"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 2,
     "n_instances": 9,
     "n_tracks": 2,
@@ -288,15 +294,21 @@
     "signal_status": "measured",
     "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
     "technique": "coasting",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "current_band": null,
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
+    "drill_followup": null,
     "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "corner_exit",
     "gate_reason": null,
     "instances": [
@@ -341,6 +353,7 @@
       "track": "Laguna Seca"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 2,
     "n_instances": 4,
     "n_tracks": 2,
@@ -348,15 +361,21 @@
     "signal_status": "measured",
     "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
     "technique": "throttle_pickup",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
+    "current_band": null,
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "drill_followup": null,
     "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": null,
     "instances": [
@@ -471,6 +490,7 @@
       "track": "Laguna Seca"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 2,
     "n_instances": 11,
     "n_tracks": 2,
@@ -478,15 +498,21 @@
     "signal_status": "measured",
     "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
     "technique": "turn_in",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
     "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "current_band": null,
     "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "drill_followup": null,
     "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -511,6 +537,7 @@
       "track": "Laguna Seca"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 2,
     "n_tracks": 1,
@@ -518,15 +545,21 @@
     "signal_status": "measured",
     "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
     "technique": "pedal_overlap",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
     "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "current_band": null,
     "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "drill_followup": null,
     "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "consistency",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -561,6 +594,7 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 3,
     "n_tracks": 1,
@@ -568,15 +602,21 @@
     "signal_status": "measured",
     "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
     "technique": "repeatability",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
     "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "current_band": null,
     "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
+    "drill_followup": null,
     "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
     "eras_fired": 0,
     "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -601,6 +641,7 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 2,
     "n_tracks": 1,
@@ -608,15 +649,23 @@
     "signal_status": "measured",
     "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
     "technique": "rotation_efficiency",
-    "tendency_state": null
+    "tendency_state": null,
+    "tendency_variant": null
    }
   ],
   "strengths": [
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're squeezing the brake on instead of getting to pressure. Build to peak decisively \u2014 the application should be quick; the release is where the finesse lives.",
     "coaching_principle_id": "cp.brake_application.get_to_peak",
+    "current_band": null,
     "drill": "Next session: on the heaviest braking zone, make the initial application a deliberate, quick build to full pressure, then manage the release as usual. Ignore lap time; judge only how fast the pedal reaches its peak.",
+    "drill_followup": null,
     "driving_principle": "A braking zone is spent at whatever pressure the pedal has reached. A slow squeeze spends its first half below the tire's limit \u2014 track the corner never gives back \u2014 and the peak, when it finally arrives, has less room left to work in. Decisiveness belongs at the start of the pedal; finesse belongs at the release.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -675,19 +724,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 6,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "You get to peak pressure decisively \u2014 the braking zone is spent at the tire's limit, not on the way to it.",
-    "technique": "brake_application"
+    "technique": "brake_application",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Your brake point wanders \u2014 the middle half of your laps starts braking across a wide band of track. Pick one physical marker for this corner and start braking on it, every lap.",
     "coaching_principle_id": "cp.brake_point_selection.same_marker",
+    "current_band": null,
     "drill": "Next session: name a board, seam, or shadow as this corner's brake marker. Brake on it for ten laps whether it feels early or late; move it between sessions if you must, never within one.",
+    "drill_followup": null,
     "driving_principle": "Everything downstream \u2014 peak pressure, release, turn-in \u2014 keys off where braking starts. A brake point chosen by feel each lap turns every later input into a new experiment; a physical marker makes the whole entry repeatable, which is why schools teach markers before they teach speed.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -746,19 +805,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 6,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Your brake point is a marker, not a mood \u2014 braking starts in the same place lap after lap.",
-    "technique": "brake_point_selection"
+    "technique": "brake_point_selection",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Your brake release is too abrupt. Trail the brake in gracefully; let the fronts bite and finish decelerating before you ask them to steer.",
     "coaching_principle_id": "cp.brake_release.finish_the_front",
+    "current_band": null,
     "drill": "Next session: on medium-speed corners, deliberately delay full brake release ~0.2 s into the corner. Ignore lap time. Feel the car keep pointing at the apex.",
+    "drill_followup": null,
     "driving_principle": "Front tires can't both decelerate and steer at the limit. Releasing brake pressure well before turn-in unloads the front axle before it has finished slowing the car, so there's no grip left to rotate.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -817,19 +886,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 6,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Your brake release is doing its job \u2014 the fronts stay loaded into the corner instead of being dropped at turn-in.",
-    "technique": "brake_release"
+    "technique": "brake_release",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're a passenger in the coasting zone. The car must always be working\u2014either braking, turning, or driving.",
     "coaching_principle_id": "cp.coasting.always_working",
+    "current_band": null,
     "drill": "Next session: find where you're on neither pedal mid-corner and close that gap by a fraction \u2014 brake a touch later or pick up throttle a touch sooner.",
+    "drill_followup": null,
     "driving_principle": "Neither pedal working means neither axle is doing anything useful \u2014 the car coasts through time that braking, turning, or driving could have used.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -870,19 +949,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 4,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Almost no coasting here \u2014 the car is braking, turning or driving nearly all the way through.",
-    "technique": "coasting"
+    "technique": "coasting",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're fighting the car with overlapping pedals. Make it a clean, deliberate handoff from brake to throttle.",
     "coaching_principle_id": "cp.pedal_overlap.clean_handoff",
+    "current_band": null,
     "drill": "Next session: find the exact moment you're fully off the brake before any throttle. Widen that gap if it's currently negative.",
+    "drill_followup": null,
     "driving_principle": "Throttle and brake fighting each other confuses the weight transfer the car needs to plant one axle at a time. Beyond a deliberate heel-toe blip, overlap just burns the front brakes against the rear tires.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -995,19 +1084,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 12,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Clean handoff \u2014 you're off the brake before you're on the throttle, so the car always knows which axle it's working.",
-    "technique": "pedal_overlap"
+    "technique": "pedal_overlap",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
     "coaching_principle_id": "cp.repeatability.same_lap_twice",
+    "current_band": null,
     "drill": "Next session: try to execute this corner exactly the same way three laps in a row. Ignore lap time; judge yourself only on how close the three felt.",
+    "drill_followup": null,
     "driving_principle": "A technique that varies lap to lap isn't a technique yet \u2014 it's a range of outcomes. Pace built on an inconsistent input is pace you can't reliably reproduce under pressure.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "consistency",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -1129,19 +1228,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 13,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "You're repeating yourself \u2014 your inputs land in the same place lap after lap, which is what makes pace reproducible.",
-    "technique": "repeatability"
+    "technique": "repeatability",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "Lap time hides in mid-corner speed, not entry bravery.",
     "coaching_principle_id": "cp.rotation_efficiency.carry_the_middle",
+    "current_band": null,
     "drill": "Next session: on this corner, ignore your braking point entirely. Only chase the number on the speedo at the apex.",
+    "drill_followup": null,
     "driving_principle": "Mid-corner speed compounds down the following straight; an entry-braking gain rarely does. A real, repeatable gap between your faster and slower laps through the middle of a corner is where the lap time actually is.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -1182,19 +1291,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 4,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Your mid-corner speed holds up \u2014 there's no repeatable gap between your quicker and slower laps through the middle.",
-    "technique": "rotation_efficiency"
+    "technique": "rotation_efficiency",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're stabbing the throttle and lifting. Roll it on smoothly and progressively\u2014if you have to lift, you got greedy too early.",
     "coaching_principle_id": "cp.throttle_pickup.roll_it_on",
+    "current_band": null,
     "drill": "Next session: delay throttle pickup slightly and apply it as one continuous build to full throttle \u2014 no stabs, no lifts.",
+    "drill_followup": null,
     "driving_principle": "A lift after picking up throttle means the pickup point was a guess, not a commitment \u2014 the car had to give back grip mid-application it never should have been asked for.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "corner_exit",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -1253,19 +1372,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 6,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "Your throttle pickup is committed \u2014 once you open it, it stays open, so the rear never has to give grip back.",
-    "technique": "throttle_pickup"
+    "technique": "throttle_pickup",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You brake in a straight line and come fully off before the car turns. Carry the brake past turn-in and release it as you add steering \u2014 keep the nose loaded while the car rotates.",
     "coaching_principle_id": "cp.trail_braking.carry_the_brake",
+    "current_band": null,
     "drill": "Next session: on your heaviest braking corner, hold a breath of brake pressure until the car has clearly started to rotate, then finish the release. Ignore lap time; feel the front stay planted.",
+    "drill_followup": null,
     "driving_principle": "Braking and steering draw on one front-tire budget. Releasing the brake completely before turn-in unloads the nose at the exact moment it needs load to bite and rotate; carrying a shrinking brake pressure past turn-in keeps the front planted while the steering takes over the budget.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "braking",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -1324,19 +1453,29 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 6,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "You're carrying the brake into the corner \u2014 the front stays loaded through turn-in instead of being unloaded before it.",
-    "technique": "trail_braking"
+    "technique": "trail_braking",
+    "tendency_state": null,
+    "tendency_variant": null
    },
    {
+    "band_before": null,
+    "clearing_streak": 0,
     "coaching_expression": "You're sawing at the wheel mid-corner. Settle the entry, trust your eyes, and use one committed, decisive steering input to the apex.",
     "coaching_principle_id": "cp.turn_in.one_commitment",
+    "current_band": null,
     "drill": "Next session: pick your turn-in point before the corner and commit to a single steering input. Ignore lap time; count your own corrections.",
+    "drill_followup": null,
     "driving_principle": "Every extra steering correction between turn-in and apex is the car negotiating a line you haven't committed to \u2014 each one scrubs speed the corner didn't need to lose.",
+    "eras_fired": 0,
+    "eras_total": 0,
+    "first_seen_era": null,
     "fundamental": "rotation",
     "gate_reason": "insufficient breadth: 1 track(s) < 2 \u2014 seen at one track only, so it may be the track rather than the driver",
     "instances": [
@@ -1377,16 +1516,19 @@
       "track": "Spa-Francorchamps"
      }
     ],
+    "last_seen_era": null,
     "n_cohorts": 1,
     "n_instances": 4,
     "n_tracks": 1,
     "shown": false,
     "signal_status": "measured",
     "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
-    "technique": "turn_in"
+    "technique": "turn_in",
+    "tendency_state": null,
+    "tendency_variant": null
    }
   ],
-  "tendency_version": "tendency-v1"
+  "tendency_version": "tendency-v2"
  },
  "cohorts": [
   {
@@ -1783,5 +1925,11 @@
   "taxonomy_version": "pyramid-v1"
  },
  "note": "cross-car claims are computed but never reported in v1",
- "payload_version": 12
+ "payload_version": 13,
+ "tendencies": {
+  "era_size_laps": 500,
+  "eras": [],
+  "principles": [],
+  "tendency_version": "tendency-v2"
+ }
 }

@@ -14,6 +14,7 @@ from driverdna.coaching.engine import (
     eligible_strengths,
     select_coaching,
 )
+from driverdna.coaching.eras import read_tendencies
 from driverdna.coaching.ontology import ONTOLOGY_VERSION, PRINCIPLES
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -86,6 +87,19 @@ def coaching_section(
     candidates = eligible_principles(db, driver=driver, car=car, track=track, config=config)
     strengths = eligible_strengths(db, driver=driver, car=car, track=track, config=config)
     selection = select_coaching(candidates, strengths, config=config)
+    # A59: the cohort's tendency rows — the persisted projection filtered
+    # to principles with candidates or strengths in THIS cohort. Read
+    # only: this reflects the last rollup refresh, never recomputed here.
+    candidate_ids = {c.principle_id for c in candidates}
+    strength_ids = {s.principle_id for s in strengths}
+    tendencies = [
+        {k: v for k, v in row.items()
+         if k not in ("computed_at", "evidence")}
+        for row in read_tendencies(db, driver)
+        if (row["side"] == "fault" and row["principle_id"] in candidate_ids)
+        or (row["side"] == "strength"
+            and row["principle_id"] in strength_ids)
+    ]
     return {
         "ontology_version": ONTOLOGY_VERSION,
         "headline": _candidate_dict(selection["headline"]) if selection["headline"] else None,
@@ -94,4 +108,5 @@ def coaching_section(
         "silent_count": selection["silent_count"],
         "self_checks": [_candidate_dict(c) for c in selection["self_checks"]],
         "strengths": [_strength_dict(g) for g in selection["strengths"]],
+        "tendencies": tendencies,
     }

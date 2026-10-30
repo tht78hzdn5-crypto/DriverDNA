@@ -614,3 +614,49 @@ The A56 anchors are reused, verified on the current corpus (per-metric
 medians 0.84×–1.27× the anchors). The full record — statistic, anchors
 decision with evidence, thresholds, corpus numbers — is SPEC.md A58; the
 defect register entry is `docs/BUG-LOG.md` BUG-044.
+
+## Stage 2: fixed eras and the persisted tendency layer (2026-10-30, SPEC.md A59)
+
+Stage 1 annotated patterns with era states from A36's re-cut buckets and
+persisted nothing. Stage 2 fixes the eras and persists the projection.
+
+An era is now a lap block of a per-driver size (default 500 laps, the
+owner's size), assigned in date order, set once, never re-cut. When an
+era fills it closes with a frozen summary computed from its laps alone;
+only the open era is computed live. A closed era's membership and
+summary never change — a backdated lap lands in the open era, never in
+a frozen one. The projection lives in `driver_tendencies`, which keeps
+`first_seen` across upserts: unlike beliefs, tendencies do not upsert
+their history away.
+
+What changes in what the driver sees:
+
+- Four new states. `improving` means the band fell a full rank and held
+  there for two eras; `regression` is the mirror. `dormant` means quiet
+  for one era — not yet a fix. `resolved` means clear for K consecutive
+  eras (K = 2), where a clearing era is one where the principle did not
+  fire and either showed as a strength or was evaluated below its gate.
+  Stage 1's one-era resolved is now dormant; a fix takes two quiet eras
+  to claim.
+- Strengths get tendency lines too. A strength that cleared before but
+  not lately reads `lapsed`; one holding across eras reads `persistent`.
+- Persistent patterns carry a second assignment. The first drill says
+  what to try; the followup escalates it — a longer, more committed
+  version for a habit that has survived era after era.
+- The payload gains a `tendencies` section (driver payload and
+  per-cohort coaching payloads) with per-era references: which corners
+  and cohorts, and how many evidence observations sit behind each era.
+  Raw per-observation evidence IDs stay in the database, not the
+  payload — on the owner corpus they measured 546KB, over a third of
+  the whole payload.
+
+On the owner corpus today, every fault pattern reads persistent across
+both fixed eras (era 0 closed at 500 laps, era 1 open at 333) — nothing
+has cleared for two eras yet, so no dormant or resolved states appear.
+That is the honest reading at two eras, not a gap: the first dormant
+states appear when a principle stops firing in an era, and the first
+resolved states when an era closes with the absence continued.
+
+The full record — era rules, state partition, K anchoring, payload
+measurement, version bumps, and what is left open (raw-lap retention
+tier, era-size UI, dormant/resolved report listing) — is SPEC.md A59.

@@ -845,10 +845,31 @@ class CoachingConfig(_Section):
         "pattern that fired in the most recent era is 'persistent' when "
         "the share of all eras it fired in reaches this fraction; below "
         "it (but fired in at least two eras, the latest included) it is "
-        "'recurring'. Fired only in the most recent era is 'new'; fired "
-        "before but absent from the most recent era is 'resolved'. "
+        "'recurring'. Fired only in the most recent era is 'new'. "
         "Annotation only — this threshold gates no eligibility, band or "
         "score anywhere.",
+    )
+    tendency_resolved_min_eras: int = Field(
+        default=2,
+        description="Tendency layer (SPEC.md A59, Stage 2): a previously "
+        "fired pattern is 'resolved' only after this many consecutive "
+        "clearing eras (not fired, and either a strength or evaluated "
+        "below its gate); below this, a trailing absence is 'dormant'. "
+        "Anchored on the owner corpus at build: 833 dated laps make 2 "
+        "eras at the 500-lap size, so K=2 — the smallest 'larger K' past "
+        "Stage 1's single-era resolved — yields a resolved state within "
+        "one more era cycle, while K=3 would need 4 eras (~2000 laps) "
+        "before any fix could be claimed. Annotation only — this "
+        "threshold gates no eligibility, band or score anywhere.",
+    )
+    tendency_era_size_laps: int = Field(
+        default=500,
+        description="Tendency layer (SPEC.md A59, Stage 2): the default "
+        "fixed-era size in laps. Each driver may override it in "
+        "driver_tendency_settings; the override sizes only eras created "
+        "after it is set — closed eras and the open era keep their "
+        "creation sizes, so eras are never re-cut. The 500 default is "
+        "the owner's own era size.",
     )
 
 

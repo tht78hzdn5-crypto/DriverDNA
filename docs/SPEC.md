@@ -3254,3 +3254,135 @@ Accepted at owner plan review; rationale recorded in the review:
   description, per the amendment rule: the old CV calibration file, the
   CV pooling test, the CV banding test, and the CV kind assertions in
   the headline tests — replaced, not edited to pass.
+
+- **A59** (2026-10-30): **Stage 2 — the tendency layer's persistence:
+  fixed eras, frozen summaries, and the `driver_tendencies` projection.**
+  Stage 1 (A55) annotated rollup patterns with era states computed from
+  A36's re-cut date buckets and persisted nothing. Stage 2 replaces the
+  buckets with fixed eras and persists the projection, with one
+  deliberate departure from `driver_beliefs`: the table stores the
+  projection AND `first_seen`. Beliefs upsert away history; tendencies
+  must not — an upsert preserves the existing `first_seen_era`.
+
+  **Fixed eras.** An era is a lap block of a per-driver size: the config
+  default `coaching.tendency_era_size_laps` (500, the owner's own size),
+  overridable per driver in `driver_tendency_settings`. Dated laps are
+  assigned in (`lap_date`, `lap_pk`) order, append-only. The open era is
+  created lazily on the first lap that needs it, so no empty era ever
+  exists. When the open era reaches its size it closes: a frozen summary
+  is computed once, from that era's laps alone, and stored in
+  `tendency_eras.summary_json`. Tendency computation reads summaries for
+  closed eras and computes only the open era live — it never reprocesses
+  old laps. Era size changes apply at the next era boundary: closed eras
+  keep the size they were built with, and the open era keeps its
+  creation size, so eras are never re-cut. Backdated laps (dated before
+  closed eras) cannot join a frozen era; they land in the open era.
+  Undated laps are in no era, as in Stage 1.
+
+  **Frozen summary shape.** Per principle: fired, loudest band in the
+  principle's own `magnitude_kind`, strength side, fault/strength
+  cohorts and corners, and the full per-observation evidence ID lists.
+  `evaluated` is era-level: any cohort with at least
+  `gates.min_phase_samples` laps — the same floor the eligibility
+  machinery needs before a finding can be shown. This is an
+  approximation, stated not hidden: a cohort large enough for some gates
+  may lack the specific data one principle's gate needs (e.g. vs-self
+  findings needing sessions), which would mark that principle evaluated
+  when its gate could not run. It errs toward clearing only in that
+  narrow case, and the K-consecutive requirement below bounds the
+  over-claim. A principle in an era with no adequate cohort is thin, not
+  clearing.
+
+  **State partition v2** (`coaching/eras.py`, exclusive, in precedence
+  order). Trailing thin eras (not fired, not clearing) are stripped
+  first — they carry no signal — while `eras_total` still counts every
+  era. A *clearing* era is one where the principle did not fire and
+  either showed as a strength or was evaluated below its gate. A
+  trailing run of clearing eras gives `resolved` at or above K
+  (`coaching.tendency_resolved_min_eras`) or `dormant` below it. A fired
+  latest era with three consecutive fired eras gives `improving` (band
+  down a full rank from two eras ago, held for both following eras) or
+  `regression` (the mirror: band up a full rank, held). Otherwise `new`
+  (fired only in the latest era), `persistent` (share at or above
+  `tendency_persistent_min_share`), or `recurring`. The strength
+  partition shares the share rule with `lapsed` in place of
+  dormant/resolved: cleared before, not in the most recent substantive
+  era. Strengths gain era annotation on the same machinery — Stage 1
+  annotated faults only.
+
+  **K anchoring.** K = 2. The corpus at build holds 851 self laps, 833
+  dated, which at the 500-lap size make exactly 2 eras (era 0 closed at
+  500 laps, 2026-06-10 – 2026-08-27; era 1 open at 333 laps,
+  2026-08-27 – 2026-10-26). K = 2 is the smallest "larger K" past Stage
+  1's single-era resolved: it yields a resolved state within one more
+  era cycle, while K = 3 would need 4 eras (~2000 laps) before any fix
+  could be claimed. On the corpus no principle is dormant or resolved
+  yet — all 10 fault patterns and all 11 strength patterns read
+  persistent 2/2 — which is the correct reading: nothing has cleared
+  for two eras. A principle that stopped firing in era 1 would read
+  dormant today and resolve when era 2 closes with continued absence.
+
+  **Ontology and voice.** `ONTOLOGY_VERSION` coach-onto-v6 → v7.
+  `TENDENCY_STATE_LINES` gains improving/dormant/regression templates
+  and the resolved template is rewritten to clearing-streak semantics;
+  `STRENGTH_TENDENCY_STATE_LINES` is added for the strength side.
+  `CoachingPrinciple` gains `tendency_variants` (persistent framing
+  naming the habit, not the corner; resolved framing acknowledging the
+  fix and citing the era it stopped after) for all 11 measured/proxy
+  principles, and `drill_followup` (the escalated second assignment,
+  rendered only when persistent). The no_signal principle
+  (`eye_line.look_further`) has neither: it never forms a pattern. All
+  new words match the plain-English summary voice (PR #66) and cite era
+  facts only this driver's history has, so the interchangeability test
+  holds. The driver report renders the generic tendency line (unchanged
+  from Stage 1), plus the variant and followup lines when present, plus
+  strength tendency lines in the strengths section.
+
+  **Payload.** `PAYLOAD_VERSION` 12 → 13, additive: a `tendencies`
+  section in the driver payload (era list + principle rows) and in
+  per-cohort coaching payloads (the same rows filtered to principles
+  with candidates or strengths in that cohort). The section carries
+  per-era REFERENCES — corners, cohorts, evidence count inside
+  `per_era` — not raw evidence IDs. Measurement, on the owner corpus:
+  full per-era evidence IDs run 44,668 IDs / 546KB, 35% of the whole
+  payload and a 2.1× total growth (746,774 → 1,574,731 bytes
+  normalized). With references the section is 49KB and the total grows
+  11% (605,683 → 664,493 bytes compact JSON). The full ID lists stay in
+  the `driver_tendencies` rows and frozen summaries for inspection.
+  Freshness semantics: the driver payload refreshes the projection via
+  the rollup (refresh-on-read), so it is always fresh; cohort payloads
+  read the last rollup refresh without recomputing.
+
+  **Versions.** `TENDENCY_MODEL_VERSION` tendency-v1 → v2,
+  `ONTOLOGY_VERSION` coach-onto-v6 → v7, `PAYLOAD_VERSION` 12 → 13.
+  `SCORING_MODEL_VERSION` is unchanged (dm-v3): belief scores are
+  byte-identical on the corpus (all 7 fundamentals, same scores,
+  confidences, evidence counts), as are cohorts, cross-track rollups,
+  census, and every non-annotation pattern/strength field.
+
+  **Conversion restatement, once.** A36's 6 equal-count buckets become
+  2 fixed eras; every fault pattern stays persistent (6/6 → 2/2). The
+  qualitative story is unchanged — every fault is a persistent habit —
+  only the era counts are restated. Two full report generations on
+  corpus copies are byte-identical (determinism).
+
+  **Left open.** The raw-lap retention tier is still undecided (tier 1
+  keep is the recommendation; archival is a separate later decision) —
+  no raw lap is deleted by this change. There is no CLI or UI surface
+  for setting a driver's era size yet (settings table + API only). The
+  driver report does not list dormant/resolved tendencies outside
+  current patterns (the payload section is the surface for those).
+  Cohort payload tendencies reflect the last rollup refresh, not a
+  live recomputation.
+
+  **Superseded tests, named per the amendment rule.** Stage 1's pure
+  partition tests and A36 bucket tests are replaced by the Stage 2
+  partition and fixed-era tests (not edited to pass); the one-era
+  resolved integration test becomes the dormant test, with resolved-at-K
+  pinned in the Stage 2 file; the resolved tendency-line assertion is
+  rewritten to clearing-streak semantics; the annotation set in the
+  additivity test is extended (strengths are now annotated, fault
+  patterns carry first/last seen, streak, band history, variant,
+  followup). Version pins track the bump in the established pattern:
+  payload 12 → 13, tendency-v1 → v2, coach-onto-v6 → v7, and the
+  allowed-state set gains improving/dormant/regression.

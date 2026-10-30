@@ -20,6 +20,7 @@ from driverdna.attribution.ranker import (
     vs_reference_findings,
     vs_self_findings,
 )
+from driverdna.coaching.eras import tendencies_payload
 from driverdna.coaching.payload import coaching_section
 from driverdna.coaching.rollup import build_coaching_rollup
 from driverdna.config import DriverDNAConfig
@@ -34,7 +35,7 @@ from driverdna.model.scoring import (
 from driverdna.model.taxonomy import FUNDAMENTALS, TAXONOMY_VERSION
 from driverdna.pipeline import phase_windows_from_stored
 
-PAYLOAD_VERSION = 12  # +coaching_rollup.patterns[].{eras_fired,eras_total,tendency_state} (A55); v11: +driver_model.beliefs[].trend_reason (A56) and beliefs[].speculative_guess with repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
+PAYLOAD_VERSION = 13  # +tendencies section (driver payload and per-cohort coaching payloads) (A59); v12: +coaching_rollup.patterns[].{eras_fired,eras_total,tendency_state} (A55); v11: +driver_model.beliefs[].trend_reason (A56) and beliefs[].speculative_guess with repaired incident speculative attach (BUG-046); v9: +driver_model.{reading,beliefs[].components,basis_reason} (A51)
 
 UNAVAILABLE_FUNDAMENTALS = (
     "tire slip/utilization — no slip channel in the source; never inferred",
@@ -447,6 +448,15 @@ def build_driver_payload(
         if driver_name else None
     )
 
+    # A59: the tendencies section. The rollup above already refreshed the
+    # projection, so this read is fresh. It carries per-era references
+    # (corners, cohorts, evidence count), not raw evidence IDs — the
+    # full-ID measurement (546KB on the owner corpus) is in A59.
+    tendencies = (
+        tendencies_payload(db, driver_name, config)
+        if driver_name else None
+    )
+
     census_data = None
     if _include_census and driver_name:
         _progress({"type": "progress_phase", "phase": "census"})
@@ -464,6 +474,7 @@ def build_driver_payload(
         "cross_track_rollups": rollups,
         "driver_model": driver_model,
         "coaching_rollup": coaching_rollup,
+        "tendencies": tendencies,
         "census": census_data,
         "note": "cross-car claims are computed but never reported in v1",
     }
