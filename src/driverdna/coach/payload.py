@@ -1,10 +1,19 @@
-"""Coach payload: the report payload plus focus history, versioned (M4)."""
+"""Coach payload: the report payload plus the tendency projection, versioned (M4).
+
+A61 replaces `focus_history` with `tendencies`: the driver-level tendency
+projection is the memory the prompt actually instructs on. It is read-only
+here — it reflects the last rollup refresh, like the per-cohort
+`report.coaching.tendencies` rows. Accepted coach outputs stay observable
+via `db.coach_history`; they no longer ride in the payload (no consumer
+read `focus_history`: the coach prompt never mentioned it, and chat/CLI
+read the table)."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from driverdna.coach.provider import PROMPT_VERSION
+from driverdna.coaching.eras import tendencies_payload
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
 from driverdna.report.payload import build_cohort_payload
@@ -26,7 +35,7 @@ def build_coach_payload(
     return {
         "prompt_version": PROMPT_VERSION,
         "report": report,
-        "focus_history": db.coach_history(driver=driver, car=car, track=track),
+        "tendencies": tendencies_payload(db, driver, config),
     }
 
 

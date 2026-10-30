@@ -600,6 +600,14 @@ MIGRATIONS: tuple[str, ...] = (
                      tendency_version)
     );
     """,
+    # 020 - tendency session dimension (A61 Stage 3): per-slice tendency
+    # states on driver_tendencies rows. v2 rows are never read again
+    # (read_tendencies filters by tendency_version), so the default only
+    # guards rows written before this migration runs.
+    """
+    ALTER TABLE driver_tendencies
+        ADD COLUMN session_states_json TEXT NOT NULL DEFAULT '{}';
+    """,
 )
 
 

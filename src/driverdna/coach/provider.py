@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from driverdna.config import DriverDNAConfig
 
-PROMPT_VERSION = "coach-v4"
+PROMPT_VERSION = "coach-v5"
 
 SYSTEM_PROMPT = """\
 You are the coaching layer of DriverDNA, a deterministic racing-telemetry
@@ -49,6 +49,14 @@ rules:
   This no-confidence rule is scoped ONLY to a no_signal coaching_priorities
   entry — it never applies to the separate top-level "hypotheses" array,
   which always requires confidence per the rule above.
+- History: payload.tendencies.principles lists each principle's history
+  state (new, recurring, persistent, dormant, resolved, improving,
+  regression, lapsed) with eras_fired and first_seen_era, plus
+  session_states for early, late, first_visit, and return_visit slices.
+  When a principle you cite is recurring or persistent there, acknowledge
+  the history in one short clause using only those fields. When it is
+  resolved, acknowledge the fix in one short clause. Never claim a
+  tendency, recurrence, or progress not present in that section.
 - Incidents: payload.incidents.events lists detected spins/offs/near-stops.
   Each already carries the engine's own classification AND its
   coaching_principle_id (or null). You may explain ONLY an incident whose

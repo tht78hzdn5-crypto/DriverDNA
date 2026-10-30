@@ -19,13 +19,14 @@ from typing import Any, Iterator, Protocol
 
 from driverdna.chat.tools import TOOL_DEFS, execute_tool
 from driverdna.coach.grounding import number_pool, numeric_claims, unsupported_claims
+from driverdna.coaching.eras import tendencies_payload
 from driverdna.coaching.ontology import PRINCIPLES
 from driverdna.config import ConfigStore, DriverDNAConfig, config_snapshot
 from driverdna.db import Database
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v3"
+CHAT_PROMPT_VERSION = "chat-v4"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -45,6 +46,14 @@ Hard rules:
   on measured ground; stay tentative on proxy ground; on a no_signal
   principle (self_check present), offer it as a labeled hypothesis and
   NEVER attach a confidence value or percentage to it, at any level.
+- History: bundle.tendencies.principles lists each principle's history
+  state (new, recurring, persistent, dormant, resolved, improving,
+  regression, lapsed) with eras_fired and first_seen_era, plus
+  session_states for early, late, first_visit, and return_visit slices.
+  When a principle you discuss is recurring or persistent there,
+  acknowledge the history in one short clause using only those fields.
+  When it is resolved, acknowledge the fix in one short clause. Never
+  claim a tendency, recurrence, or progress not present in that section.
 - Incidents: bundle.report.incidents.events lists detected spins/offs/
   near-stops, each already carrying the engine's own classification. Only
   an incident whose coaching_principle_id is not null is generally citable.
@@ -303,7 +312,10 @@ def build_chat_bundle(
     incident_id whose coaching_principle_id is not null), so an
     unclassified/external incident is structurally uncitable rather than
     citable-but-rule-forbidden — the same "engine names it or it doesn't
-    exist to the model" discipline the rest of the grounding contract uses."""
+    exist to the model" discipline the rest of the grounding contract uses.
+    chat-v4 (A61) adds the driver-level `tendencies` section, read-only
+    from the last rollup refresh, so chat can acknowledge tendency
+    history under the same one-instruction class as the coach."""
     report = build_cohort_payload(db, driver=driver, car=car, track=track, config=config)
     bundle_version = report["payload_version"]
     coach_runs = db.coach_history(driver=driver, car=car, track=track)
@@ -311,6 +323,7 @@ def build_chat_bundle(
         "prompt_version": CHAT_PROMPT_VERSION,
         "bundle_version": bundle_version,
         "report": report,
+        "tendencies": tendencies_payload(db, driver, config),
         "annotations": db.annotations(),
         "config": {k: v for k, v in sorted(config_snapshot(config).items())},
         "latest_coach_plan": coach_runs[-1] if coach_runs else None,

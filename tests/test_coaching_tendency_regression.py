@@ -55,13 +55,15 @@ def _era_db(eras, *, config):
     return db
 
 
-def test_payload_version_is_13():
-    # v13 is the payload that carries the tendencies section (A59) on
-    # top of the tendency era fields (A55), trend_reason (A56) and
-    # speculative_guess (BUG-046). Same reasoning as the scoring
-    # regression pin: a literal, not a round-trip, so a silent revert
-    # fails loudly.
-    assert PAYLOAD_VERSION == 13
+def test_payload_version_is_14():
+    # v14 is the payload that carries session_states on tendencies rows
+    # and a top-level tendencies section on the coach payload and chat
+    # bundle, with focus_history removed from the coach payload (A61),
+    # on top of the tendencies section (A59), tendency era fields
+    # (A55), trend_reason (A56) and speculative_guess (BUG-046). Same
+    # reasoning as the scoring regression pin: a literal, not a
+    # round-trip, so a silent revert fails loudly.
+    assert PAYLOAD_VERSION == 14
 
 
 def test_payload_carries_era_fields_on_every_pattern():
@@ -91,7 +93,7 @@ def test_tendency_version_label_is_literal():
     set_era_size(db, "owner", 12)
     try:
         payload = build_driver_payload(db, cfg)
-        assert payload["coaching_rollup"]["tendency_version"] == "tendency-v2"
+        assert payload["coaching_rollup"]["tendency_version"] == "tendency-v3"
     finally:
         db.close()
 

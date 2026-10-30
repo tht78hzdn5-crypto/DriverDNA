@@ -82,7 +82,7 @@ def _incident_ids(bundle):
 
 def test_bundle_carries_incidents_and_prompt_version_bumped(db):
     bundle = build_chat_bundle(db, **COHORT, config=CONFIG)
-    assert bundle["prompt_version"] == CHAT_PROMPT_VERSION == "chat-v3"
+    assert bundle["prompt_version"] == CHAT_PROMPT_VERSION == "chat-v4"
     assert bundle["report"]["incidents"]["n"] >= 2
     classified, unclassified = _incident_ids(bundle)
     assert classified and unclassified, "fixture must produce both kinds"

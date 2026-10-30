@@ -258,6 +258,29 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-10-30 — Stage 3: narration + session dimension (SPEC.md A61, PR pending).**
+  Coach prompt gains exactly one tendency-acknowledgment instruction class
+  (coach-v4 → v5); chat prompt gains the same class (chat-v3 → v4);
+  validator unchanged — tendency states arrive as payload data, so the
+  "narrate engine-stated history only" rule is constitutional by
+  construction. `focus_history` leaves the coach payload (the prompt never
+  mentioned it; chat/CLI read the `coach_history` table, which is
+  unaffected); the coach payload and chat bundle gain the driver-level
+  `tendencies` section, read-only from the last rollup refresh. The
+  session dimension is a second, state-changing partition: early/late
+  within a session (ceil(n/2) split), first-visit/return-visit across
+  sessions at a track (first session date rule; sessions never split
+  across visit classes); undated and sessionless laps are in no slice.
+  Slice summaries freeze at era close (evidence lists stripped to
+  counts); pre-Stage-3 closed summaries gain exactly the `slices` key on
+  first v3 refresh. Tendency v2 → v3, payload 13 → 14, ontology and
+  scoring unchanged. Corpus effect (885 self laps): full-era states
+  unchanged (27 rows, all persistent); 2 rows diverge on first_visit
+  (`carry_the_middle` fault and strength read null — first-visit slices
+  are thin for CARRY); Driver Model byte-identical; driver payload
+  +1.2%. Open at PR time: the plan §8 acceptance read (Bob reads one real
+  coach output against the new prompt; mocked output is canned).
+
 - **2026-10-30 — Steering/throttle coaching tranche (SPEC.md A60, PR pending).**
   Three measured techniques gain principles on the A57 `MetricStatGate`
   pattern, no new gate or metric: `cp.steering_smoothness.smooth_hands`

@@ -209,7 +209,7 @@ def test_payload_has_incidents_section_coach_and_chat_grounded(tmp_db):
     Layer 3 (SPEC.md A20) — each event's coaching_principle_id is the
     engine's own deterministic verdict, citable by the AI. Chat's live Q&A
     path gained the same grounding in Track B3 (docs/UI-V3-PLAN.md,
-    chat-v3): incidents ride in the bundle like every other section."""
+    chat-v4): incidents ride in the bundle like every other section."""
     from driverdna.chat.session import build_chat_bundle
     from driverdna.coach.payload import build_coach_payload
     from driverdna.config import DriverDNAConfig
