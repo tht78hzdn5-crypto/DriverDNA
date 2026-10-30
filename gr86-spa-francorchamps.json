@@ -32,7 +32,7 @@
    "thin_evidence": false
   },
   "headline_reason": null,
-  "ontology_version": "coach-onto-v6",
+  "ontology_version": "coach-onto-v7",
   "secondary": [
    {
     "coaching_expression": "Match a lap before you try to beat it \u2014 repeatability comes before pace.",
@@ -1421,7 +1421,8 @@
     "strength_expression": "You're committing to the line \u2014 turn-in to apex on one input, with no mid-corner renegotiation.",
     "technique": "turn_in"
    }
-  ]
+  ],
+  "tendencies": []
  },
  "cohort": {
   "car": "GR86",
@@ -6900,7 +6901,7 @@
    }
   }
  },
- "payload_version": 12,
+ "payload_version": 13,
  "phase_baselines": {
   "C01": {
    "entry": {
