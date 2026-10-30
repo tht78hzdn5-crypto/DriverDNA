@@ -28,7 +28,7 @@ from typing import Any
 
 from driverdna.attribution.ranker import PHASE_LABELS
 from driverdna.coaching.engine import GAP_BANDS
-from driverdna.coaching.ontology import tendency_line
+from driverdna.coaching.ontology import strength_tendency_line, tendency_line
 from driverdna.model.taxonomy import FUNDAMENTALS
 
 #: Foundations first, higher-order skills after — the Driver Model pyramid's
@@ -560,11 +560,12 @@ def _reading_md(reading: dict[str, Any] | None) -> list[str]:
 
 
 def _tendency_line(pattern: dict[str, Any]) -> str | None:
-    """A55 Stage 1: the pattern's era sentence, or None when the
-    annotation states nothing. The words are the ontology's
-    (`coaching/ontology.py`'s tendency_line); this only reduces the
-    pattern's own instances to their loudest gap band and the corner
-    count at it — data reduction, not wording."""
+    """The pattern's era sentence, or None when the annotation states
+    nothing. The words are the ontology's (`coaching/ontology.py`'s
+    tendency_line); this only reduces the pattern's own instances to
+    their loudest gap band and the corner count at it — data reduction,
+    not wording. A59 adds the band two eras ago (improving/regression)
+    and the clearing streak (resolved) from the persisted row."""
     if pattern.get("tendency_state") is None:
         return None
     bands = [i.get("gap_band") for i in pattern.get("instances") or []]
@@ -580,6 +581,21 @@ def _tendency_line(pattern: dict[str, Any]) -> str | None:
         current_band_corners=(
             sum(1 for b in bands if b == current_band) if current_band else 0
         ),
+        band_before=pattern.get("band_before"),
+        clearing_streak=pattern.get("clearing_streak") or 0,
+    )
+
+
+def _strength_tendency_line(pattern: dict[str, Any]) -> str | None:
+    """A59: a strength's era sentence, or None when the annotation
+    states nothing. Strengths carry no band, so no reduction is needed
+    — the ontology's sentence takes the era counts directly."""
+    if pattern.get("tendency_state") is None:
+        return None
+    return strength_tendency_line(
+        state=pattern["tendency_state"],
+        eras_fired=pattern["eras_fired"],
+        eras_total=pattern["eras_total"],
     )
 
 
@@ -603,6 +619,10 @@ def _coaching_rollup_md(rollup: dict[str, Any] | None) -> list[str]:
         line = _tendency_line(p)
         if line:
             lines.append(f"    - _Tendency:_ {line}")
+        if p.get("tendency_variant"):
+            lines.append(f"    - _History:_ {p['tendency_variant']}")
+        if p.get("drill_followup"):
+            lines.append(f"    - _Next step:_ {p['drill_followup']}")
     strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
     if strengths:
         lines += ["", "### Holding up across tracks", ""]
@@ -611,6 +631,9 @@ def _coaching_rollup_md(rollup: dict[str, Any] | None) -> list[str]:
                 f"- {s['strength_expression']} — {s['n_tracks']} tracks, "
                 f"{s['n_instances']} corners"
             )
+            line = _strength_tendency_line(s)
+            if line:
+                lines.append(f"    - _Tendency:_ {line}")
     if suppressed:
         lines += ["", f"{len(suppressed)} pattern(s) seen at one track only:", ""]
         for p in suppressed:
@@ -700,19 +723,36 @@ def render_driver_html(payload: dict[str, Any]) -> str:
                 f"<br><small><b>Tendency:</b> {html.escape(line)}</small>"
                 if line else ""
             )
+            variant = (
+                f"<br><small><b>History:</b> "
+                f"{html.escape(p['tendency_variant'])}</small>"
+                if p.get("tendency_variant") else ""
+            )
+            followup = (
+                f"<br><small><b>Next step:</b> "
+                f"{html.escape(p['drill_followup'])}</small>"
+                if p.get("drill_followup") else ""
+            )
             parts.append(
                 f"<li><b>{html.escape(p['coaching_expression'])}</b> — "
                 f"{html.escape(p['fundamental'].replace('_', ' '))}, "
-                f"{p['n_tracks']} tracks, {p['n_instances']} corners{drill}{tendency}</li>"
+                f"{p['n_tracks']} tracks, {p['n_instances']} corners"
+                f"{drill}{tendency}{variant}{followup}</li>"
             )
         parts.append("</ul>")
         strengths = [s for s in (rollup.get("strengths") or []) if s["shown"]]
         if strengths:
             parts.append("<h3>Holding up across tracks</h3><ul>")
             for s in strengths:
+                line = _strength_tendency_line(s)
+                tendency = (
+                    f"<br><small><b>Tendency:</b> {html.escape(line)}</small>"
+                    if line else ""
+                )
                 parts.append(
                     f"<li>{html.escape(s['strength_expression'])} — "
-                    f"{s['n_tracks']} tracks, {s['n_instances']} corners</li>"
+                    f"{s['n_tracks']} tracks, {s['n_instances']} corners"
+                    f"{tendency}</li>"
                 )
             parts.append("</ul>")
 

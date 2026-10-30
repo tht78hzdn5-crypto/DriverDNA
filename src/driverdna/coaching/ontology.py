@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 from driverdna.model.taxonomy import SignalStatus
 
-ONTOLOGY_VERSION = "coach-onto-v6"
+ONTOLOGY_VERSION = "coach-onto-v7"
 
 
 @dataclass(frozen=True)
@@ -126,6 +126,17 @@ class CoachingPrinciple:
     #: evidence (A51). measured/proxy only — a no_signal principle can never
     #: become a strength, because nothing was measured to be good at.
     strength_expression: str | None = None
+    #: Tendency-framed variants keyed by fault state (A59, Stage 2):
+    #: a persistent framing naming the habit, not the corner, and a
+    #: resolved framing acknowledging the fix and citing the era it
+    #: stopped. Templates, filled with the pattern's era facts at render
+    #: time. Empty for principles with no bespoke framing — the generic
+    #: state line carries those. measured/proxy only.
+    tendency_variants: dict[str, str] = field(default_factory=dict)
+    #: The escalated second assignment for a persistent pattern (A59).
+    #: Rendered only when the pattern's tendency state is persistent.
+    #: measured/proxy only.
+    drill_followup: str | None = None
     self_check: SelfCheck | None = None  # no_signal only
     evidence_binding: tuple[str, ...] = field(default_factory=tuple)
 
@@ -137,6 +148,24 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.brake_release.finish_the_front",
             technique="brake_release", fundamental="braking",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Dropping the fronts at turn-in keeps showing up, "
+                    "era after era ({eras_fired} of {eras_total}) — this "
+                    "is the release habit, not one corner."
+                ),
+                "resolved": (
+                    "The abrupt release stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The fronts stay loaded now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: on your fastest corner, release the "
+                "brake in two distinct stages and note where the car "
+                "starts to push — then move the second stage later by a "
+                "car length."
+            ),
             driving_principle=(
                 "Front tires can't both decelerate and steer at the limit. "
                 "Releasing brake pressure well before turn-in unloads the "
@@ -164,6 +193,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.pedal_overlap.clean_handoff",
             technique="pedal_overlap", fundamental="braking",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Overlapping pedals keeps showing up, era after era "
+                    "({eras_fired} of {eras_total}) — this is the handoff "
+                    "habit, not one corner."
+                ),
+                "resolved": (
+                    "The pedal overlap stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The handoff is clean now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: run a full session with a deliberate, "
+                "counted beat between brake-off and throttle-on, and watch "
+                "whether the overlap corners stop firing."
+            ),
             driving_principle=(
                 "Throttle and brake fighting each other confuses the "
                 "weight transfer the car needs to plant one axle at a "
@@ -191,6 +237,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.turn_in.one_commitment",
             technique="turn_in", fundamental="rotation",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Sawing at the wheel mid-corner keeps showing up, era "
+                    "after era ({eras_fired} of {eras_total}) — this is "
+                    "the turn-in habit, not one corner."
+                ),
+                "resolved": (
+                    "The mid-corner corrections stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. Turn-in is one commitment now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: pick your worst sawing corner and "
+                "drive it eyes-up — look at the exit before you turn in, "
+                "and count corrections out loud."
+            ),
             driving_principle=(
                 "Every extra steering correction between turn-in and apex "
                 "is the car negotiating a line you haven't committed to — "
@@ -217,6 +280,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.throttle_pickup.roll_it_on",
             technique="throttle_pickup", fundamental="corner_exit",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Stabbing the throttle keeps showing up, era after "
+                    "era ({eras_fired} of {eras_total}) — this is the "
+                    "pickup habit, not one corner."
+                ),
+                "resolved": (
+                    "The throttle stabs stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The pickup rolls on now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: run a session where every throttle "
+                "application takes a full second from first touch to full "
+                "— then shorten it only where the rear stays settled."
+            ),
             driving_principle=(
                 "A lift after picking up throttle means the pickup point "
                 "was a guess, not a commitment — the car had to give back "
@@ -243,6 +323,25 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.coasting.always_working",
             technique="coasting", fundamental="rotation",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Riding as a passenger through the coasting zone keeps "
+                    "showing up, era after era ({eras_fired} of "
+                    "{eras_total}) — this is the coasting habit, not one "
+                    "corner."
+                ),
+                "resolved": (
+                    "The coasting stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The car works all the way "
+                    "through now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: pick the longest coasting zone and "
+                "close it from both ends in one session — brake a touch "
+                "later AND pick up a touch sooner."
+            ),
             driving_principle=(
                 "Neither pedal working means neither axle is doing "
                 "anything useful — the car coasts through time that "
@@ -269,6 +368,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.rotation_efficiency.carry_the_middle",
             technique="rotation_efficiency", fundamental="rotation",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Mid-corner speed keeps falling away, era after era "
+                    "({eras_fired} of {eras_total}) — this is the "
+                    "middle-of-corner habit, not one corner."
+                ),
+                "resolved": (
+                    "The mid-corner gap stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The middle holds up now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: on your worst mid-corner corner, chase "
+                "apex speed for ten laps straight and ignore the "
+                "stopwatch — then check whether the pattern moved."
+            ),
             driving_principle=(
                 "Mid-corner speed compounds down the following straight; "
                 "an entry-braking gain rarely does. A real, repeatable "
@@ -299,6 +415,24 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.repeatability.same_lap_twice",
             technique="repeatability", fundamental="consistency",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Not matching a lap before trying to beat it keeps "
+                    "showing up, era after era ({eras_fired} of "
+                    "{eras_total}) — this is the repeatability habit, not "
+                    "one corner."
+                ),
+                "resolved": (
+                    "The lap-to-lap spread stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The laps repeat now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: pick one corner and run five laps "
+                "aiming for identical inputs, then compare the traces — "
+                "find the input that still moves."
+            ),
             driving_principle=(
                 "A technique that varies lap to lap isn't a technique yet "
                 "— it's a range of outcomes. Pace built on an inconsistent "
@@ -326,6 +460,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.entry_commitment.trust_the_proxy",
             technique="entry_commitment", fundamental="commitment",
             signal_status=SignalStatus.PROXY,
+            tendency_variants={
+                "persistent": (
+                    "Giving up entry speed early keeps showing up, era "
+                    "after era ({eras_fired} of {eras_total}) — this is "
+                    "the commitment habit, not one corner."
+                ),
+                "resolved": (
+                    "The early entry give-up stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. Entry commitment holds now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: on one corner, deliberately brake five "
+                "metres later for a full session and log whether the exit "
+                "actually suffered."
+            ),
             driving_principle=(
                 "Brake-point timing is an indirect stand-in for entry "
                 "commitment, not a direct measurement of it — a moving "
@@ -387,6 +538,25 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.trail_braking.carry_the_brake",
             technique="trail_braking", fundamental="braking",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Coming fully off the brake before the car turns keeps "
+                    "showing up, era after era ({eras_fired} of "
+                    "{eras_total}) — this is the trail-braking habit, not "
+                    "one corner."
+                ),
+                "resolved": (
+                    "The straight-line-only braking stopped firing after "
+                    "era {last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The brake carries into the "
+                    "corner now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: on your heaviest braking corner, hold "
+                "a breath of brake until the car has clearly rotated, for "
+                "ten laps — then check the pattern."
+            ),
             driving_principle=(
                 "Braking and steering draw on one front-tire budget. "
                 "Releasing the brake completely before turn-in unloads "
@@ -428,6 +598,25 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.brake_application.get_to_peak",
             technique="brake_application", fundamental="braking",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "Squeezing the brake on instead of getting to pressure "
+                    "keeps showing up, era after era ({eras_fired} of "
+                    "{eras_total}) — this is the application habit, not "
+                    "one corner."
+                ),
+                "resolved": (
+                    "The slow brake application stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. Peak pressure comes "
+                    "decisively now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: on the heaviest braking zone, make "
+                "every application a quick build to peak for a full "
+                "session and watch the pattern."
+            ),
             driving_principle=(
                 "A braking zone is spent at whatever pressure the pedal "
                 "has reached. A slow squeeze spends its first half "
@@ -469,6 +658,23 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
             id="cp.brake_point_selection.same_marker",
             technique="brake_point_selection", fundamental="braking",
             signal_status=SignalStatus.MEASURED,
+            tendency_variants={
+                "persistent": (
+                    "A wandering brake point keeps showing up, era after "
+                    "era ({eras_fired} of {eras_total}) — this is the "
+                    "marker habit, not one corner."
+                ),
+                "resolved": (
+                    "The wandering brake point stopped firing after era "
+                    "{last_seen_era} — clear for the last "
+                    "{clearing_streak} eras. The marker holds now."
+                ),
+            },
+            drill_followup=(
+                "Second assignment: write your brake marker down before "
+                "the session, brake on it for every lap, and move it only "
+                "between sessions."
+            ),
             driving_principle=(
                 "Everything downstream — peak pressure, release, "
                 "turn-in — keys off where braking starts. A brake point "
@@ -518,12 +724,18 @@ PRINCIPLES: dict[str, CoachingPrinciple] = {
 #: pattern's longitudinal state, computed by coaching/rollup.py from
 #: per-era eligibility. Like every other driver-facing sentence, the text
 #: lives here as versioned data; the numbers are filled from the payload,
-#: never invented by a renderer. State semantics (rollup._tendency_state):
+#: never invented by a renderer. State semantics (coaching.eras, A59):
 #: `new` = fired only in the most recent era; `recurring` = fired in at
 #: least two eras including the most recent, below the persistent share;
 #: `persistent` = most recent era and at least
-#: config.coaching.tendency_persistent_min_share of all eras; `resolved`
-#: = fired in an earlier era, absent from the most recent.
+#: config.coaching.tendency_persistent_min_share of all eras; `improving`
+#: = fired in the last three eras with the band down a full rank from
+#: two eras ago and held there; `regression` = the mirror, band up a
+#: full rank and held; `dormant` = not fired in the most recent era,
+#: clearing streak below config.coaching.tendency_resolved_min_eras;
+#: `resolved` = clearing streak at or above that threshold, where a
+#: clearing era is one where the principle did not fire and either
+#: showed as a strength or was evaluated below its gate.
 TENDENCY_STATE_LINES: dict[str, str] = {
     "new": (
         "First fired in the most recent era ({eras_fired} of "
@@ -537,9 +749,23 @@ TENDENCY_STATE_LINES: dict[str, str] = {
         "Fired in {eras_fired} of {eras_total} eras, including the most "
         "recent — this is the habit, not a corner, and it isn't fixed yet."
     ),
-    "resolved": (
+    "improving": (
+        "Fired in {eras_fired} of {eras_total} eras, including the most "
+        "recent — but the band fell from {band_before} to {current_band} "
+        "and held there."
+    ),
+    "dormant": (
         "Fired in {eras_fired} of {eras_total} eras, but not in the "
-        "most recent — it has stopped firing lately."
+        "most recent — quiet lately, not yet resolved."
+    ),
+    "regression": (
+        "Fired in {eras_fired} of {eras_total} eras, including the most "
+        "recent — and the band rose from {band_before} to {current_band} "
+        "and held there."
+    ),
+    "resolved": (
+        "Fired in {eras_fired} of {eras_total} eras, clear for the last "
+        "{clearing_streak} eras — it has stopped firing."
     ),
 }
 
@@ -547,6 +773,7 @@ TENDENCY_STATE_LINES: dict[str, str] = {
 def tendency_line(
     *, state: str | None, eras_fired: int, eras_total: int,
     current_band: str | None = None, current_band_corners: int = 0,
+    band_before: str | None = None, clearing_streak: int = 0,
 ) -> str | None:
     """The one rendered sentence for a pattern's tendency annotation, or
     None when there is no state to state (no dated-era evidence — the
@@ -555,11 +782,15 @@ def tendency_line(
     `current_band`/`current_band_corners` are the pattern's pooled
     present, reduced by the caller from the pattern's own instances:
     the loudest gap band among them and how many corners sit at it.
+    `band_before` is the band two eras ago (improving/regression only);
+    `clearing_streak` is the run of consecutive clearing eras (resolved).
     """
     if state is None:
         return None
     line = TENDENCY_STATE_LINES[state].format(
         eras_fired=eras_fired, eras_total=eras_total,
+        current_band=current_band, band_before=band_before or "",
+        clearing_streak=clearing_streak,
     )
     if current_band is not None:
         corners = (
@@ -568,6 +799,69 @@ def tendency_line(
         )
         line += f" Currently {current_band} at {corners}."
     return line
+
+
+#: The strength side's own state sentences (A59). A strength's eras are
+#: the eras it showed as clearing; `lapsed` = cleared before, not in the
+#: most recent era. Strengths carry no band, so there is no "Currently"
+#: suffix here.
+STRENGTH_TENDENCY_STATE_LINES: dict[str, str] = {
+    "new": (
+        "First clear in the most recent era ({eras_fired} of "
+        "{eras_total} eras) — new, not yet a habit."
+    ),
+    "recurring": (
+        "Clear in {eras_fired} of {eras_total} eras, including the most "
+        "recent — it keeps holding, then slipping."
+    ),
+    "persistent": (
+        "Clear in {eras_fired} of {eras_total} eras, including the most "
+        "recent — holding up."
+    ),
+    "lapsed": (
+        "Clear in {eras_fired} of {eras_total} eras, but not in the "
+        "most recent — it has slipped lately."
+    ),
+}
+
+
+def strength_tendency_line(
+    *, state: str | None, eras_fired: int, eras_total: int,
+) -> str | None:
+    """The one rendered sentence for a strength's tendency annotation,
+    or None when there is no state to state."""
+    if state is None:
+        return None
+    return STRENGTH_TENDENCY_STATE_LINES[state].format(
+        eras_fired=eras_fired, eras_total=eras_total,
+    )
+
+
+def tendency_variant(
+    principle: "CoachingPrinciple", *, state: str | None,
+    eras_fired: int, eras_total: int,
+    first_seen_era: int | None, last_seen_era: int | None,
+    clearing_streak: int,
+) -> str | None:
+    """A principle's bespoke tendency-framed variant for a state, filled
+    with the pattern's era facts — or None when the principle carries no
+    variant for that state (the generic state line carries it then).
+
+    Variants cite eras only this driver's history has (era counts, the
+    era a fix stopped after), so the interchangeability test holds:
+    swapping in another driver's laps with the same aggregates still
+    yields sentences grounded in that driver's eras.
+    """
+    if state is None:
+        return None
+    template = principle.tendency_variants.get(state)
+    if template is None:
+        return None
+    return template.format(
+        eras_fired=eras_fired, eras_total=eras_total,
+        first_seen_era=first_seen_era, last_seen_era=last_seen_era,
+        clearing_streak=clearing_streak,
+    )
 
 
 def principles_for_fundamental(fundamental_id: str) -> tuple[CoachingPrinciple, ...]:

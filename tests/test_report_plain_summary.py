@@ -45,7 +45,7 @@ def _payload(*, durations=(90.463, 91.091, 92.0), incomplete=(False, False, Fals
                                  "fundamental": "consistency"},
                     "secondary": []}
     return {
-        "payload_version": 12,
+        "payload_version": 13,
         "cohort": {"driver": "owner", "car": "TestCar", "track": "SynthRing",
                    "n_laps": len(durations), "n_sessions": 2,
                    "lap_durations_s": list(durations),

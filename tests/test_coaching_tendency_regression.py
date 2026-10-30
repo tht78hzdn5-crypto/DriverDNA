@@ -1,7 +1,9 @@
-"""A55 Stage 1 regression pins (SPEC.md A55; PR #57).
+"""A55 Stage 1 regression pins (SPEC.md A55; PR #57), kept through
+A59 Stage 2.
 
-The feature tests in tests/test_coaching_tendency.py cover the state
-partition, era bucketing, and the annotation on individual patterns.
+The feature tests in tests/test_coaching_tendency.py and
+tests/test_coaching_tendency_stage2.py cover the state partition,
+fixed eras, and the annotation on individual patterns.
 These pins exist so a later change cannot silently regress the
 tendency layer's contract with the payload:
 
@@ -18,6 +20,7 @@ tendency layer's contract with the payload:
 
 from __future__ import annotations
 
+from driverdna.coaching.eras import set_era_size
 from driverdna.coaching.rollup import build_coaching_rollup
 from driverdna.config import DriverDNAConfig
 from driverdna.db import Database
@@ -29,13 +32,6 @@ CARRY = "cp.rotation_efficiency.carry_the_middle"
 
 MIX = ("fast",) * 6 + ("slow",) * 6
 FAST = ("fast",) * 12
-
-
-def _config(buckets: int) -> DriverDNAConfig:
-    cfg = CONFIG.model_copy(deep=True)
-    cfg.model.history_buckets = buckets
-    cfg.model.trend_min_laps_per_bucket = 2
-    return cfg
 
 
 def _era_db(eras, *, config):
@@ -59,17 +55,19 @@ def _era_db(eras, *, config):
     return db
 
 
-def test_payload_version_is_12():
-    # v12 is the payload that carries the tendency era fields (A55) on
-    # top of trend_reason (A56) and speculative_guess (BUG-046). Same
-    # reasoning as the scoring regression pin: a literal, not a
-    # round-trip, so a silent revert fails loudly.
-    assert PAYLOAD_VERSION == 12
+def test_payload_version_is_13():
+    # v13 is the payload that carries the tendencies section (A59) on
+    # top of the tendency era fields (A55), trend_reason (A56) and
+    # speculative_guess (BUG-046). Same reasoning as the scoring
+    # regression pin: a literal, not a round-trip, so a silent revert
+    # fails loudly.
+    assert PAYLOAD_VERSION == 13
 
 
 def test_payload_carries_era_fields_on_every_pattern():
-    cfg = _config(3)
+    cfg = CONFIG
     db = _era_db([MIX, MIX, MIX], config=cfg)
+    set_era_size(db, "owner", 12)
     try:
         payload = build_driver_payload(db, cfg)
         patterns = payload["coaching_rollup"]["patterns"]
@@ -81,17 +79,19 @@ def test_payload_carries_era_fields_on_every_pattern():
             assert isinstance(p["eras_fired"], int)
             assert isinstance(p["eras_total"], int)
             assert p["tendency_state"] in (
-                None, "new", "recurring", "persistent", "resolved")
+                None, "new", "recurring", "persistent", "improving",
+                "dormant", "regression", "resolved")
     finally:
         db.close()
 
 
 def test_tendency_version_label_is_literal():
-    cfg = _config(3)
+    cfg = CONFIG
     db = _era_db([MIX, MIX, MIX], config=cfg)
+    set_era_size(db, "owner", 12)
     try:
         payload = build_driver_payload(db, cfg)
-        assert payload["coaching_rollup"]["tendency_version"] == "tendency-v1"
+        assert payload["coaching_rollup"]["tendency_version"] == "tendency-v2"
     finally:
         db.close()
 
@@ -100,8 +100,9 @@ def test_exact_share_boundary_through_the_rollup():
     """A pattern firing in exactly persistent_min_share of eras,
     latest included, must read persistent through the real machinery:
     4 eras, MIX (fires) in eras 1 and 3 only, 2/4 == the 0.5 default."""
-    cfg = _config(4)
+    cfg = CONFIG
     db = _era_db([FAST, MIX, FAST, MIX], config=cfg)
+    set_era_size(db, "owner", 12)
     try:
         rollup = build_coaching_rollup(db, driver="owner", config=cfg)
         for p in rollup["patterns"]:

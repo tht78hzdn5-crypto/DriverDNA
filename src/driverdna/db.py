@@ -551,6 +551,55 @@ MIGRATIONS: tuple[str, ...] = (
         PRIMARY KEY (owner_user_pk)
     );
     """,
+    # 019 - tendency persistence (A59 Stage 2): fixed eras, frozen era
+    # summaries, and the driver_tendencies projection. Create-only: no
+    # prior tendency rows exist (Stage 1 never persisted), so no
+    # backfill rule is needed. driver_tendencies deliberately stores the
+    # projection AND first_seen, unlike driver_beliefs' upsert-amnesia.
+    """
+    CREATE TABLE driver_tendency_settings (
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        era_size_laps INTEGER NOT NULL,
+        PRIMARY KEY (owner_user_pk, driver)
+    );
+    CREATE TABLE tendency_eras (
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        era_index INTEGER NOT NULL,
+        era_size_laps INTEGER NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('open', 'closed')),
+        summary_json TEXT,
+        PRIMARY KEY (owner_user_pk, driver, era_index)
+    );
+    CREATE TABLE tendency_era_laps (
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        era_index INTEGER NOT NULL,
+        lap_pk INTEGER NOT NULL,
+        PRIMARY KEY (owner_user_pk, driver, era_index, lap_pk)
+    );
+    CREATE TABLE driver_tendencies (
+        owner_user_pk INTEGER NOT NULL,
+        driver TEXT NOT NULL,
+        principle_id TEXT NOT NULL,
+        side TEXT NOT NULL CHECK (side IN ('fault', 'strength')),
+        state TEXT NOT NULL,
+        eras_fired INTEGER NOT NULL,
+        eras_total INTEGER NOT NULL,
+        first_seen_era INTEGER,
+        last_seen_era INTEGER,
+        clearing_streak INTEGER NOT NULL,
+        band_before TEXT,
+        current_band TEXT,
+        per_era_json TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        tendency_version TEXT NOT NULL,
+        computed_at TEXT,
+        PRIMARY KEY (owner_user_pk, driver, principle_id, side,
+                     tendency_version)
+    );
+    """,
 )
 
 

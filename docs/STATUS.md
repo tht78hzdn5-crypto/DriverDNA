@@ -1,5 +1,36 @@
 # DriverDNA - Status & Decision Log
 
+**Snapshot date: 2026-10-30 (Stage 2 tendency persistence, SPEC.md A59, PR pending — unmerged).**
+
+- **What shipped:** fixed eras (per-driver lap blocks, default 500, never
+  re-cut, frozen summaries on close) replacing A36's re-cut buckets;
+  `driver_tendencies` projection (migration 019) keeping `first_seen`
+  across upserts; states improving/dormant/regression plus
+  strength-complement resolved at K = 2; strength era annotation;
+  ontology tendency variants + persistent-only `drill_followup`
+  (coach-onto-v7); payload `tendencies` section with per-era references
+  (payload v13); scoring unchanged (dm-v3).
+- **Verified counts (local, this host):** new Stage 2 tests + affected
+  Stage 1 tendency files + regression pins + scoring + plain-summary →
+  79 passed (first run) / 63 passed (tendency files after the
+  references switch); smoke tier 122 passed, 1102 deselected on
+  pristine new main; mypy 58 errors = pristine-new-main baseline (zero
+  new findings); ruff clean on all changed files. Corpus verification
+  on live-DB copies: 851 self / 833 dated laps → 2 eras at 500 (era 0
+  closed 500, era 1 open 333); all 10 fault + 11 strength patterns
+  persistent 2/2; belief scores byte-identical to the a6f7df2 baseline;
+  two report generations byte-identical; tendencies section 49KB with
+  references (vs 546KB with full evidence IDs — the switch A59
+  records). Full suite runs in CI on the PR.
+- **Note:** the 2026-10-27 snapshot below describes pre-Stage-2 state
+  and stays accurate as history; this snapshot records only the Stage 2
+  change. PR #67 (Garage61 vault credential) merged 2026-10-29 as
+  7b99114; this branch was rebased onto it, and the PROJECT-BRIEF.md
+  overlap resolved newest-first (A59 entry above the A58 entry, whose
+  wording now records PR #76 as merged).
+
+---
+
 **Snapshot date: 2026-10-27 (PR #68 merged: CI quality gates + vite 8 / vitest 4).**
 
 - **What shipped:** mypy as a required check with its ratchet repaired (baseline 58); coverage ratchet at 91% (3.12 leg only); Dependabot weekly (uv, npm, github-actions); advisory audit job; `uv.lock` with CI installing from it; concurrency on `tests.yml` only; vitest job + 26 SPA unit tests (advisory). The audit gate was cleared by upgrading vite 5 → 8.3.5 and vitest 2 → 4.1.12 (React stays 18, the pin-commit overrides dropped); the audit job reports 0 vulnerabilities. No `src/driverdna` change, no model version bump.
