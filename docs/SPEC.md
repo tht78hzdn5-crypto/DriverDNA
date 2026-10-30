@@ -3386,3 +3386,122 @@ Accepted at owner plan review; rationale recorded in the review:
   followup). Version pins track the bump in the established pattern:
   payload 12 → 13, tendency-v1 → v2, coach-onto-v6 → v7, and the
   allowed-state set gains improving/dormant/regression.
+
+- **A60** (2026-10-30): **The steering/throttle coaching tranche: three measured
+  techniques gain principles; measured-over-detector presentation
+  precedence.** The coaching fundamentals review
+  (`docs/COACHING-FUNDAMENTALS-REVIEW.md` §3) found seven measured techniques
+  with metrics, scores, and no principle — the ontology could never speak
+  them. Tranche 1 (A57) covered the three entry-phase braking techniques.
+  This tranche covers the remaining rotation and corner-exit techniques
+  that already have metrics and scores:
+  `cp.steering_smoothness.smooth_hands` (technique `steering_smoothness`),
+  `cp.throttle_modulation.one_squeeze` (`throttle_modulation`), and
+  `cp.exit_acceleration.commit_early` (`exit_acceleration`).
+  `ONTOLOGY_VERSION` `coach-onto-v7` → `coach-onto-v8`. `PAYLOAD_VERSION`
+  unchanged (no field added or removed — a candidate is a candidate).
+  `SCORING_MODEL_VERSION` unchanged by this tranche, and structurally cannot
+  change: the scoring model reads `config.model.*` only; every new threshold is
+  `config.coaching.*`. `TENDENCY_MODEL_VERSION` unchanged. Built on a6f7df2
+  and rebased onto 1fcf332 (Stage 2) before review; the amendment number and
+  ontology version moved A59 → A60 / v7 → v8 in the rebase because Stage 2
+  took both.
+
+  **The gate.** `MetricStatGate`, reused from A57 — no new gate type, no new
+  metric. Levels are not variabilities, and a CV is the wrong statistic here
+  for the same reason as A57: for counts and accelerations the fault is a
+  level, and a CV divides by a mean that can approach zero. All three gates
+  state a per-corner MEDIAN crossing a config floor: steering roughness is a
+  level of RMS steering acceleration (median, direction above); throttle
+  modulation is a level of stab-and-lift count (median, direction above);
+  exit weakness is a level of exit acceleration (median, direction below).
+  All three band on their phase's cumulative loss — steering on mid, the two
+  exit principles on exit — the statistic is the trigger, the seconds are the
+  tone, the `trust_the_proxy` shape. No guards: steering exists at every
+  corner, and the throttle metrics exist only where a pickup window exists,
+  so absence already silences the gate.
+
+  **The thresholds** (all `config.coaching`, each documented in its field
+  description with its anchor): `steering_smoothness_floor_dps2` 500 (median
+  RMS steering acceleration, turn-in to apex; ~75th percentile of per-corner
+  medians across the 267 corners with ≥ 2 laps on the owner's 851-lap
+  corpus: p25 298, p50 385, p75 484, p90 592; fires on 62/267);
+  `throttle_modulation_floor_count` 1.0 (median count; the median is 0 at p75
+  and 1 at p90 across 286 corners, 225/286 exactly 0; fires on 46/286);
+  `exit_accel_floor_ms2` 1.25 (median mean longitudinal acceleration, apex to
+  full throttle; ~25th percentile across 314 corners: p25 1.286, p50 1.874,
+  p75 2.391; fires on 76/314). Anchors are the owner's 851-lap corpus of
+  2026-10-29 (the pre-resume snapshot — the Garage61 sync resume had not
+  completed when this tranche was built); moving a threshold means restating
+  its anchor, the A52 rule.
+
+  **Deliberately not gated: `full_throttle_dist_pct`.** It is a lap-position
+  metric, not a corner-level technique level: per-corner medians on the Brands
+  Hatch cohort run 10.2 → 93.8 across C01→C09, rising with lap position and
+  resetting at the start/finish line. Leveling it across corners would fault
+  late corners for being late — the same BUG-044-family reasoning that keeps
+  position metrics out of dispersion gates. It stays technique evidence for
+  scoring, and the exit words say "get to full throttle earlier"
+  qualitatively, never as a leveled number. The corner-type confound of
+  `exit_accel_ms2` itself (fast corners read lower regardless of driver) is
+  handled the way the band always handles it: the tone comes from exit
+  cumulative_loss seconds, so a weak-accel trigger only surfaces where real
+  exit loss exists.
+
+  **Interaction, decided explicitly.** `one_squeeze` and
+  `cp.throttle_pickup.roll_it_on` read the same evidence (stab-and-lift
+  between pickup and full throttle) with different statistics and different
+  conviction: the detector flags any lap with a modulation (max_modulations
+  0) at trigger rate ≥ 0.5; the measured principle fires when the MEDIAN lap
+  modulates. Left alone they would double-speak. The rule, A57's shape one
+  pair over: **where the measured principle has any verdict at a corner —
+  candidate or strength — the detector is not presented for that corner**, in
+  both presentation paths (`select_coaching`, the driver rollup). One voice
+  per piece of evidence; the measured voice wins; the detector remains the
+  fallback where a detector belongs — corners where the measured statistic
+  cannot be stated (fewer than 2 laps with the metric) or has not cleared
+  its evidence bar (median below the floor at n < 8, where a strength is
+  withheld). The rule lives in presentation, **not** eligibility:
+  `eligible_principles` still returns both, pinned by test. A consequence
+  worth stating plainly: the detector's strength voice is fully subsumed —
+  trigger rate < 0.5 implies a median of 0, so wherever the detector would
+  be a strength, the measured principle is a strength too and speaks
+  instead. The detector survives as a candidate voice exactly in the
+  thin-evidence zone. The other interactions needed no rule:
+  `smooth_hands` vs `cp.turn_in.one_commitment` are the same corner read off
+  different metrics (RMS steering acceleration vs correction count) with
+  different drills (smooth the rate vs commit to one input) and reinforce —
+  53 corners in the owner corpus fire both; `commit_early` vs
+  `one_squeeze`/`roll_it_on` are input shape vs outcome (a stabbing throttle
+  and a weak exit are different faults with different drills) and reinforce —
+  10 corners fire both.
+
+  **Effect on the owner's real corpus** (851 self laps, 20 cohorts,
+  regenerated 2026-10-29, default config). The Driver Model report is
+  byte-identical — every belief (score and confidence) unchanged, as it must
+  be: nothing here touches a measurement. Every non-new principle's
+  candidates and strengths are identical (0 mismatches) — including
+  `roll_it_on`'s eligibility, which is untouched by design. New candidates:
+  `smooth_hands` 54, `one_squeeze` 41, `commit_early` 38 corner-instances.
+  New strengths: 160 / 178 / 194. In the driver rollup the three new
+  patterns carry those instance counts, and `roll_it_on`'s fault instances go
+  53 → 8 — the 8 survivors are corners where the measured principle is
+  silent, the fallback working; its strength instances go 173 → 0, the full
+  subsumption above. 16 of 20 cohort headlines are unchanged; the 4 that
+  change are all suppression-driven: Charlotte C03 and Summit Point C11 swap
+  `roll_it_on` for `one_squeeze` at the same corner, band, and magnitude (the
+  measured voice replacing the detector voice); Tsukuba C05 swaps
+  `roll_it_on` for `commit_early` at the same corner and magnitude (1.6066 s)
+  because a `one_squeeze` strength verdict there (median 0.5) suppresses the
+  detector candidate and the exit voice is the loudest remaining one;
+  Indianapolis swaps `roll_it_on` C18 (0.5724 s) for `commit_early` C04
+  (0.8998 s) because a `one_squeeze` candidate at C18 suppresses the detector
+  voice and C04 outranks C18 on severity. Two full report generations on the
+  corpus are byte-identical (determinism). Superseded tests are named in the
+  PR description, per the amendment rule: the ontology count pin (12 → 15),
+  the entry-phase version pin (v7 → v8, payload pin tracks merged main at
+  v13), the Stage 2 tendency version pin (v7 → v8), and the
+  rotation-fundamental set pin (gains `smooth_hands`) — all moved, not
+  weakened. An early draft named the new principles after their fundamentals
+  (`cp.rotation.*`, `cp.corner_exit.*`); the ontology test pins
+  `cp.<technique>.*` namespacing, so the ids were corrected before review.

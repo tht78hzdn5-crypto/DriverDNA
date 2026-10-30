@@ -120,9 +120,11 @@ def _fault_records(fired_eras, total, bands=None, clearing=None):
 # --- versions ------------------------------------------------------------
 
 
-def test_tendency_version_is_v2_and_ontology_is_v7_and_payload_is_v13():
+def test_tendency_version_is_v2_and_ontology_is_v8_and_payload_is_v13():
+    # A60 moves the ontology pin v7 → v8; tendency and payload pins are
+    # unchanged by this tranche.
     assert TENDENCY_MODEL_VERSION == "tendency-v2"
-    assert ONTOLOGY_VERSION == "coach-onto-v7"
+    assert ONTOLOGY_VERSION == "coach-onto-v8"
     assert PAYLOAD_VERSION == 13
 
 
