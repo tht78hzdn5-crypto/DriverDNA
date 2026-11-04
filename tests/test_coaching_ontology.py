@@ -121,6 +121,8 @@ def test_nine_seed_principles():
     # The seed set was nine at M7a. coach-onto-v5 (SPEC.md A57) grows the
     # inventory by deliberate amendment — the entry-phase tranche — and
     # coach-onto-v8 (SPEC.md A60) grows it again — the steering/throttle
-    # tranche — so the pin moves with it: this test asserts the ontology
-    # is exactly the reviewed set, and the reviewed set is now fifteen.
-    assert len(PRINCIPLES) == 15
+    # tranche — and coach-onto-v9 (SPEC.md A62) grows it once more —
+    # the vehicle-management tranche — so the pin moves with it: this
+    # test asserts the ontology is exactly the reviewed set, and the
+    # reviewed set is now sixteen.
+    assert len(PRINCIPLES) == 16

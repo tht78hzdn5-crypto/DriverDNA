@@ -90,7 +90,7 @@ class CoachingCandidate:
     corner_id: str | None  # None for no_signal (cohort-wide, never per-corner)
     gap_band: str | None  # None only for no_signal (no band at all)
     magnitude: float | None
-    magnitude_kind: str | None  # "seconds_lost" | "normalized_dispersion" | None
+    magnitude_kind: str | None  # "seconds_lost" | "normalized_dispersion" | "gate_statistic" | None
     n: int
     thin_evidence: bool
     evidence_ids: tuple[str, ...]
@@ -243,6 +243,33 @@ def _dispersion_band(value: float, cfg) -> str:
     if value >= cfg.dispersion_band_moderate:
         return "moderate"
     return "negligible"
+
+
+def _stat_band(stat_value: float, gate, cfg) -> str:
+    """Gap band for a stat-gate statistic as a multiple of its own
+    floor (SPEC.md A62): the statistic is both trigger and tone, so
+    the band scale mirrors the dispersion scale's structure (notable
+    at 1.5x, major at 2.0x) with the gate floor as the 1.0x point.
+    Direction-aware: above-direction ratios are stat/floor,
+    below-direction ratios are floor/stat, and a non-positive
+    statistic under a below-direction gate is the maximal fault
+    (major). A firing candidate is never negligible — firing implies
+    the statistic crossed its floor, so the ratio is >= 1.0. A floor
+    at or below zero defines no scale: documented moderate fallback."""
+    floor = getattr(cfg, gate.floor_key)
+    if floor <= 0:
+        return "moderate"
+    if gate.direction == "below":
+        if stat_value <= 0:
+            return "major"
+        ratio = floor / stat_value
+    else:
+        ratio = stat_value / floor
+    if ratio >= cfg.stat_band_major_multiple:
+        return "major"
+    if ratio >= cfg.stat_band_notable_multiple:
+        return "notable"
+    return "moderate"
 
 
 def _lap_pk_clause(lap_pks: frozenset[int] | None) -> tuple[str, list[int]]:
@@ -419,12 +446,24 @@ def _corner_candidate(
             return None
         band = _seconds_band(magnitude, cfg)
         magnitude_kind = "seconds_lost"
-    else:
-        # Only reachable via MetricDispersionGate with band_phase=None
-        # (same_lap_twice): the statistic is the trigger AND the tone.
+    elif isinstance(gate, MetricDispersionGate):
+        # Band by the gate's own statistic (same_lap_twice): the
+        # statistic is the trigger AND the tone.
         magnitude = dispersion
         band = _dispersion_band(magnitude, cfg)
         magnitude_kind = "normalized_dispersion"
+    elif isinstance(gate, MetricStatGate):
+        # A62 stat banding: a phaseless fundamental has no seconds to
+        # band on, so the statistic itself sets the tone, as a
+        # multiple of its own floor.
+        magnitude = stat_value
+        band = _stat_band(stat_value, gate, cfg)
+        magnitude_kind = "gate_statistic"
+    else:
+        raise ValueError(
+            f"band_phase None requires a dispersion or stat gate: "
+            f"{principle.id} has {type(gate).__name__}"
+        )
 
     return CoachingCandidate(
         principle_id=principle.id, signal_status=principle.signal_status,

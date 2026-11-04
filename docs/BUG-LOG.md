@@ -93,6 +93,49 @@ Writing that down is the point.
 ---
 
 ## Fixed
+### BUG-052 — Engine crashes on a legal principle configuration: stat gate with band_phase None reads an unbound dispersion
+- **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
+  in the tranche 4 build's test run: the invariant test
+  `test_band_phase_is_a_real_fundamental_phase_or_none` failed for the
+  new ABS principle, and tracing the failure showed the None path
+  itself was broken for stat gates.
+- **Symptom**: `_corner_candidate` (`src/driverdna/coaching/engine.py`)
+  bands a `band_phase=None` principle in an else branch that reads
+  `dispersion`, a variable assigned only in the `MetricDispersionGate`
+  branch. For a `MetricStatGate` principle with `band_phase=None` the
+  name is unbound: the engine raises `UnboundLocalError` at report
+  time. The field comment already promised the missing meaning
+  ("None = band by CV", stale since A58 replaced CV with dispersion):
+  None was always meant to mean "band by the gate's own statistic",
+  but only the dispersion case implemented it.
+- **Root cause**: the banding block dispatched on `band_phase` alone
+  (set vs None) instead of on (band_phase, gate type). Every shipped
+  principle happened to fit the two implemented shapes — set phase
+  with any gate, or None with a dispersion gate — so the hole was
+  latent until the first measured principle on a phaseless
+  fundamental (`vehicle_management` has no phases) needed None with
+  a stat gate.
+- **Blast radius**: none in production — no shipped principle occupied
+  the crashing state (the only None-banded shipped principle is
+  `same_lap_twice`, a dispersion gate; no_signal principles never
+  reach the candidate loop). The crash would have fired only for the
+  unmerged tranche 4 WIP had it shipped with `band_phase=None` and no
+  dispatch. The WIP as found shipped with `band_phase="entry"` and
+  failed the invariant test instead — the visible symptom that led
+  here.
+- **Fix**: SPEC.md A62 replaces the else branch with a dispatch on
+  gate type when `band_phase is None`: dispersion gate keeps
+  dispersion banding, stat gate gets new stat banding (magnitude is
+  the gate's own statistic, `magnitude_kind="gate_statistic"`, band
+  from multiples of its floor), and any other gate with None raises
+  a loud `ValueError` naming the principle instead of the latent
+  crash.
+- **How it was caught**: the suite, not a user report — the invariant
+  test failed on the WIP, and code reading (not a failing run) found
+  the unbound name. Pinned by `tests/test_coaching_stat_banding.py`:
+  the dispatch ValueError test, the stat band scale tests, and the
+  invariant test passing unchanged with the ABS principle at None.
+
 ### BUG-051 — Gitleaks flags the new exit-acceleration threshold key as a generic API key, reddening the required secrets check
 - **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
   in CI on PR #78 (tranche 3, SPEC.md A60): the `secrets` job failed on

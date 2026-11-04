@@ -217,14 +217,16 @@ def test_version_pins_entry_phase_tranche():
     # gains no field (a candidate is a candidate) and the scoring
     # model cannot move — every new threshold is config.coaching.*.
     # Literal pins: self-consistent checks would pass a silent revert.
-    # The payload/scoring pins track the merged main (v13 / dm-v3),
+    # The payload/scoring pins track the merged main (v14 / dm-v3),
     # not the tranche's own base (v9 / dm-v2). A58 moved the ontology
     # pin to coach-onto-v6; A59 (Stage 2) moves it to coach-onto-v7 and
     # the payload pin to v13 (tendencies section); A60 moves the
     # ontology pin to coach-onto-v8. Payload moves v13 -> v14 with
     # Stage 3 (A61: tendencies rows gain session_states, coach payload
     # and chat bundle gain tendencies, coach payload drops
-    # focus_history); scoring is unchanged by this stage.
-    assert ONTOLOGY_VERSION == "coach-onto-v8"
+    # focus_history); scoring is unchanged by this stage. A62 moves
+    # the ontology pin to coach-onto-v9. Payload and scoring are
+    # unchanged by this tranche.
+    assert ONTOLOGY_VERSION == "coach-onto-v9"
     assert PAYLOAD_VERSION == 14
     assert SCORING_MODEL_VERSION == "dm-v3"

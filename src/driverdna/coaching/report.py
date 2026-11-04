@@ -25,9 +25,14 @@ def _fmt_candidate(c) -> str:
             unit = "s"
         elif c.magnitude_kind == "normalized_dispersion":
             unit = "× typical"
+        elif c.magnitude_kind == "gate_statistic":
+            # A62 stat banding: the statistic is the fault; the
+            # principle's words carry the unit, so the value is bare.
+            unit = ""
         else:
             unit = ""
-        bits.append(f"— {c.gap_band}, {c.magnitude:.3f} {unit}, n={c.n}")
+        mag = f"{c.magnitude:.3f} {unit}".rstrip()
+        bits.append(f"— {c.gap_band}, {mag}, n={c.n}")
         if c.thin_evidence:
             bits.append("[thin evidence]")
     bits.append(f"— {principle.driving_principle}")

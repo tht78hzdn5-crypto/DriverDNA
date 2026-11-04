@@ -317,9 +317,12 @@ export function SourceLegend() {
 // ranking, and gap-band tone are the deterministic engine's; nothing here
 // computes or rephrases a claim. A no_signal item (self-check) never carries
 // a score, magnitude, or confidence — a hypothesis, labelled as one.
-function magnitudeText(kind, value) {
+export function magnitudeText(kind, value) {
   if (kind === "seconds_lost") return `${fmt(value)} s`;
   if (kind === "normalized_dispersion") return `${fmt(value, 2)}× typical`;
+  // A62 stat banding: the statistic is the fault; the principle's
+  // words carry the unit, so the value is bare.
+  if (kind === "gate_statistic") return `${fmt(value)}`;
   return null;
 }
 
