@@ -212,8 +212,10 @@ and BYOK layer are built and mock-tested; the live acceptance run
   A38 stand — that acceptance run genuinely used `gemini-3.5-flash`.
   `coach.max_tokens` unchanged at 16000: 3.6 Flash output pricing also
   includes thinking tokens, so the shared-budget reasoning still holds.
-  Verified by tests and the live pricing page only — no API key exists
-  yet, so no live coach run has exercised the new pin.
+  Live-checked 2026-11-06: generateContent calls to gemini-3.6-flash
+  succeed via the stored Gemini key (REST); the config-default path
+  (the CLI reading the new default end to end) has not yet been
+  exercised.
 - `GeminiCoachProvider`/`GeminiChatProvider` built exactly to this doc's
   design (lazy SDK import, env-only key, transcript translation inside the
   provider). The real `google-genai` SDK's actual surface was verified by
