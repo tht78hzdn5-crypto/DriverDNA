@@ -105,9 +105,10 @@ def _row(rows, pid, side):
 
 
 def test_stage3_versions():
-    # A61 bumps: coach-v5, chat-v4, tendency-v3, payload v14.
-    assert PROMPT_VERSION == "coach-v5"
-    assert CHAT_PROMPT_VERSION == "chat-v4"
+    # A61 bumps: coach-v5, chat-v4, tendency-v3, payload v14; v6 moves the
+    # prompt pins only (coach-v6, chat-v5).
+    assert PROMPT_VERSION == "coach-v6"
+    assert CHAT_PROMPT_VERSION == "chat-v5"
     assert TENDENCY_MODEL_VERSION == "tendency-v3"
     assert PAYLOAD_VERSION == 14
 
