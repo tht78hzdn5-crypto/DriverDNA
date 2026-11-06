@@ -112,9 +112,9 @@ def _validate(payload, output):
 
 
 def test_coachv6_versions():
-    # Coach-v6 / chat-v5 bump; payload, tendency, scoring, ontology untouched.
-    assert PROMPT_VERSION == "coach-v6"
-    assert CHAT_PROMPT_VERSION == "chat-v5"
+    # Coach-v7 / chat-v6 bump; payload, tendency, scoring, ontology untouched.
+    assert PROMPT_VERSION == "coach-v7"
+    assert CHAT_PROMPT_VERSION == "chat-v6"
     assert PAYLOAD_VERSION == 14
     assert TENDENCY_MODEL_VERSION == "tendency-v3"
 

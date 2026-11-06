@@ -93,6 +93,47 @@ Writing that down is the point.
 ---
 
 ## Fixed
+### BUG-054 — Coach prompt lets the model write bare percentages the validator must reject
+- **Status**: fixed (2026-11-06) · **Severity**: breaks · **Found**: 2026-11-06,
+  on the first live coach-v6 run for Navarra (gemini-3.6-flash, DB copy):
+  the mechanical grounding validator rejected the output, twice, on the
+  same tripwire.
+- **Symptom**: the model wrote "a single, uninterrupted squeeze to 100%"
+  for full throttle. "100%" is ordinary coaching language, not a
+  measurement — but the validator treats any number+unit as a measurement
+  claim (`coach/grounding.py`: the claim regex catches "100 %", and
+  `number_pool` is every numeric value in the payload), and 100.0 is not
+  in the Navarra payload's number pool, so the whole plan is rejected and
+  `driverdna coach` exits 1 with nothing stored. No coach output was
+  producible for any cohort until the prompt changed. The first attempt
+  also invented "27.26% of braking time", a number not in the data at
+  all — a genuine catch by the same rule.
+- **Root cause**: the v6 prompt's grounding rule ("every number with a
+  unit must appear in the payload") never said what to do with pedal
+  positions, so the model reached for the natural "100%" phrasing. The
+  validator was right both times; the prompt was under-specified.
+- **Blast radius**: every coach run whose output contains a bare
+  percentage for a pedal position — the most natural way to write one.
+  Chat replies shared the defect (its `_validate` applies the same
+  `unsupported_claims` check to free text). No number was wrong: no
+  coach output was ever stored from these runs, and the validator
+  rejected before anything persisted.
+- **How it was caught**: a live Gemini run on real data, not by a test.
+  Mocked-provider tests cannot produce the phrasing, and the synthetic
+  payload's driver-model beliefs score exactly 100.0, so "100%" passes
+  validation against it — the test suite was blind to this tripwire on
+  both counts.
+- **Fix**: prompt-side only (SPEC.md A64). Both prompts gain the rule
+  "Pedal positions are words, never numbers: write 'full throttle',
+  never '100%'... and 'full brake', never '100% brake'. A percentage is
+  a number with a unit: never write one unless that number appears in
+  the payload" (chat: bundle/tool results). Coach prompt v6 → v7, chat
+  v5 → v6. The validator is untouched.
+- **How it was pinned**: `tests/test_coaching_coachv7.py` — the rule's
+  wording appears once in each prompt; a plan action saying "squeeze to
+  full throttle" validates; the exact live "squeeze to 100%" phrasing is
+  still rejected against the fixture cohort (GR86/Spa), whose number
+  pool holds no 100.0; the invented "27.26%" is rejected too.
 ### BUG-053 — Cohort page crashes when an incident event has a null lap_id
 - **Status**: fixed (2026-11-06) · **Severity**: breaks · **Found**: 2026-11-04,
   in the parent audit of PR #80 (tranche 4): the live SPA click verification

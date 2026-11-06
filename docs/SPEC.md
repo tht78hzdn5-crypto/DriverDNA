@@ -3831,3 +3831,42 @@ Accepted at owner plan review; rationale recorded in the review:
   Superseded tests are named in the PR description, per the amendment
   rule: the version pins (coach-v5 → v6, chat-v4 → v5) — all moved, not
   weakened.
+
+- **A64** (2026-11-06): **Coach-v7 — no bare percentages.** Two live
+  coach-v6 runs for Navarra (gemini-3.6-flash, 2026-11-06, on a DB copy)
+  were rejected by the mechanical grounding validator, both on the same
+  tripwire: the model wrote "a single, uninterrupted squeeze to 100%"
+  for full throttle. "100%" is ordinary coaching language, not a
+  measurement — but the validator treats any number+unit as a
+  measurement claim (`coach/grounding.py`: the claim regex catches
+  "100 %", and `number_pool` is every numeric value in the payload),
+  and 100.0 is not in the Navarra payload's number pool, so the whole
+  plan is rejected. The first attempt also invented "27.26% of braking
+  time", a number that is not in the data at all — a genuine catch by
+  the same rule, and proof the validator was right both times.
+
+  **Prompt (coach-v6 → v7, chat-v5 → v6).** Prompt-side fix only; the
+  validator is untouched, never loosened. Both prompts gain one rule,
+  placed directly after the existing never-invent-a-measurement rule:
+  "Pedal positions are words, never numbers: write 'full throttle',
+  never '100%', '100% throttle', or any other percentage for a pedal
+  position, and 'full brake', never '100% brake'. A percentage is a
+  number with a unit: never write one unless that number appears in the
+  payload" (chat: "...unless that number comes from the bundle or a
+  tool result in this turn"). The chat prompt carries the same defect
+  — its `_validate` applies the same `unsupported_claims` check to
+  free-text replies — so it gets the same rule in adapted form and
+  bumps to chat-v6. The descriptive style instruction stays verbatim;
+  all other v6 rules are untouched.
+
+  **No other version moves.** Payload stays 14, tendency stays v3,
+  ontology stays coach-onto-v9, scoring stays dm-v3. Prompt changes
+  cannot move deterministic output. Pinned by test
+  (`tests/test_coaching_coachv7.py`): the rule's wording appears once
+  in each prompt, a plan action saying "squeeze to full throttle"
+  validates, and the exact live "squeeze to 100%" phrasing is still
+  rejected against a payload whose number pool holds no 100.0 — the
+  fixture cohort (GR86/Spa), since the synthetic payload's beliefs
+  score exactly 100.0 and would let "100%" pass. Superseded tests are
+  named in the PR description, per the amendment rule: the version
+  pins (coach-v6 → v7, chat-v5 → v6) — all moved, not weakened.
