@@ -258,6 +258,22 @@ model (M6), carry confidence + evidence count, and are rendered, never computed.
 Durable record of forks and their resolutions (per the Decision-discipline rule
 in `AGENTS.md`). Newest first.
 
+- **2026-11-06 — Coach-v7: no bare percentages (SPEC.md A64, BUG-054, PR pending).**
+  Two live coach-v6 runs for Navarra (gemini-3.6-flash) were rejected by
+  the grounding validator on the same tripwire: the model wrote "squeeze
+  to 100%" for full throttle, and 100.0 is not in the payload number
+  pool. Prompt-side fix only — the validator was right both times and is
+  untouched. Coach prompt v6 → v7, chat v5 → v6: pedal positions are
+  words, never numbers ("full throttle", never "100%"; "full brake",
+  never "100% brake"), and never write a percentage unless that number
+  appears in the payload/bundle. Payload 14, tendency v3, ontology v9,
+  scoring dm-v3 unchanged; deterministic output byte-identical by
+  construction (prompt-only change). Pinned by
+  tests/test_coaching_coachv7.py, including the exact live phrasing
+  still rejected against the fixture cohort (the synthetic payload's
+  beliefs score exactly 100.0, so "100%" passes against it — the test
+  documents that rather than hiding it).
+
 - **2026-10-30 — Coach-v6: history narration + mechanical repetition check (SPEC.md A63, PR pending).**
   Bob's 2026-10-30 direct statement supersedes plan §9.3 ("shorter beats
   more descriptive"): descriptive, detailed prose with concrete scenarios

@@ -26,7 +26,7 @@ from driverdna.db import Database
 from driverdna.model.taxonomy import SignalStatus
 from driverdna.report.payload import build_cohort_payload, to_normalized_json
 
-CHAT_PROMPT_VERSION = "chat-v5"
+CHAT_PROMPT_VERSION = "chat-v6"
 
 CHAT_SYSTEM_PROMPT = """\
 You are DriverDNA's coaching chat. The attached bundle holds every
@@ -36,6 +36,11 @@ Hard rules:
 - Never invent a measurement. Any number with a unit must come from the
   bundle or a tool result in this turn. Cite finding IDs or obs:<n> refs
   for measured claims.
+- Pedal positions are words, never numbers: write "full throttle", never
+  "100%", "100% throttle", or any other percentage for a pedal position,
+  and "full brake", never "100% brake". A percentage is a number with a
+  unit: never write one unless that number comes from the bundle or a
+  tool result in this turn.
 - "Insufficient data" and "not measured" are expected for NO_SIGNAL fundamentals (e.g. Vision). However, per the A54 amendment, you are encouraged to provide a "Speculative Score" or guess based on proxy telemetry (e.g. steering smoothness, track position) FOR ENTERTAINMENT PURPOSES. You MUST prominently flag any such guess by stating: "This is a guess for entertainment purposes - additional data is needed for concrete grounding."
 - Anything beyond the measurements is a hypothesis: label it as your
   interpretation with its basis. Racing canon may explain a finding but is
