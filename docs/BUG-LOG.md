@@ -93,6 +93,61 @@ Writing that down is the point.
 ---
 
 ## Fixed
+### BUG-053 — Cohort page crashes when an incident event has a null lap_id
+- **Status**: fixed (2026-11-06) · **Severity**: breaks · **Found**: 2026-11-04,
+  in the parent audit of PR #80 (tranche 4): the live SPA click verification
+  for the new `gate_statistic` magnitude branch could not run on the
+  Charlotte Mustang cohort — the page blanked instead of rendering.
+- **Symptom**: `IncidentCard` (`ui/src/views/shared.jsx`) rendered
+  `{event.lap_id.slice(0, 6)}` with no null guard. Any incident event whose
+  `lap_id` is null throws `TypeError: Cannot read properties of null
+  (reading 'slice')` at render time, and React unmounts the whole cohort
+  page (blank page, zero incident cards). The Charlotte Mustang GT4 cohort
+  payload carries 7 such events; Spa Mustang carries 0, so Spa rendered
+  and the bug stayed invisible there.
+- **Root cause**: two layers, one crash. The payload's `lap_id` comes from
+  `incidents_for_cohort`'s join onto `laps.lap_id`, and 44 laps on the
+  owner corpus have `laps.lap_id` NULL (38 self, 6 reference) — their
+  lap_id was never stored at import. The sampled self rows are
+  browser-download CSVs whose filenames do carry a trailing ULID (e.g.
+  lap_pk 297, `..._-_01M5WSW28FPD7NFY2FAYECHBXV.csv`) that the importer
+  did not store as `lap_id`. Nothing in the engine promises `lap_id` is
+  non-null, and nothing in the SPA defended against it. The upstream
+  import gap is left open here: fixing it would rewrite stored lap
+  identity, which is out of scope for a render guard.
+- **Blast radius**: any cohort whose incidents touch a null-`lap_id` lap
+  is unviewable in the SPA — the whole page, not just the incident
+  section. On the owner corpus that is Charlotte Mustang (7 events),
+  Navarra Mustang (2), and Okayama MX-5 (14 null-lap_id incidents out of
+  32 events). No number is wrong: the payload itself is correct, only its
+  rendering crashed. No engine, scoring, or threshold change.
+- **How it was caught**: a live browser check on real corpus data, not by
+  a test. The vitest suite pins `magnitudeText` (a pure function) and no
+  test had ever rendered `IncidentCard` with a real payload event; the
+  fixture import produces incidents with real lap_ids only, so the null
+  shape never occurred in the suite.
+- **Fix**: `lapIdShort(lap_id, lap_pk)` in `ui/src/views/shared.jsx`
+  (exported, vitest-pinned): a present lap_id renders its first six
+  characters as before; a null lap_id falls back to `#<lap_pk>`, which the
+  payload always carries — the same fallback the engine's own incidents
+  report uses (`lap_id or lap_pk`) and `laps.jsx` renders as `#${lap_pk}`.
+  Only a missing lap_pk as well reads as "—". The committed SPA bundle
+  was rebuilt. No SPEC amendment: this changes no engine number, no
+  threshold, no ontology, and no payload shape.
+- **How it was pinned**: `tests/test_incident_null_lap_id_ui.py` (browser)
+  imports the fixtures, nulls one incident lap's `lap_id` in the test-only
+  DB, and asserts the cohort page loads with no page error, renders one
+  card per incident event, and shows the `#<lap_pk>` fallback; plus
+  vitest cases for `lapIdShort` in `ui/src/views/shared.test.js`.
+- **Other sites checked, not changed**: `api.js`/`app.jsx`/`config.jsx`
+  `.slice` calls operate on strings/arrays by construction; `shared.jsx:445`
+  slices a Map-derived array guarded by a length check; `cohort.jsx:352–353`
+  only compares `lap_id` for equality (a null there under-reports the
+  incident chip, it cannot crash); `driver.jsx:144` renders a possibly-null
+  `lap_id` as text, which React renders as empty; `laps.jsx:25` already
+  falls back to `#${lap_pk}`. `references.contributors` never renders
+  `lap_id` at all.
+
 ### BUG-052 — Engine crashes on a legal principle configuration: stat gate with band_phase None reads an unbound dispersion
 - **Status**: fixed (2026-10-30) · **Severity**: breaks · **Found**: 2026-10-30,
   in the tranche 4 build's test run: the invariant test

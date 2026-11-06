@@ -326,6 +326,18 @@ export function magnitudeText(kind, value) {
   return null;
 }
 
+// BUG-053: an incident event's lap_id is null whenever the incident lap's
+// laps.lap_id was never stored, so rendering event.lap_id.slice(0, 6)
+// unguarded blanked the whole cohort page. The payload always carries
+// lap_pk, so a null lap_id falls back to it — the same fallback the
+// engine's own incidents report uses (lap_id or lap_pk) and laps.jsx
+// renders as `#${lap_pk}`. Only a missing lap_pk as well reads as "—".
+export function lapIdShort(lap_id, lap_pk) {
+  if (lap_id) return `${lap_id.slice(0, 6)}…`;
+  if (lap_pk != null) return `#${lap_pk}`;
+  return "—";
+}
+
 // The corner is the actionable part and stays in the clear; the band,
 // magnitude and sample size are the supporting data and move behind the
 // arrow (A46) — the same treatment findings get, so one page has one rule.
@@ -548,7 +560,7 @@ export function IncidentCard({ event, slug }) {
           <div className="meta num" style={{ marginTop: "0.5rem" }}>
             min <span className="num">{fmt(event.min_speed_kmh, 0)}</span> km/h ·
             peak yaw <span className="num">{fmt(event.peak_yaw_rate)}</span> rad/s ·{" "}
-            <span className="dim" title={event.lap_id}>{event.lap_id.slice(0, 6)}…</span>
+            <span className="dim" title={event.lap_id}>{lapIdShort(event.lap_id, event.lap_pk)}</span>
           </div>
           <div className="reason" style={{ marginTop: "0.3rem" }}>{event.rationale}</div>
         </div>
