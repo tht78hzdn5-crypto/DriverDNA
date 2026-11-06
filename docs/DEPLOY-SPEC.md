@@ -203,6 +203,17 @@ and BYOK layer are built and mock-tested; the live acceptance run
   2026-08-02: `gemini-3.5-flash`/`gemini-3.5-flash-lite` are the current
   free-tier Flash-class models; Pro is paid-only. Per this doc's own
   standing rule, this is a live-fetched pin, not a memorized name.
+- **2026-11-06: re-pinned to `gemini-3.6-flash`.** The `gemini-3.5-flash`
+  model ID no longer appears on the live pricing page (checked
+  2026-11-06); `gemini-3.6-flash` and `gemini-3.8-flash` are the current
+  free-tier Flash models there, both free of charge for input and output,
+  and Pro remains paid-only. Owner-directed (3.6 over 3.8). Default and
+  description in `config.py` updated; the Aug 2 record above and SPEC.md
+  A38 stand — that acceptance run genuinely used `gemini-3.5-flash`.
+  `coach.max_tokens` unchanged at 16000: 3.6 Flash output pricing also
+  includes thinking tokens, so the shared-budget reasoning still holds.
+  Verified by tests and the live pricing page only — no API key exists
+  yet, so no live coach run has exercised the new pin.
 - `GeminiCoachProvider`/`GeminiChatProvider` built exactly to this doc's
   design (lazy SDK import, env-only key, transcript translation inside the
   provider). The real `google-genai` SDK's actual surface was verified by

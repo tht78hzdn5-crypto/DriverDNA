@@ -278,18 +278,22 @@ class CoachConfig(_Section):
         "coach.provider is 'claude'.",
     )
     gemini_model: str = Field(
-        default="gemini-3.5-flash",
+        default="gemini-3.6-flash",
         description="Gemini model used for coach and chat runs when "
         "coach.provider is 'gemini'. Pinned to a free-tier Flash-class model "
-        "(read from ai.google.dev/gemini-api/docs/pricing, verified "
-        "2026-08-02, per DEPLOY-SPEC's standing rule against pinning a "
-        "model name from memory) — never Pro, which is paid-only.",
+        "(read from ai.google.dev/gemini-api/docs/pricing, re-verified "
+        "2026-11-06, per DEPLOY-SPEC's standing rule against pinning a "
+        "model name from memory) — never Pro, which is paid-only. "
+        "Re-pinned 2026-11-06 from gemini-3.5-flash: that model ID no "
+        "longer appears on the live pricing page, and 3.6/3.8 Flash are "
+        "the current free-tier Flash models there, both free of charge "
+        "for input and output.",
     )
     max_tokens: int = Field(
         default=16000,
         description="Response token budget per provider call. Raised from "
         "4000 (SPEC.md A35's live acceptance run, 2026-08-02): "
-        "gemini-3.5-flash is a thinking model whose internal reasoning "
+        "gemini-3.6-flash is a thinking model whose internal reasoning "
         "tokens count against this same budget, so 4000 was silently "
         "exhausted by thinking with zero output text on a real coach/chat "
         "payload (finish_reason MAX_TOKENS, empty response). 16000 covers "
